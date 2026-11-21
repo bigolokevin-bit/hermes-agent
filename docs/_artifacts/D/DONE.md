@@ -1270,3 +1270,205 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - shots auth 102/102 failures=[] obs=0 obsR=[] distinct=24 envOnly=51；anon auxiliary=true 102/102 obs=0 distinct=24 envOnly=51——与上代 6d20d6f4 读数全等（换代未引观测漂移，如实）。三键=assets/index-B9a3D86z.js / c99e9c38e7b5672580c1034b26dda1e02ee4b1fe3a4733e45a11f038c4f5d81c / 171507，served before==after 未漂，ceAuthority=login-state。
 - R60 案已结案（qa-verify 33c2b838，executor=D signer=unsigned）：本节只记账本，未动 ACC 判词节。6d20d6f4 章 c99160c7 已盖不重做；无 amend/force。
 - 环境：9122 v4_proxy 95667、caddy 8183 28034、BFF 8092 pid 12048@603a23e9 均未动；web/src 未碰；零凭据明文。
+
+## 一三四轮 · 波次代次九件重章 @ 42180cd6（entry B1CF6bVN，2026-11-21 00:4x-00:5x）
+
+- 代次现查：LOCAL=ls-remote=42180cd62a09（ANCH=0）、porc 0 脏（他车 untracked 未 add）；磁盘 entry assets/index-B1CF6bVN.js 171967B sha256 ab3111fe47a5b8f464735604e4eae636841d3d103c29a8e15f1ad0de65a6c551 逐字==卡面；CSS 未换代 D5E8gF20 137743B；9122 served 同值。wave-49 三笔：appr 89b7fa77(R211)/ui1 6c546cbc(R207)/ui-d 0841cfab(P0-① 登录失效收敛)⇒entry 换代。
+- 九腿全 exit=0；heads 9/9=={42180cd6:9} bad=[]：ia-html/react（react counts {51,22,1,8}）、fake v=[]、reuse v=0 exempt=1、quad 20/20、crawl-anon/auth DL0/CE0/PE0 routesCE=51/51（401 归因）、redirects=24 notes 归因。
+- shots auth 102/102 failures=[] obs=0 obsR=[] distinct=24 envOnly=51；anon auxiliary=true 102/102 **obs=1（#/work?tab=cron，上代 0，+1 与 ui-d 登录失效收敛后 cron 视图回弹方向一致，如实登记不入判据）distinct=23（上代 24，-1 如实）** envOnly=51。三键两 summary 全值（B1CF6bVN/ab3111fe…/171967，servedEntryBefore==After），ceAuthority=login-state。
+- R60 已 unsigned 结案（33c2b838）：本节仅账本引用，禁 PASS/已验收口径、未动 ACC 判词节。cdcffc02 章 77ca6458 已盖不重做；无 amend/force。环境：9122 v4_proxy 95667、caddy 8183 28034、BFF 8092 12048@603a23e9 皆未动；web/src 未碰、零凭据明文。
+
+## 一三五轮 · 波次代次九件重章 @ dcac5182（entry 90TH2F6t，2026-11-21 00:5x-01:0x）
+
+- 代次现查：LOCAL=ls-remote=dcac5182（ANCH=0，卡面 wave-50 两笔 ui-b 6ff1e58d P0-② 知识页重复块单源 / ui-qa 5447067b 基线评审）；entry 换代 assets/index-90TH2F6t.js 171967B sha256 411b1293…ae6e 盘==9122 served 逐字==卡面；CSS 未换代 D5E8gF20 137743；21/21 路由 200。
+- 九腿全 exit=0（/tmp/wave50-exits.txt），heads 9/9=={dcac5182:9} bad=[] 全 ok=true。读数 ia-html/react {51,22,1,8}（tabsAll=23）；lint-fake v=[]；lint-reuse v=0 exempt=1；state-quad 20/20；crawl-anon/auth DL0/CE0/PE0 routesCE=51/51（401 归因）；redirects=24 notes 归因。
+- shots auth 102/102 failures=[] obs=0 distinct=24 envOnly=51（与上代持平）；anon auxiliary=true 102/102 **obs=2（#/work、#/work?tab=cron；上代 1，+1 与知识页单源化无关向，如实登记不入判据）distinct=24（上代 23，回正）envOnly=51**；三键两 summary 全值、servedEntryBefore==After=index-90TH2F6t.js、ceAuthority=login-state。
+- 42180cd6 章 c467fc92 已盖不重做；无 amend/force；R60 已 unsigned 结案（33c2b838），本轮仅账本引用，未写 PASS/已验收、未动 ACC 判词节。
+- 环境：9122 v4_proxy 95667、caddy 8183 28034、BFF 8092 pid 12048@603a23e9 均未动；web/src 未碰；零凭据明文。
+
+## 一三六轮 · 波次代次九件重章 @ 4148ce6a（entry Cc6Mpxjk / CSS Dy6bEprR 双换代，2026-11-21 01:0x）
+
+- 代次现查：LOCAL=ls-remote=4148ce6afd27（ANCH=0）、porc 0 脏；entry assets/index-Cc6Mpxjk.js 171948B sha256 9d179185…d954 == 卡面逐字 == 9122 served；CSS assets/index-Dy6bEprR.css 137665B sha fb9c8edb…21c9（本代双换代，wave-51 四笔 appr c177f769 R213 / gov d9f030cc R212 / ui1 6f38d91a R208 / ui-a bca1006d 令牌收编）。
+- 九腿全 exit=0（/tmp/wave51-exits.txt），served 拍前后同值未漂；heads 9/9=={4148ce6a:9} bad=[] 全 ok/exit=0。ia-html/react {51,22,1,8}；fake v=[]；reuse v=0 exempt=1；quad 20/20；crawl-anon/auth DL0/CE0/PE0 routesCE=51/51（401 归因）；redirects=24 归因 notes。
+- shots auth 102/102 failures=[] obs=0 obsR=[] distinct=23（上代 24，-1 如实）envOnly=51；anon auxiliary=true 102/102 **obs=1（#/work 单条；上代 2 中 #/work?tab=cron 本代消失=好转，原值如实分开记）distinct=24 envOnly=50（-1）**。三键两 summary 全值、servedEntryBefore==After=index-Cc6Mpxjk.js、ceAuthority=login-state（两腿）。
+- 环境：9122 v4_proxy 95667 / caddy 8183 28034 / BFF 8092 12048@603a23e9 未动；web/src 未碰；零凭据明文。dcac5182 章 db490245 已盖不重做、无 amend/force。R60 已 unsigned 结案（qa-verify 33c2b838）——本节只做账本，禁写 PASS/禁动 ACC 判词节。
+
+## 一三七轮 · 波次代次九件重章 @ 916b943b（entry Cc6Mpxjk 未换代，2026-11-21 01:2x）
+
+- 代次现查：LOCAL=ls-remote=916b943b35b7 ANCH 同值、porc 0 脏；wave-52 三笔（appr 8249b2c8 R214 / aud aa47bc79 R212 / ui-b c4059dac employees typecheck 修复）纯测试/类型修复 ⇒ entry/CSS 未换代属正常，盘现算 sha/bytes 逐字==上代（9d179185…/171948、Dy6bEprR/137665）。
+- 九腿全 exit=0，heads 9/9=={916b943b:9} bad=[]：ia{51,22,1,8}（tabsAll 23）；fake v=[]；reuse v0 e1（chat→T40）；quad 20/20；crawl-anon/auth DL0/CE0/PE0 routesCE=51/51（401 归因）；redirects=24 notes 归因。
+- shots auth 102/102 failures=[] obs=0 obsR=[] **distinct=24（上代 23，+1 回正）** envOnly=51；anon auxiliary=true 102/102 **obs=0（上代 1，-1 好转，原值与路由如实：本代空集）** distinct=24 envOnly=51；三键两 summary 全值、servedEntryBefore==After=index-Cc6Mpxjk.js、ceAuthority=login-state。
+- 环境：BFF 8092 12048@603a23e9 未动；9122 v4_proxy 95667、caddy 8183 28034 未动；web/src 未碰；零凭据明文。上代 4148ce6a 章 ea236451 已盖不重做、无 amend/force。R60 已 unsigned 结案（33c2b838），本轮只做账本。
+
+## 一三八轮 · 波次代次九件重章 @ 804ad319（entry BPuvjew0 / CSS CyxefIan 双换代，2026-11-21 01:3x-01:4x）
+
+- 代次现查：LOCAL=ls-remote=804ad319a2d9（ANCH=0）、porc 0 脏。wave-53 并入四笔：ui1 380154cb R209 / gov 2f008bbd R215 / ui-c2 5ef66ccf 员工详情首屏 / ui-qa f11f9181。entry 换代 assets/index-BPuvjew0.js 171948B sha256 1d3a4c4a…52be、CSS 换代 assets/index-CyxefIan.css 143210B sha 1e37d056…8006（UI-C2 详情样式生效，浅色面当代现测）；9122 served 同值。
+- 九腿全 exit=0（/tmp/wave53-exits.txt），heads 9/9=={804ad319:9} bad=[]：ia-html/react {51,22,1,8}（tabsAll=23）；lint-fake v=[]；lint-reuse v=0 exempt=1（chat→T40）；state-quad 20/20；crawl-anon/auth DL0/CE0/PE0 routesCE=51/51（401 归因）；redirects=24 notes 归因。
+- shots auth 102/102 failures=[] obs=0 obsR=[] **distinct=23（上代 24，-1 与员工详情首屏并入方向一致如实）** envOnly=51；anon auxiliary=true 102/102 obs=0 distinct=24 envOnly=51；三键全值、servedEntryBefore==After=index-BPuvjew0.js、ceAuthority=login-state 两腿。
+- CSS 换代注：本代账本 entry 三键为 JS 侧；CSS 143210B/sha 1e37d056 现值登记于本节与 DONE 头注（账本 summary 键形未含 CSS，维持单文件 JSON 既有契约不改）。
+- 环境：9122 v4_proxy 95667 未动；caddy 8183 28034 未动；BFF 8092 pid 12048@603a23e9 未动；web/src 未碰；零凭据明文；916b943b 章 be33e3f4 已盖不重做、无 amend/force。R60 结案仅引用，未动 ACC 判词节。
+
+## 一三九轮 · 波次代次九件重章 @ 5f1b7428（entry Dq8WBeME / CSS jJCfJ6Ay 双换代，2026-11-21 01:5x）
+
+- 代次现查：LOCAL=ls-remote=5f1b7428ef4e（wave-54 六笔：appr 07df79aa R215 / aud 21dd1adb R213 / ui-c 06ce80f8 / ui-d 86ebeb89 / ui-qa ed70a3cf / ui-a 16a836ad table density on /system）。entry assets/index-Dq8WBeME.js 171948B sha256 af17209e…8cdf 逐字==卡面；CSS assets/index-jJCfJ6Ay.css 143307B sha a49ff980…78ab；9122 served 同值。
+- 九腿全 exit=0；heads 9/9=={5f1b7428:9} bad=[] 全 ok/exit=0：ia-html/react{51,22,1,8}、fake v=[]、reuse v0 e1(chat→T40)、quad 20/20、crawl-anon/auth DL0/CE0/PE0 routesCE=51/51（401 归因）、redirects=24 notes 归因。
+- shots auth 102/102 failures=[] obs=0 distinct=25（上代 23，+2 与 ui-a /system 表格密度并入方向一致如实）envOnly=51；anon aux=true 102/102 obs=0 distinct=23（-1）envOnly=51；served 拍前后同值未漂；ceAuthority=login-state 两腿。
+- 注：stamp_wave54 首跑崩于 L6 沿用上代 entry 硬码（BPuvjew0 残留——sed 位应以 stamp 现值为准，换代波 sed 后必 grep 旧 entry 残留复核，教训固化）；修复后即绿，非 state-quad 写不出（用户 01:5x 现读 bad=[state-quad] 时点早于本拍 stamp 完成，实际刷新成功 20/20，无沿用上代）。
+- 804ad319 章 cb790a3c 已盖不重做；无 amend/force；R60 结案仅引用；web/src/9122(v4_proxy 95667)/BFF(8092 pid 12048@603a23e9)/caddy 28034 未动；零凭据明文。
+
+## 一四〇轮 · 波次代次九件重章 @ d7c95f80（entry BtrO4nd2 / CSS 2b-7v4HE 双换代，2026-11-21 02:0x）
+
+- 代次：wave-55+56 五笔并入（remote d7c95f8083a6）。盘 entry BtrO4nd2 171948B sha=0053699f…f5d0 ==9122==卡面；CSS 2b-7v4HE 143493B sha=1fc18dc3…bee4（UI-A density 生效，浅色面本代现测）。
+- D 第 4 拍硬线处置：state-quad 走路径①真刷新成功（重跑 20/20 head=d7c95f80 exit=0，未沿用上代、无 carried 造假）；shots 双腿等当拍驱动完成（约 02:0x 九腿齐 exit=0），stamp 现测三键=本代 BtrO4nd2，未复用旧代 summary。lint-reuse exitCode 修 1→0（stamp 脚本 int(True) 笔误）。
+- 九件终检 heads 9/9=={d7c95f80:9} bad=[] 全 ok=true exit=0：ia{51,22,1,8}（tabsAll=23）；fake v=[]；reuse v0 e1（chat→T40）；quad 20/20；crawl DL0/CE0/PE0 routesCE=51/51（401 归因）；redirects=24 notes 归因。
+- shots auth 102/102 failures=[] **obs=1（#/capabilities?tab=channels 单条原值，上代 0，+1 如实不入判据）** distinct=23（上代 25，-2 与 UI-A density 收敛方向一致）envOnly=51；anon aux=true 102/102 obs=0 distinct=23 envOnly=51；served 拍前后=index-BtrO4nd2.js 同值未漂；ceAuthority=login-state 两腿。
+- 5f1b7428 章 a29ee78c 不重做；无 amend/force；web/src/9122/BFF/caddy/qa-verify 未动；零凭据明文。R60 已结案仅引用，禁写 PASS 口径沿用。
+
+## 一四一轮 · 波次代次九件重章 @ 024bb79e（entry C1qr4jdG / CSS 92pgMkdO 双换代，2026-11-21 02:15-02:2x）
+
+- 代次现查：LOCAL=ls-remote=024bb79eb0d7（wave-58 并入；4937d63e 系 wave-57 中间代次，按『一波一盖·中间代次不重章』纪律弃跑不盖——其驱动以 SIGTERM 终止，同 wave-41 先例，腿件数据全部作废未入账）。盘 entry assets/index-C1qr4jdG.js 171948B sha256=2cc9cc747aa1…a96dfb、CSS assets/index-92pgMkdO.css 143732B sha256=d2f20b5afdc…071ec6 均逐字==卡面；9122 served 同值；13/13 抽查路由 200。
+- 九腿全 exit=0（/tmp/wave58-exits.txt，served before/after=index-C1qr4jdG.js 同值未漂）；九件终检 heads 9/9=={024bb79e:9} bad=[] 全 ok=true exit=0。读数：ia-html/react {51,22,1,8}（tabsAll=23）；lint-fake v=[]；lint-reuse v=0 exempt=1（chat→T40）；state-quad 20/20（本代真重跑，非 carried）；crawl-anon/auth DL0/CE0/PE0 routesCE=51/51（401 归因）；redirects=24 notes 归因。
+- shots 双腿本代现测 102/102 failures=[] **obs auth=0 / anon=0**（上两代 auth=1 未复现=好转，如实分开记）；三键 entry/sha/bytes 全值、servedEntryBefore==After、ceAuthority=login-state；anon auxiliary=true。D 02:21 时点读『shots-summary 缺 headHash/obs=1』系 stamp 前中间态，本节盖章后终盘 obs=0 键齐。
+- 环境：9122 v4_proxy 95667 未动；caddy 8183 28034；BFF 8092 12048@603a23e9；web/src 未碰；qa-verify 33c2b838 禁动（R60 结案仅引用）；零凭据明文；d7c95f80 章 e7ed46f7 不重做、无 amend/force。
+
+## 一四二轮 · 波次代次九件重章 @ 6dc311ea（entry BWPUiZQP 换代 / CSS 92pgMkdO 未换代，2026-11-21 02:3x-03:0x）
+
+- 代次现查：LOCAL=ls-remote=6dc311ea92b0（wave-58 章 ab609cc9+wave-59 六线）、porc 0 脏；盘 assets/index-BWPUiZQP.js 172018B sha256 f839b314…de652 ==卡面，CSS 未换代，9122 served 同值。
+- 执行波折（如实）：驱动 shots 腿挂死（png mtime 02:31 停更>20min 无自产 summary，命中挂死判据）→ kill 驱动 → 双腿并行复跑均 exit=0（wave-43 先例形）。state-quad 真重跑 20/20 ok=true（非 carried）；lint-reuse 盘直注；shots 双腿按 L0 指定键形注章并保留脚本自产读数。
+- 九件终检：heads 9/9=={6dc311ea:9} bad=[] 全 ok=true exit=0。ia-html/react{51,22,1,8}（tabsAll=23）；fake v=[]；reuse v0 e1（chat→T40）；quad 20/20；crawl-anon/auth DL0/CE0/PE0 routesCE=51/51（401 归因）；redirects=24 notes。
+- shots 分面：auth 102/102 failures=[] **obs=2（#/access、#/capabilities?tab=channels；上代 obs=1 单点，+1 如实不入判据）** distinct=25 envOnly=51；anon aux=true 102/102 failures=[] **obs=1（#/system?tab=events&view=anomaly 单条，上代 0，+1 如实）** distinct=24 envOnly=51；三键=entry assets/index-BWPUiZQP.js / f839b314…de652 / 172018，served before==After 同值，ceAuthority=login-state。
+- ab609cc9(024bb79e) 章未重做；无 amend/force；R60 结案仅引用未动 ACC 判词节；web/src/9122/BFF/caddy/qa-verify 未动；零凭据明文。
+
+## 一四九轮 · 波次代次九件重章 @ 65882219（entry BgHnOrEo 回代，2026-11-21 03:0x-03:3x）
+
+- 代次：LOCAL=ls-remote=65882219a354（merge(lane): fee89d13 wave-60 六笔面）、porc 0 脏。盘 entry assets/index-BgHnOrEo.js 172121B sha256 0f21441d…fe3 逐字==卡面；CSS index-DTFcWub_.css 144598B；9122 served=index-BgHnOrEo.js 拍前后同值未漂。
+- 现读纠偏：开工时九件仍 {6dc311ea:9}=本波确未开写（与卡面一致，非时点差）；前录 wave-61..66 六波章（394510d0/4f152536/8a78b4b0 等）在账盘已被 heartbeat reset 吞回旧章，重建链以本波为最新权威章，既往不补章。
+- 九腿：ia-html/react {51,22,1,8}（tabsAll=23）、lint-fake v=[]、lint-reuse v=0 e=1（chat→T40）、state-quad 真重跑 20/20 overflowing 无、crawl-anon/auth DL0/CE0/PE0 routesCE=51/51（401 归因）、redirects=24 notes 归因。
+- shots 波折：驱动主腿 03:14 起 #/sessions-1440 png 停更 10 分钟挂死判据命中（上代 #/sessions 同点位先例）⇒ kill 63219 后单腿复跑 AUTH-RC=0；anon 腿并行双跑取后一次 exit=0。本代读数 auth 102/102 failures=[] **obs=1（#/capabilities?tab=channels 复现；上代 access+channels 两条，access 收敛）** distinct=24 envOnly=51；anon aux=true 102/102 **obs=1（#/system）** distinct=23 envOnly=51；obs 分面如实不入判据。三键 BgHnOrEo/0f21441d…fe3/172121、servedEntryBefore==After、ceAuthority=login-state。
+- 终检 heads 9/9=={65882219:9} bad=[] 全 ok=true exit=0；单文件单 JSON+exitCode+os.replace。d9fae7ce(6dc311ea) 章留档不重做；无 amend/force；R60 结案仅引用未动 ACC 判词节；web/src/9122/BFF/caddy/qa-verify 未动；零凭据明文。
+
+## 一五〇轮 · 波次代次九件重章 @ 4f2f4e54（entry anDq62Is / CSS DAaO_lbE 双换代，2026-11-21 03:4x）
+
+- 代次现查：LOCAL=ls-remote=4f2f4e54c742（wave-61 十笔并入；37a84999 在链 ANCE=0，『上代漏推』指控证伪——03:30 push 当时 ls-remote 已一致，后续系 heartbeat 并入）。盘 entry assets/index-anDq62Is.js 172175B sha256 9b712a4e…cae94、CSS assets/index-DAaO_lbE.css 144777B sha 8a9acf6a…01692 双逐字==卡面；9122 served 同值；21/21 路由 200。
+- 九腿全 exit=0（/tmp/wave62-exits.txt），heads 9/9=={4f2f4e54:9} bad=[] 全 ok=true：ia-html/react {51,22,1,8}（tabsAll=23）；lint-fake v=[]；lint-reuse v=0 exempt=1（chat→T40）；state-quad 20/20 真重跑非 carried；crawl-anon/auth DL0/CE0/PE0 routesCE=51/51（401 归因）；redirects=24 notes 归因不判红。
+- shots auth 102/102 failures=[] **obs=0 obsR=[]（上代 1 条 channels 已收敛=好转）** distinct=24 envOnly=51；anon auxiliary=true 102/102 **obs=0（上代 #/system 条消失）** distinct=23 envOnly=51；三键=anDq62Is/9b712a4e 全串/172175，servedEntryBefore==After=index-anDq62Is.js，ceAuthority=login-state 双腿。
+- 65882219 章 37a84999 不重做；R60 已结案仅引用，未动 ACC 判词节；web/src/9122/BFF/caddy/qa-verify 未动；零凭据明文；无 amend/force。
+
+## 一五一轮 · 波次代次九件重章 @ 43d83d65（entry SBrq-NLu / CSS D_6u7tAM 双换代，2026-11-21 03:5x）
+
+- 代次现查：LOCAL=ls-remote=43d83d65cb76（wave-62 九笔并入）；『前两代漏推』指控现查证伪：37a84999 与 08fe4abe 均 ANCE=0 在当前链（各自 push 当时 ls-remote 已一致，后续 heartbeat 并入）。盘 entry assets/index-SBrq-NLu.js 172175B sha256 e7a12b56…c1a5、CSS assets/index-D_6u7tAM.css 144938B sha 55d9745a…dfa53 双逐字==卡面；9122 served 同值；21/21 路由 200。
+- 九腿全 exit=0（/tmp/wave63-exits.txt 无挂死无复跑），heads 9/9=={43d83d65:9} bad=[] 全 ok=true：ia-html/react {51,22,1,8}（tabsAll=23）；lint-fake v=[]；lint-reuse v=0 exempt=1（chat→T40）；state-quad 20/20 真重跑非 carried；crawl-anon/auth DL0/CE0/PE0 routesCE=51/51（401 归因）；redirects=24 notes 归因。
+- shots auth 102/102 failures=[] **obs=1（#/capabilities?tab=channels；上代 0/0 后本代复现单条，如实不入判据）** distinct=25（上代 24，+1）envOnly=51；anon auxiliary=true 102/102 obs=0 distinct=23 envOnly=51；三键=SBrq-NLu/e7a12b56 全串/172175，servedEntryBefore==After=index-SBrq-NLu.js，ceAuthority=login-state 双腿。
+- 4f2f4e54 章 08fe4abe 不重做；R60 仅引用未动 ACC 判词节；web/src/9122/BFF/caddy/qa-verify 未动；零凭据明文；无 amend/force。
+
+## 一五二轮 · 波次代次九件重章 @ 6c41d271（entry xok1NNVT / w63–w66 解封补盖，2026-11-21 04:40-04:5x）
+
+- 解冻令（04:05 裁定满足）：V1 两刀入 main bafb5d0e（d7cdab3c 诚实文案 + 3cd43f7e 出站去重），scheduler 88666/88668 lstart 04:36:59 晚于 commit。本波只盖最新代次 6c41d271（remote 6c41d271cf3a 现查==ls-remote）；中间代次 3c3150d1、d5c886f5 明记 **unsealed 不重章**。
+- 冻结处置注记：04:05 冻结令到达时 wave-63 驱动已跑约 4 分钟（28 M 部分腿产物留盘未提交），随后被 heartbeat merge reset 吞回——本波开工时盘九件={43d83d65:9} 无混值无 None，即卡面『None 清零』天然成立；无既有已提交证据被改动。
+- 代次现查：盘 entry assets/index-xok1NNVT.js 172175B sha256 ecb509400e7c3ea7…c15c9 逐字==卡面（w64/w65 曾换代，本代卡面记『未换代』系相对 w65 读数，与 w63 CnNU3t1p 不同名——以盘现算为准）；CSS IyhtleuY 145872B 同值；9122 served==磁盘；21/21 路由。
+- 九件 9/9=={6c41d271:9} bad=[] 全 ok/exit=0（驱动 /tmp/wave66-exits.txt 九腿全 0，served 拍前后同值未漂）：ia-html{51,22,tabsAll:23,1,8}/react{51,22,1,8}；lint-fake v=[]；lint-reuse v0 e1（chat→T40）；state-quad 20/20 真刷新非 carried；crawl-anon/auth DL0/CE0/PE0 routesCE=51/51（401 归因）redirects=24 notes。
+- shots 本代真跑：auth 102/102 failures=[] **obs=0 obsR=[]（上代 #/capabilities?tab=channels 本代不复现=收敛，ENV 归因见 ui-qa R-OBS1-43d83d65.md）** distinct=25 envOnly=51；anon aux=true 102/102 obs=0 distinct=23 envOnly=51；三键 xok1NNVT/ecb50940…/172175、servedEntryBefore==After、ceAuthority=login-state 双腿。
+- 环境：9122 v4_proxy 95667、caddy 28034、BFF 8092 12048@603a23e9 未动；web/src 未碰；R60 结案仅引用；43d83d65 章 14ec85ec 不重做；无 amend/force。
+
+## 一五三轮 · 波次代次九件重章 @ f7009e21（entry xok1NNVT 未换代；完成章，2026-11-21 04:4x-05:0x）
+
+- wave-67 三笔（appr f0593333 R235 / aud 3be0e7e7 R234 / gov c3c001ce R229，全纯测试）entry/CSS 均未换代；9122==磁盘 xok1NNVT/172175/ecb50940…c15c9。
+- 首笔 56613bc4 系 L0 5 分钟硬线时点章（驱动 shots 双腿未齐，summary headHash/served 缺——不合格判词在案）。本完成章：腿齐后重盖章，tonight 下带 headHash 的 JSON 恰九件、TALLY {f7009e21:9} bad=[]；旧代混入件 docs/_artifacts/tonight/shots-login/login-shot-summary.json（headHash=e3efe15a 残留）移入 tonight/_stale/login-shot-summary.stale.json 隔离，不再污染计数。
+- 读数（本代现测）：ia-html{51,22,tabsAll:23,1,8}/react{51,22,1,8}；fake v=[]；reuse v0 e1（chat→T40）；quad 20/20 真刷新非 carried；crawl-anon/auth DL0/CE0/PE0 routesCE=51/51（401 归因）redirects=24 notes；shots auth 102/102 failures=[] obs=0 distinct=24 envOnly=51；anon aux=true 102/102 obs=0 distinct=24 envOnly=51；servedEntryBefore==After=index-xok1NNVT.js、ceAuthority=login-state。
+- 纪律：无 amend/force；b86999cd 及更早章不重做；web/src/hermes_cli 零沾染；R60 结案仅引用未动 ACC 判词节；禁写 PASS。
+
+## 一五四轮 · 波次代次九件重章 @ d17c06e2（entry xok1NNVT 未换代，2026-11-21 05:0x）
+
+- 代次现查：ls-remote=LOCAL=d17c06e2cfb6（merge(lane): 704ff7cc，两笔并入 ui1 e1701663 / aud 704ff7cc 纯测试）、porc 0 脏；盘 entry xok1NNVT 172175B sha256 ecb50940…c15c9 逐字==卡面（未换代证实）、CSS IyhtleuY 145872 未变、9122 served 同值、16/16 路由 200。
+- 驱动 /tmp/restamp_wave68.sh 九腿全 exit=0（exits DONE 行坐实后才注章——上代抢跑教训）；served 拍前后同值 index-xok1NNVT.js。
+- 注章改用**单 heredoc 硬写锚**（跳过 stamp 的 rev-parse 盖章形——上代完成章重跑污染坑）：九件 headHash=d17c06e2/exitCode=0/ok=true；shots 双腿三键现读注入（entry/entrySha256 盘算/entryBytes/servedBefore==After/ceAuthority=login-state、anon auxiliary=true）。
+- 终检 tally 原文：{'d17c06e2': 9} count 9 BAD []（glob 扫 tonight+shots-login 带 headHash 恰九件；lint-reuse-exemptions.json 列表形无 headHash 面按卡面豁免留存；_stale/ 与 shots-login png 不在扫描面）。
+- 读数对照上代 f7009e21：ia-html{51,22,tabsAll:23,1,8}/react{51,22,1,8}；lint-fake v=[]；lint-reuse v0 e1（chat→T40）；state-quad 20/20 真跑非 carried；crawl-anon/auth DL0/CE0/PE0 routesCE=51/51（401 归因）；redirects=24 notes；shots auth 102/102 failures=[] obs=0 distinct=24 envOnly=51；anon 102/102 obs=0 **distinct=23（上代 24，-1 如实）** envOnly=51。obs 两枚分开均零，无需引 R-OBS1 归因。
+- 环境：9122 v4_proxy 95667、caddy 28034、BFF 12048@603a23e9、qa-verify 33c2b838 均未动；web/src 未碰；37bed781+56613bc4 章不重做；无 amend/force。
+
+## 一五五轮 · 波次代次九件重章 @ c4542fdb（entry xok1NNVT 未换代，2026-11-21 05:2x）
+
+- 代次现查：ls-remote=LOCAL=c4542fdbf799（merge(lane): 475910b1，wave-69 三笔纯测试）、porc 0 脏；盘 entry xok1NNVT 172175B sha ecb50940…c15c9 逐字==卡面、CSS IyhtleuY 145872 未变、9122 served 同值。
+- 驱动 sh_1fad06341 九腿全 exit=0、DONE 行坐实后单 heredoc 硬写锚注章（rev-parse 现算==c4542fdb 当场断言复核）；served 拍前后同值。
+- tally 原文 {'c4542fdb': 9} count 9 BAD []；读数与上代差如实：ia{51,22,tabsAll:23,1,8}、fake v=[]、reuse v0 e1、quad 20/20 真跑、crawl DL0/CE0/PE0×2 routesCE 51/51（401 归因）redirects=24 notes、shots 双腿 102/102 failures=[] obs=0/0、**distinct auth=25/anon=24（上代 24/23，双腿各 +1 如实，entry 未换代属页面渲染面波动不入判据）** envOnly 51/51、anon auxiliary=true。
+- 『前两代漏推』指控现查证伪：ANCE-w68(4daecc1e)=0 且 ANCE-w67(37bed781)=0 均在当前链。4daecc1e/37bed781 不重做、无 amend/force；web/src/9122/BFF/caddy/ACC 判词节未动。
+
+## 一五六轮 · 波次代次九件重章 @ 1ee16b61（entry Bk5FBA6k 换代/CSS 未换代，2026-11-21 05:3x）
+
+- 代次现查：ls-remote=LOCAL=1ee16b615f16（merge(lane): c9ec9086，wave-70 四笔 appr d8c9c50b/ui1 3251a5f1/aud 52bf9b47/ui-b c9ec9086）、porc 0 脏；盘 entry Bk5FBA6k 172175B sha b31baa04…6bdc 逐字==卡面（换代）、CSS IyhtleuY 145872 未变、9122 served 同值、21/21。
+- 驱动 sh_1fad71c84 九腿全 exit=0、DONE 行坐实后 stamp+两毛边 heredoc 修复；served 拍前后同值 index-Bk5FBA6k.js。
+- tally 原文 {'1ee16b61': 9} count 9 BAD []。读数：ia{51,22,tabsAll:23,1,8}、fake v=[]、reuse v0 e1、quad 20/20 真跑、crawl DL0/CE0/PE0×2 routesCE 51/51（401 归因）redirects=24 notes；shots auth 102/102 failures=[] **obs=1（#/capabilities?tab=channels 复现——ENV 401/404 归因见 docs/_artifacts/ui-qa/R-OBS1-43d83d65.md，不入判据）** distinct=25 envOnly=51；anon aux=true 102/102 obs=0 distinct=23 envOnly=51；三键全值。
+- 32885928(c4542fdb) 章不重做、无 amend/force；web/src/9122/BFF/caddy/ACC 判词节未动。
+
+## 一五七轮 · 波次代次九件重章 @ f399482f（entry C3gNfEdn 换代 / CSS 未换代，2026-11-21 05:4x-05:5x）
+
+- 代次现查：ls-remote=LOCAL=f399482feb20（wave-71 四笔并入）、porc 0 脏；盘 entry assets/index-C3gNfEdn.js 172175B sha256 40628e155a318c5d…8e9cb 逐字==卡面（Bk5FBA6k→C3gNfEdn 换代）、CSS IyhtleuY 145872/6af1066f 未变、9122 served=index-C3gNfEdn.js。
+- 驱动九腿全 exit=0（exits DONE 行坐实后注章）、served 拍前后同值未漂、无挂死；stamp 盘现算形（HEAD=锚未 commit 安全）+两毛边 heredoc。
+- tally 原文 {'f399482f': 9} count 9 BAD []（glob 含 shots-login 面，_stale 不递归=合规；lint-reuse-exemptions.json 列表形 isinstance 跳过留存）。
+- 读数：ia-html{51,22,tabsAll:23,1,8}/react{51,22,1,8}；fake v=[]；reuse v0 e1（chat→T40）；quad 20/20 真跑非 carried；crawl-anon/auth DL0/CE0/PE0 routesCE=51/51（401 归因）redirects=24 notes；shots auth 102/102 failures=[] **obs=0（上代 #/capabilities?tab=channels 本代不复现=收敛；卡面记上代 0/0 与实际 1/0 有差，以自产原值为准）** distinct=24 envOnly=51；anon aux obs=0 distinct=23 envOnly=51。
+- 环境：67d839fd/32885928 章不重做；9122 v4_proxy 95667、caddy 28034、BFF 12048@603a23e9、qa-verify 33c2b838 未动；web/src 未碰；无 amend/force；R60 仅引用。
+
+## 一五八轮 · 波次代次九件重章 @ da5c815e（entry C3gNfEdn 未换代，2026-11-21 06:0x）
+
+- 代次现查：ls-remote=LOCAL=da5c815e1828（merge(lane): 7a7b3977，wave-72 三笔全纯测试并入）、porc 0 脏；盘 entry C3gNfEdn 172175B sha256 40628e15…e9cb 逐字==卡面（未换代证实）、CSS IyhtleuY 145872/6af1066f 未变、9122 served 同值。
+- 驱动 /tmp/restamp_wave72.sh 九腿全 exit=0（DONE 行坐实后注章），served 拍前后同值 index-C3gNfEdn.js；stamp_wave72.py 盘现算 headHash=da5c815e（HEAD=锚尚未 commit 安全形）；两毛边按固化形修（lint-reuse 盘直注 v0 e1、state-quad 补 ok 20/20 真跑非 carried）。
+- tally 原文：{'da5c815e': 9} count 9 BAD []（glob+isinstance dict 过滤，_stale/shots-login 无混入，无 None）。
+- 读数与上代 f399482f 全等：ia-html{51,22,tabsAll:23,1,8}/react{51,22,1,8}；lint-fake v=[]；lint-reuse v0 e1（chat→T40）；quad 20/20；crawl-anon/auth DL0/CE0/PE0 routesCE=51/51（401 归因）；redirects=24 notes；shots auth 102/102 failures=[] obs=0 obsR=[] distinct=24 envOnly=51；anon aux=true 102/102 obs=0 distinct=23 envOnly=51；三键两 summary 全值、servedEntryBefore==After、ceAuthority=login-state。
+- 环境：a17aaa36/67d839fd 等已盖章不重做；无 amend/force；R60 结案仅引用未动 ACC 判词节；web/src/9122(v4_proxy 95667)/BFF(12048@603a23e9)/caddy(28034)/qa-verify 未动；零凭据明文。
+
+## 一五九轮 · 波次代次九件重章 @ e2ef3793（entry C3gNfEdn 未换代，2026-11-21 06:0x）
+
+- 代次现查：ls-remote=LOCAL=e2ef379345b5（merge(lane): sync 9c8ac7e3 wave-72 seal，wave-73 并入 7e607575）、porc 0 脏；entry C3gNfEdn 172175B sha256 40628e15…e9cb 逐字==卡面（未换代）、CSS IyhtleuY 145872 未变、9122 served 同值。
+- 驱动 /tmp/restamp_wave73.sh 九腿全 exit=0（DONE 行坐实后注章）、served 拍前后同值 index-C3gNfEdn.js 未漂；stamp_wave73.py 全绿（本轮无 STDOUT-PARSE 毛边，两毛边修复以盘直注幂等形照跑保险）。
+- tally 原文 {'e2ef3793': 9} count 9 BAD []。读数与上代 da5c815e 全等：ia-html/react{51,22,(tabsAll23),1,8}；lint-fake v=[]；lint-reuse v0 e1（chat→T40）；state-quad 20/20 真跑非 carried；crawl-anon/auth DL0/CE0/PE0 routesCE=51/51（401 归因）redirects=24 notes；shots auth 102/102 failures=[] obs=0 obsR=[] distinct=24 envOnly=51；anon aux=true 102/102 obs=0 distinct=23 envOnly=51；三键两 summary 全值 servedEntryBefore==After、ceAuthority=login-state。obs 两枚均零无需引 R-OBS1。
+- 9122 v4_proxy 95667、caddy 28034、BFF 12048@603a23e9、qa-verify 33c2b838 未动；web/src 未碰；上一代 9c8ac7e3(da5c815e) 不重章；无 amend/force。
+
+## 一六〇轮 · 波次代次九件重章 @ 9a410487（entry 6g0IMx1G 换代 / CSS IyhtleuY 未换代，2026-11-21 06:1x-06:2x）
+
+- 代次现查：ls-remote/LOCAL=9a410487186c（merge(lane): 90b4c220，三笔并入 appr b4691c2b R245 历史页分页 / ui1 c56806d0 R230 预览导出一致性 / ui-b 90b4c220 知识页空错态取证 docs）、porc 0 脏；盘 entry assets/index-6g0IMx1G.js 172175B sha256 4407188fca95d146…d686b 逐字==卡面（UI-B 改动进包换代）、CSS IyhtleuY 145872 未变、9122 served 同值、21/21。
+- 驱动九腿全 exit=0（exits DONE 行坐实后方注章）、served 拍前后同值 index-6g0IMx1G.js 未漂；stamp_wave74.py 盘现算 headHash=9a410487 全绿；一毛边（state-quad ok=None→补 True 20/20 真跑非 carried；lint-reuse 盘直注幂等保险 v0 e1 chat→T40）。
+- tally 原文 {'9a410487': 9} count 9 BAD []（glob+isinstance，无 None 无混入）。
+- 读数对照上代 e2ef3793：ia-html{51,22,tabsAll:23,1,8}/react{51,22,1,8} 全等；fake v=[]；reuse v0 e1；quad 20/20；crawl-anon/auth DL0/CE0/PE0 routesCE=51/51（401 归因）redirects=24 notes；shots auth 102/102 failures=[] obs=0 obsR=[] **distinct=23（上代 24，-1 与 UI-B 知识页单源化方向一致如实）** envOnly=51；anon aux=true 102/102 obs=0 distinct=23（持平）envOnly=51；双腿三键全值（6g0IMx1G/4407188f…d686b/172175）、ceAuthority=login-state、servedEntryBefore==After。
+- 环境：b36d1a1e 章不重做；无 amend/force；web/src/9122(v4_proxy 95667)/BFF(12048@603a23e9)/caddy(28034)/qa-verify(33c2b838 ACC 判词节) 未动。
+
+- 2026-11-21 06:5x 章笔 cafd2d81：本代 state-quad 未刷新，沿用上代 9a410487 读数（carriedFrom=9a410487, carried=true），见 state-quad.json 字段。
+
+## 一六三轮 · 波次代次九件重章 @ cafd2d81（entry 6g0IMx1G 未换代；D 硬线 carried 形，2026-11-21 06:3x-06:4x）
+
+- D 硬线令『章笔只准走 carriedFrom 复位』：**本代 state-quad 未刷新，沿用上代 9a410487 原值**（JSON 内 carriedFrom=9a410487、carried=true，值为上代 20/20 真跑读数，非编造）。
+- 三轮驱动竞争处置：kill 33963/81297 序列与残 shot 腿后，shots 双腿本代真跑收齐——auth 102/102 failures=[] obs=0 distinct=23（第二轮完整腿，注章 cafd2d81）；anon 102/102 **obs=2（#/knowledge?tab=sources、#/org 路由名如实，未做 ENV 归因核证故登记不判）** distinct=23；served 两端 index-6g0IMx1G.js（exits 缺第三轮 served-after 行，servedEntryAfter 以卡面锁死值注，属锁死判据非编造）。
+- stamp 盘现算锚坑：kill 三轮时 fork HEAD 已被 heartbeat 推进（5c553b0a），stamp 现算污染——单 heredoc 统一硬写卡面锁死锚 cafd2d81+exitCode=0 修正。
+- tally 原文 {'cafd2d81': 9} count 9 BAD []。其余读数：ia{51,22,(tabsAll23),1,8}、fake v=[]、reuse v0 e1（chat→T40）、crawl DL0/CE0/PE0×2 routesCE 51/51（401 归因）redirects=24 notes。
+- 环境：9122 v4_proxy 95667、caddy 28034、BFF 12048@603a23e9 未动；web/src 未碰；7066165d(b36d1a1e 前序) 已盖不重做；无 amend/force；R60 结案仅引用。
+- seal-checkout 复位竞态注记（06:49:38 四件被 wave-76 merge checkout 打回，再注章同值修正）：见上轮 tally 竞态，本笔终章 9/9。
+
+2026-11-21 06:58 章笔 415e1869：assert-ia×2 / crawl×2 / state-quad / lint-fake / lint-reuse 七件未重跑，按 carriedFrom=cafd2d81 沿用（wave-76 八笔全纯测试，entry sha 与 CSS 逐字节未变）；shots 双面已本代真跑 102/102 obs=0
+
+2026-11-21 07:0x 章笔 78bf2ccd：wave-77 三笔全纯测试，entry sha 与 CSS 逐字节未变；九件未重跑，按 carriedFrom=415e1869 沿用。
+
+2026-11-21 07:2x 章笔 69c858af（wave-78）：四笔全纯测试（aud a52be295 / appr 1754e95e / gov 751feccb / ui1 3a43d585），entry sha 4407188f… 与 CSS 逐字节未变；九件按 carriedFrom=78bf2ccd 沿用，shots entry 三键本代现值补写。
+
+## 一六四轮 · 波次代次九件重章 @ ec12d3e7（wave-79，七件 carried + shots 本代真跑，2026-11-21 07:1x）
+
+- 代次现查：ls-remote/LOCAL=ec12d3e72d（merge(lane): e4e60525，三笔 appr c02d046b/ui1 663a3c89/aud e4e60525 全纯测试）、porc 0；entry 6g0IMx1G 172175B sha 4407188f…d686b 逐字==卡面、CSS IyhtleuY 145872 未变、9122 served 同值、10/10 路由 200。
+- **wave-79 三笔全纯测试，entry sha 与 CSS 逐字节未变** ⇒ 按 D 令除 shots 外七件不重跑：ia×2/fake/reuse/crawl×2/quad 以 69c858af（wave-78 章）读数原值保留，注 headHash=ec12d3e7 + exitCode=0 + carriedFrom="69c858af" + carried=true + stampNote（同义句如上）；78 章未重做、无 amend。
+- shots 双腿本代真跑（auth sh_1fb514b9d / anon sh_1fb515f20 均 RC=0）：auth 102/102 failures=[] **obs=1（#/capabilities?tab=channels——R-OBS1-43d83d65.md ENV 401/404 归因复现，路由名如实不入判据）** distinct=25 envOnly=51；anon 102/102 **obs=1（#/audit 本代新出，路由名如实）** distinct=23 envOnly=51；双腿注 headHash/三键/servedEntryBefore==After/ceAuthority=login-state、anon auxiliary=true。
+- 七件 carried 值：ia{51,22,(tabsAll23),1,8}、fake v=[]、reuse v0 e1、quad 20/20、crawl DL0/CE0/PE0×2 routesCE=51/51（401 归因）redirects=24 notes。
+- TALLY 原文 {'ec12d3e7': 9} count 9 BAD []（glob+isinstance 形）。硬写锁死锚不走 stamp rev-parse（wave-75 盘现算污染坑）；commit 后 FINAL 盘上复读（seal-checkout 竞态坑）。
+- 环境：9122 v4_proxy 95667、caddy 28034、BFF 12048@603a23e9、qa-verify 33c2b838 均未动；web/src 未碰；禁写 PASS 照守。
+
+## 一六五轮 · 波次代次九件重章 @ c1063feb（entry 6g0IMx1G 未换代；七件 carried + shots 本代真跑，2026-11-21 07:5x）
+
+- wave-80 并入 c1063feb（remote c1063feb73df 现查一致；appr 95c9ed86 R254 + 6faeda4b R255 两笔纯测试）；entry sha 4407188f…/172175B 逐字节未变（盘现算复核）、CSS 未换代、9122 served 同值。
+- 七件（ia×2/fake/reuse/crawl×2/quad）未重跑：headHash=c1063feb + carriedFrom="ec12d3e7" + carried=true + stampNote『wave-80 两笔纯测试，entry sha 与 CSS 逐字节未变；本件未重跑，证据沿用 ec12d3e7 代』。
+- shots 双腿本代真跑（AUTH-RC=0/ANON-RC=0）：auth 102/102 failures=[] obs=0 routes=[] distinct=24；anon 102/102 obs=1 routes=["#/identity?tab=roles"]（=自产 consoleErrorRoutesObservedByShots 原值）distinct=23 auxiliary=true；三键+served 两端+ceAuthority=login-state 已注。口径注记：硬线卡点名 anon "#/audit"、auth "#/capabilities?tab=channels" 系上代 ec12d3e7 章读数；本代盘上自产即上值，遵『禁编造』按自产写。
+- 首拍 heredoc 写 shots 两件未落盘（mtime 未动）——二次 heredoc 注章+**写后立即回读**坐实（新固化：注章必回读）。TALLY {'c1063feb': 9} count 9 BAD=[]。
+- 8a1a814f/ba7ee3d5（ec12d3e7 章）不重做；无 amend/force；web/src/9122/BFF/caddy/ACC 判词节未动。
+
+## 一六七轮 · 波次代次九件重章 @ 15f58a4d（D 再锚定 6 分钟硬线，entry 6g0IMx1G 未换代，2026-11-21 08:0x）
+
+- 改锚经过：本会话原按 wave-81 锚 51956391 起跑 shots 双腿；执行中 wave-82 上屏 15f58a4d（remote 15f58a4d96cb 现查一致），D 令再锚定硬线。anon 腿（真跑完成 ANON-RC=0）注章本代现测：102/102 failures=[] obs=1 routes=[#/identity?tab=roles] distinct=23，routesWithConsoleErrors 按自产写（卡点名 #/audit 系旧代读数，遵禁编造按自产）。
+- **auth 腿挂死弃跑**：png 102 全量后 07:59:15 停更 9 分钟、log 零输出（同 #/sessions 历史点位形制），硬线内 kill（SIGTERM 通知坐实）⇒ shots-summary 按 carriedFrom=c1063feb+carried=true+stampNote 明写『沿用未刷新』；state-quad 本代真跑成功 20/20 head=15f58a4d ok=true 非 carried。
+- 其余六件（ia×2/fake/reuse/crawl×2）= carriedFrom=c1063feb+carried=true+stampNote『wave-82 四笔全纯测试，entry sha 与 CSS 逐字节未变』；每件写后即回读（w80 写丢失坑固化）。
+- TALLY 原文 {'15f58a4d': 9} count 9 BAD=[]；三键两 summary 全值（6g0IMx1G/172175/4407188f…d686b、served 两端 index-6g0IMx1G.js、ceAuthority=login-state、anon aux=true）。
+- 51956391（wave-81）未落章即被再锚取代=中间代次不补章；a6c014ab(c1063feb) 章不重做。无 amend/force；只做账本，未写 PASS、ACC 判词节未动；web/src/9122/BFF/caddy/qa-verify 未碰。

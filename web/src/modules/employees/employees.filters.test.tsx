@@ -75,7 +75,8 @@ async function render(entry: string) {
   document.body.append(host);
   root = createRoot(host);
   await act(async () => {
-    root.render(
+    // Non-null: assigned one line above; `!` is erased at runtime.
+    root!.render(
       <MemoryRouter initialEntries={[entry]}>
         <EmployeesModulePage />
         <LocProbe />

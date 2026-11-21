@@ -72,8 +72,8 @@ export function CopyValue({
     );
   }
   return (
-    <span className="flex min-w-0 flex-wrap items-center gap-1.5" data-testid={testId}>
-      <span className={`min-w-0 break-all font-mono text-xs ${themedBody}`}>{value}</span>
+    <span className="ui-c-container flex min-w-0 flex-wrap items-center gap-2" data-testid={testId}>
+      <span className={`ui-c-id ${themedBody}`}>{value}</span>
       <button
         type="button"
         aria-label={`复制${label}`}
@@ -173,10 +173,10 @@ export function EmptyPanel({
   const filtered = kind === "filter";
   return (
     <Card className="border-border bg-card" data-testid="run5-empty" {...fixtureAttr(fixture)}>
-      <CardContent className="flex min-w-0 flex-col items-center gap-2 px-4 py-10 text-center">
+      <CardContent className="flex min-w-0 flex-col items-center gap-[var(--space-2)] px-[var(--space-4)] py-[var(--space-8)] text-center">
         <span hidden data-testid="run-state-empty" data-phase="empty" />
         <Inbox className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
-        <p className={`min-w-0 break-words text-sm ${themedBody}`} data-testid="run-state-empty-text">
+        <p className={`min-w-0 break-words text-base ${themedBody}`} data-testid="run-state-empty-text">
           {filtered ? "当前筛选下没有运行记录" : "服务回答了，这个时间窗口里确实没有运行"}
         </p>
         <p className="max-w-prose break-words text-xs text-muted-foreground">
@@ -189,10 +189,13 @@ export function EmptyPanel({
             {guide}
           </div>
         ) : null}
+        {/* One primary action per pane (RUBRIC L62): with a filter narrowed the
+            cause of the emptiness, 「清空筛选」 is the way out and reads solid;
+            the unfiltered window has nothing to clear, so 「重新读取」 is solid
+            there instead (the conditional below keeps the two mutually solid). */}
         {filtered && onClear ? (
           <Button
             size="sm"
-            outlined
             onClick={onClear}
             disabled={Boolean(fixture)}
             title={fixture ? "复现腿不发起真实请求，去掉 ?state= 即为真实读取" : "清空状态与负责人筛选，保留时间范围"}
@@ -203,7 +206,7 @@ export function EmptyPanel({
         ) : null}
         <Button
           size="sm"
-          outlined
+          outlined={filtered ? true : undefined}
           onClick={onRetry}
           disabled={Boolean(fixture)}
           title={fixture ? "复现腿不发起真实请求，去掉 ?state= 即为真实读取" : "重新向服务要一次运行记录"}
@@ -236,8 +239,8 @@ export function ErrorPanel({
       data-testid={testId}
       {...fixtureAttr(fixture)}
     >
-      <CardContent className="flex min-w-0 flex-col items-start gap-2 px-4 py-6">
-        <div className="flex min-w-0 items-center gap-2 text-sm text-destructive">
+      <CardContent className="flex min-w-0 flex-col items-start gap-[var(--space-2)] px-[var(--space-4)] py-[var(--space-6)]">
+        <div className="flex min-w-0 items-center gap-2 text-base text-destructive">
           <TriangleAlert className="h-4 w-4 shrink-0" aria-hidden="true" />
           <span className="min-w-0 break-words">{title}</span>
         </div>
@@ -248,9 +251,10 @@ export function ErrorPanel({
         </span>
         {failure.technical ? <TechnicalDisclosure lines={[failure.technical]} testId={`${testId}-details`} /> : null}
         <span data-testid="run-state-retry" data-disabled={fixture ? "1" : "0"}>
+          {/* The single primary action inside the pane; the page-level 刷新
+              steps down to outlined while a failure pane is on screen. */}
           <Button
             size="sm"
-            outlined
             onClick={onRetry}
             disabled={Boolean(fixture)}
             title={fixture ? "复现腿不发起真实请求，去掉 ?state= 即为真实读取" : "再向服务要一次"}

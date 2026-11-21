@@ -1,0 +1,448 @@
+/*
+ * UI-C lane · 详情页表现层原具 (detail-surface presentation primitives).
+ *
+ * Scope: the four detail carriers only — 员工详情 / 审批详情 / 运行详情 /
+ * 任务详情. Pure presentation and information organisation: section heads,
+ * label-value grids, numeric alignment, long-id wrapping, 375 stacking.
+ * No business logic, no data fetching, no testid, no route change.
+ *
+ * Tokens only (docs/design/UI-RUBRIC.md §一): every value below is a
+ * --space / --font-size / --line-height / --font-weight / --color / --border
+ * reference from web/src/shell/tokens.css. No literal spacing or colour is
+ * introduced here; when a number is missing from the ladder, the ladder is
+ * wrong and UI-A owns that fix, not this file.
+ *
+ * Imported once from shell/console.tsx, next to the table-density.css
+ * precedent, so it is a stylesheet — never a component contract.
+ */
+
+/* ------------------------------------------------------------------ *
+ * 区块头 · 标题在左，复制/导出等次级入口收到右上
+ * ------------------------------------------------------------------ */
+
+.ui-c-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: var(--border-1);
+}
+
+.ui-c-head-title {
+  margin: 0;
+  font-size: var(--font-size-2);
+  line-height: var(--line-height-1);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+/* 详情主体的标题就是这一屏的主标题：走 14px 档，字重仍在 ladder 内 */
+.ui-c-head-title--lead {
+  font-size: var(--font-size-3);
+}
+
+.ui-c-head-sub {
+  margin: 0;
+  min-width: 0;
+  font-size: var(--font-size-1);
+  line-height: var(--line-height-3);
+  color: var(--color-text-muted);
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+/* 区块右上入口位：始终与标题同排右对齐，窄档整组换到第二行，不撑破宽度 */
+.ui-c-head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-left: auto;
+  /* 入口区不许把标题块压扁：允许自身收缩并换行。 */
+  min-width: 0;
+}
+
+/* 区块头里的标题块：保底 14rem 基准宽，配合 .ui-c-head 的
+   flex-wrap，窄容器下整块换行而不是被挤成一字符一行。 */
+.ui-c-head-text {
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+
+/* ------------------------------------------------------------------ *
+ * 标签-值：卡片式字段栅格（身份卡族）
+ * ------------------------------------------------------------------ */
+
+.ui-c-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+  margin: 0;
+  padding: var(--space-4);
+}
+
+@media (min-width: 640px) {
+  .ui-c-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: var(--space-6);
+    row-gap: var(--space-3);
+  }
+}
+
+@media (min-width: 1280px) {
+  .ui-c-fields {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.ui-c-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.ui-c-field-label {
+  min-width: 0;
+  font-size: var(--font-size-1);
+  line-height: var(--line-height-1);
+  font-weight: var(--font-weight-regular);
+  color: var(--color-text-muted);
+}
+
+/* 值域：折行不截断（长 id / 文件名整串可读），且不撑破容器 */
+.ui-c-field-value {
+  min-width: 0;
+  margin: 0;
+  font-size: var(--font-size-3);
+  line-height: var(--line-height-3);
+  color: var(--color-text);
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+/* ------------------------------------------------------------------ *
+ * 标签-值：行式两列栅格（摘要行族）· 375 纵向堆叠
+ * ------------------------------------------------------------------ */
+
+.ui-c-rows {
+  display: grid;
+  margin: 0;
+}
+
+.ui-c-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-1);
+  min-width: 0;
+  padding: var(--space-3) var(--space-4);
+}
+
+/* 行与行之间只用 1px 令牌分隔线：无斑马纹、无行阴影 */
+.ui-c-row + .ui-c-row {
+  border-top: var(--border-1);
+}
+
+@media (min-width: 640px) {
+  .ui-c-row {
+    grid-template-columns: var(--ui-c-row-cols, 8rem minmax(0, 1fr));
+    align-items: baseline;
+    column-gap: var(--space-4);
+  }
+}
+
+.ui-c-row-label {
+  min-width: 0;
+  font-size: var(--font-size-1);
+  line-height: var(--line-height-2);
+  color: var(--color-text-muted);
+}
+
+.ui-c-row-value {
+  display: block;
+  min-width: 0;
+  margin: 0;
+  font-size: var(--font-size-3);
+  line-height: var(--line-height-3);
+  color: var(--color-text);
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+/* ------------------------------------------------------------------ *
+ * 数字 / 时间 / 长 id 对齐
+ * ------------------------------------------------------------------ */
+
+/* 一切数字与时间走等宽数字，纵向可比 */
+.ui-c-num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* 长 id：等宽、整串折行不拆词，绝不把容器顶宽 */
+.ui-c-id {
+  font-family: var(--mono);
+  font-size: var(--font-size-1);
+  line-height: var(--line-height-3);
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+/* 表头行（能力/会话等内嵌小表）：与令牌分隔线同源 */
+.ui-c-colhead {
+  display: none;
+  grid-template-columns: var(--ui-c-cols, minmax(0, 1fr));
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-bottom: var(--border-1);
+  font-size: var(--font-size-1);
+  line-height: var(--line-height-2);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-muted);
+}
+
+@media (min-width: 768px) {
+  .ui-c-colhead {
+    display: grid;
+  }
+}
+
+/* 内嵌小表的一行（能力/权限族）：md 以下堆叠并带字段名前缀，
+   保证「1」「低」这类裸值在 375 上仍然语义可读。 */
+.ui-c-cell-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-1);
+  min-width: 0;
+  padding: var(--space-3) var(--space-4);
+}
+
+.ui-c-cell-row + .ui-c-cell-row {
+  border-top: var(--border-1);
+}
+
+.ui-c-cell {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.ui-c-cell-label {
+  font-size: var(--font-size-1);
+  line-height: var(--line-height-2);
+  color: var(--color-text-muted);
+}
+
+.ui-c-cell-value {
+  display: block;
+  min-width: 0;
+  font-size: var(--font-size-3);
+  line-height: var(--line-height-3);
+  color: var(--color-text);
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.ui-c-cell-value--minor {
+  font-size: var(--font-size-1);
+  line-height: var(--line-height-2);
+  color: var(--color-text-muted);
+}
+
+@media (min-width: 768px) {
+  .ui-c-cell-row {
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 0.8fr) minmax(0, 1fr);
+    align-items: baseline;
+    column-gap: var(--space-2);
+  }
+
+  .ui-c-cell-label {
+    display: none;
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * 详情主体（侧栏族：审批 / 运行 / 任务）· 按容器宽度排布
+ * ------------------------------------------------------------------ */
+
+/* 详情侧栏在 1440 档也只有约 26rem：用视口断点排列数会把它挤成读不下去的
+   两到三列，所以字段栅格改按容器宽度决定列数（不支持 @container 时回落单列）。 */
+.ui-c-container {
+  container-type: inline-size;
+}
+
+.ui-c-fields--compact {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3) var(--space-6);
+  margin: 0;
+  padding: 0;
+}
+
+@container (min-width: 21rem) {
+  .ui-c-fields--compact {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* 抽屉在 1440 下也只有 ~380px：容器到 34rem 直接上三列，
+   不必等整屏 1280。 */
+@container (min-width: 34rem) {
+  .ui-c-fields--compact {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* 手机上详情面板占满整幅（~343px ≈ 21.4rem 会误命中容器两列），
+   硬性回落到纵向单列堆叠。 */
+@media (max-width: 40rem) {
+  .ui-c-fields--compact {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* 详情主体是密集区：值域走 13px 档（标签仍是 12px 档），不与卡片区同字号 */
+.ui-c-fields--compact .ui-c-field-value {
+  font-size: var(--font-size-2);
+  line-height: var(--line-height-2);
+}
+
+/* 区块头：无卡面时只留分隔线，不额外吃左右内距 */
+.ui-c-head--plain {
+  padding: 0 0 var(--space-2);
+}
+
+/* 头部右侧带按钮时按顶对齐，不让按钮坐在标题基线上 */
+.ui-c-head--start {
+  align-items: flex-start;
+}
+
+/* 跨满整行的字段（长文本、上游引用这类），不跟列数较劲 */
+.ui-c-field--span {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
+/* 区块之间一条令牌分隔线；标题在左，复制/导出入口收到同排右上 */
+.ui-c-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: 0;
+  padding-top: var(--space-3);
+  border-top: var(--border-1);
+}
+
+.ui-c-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.ui-c-section-title {
+  margin: 0;
+  font-size: var(--font-size-2);
+  line-height: var(--line-height-1);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-muted);
+}
+
+.ui-c-section-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+  font-size: var(--font-size-1);
+  line-height: var(--line-height-2);
+  color: var(--color-text-muted);
+}
+
+/* 字段值域里的次级入口（行内复制）：字号降档，与值同排不抢位 */
+.ui-c-field-actions {
+  font-size: var(--font-size-1);
+  color: var(--color-text-muted);
+}
+
+/* 标签与值同排的一行式字段（事由 / 审批人）：值域整串折行不拆词 */
+.ui-c-inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: var(--space-1);
+  min-width: 0;
+  margin: 0;
+  font-size: var(--font-size-1);
+  line-height: var(--line-height-3);
+  color: var(--color-text-muted);
+}
+
+.ui-c-inline-value {
+  min-width: 0;
+  color: var(--color-text);
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+/* ------------------------------------------------------------------ *
+ * UI-C2: 员工详情首屏五区锚点条 + 身份区两列栅格
+ * ------------------------------------------------------------------ */
+
+.ui-c-anchors {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.ui-c-anchor {
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: transparent;
+  padding: var(--space-1) var(--space-3);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-1);
+  line-height: var(--line-height-1);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.ui-c-anchor:hover,
+.ui-c-anchor:focus-visible {
+  color: var(--color-text);
+  border-color: var(--color-text-muted);
+}
+
+.uic2-target {
+  scroll-margin-top: 5rem;
+}
+
+.ui-c-subhead {
+  padding: var(--space-3) var(--space-4) 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-1);
+  font-weight: 600;
+  line-height: var(--line-height-1);
+}
+
+/* 身份/组织/生命周期区保持两列标签值栅格，1440 不放宽为三列。 */
+@media (min-width: 640px) {
+  .ui-c-fields--two {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* UI-C2: 回条当前区高亮（权限区）。 */
+.ui-c-anchor--active {
+  color: var(--color-text);
+  border-color: var(--color-text-muted);
+}

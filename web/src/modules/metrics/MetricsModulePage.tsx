@@ -12,7 +12,7 @@ import { Button } from '@nous-research/ui/ui/components/button';
 import { Card, CardContent } from '@nous-research/ui/ui/components/card';
 
 import { copyTextToClipboard } from '@/lib/clipboard';
-import { ApiError } from '@/lib/api-error';
+import { ApiError, SESSION_REQUIRED_GUIDANCE } from '@/lib/api-error';
 import { fetchJsonStrict } from '@/modules/models/fetchJson';
 
 import {
@@ -287,7 +287,7 @@ function requestIdOf(error: unknown): string | null {
 
 function messageFor(error: unknown): string {
   if (!(error instanceof ApiError)) return '这次没能读取运行活动，请稍后重试。';
-  if (error.status === 401) return '需要登录：这个页面的登录状态已经失效，请重新登录后再看。';
+  if (error.status === 401) return SESSION_REQUIRED_GUIDANCE;
   if (error.status === 403) return '当前账号没有查看运行活动的权限。';
   if (error.status === 404) return '这项数据还没有接入；请联系管理员开通后重试。';
   if (error.status === 0) return '控制台暂时没有回应，请稍后重试。';
@@ -2494,12 +2494,12 @@ export function MetricsModulePage() {
                     <thead className="metAF-sticky-detail" data-testid="metAF-sticky-detail">
                       <tr>
                         <th scope="col">{breakdownView.view === 'model' ? '模型' : '员工'}</th>
-                        <th scope="col" aria-sort={ariaSortFor('cost')} title="金额单位：美元（USD），两位小数" className="metAF-nowrap" data-testid="metO-fmt-th-spend">
+                        <th scope="col" aria-sort={ariaSortFor('cost')} title="金额单位：美元（USD），两位小数" className="met6-num metAF-nowrap" data-testid="metO-fmt-th-spend">
                           <button type="button" className="met6-sort" data-testid="metP-sort-cost" onClick={() => chooseDetailSort('cost')} aria-label="按支出排序">
                             支出（USD）
                           </button>
                         </th>
-                        <th scope="col" aria-sort={ariaSortFor('runs')} title="调用次数，单位：次" className="metAF-nowrap" data-testid="metO-fmt-th-count">
+                        <th scope="col" aria-sort={ariaSortFor('runs')} title="调用次数，单位：次" className="met6-num metAF-nowrap" data-testid="metO-fmt-th-count">
                           <button type="button" className="met6-sort" data-testid="metP-sort-runs" onClick={() => chooseDetailSort('runs')} aria-label="按次数排序">
                             次数（次）
                           </button>
@@ -3029,7 +3029,7 @@ export function MetricsModulePage() {
                             成本{sortKey === 'cost' ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
                           </button>
                         </th>
-                        <th scope="col" title="占本窗口可分摊实扣的比例，单位：百分比，一位小数" className="metAF-nowrap" data-testid="metO-fmt-th-pct">占比（%）</th>
+                        <th scope="col" title="占本窗口可分摊实扣的比例，单位：百分比，一位小数" className="met6-num metAF-nowrap" data-testid="metO-fmt-th-pct">占比（%）</th>
                         <th scope="col">运行</th>
                       </tr>
                     </thead>

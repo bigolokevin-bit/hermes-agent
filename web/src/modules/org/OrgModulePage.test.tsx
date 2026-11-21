@@ -30,7 +30,7 @@ vi.mock("@nous-research/ui", () => ({
 }));
 
 import { fetchJSON } from "@/lib/api";
-import { ApiError } from "@/lib/api-error";
+import { ApiError, SESSION_REQUIRED_GUIDANCE } from "@/lib/api-error";
 import OrgModulePage from "@/modules/org/OrgModulePage";
 
 let container: HTMLDivElement;
@@ -206,7 +206,7 @@ describe("OrgModulePage — 组织与部门 (org5)", () => {
     mockApi((url) => login401(url));
     await renderPage();
     const err = container.querySelector('[data-testid="org5-error"]');
-    expect(err?.textContent).toContain("需要登录");
+    expect(err?.textContent).toContain(SESSION_REQUIRED_GUIDANCE);
     expect(err?.textContent).toContain("req-login");
     expect(err?.querySelector('[data-testid="org5-copy-req"]')).toBeTruthy();
     expect(err?.textContent).toContain("重试");

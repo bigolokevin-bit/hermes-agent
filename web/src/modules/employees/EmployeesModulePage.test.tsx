@@ -78,7 +78,8 @@ async function render(entry: string) {
   document.body.append(host);
   root = createRoot(host);
   await act(async () => {
-    root.render(
+    // Non-null: assigned one line above; `!` is erased at runtime.
+    root!.render(
       <MemoryRouter initialEntries={[entry]}>
         <EmployeesModulePage />
         <LocProbe />
@@ -400,7 +401,7 @@ describe("R63 inline row preview (emp-row-preview-*)", () => {
       toggle.click();
     });
     expect(fetchJSON.mock.calls.length).toBe(callsBefore); // 禁额外请求
-    const preview = q("emp-row-preview-emp_217A91BA995044DFBB3E2E940B");
+    const preview = q("emp-row-preview-emp_217A91BA995044DFBB3E2E940B") as Element;
     expect(preview).toBeTruthy();
     expect(preview.textContent).toContain("小鲤");
     expect(preview.textContent).toContain("员工 · 217A91BA");
@@ -433,7 +434,7 @@ describe("R63 inline row preview (emp-row-preview-*)", () => {
       t2.click();
     });
     expect(q("emp-row-preview-emp_217A91BA995044DFBB3E2E940B")).toBeNull(); // 同时仅一行
-    const p2 = q("emp-row-preview-emp_CCCC3333DDDD4444EEEE5555");
+    const p2 = q("emp-row-preview-emp_CCCC3333DDDD4444EEEE5555") as Element;
     expect(p2).toBeTruthy();
     expect(p2.textContent).toContain("该字段未返回"); // 阿朝无 title
     expect(p2.getAttribute("title") ?? document.body.textContent).toBeTruthy();
@@ -773,7 +774,7 @@ describe("R67 keyboard navigation (emp-list-nav)", () => {
     expect(b!.tabIndex).toBe(-1);
     a!.focus();
     await act(async () => {
-      key(a, "ArrowDown");
+      key(a!, "ArrowDown");
     });
     expect(document.activeElement).toBe(b);
     expect(b!.tabIndex, "tab stop follows focus").toBe(0);
@@ -1102,7 +1103,7 @@ describe("R110 copy and export department column", () => {
       await act(async () => {
         (q("emp-list-export") as HTMLButtonElement).click();
       });
-      const csvText = await (captured as Blob).text();
+      const csvText = await (captured as unknown as Blob).text();
       const csvLines = csvText.replace(/^\uFEFF/, "").split("\r\n").filter((line) => line !== "");
       expect(csvLines[0]).toBe(copyLines[0]);
       expect(csvLines.slice(1).map((line) => line.split(",").at(-1))).toEqual(DEPT_STATES);

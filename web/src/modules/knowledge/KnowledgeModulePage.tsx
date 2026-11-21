@@ -101,6 +101,7 @@ import {
   readSpaceDocuments,
   readSpaces,
   readTasks,
+  respondedEmptyNote,
   searchUrl,
   sessionCitations,
   shortId,
@@ -155,6 +156,15 @@ type Surf<T> =
   | { kind: "error"; message: string; requestId: string | null };
 
 const GENERIC_FAILURE = "这次没能读到知识数据，请稍后重试。";
+
+/**
+ * 复制回执的同一句话只留一份字面：成功、剪贴板拒绝、链接复制成功/失败各一处，
+ * 三个复制入口（列表级行复制、文档行复制、固定链接两处）引用同一组常量。
+ */
+const COPY_OK_NOTE = "已复制";
+const CLIPBOARD_REJECTED_NOTE = "剪贴板没接受：文本在下方，可手动选取。";
+const LINK_COPY_OK_NOTE = "链接已复制";
+const LINK_COPY_FAILED_NOTE = "复制失败，已展开可选文本，可手动复制";
 
 /**
  * 401 is its own body. 403 and 404 share ONE identical honest body (anti-enumeration:
@@ -251,7 +261,7 @@ function RequestId({ id, testid }: { id: string | null; testid: string }): React
         }}
       >
         <Copy className="h-3 w-3" aria-hidden />
-        {copied === "done" ? "已复制" : copied === "failed" ? "复制失败，请手动选取" : "复制"}
+        {copied === "done" ? COPY_OK_NOTE : copied === "failed" ? "复制失败，请手动选取" : "复制"}
       </button>
     </span>
   );
@@ -822,6 +832,18 @@ function HitCount({ testid, loaded, shown, active }: { testid: string; loaded: n
 }
 
 /**
+ * 空态段的共用外壳：`<p>` 与调用方自己的 testid、knn 标记；句子由 `respondedEmptyNote` 组装。
+ * 两个标记不传时属性照旧缺席，DOM 与原先写死的 `<p>` 逐字节一致。
+ */
+function EmptyNote({ testid, knn, children }: { testid?: string; knn?: string; children: ReactNode }): ReactNode {
+  return (
+    <p data-testid={testid} data-knn-empty={knn}>
+      {children}
+    </p>
+  );
+}
+
+/**
  * Roving focus over the row links: ↑/↓ move between rows, Home/End jump to the ends,
  * Esc hands focus back to the search box. Until the first arrow press every link keeps
  * its natural tab order, so plain Tab still reaches all of them — roving only starts
@@ -1258,17 +1280,22 @@ function SpacesSurface({
         unwiredHuman={SPACES_UNWIRED_HUMAN}
         empty={() =>
           needle === "" ? (
-            <p data-testid="knN-empty-text-spaces" data-knn-empty="empty">
-              当前没有读到知识空间。接口已响应，但列表为空；这不等于「没有空间」，也不写 0 个。
-            </p>
+            <EmptyNote testid="knN-empty-text-spaces" knn="empty">
+              {respondedEmptyNote({
+                lead: "当前没有读到知识空间。",
+                read: "但列表为空",
+                aside: "这不等于「没有空间」",
+                also: "也不写 0 个。",
+              })}
+            </EmptyNote>
           ) : (
-            <p data-testid="knN-empty-text-spaces" data-knn-empty="no-match">
+            <EmptyNote testid="knN-empty-text-spaces" knn="no-match">
               没有匹配的空间：已加载的 {loaded.length} 个空间里没有名字或来源含「{text.trim()}」的空间。
               这是本地筛选的结果，不代表库里没有这样的空间。
               <button type="button" className="knw5-drill" data-testid="kn8-global-empty-clear" onClick={clear}>
                 清空
               </button>
-            </p>
+            </EmptyNote>
           )
         }
         render={(value) => (
@@ -1676,7 +1703,7 @@ function DocPreviewDrawer({
             复制固定链接
           </Button>
           <span className="knO-status" data-testid="knO-permalink-status" aria-live="polite">
-            {linkAct === "copied" ? "链接已复制" : linkAct === "failed" ? "复制失败，已展开可选文本，可手动复制" : ""}
+            {linkAct === "copied" ? LINK_COPY_OK_NOTE : linkAct === "failed" ? LINK_COPY_FAILED_NOTE : ""}
           </span>
           <span className="knO-url" data-testid="knO-permalink-url" title={linkHref}>
             {/* R49 不变量：原始标识不上屏。可见部分掩掉参数值，全文在 title、剪贴板与失败态 textarea。 */}
@@ -1713,7 +1740,7 @@ function DocPreviewDrawer({
             复制文档固定链接
           </Button>
           <span className="knO-status" data-testid="kn-doc-permalink-status" aria-live="polite">
-            {linkAct === "copied" ? "链接已复制" : linkAct === "failed" ? "复制失败，已展开可选文本，可手动复制" : ""}
+            {linkAct === "copied" ? LINK_COPY_OK_NOTE : linkAct === "failed" ? LINK_COPY_FAILED_NOTE : ""}
           </span>
           {linkAct === "failed" ? (
             <textarea
@@ -1891,7 +1918,7 @@ function useRowCopyBar(statusTestid: string, fallbackTestid: string) {
   const bar = (
     <>
       <p className="knw5-sub" data-testid={statusTestid} role="status" aria-live="polite">
-        {state === null ? "" : state.kind === "copied" ? "已复制" : "剪贴板没接受：文本在下方，可手动选取。"}
+        {state === null ? "" : state.kind === "copied" ? COPY_OK_NOTE : CLIPBOARD_REJECTED_NOTE}
       </p>
       {state?.kind === "failed" ? (
         <textarea
@@ -1978,7 +2005,7 @@ function DocLineCopy({ doc }: { doc: DocRow }) {
         复制这行
       </Button>
       <span className="knF-status" data-testid="kn-doc-copy-status" aria-live="polite">
-        {state === "copied" ? "已复制" : state === "failed" ? "剪贴板没接受：文本在下方，可手动选取。" : ""}
+        {state === "copied" ? COPY_OK_NOTE : state === "failed" ? CLIPBOARD_REJECTED_NOTE : ""}
       </span>
       {state === "failed" ? (
         <textarea
@@ -2528,17 +2555,22 @@ function SpaceDetailSurface({
               </button>
             </p>
           ) : filterKey === "" ? (
-            <p data-testid="knN-empty-text-space-docs" data-knn-empty="empty">
-              该空间暂无文档。接口已响应，这份列表里没有文档；这只说明这份回答是空的，不下别的结论，也不给数量。
-            </p>
+            <EmptyNote testid="knN-empty-text-space-docs" knn="empty">
+              {respondedEmptyNote({
+                lead: "该空间暂无文档。",
+                read: "这份列表里没有文档",
+                aside: "这只说明这份回答是空的，不下别的结论",
+                also: "也不给数量。",
+              })}
+            </EmptyNote>
           ) : (
-            <p data-testid="knN-empty-text-space-docs" data-knn-empty="no-match">
+            <EmptyNote testid="knN-empty-text-space-docs" knn="no-match">
               本地筛选没有匹配：这份列表里有 {loaded} 份文档，按「{filter.trim()}」一条都没留下。
               这是筛完的结果，不是空间没有文档。
               <button type="button" className="knw5-drill" data-testid="kn3-docs-empty-clear" onClick={() => setFilter("")}>
                 清空筛选
               </button>
-            </p>
+            </EmptyNote>
           )
         }
         render={() => (
@@ -2651,7 +2683,7 @@ function SpaceDetailSurface({
             {/* R72 — 行侧固定链接的读数与兜底：aria-live 成功句；剪贴板失败给只读 textarea（全串在此与 title，不上屏正文）。 */}
             <div className="knO-row" data-testid="kn-doc-link-bar">
               <span className="knO-status" data-testid="kn-doc-permalink-status" aria-live="polite">
-                {rowLink?.kind === "copied" ? "链接已复制" : rowLink?.kind === "failed" ? "复制失败，已展开可选文本，可手动复制" : ""}
+                {rowLink?.kind === "copied" ? LINK_COPY_OK_NOTE : rowLink?.kind === "failed" ? LINK_COPY_FAILED_NOTE : ""}
               </span>
               {rowLink?.kind === "failed" ? (
                 <textarea
@@ -2988,17 +3020,21 @@ function DocumentNameSearch({
         unwiredHuman={DOCUMENTS_UNWIRED_HUMAN}
         empty={() =>
           needle === "" ? (
-            <p data-testid="knN-empty-text-doc-search" data-knn-empty="empty">
-              接口已响应，这份文档列表里没有条目；这只说明这份回答是空的，不下别的结论，也不给数量。
-            </p>
+            <EmptyNote testid="knN-empty-text-doc-search" knn="empty">
+              {respondedEmptyNote({
+                read: "这份文档列表里没有条目",
+                aside: "这只说明这份回答是空的，不下别的结论",
+                also: "也不给数量。",
+              })}
+            </EmptyNote>
           ) : (
-            <p data-testid="knN-empty-text-doc-search" data-knn-empty="no-match">
+            <EmptyNote testid="knN-empty-text-doc-search" knn="no-match">
               没有匹配的文档：已加载的 {loaded.length} 条里没有名字含「{text.trim()}」的文档。
               这是本地筛选的结果，不代表全库没有。
               <button type="button" className="knw5-drill" data-testid="kn6-search-empty-clear" onClick={clear}>
                 清除关键词
               </button>
-            </p>
+            </EmptyNote>
           )
         }
         render={(value) => {
@@ -3163,7 +3199,15 @@ function IngestSurface({ nonce }: { nonce: string }): ReactNode {
       onRetry={surface.retry}
       unwiredHead={DOCUMENTS_UNWIRED_HEAD}
       unwiredHuman={DOCUMENTS_UNWIRED_HUMAN}
-      empty={() => <p>当前没有读到文档登记。接口已响应，但列表为空；不显示 0 篇。</p>}
+      empty={() => (
+        <EmptyNote>
+          {respondedEmptyNote({
+            lead: "当前没有读到文档登记。",
+            read: "但列表为空",
+            also: "不显示 0 篇。",
+          })}
+        </EmptyNote>
+      )}
       render={(value) => <RowTable rows={value.rows} testid="knw5-ingest-table" />}
     />
   );
@@ -3256,7 +3300,15 @@ function IngestStatusSurface({ nonce }: { nonce: string }): ReactNode {
       onRetry={surface.retry}
       unwiredHead={INGEST_STATUS_UNWIRED_HEAD}
       unwiredHuman={INGEST_STATUS_UNWIRED_HUMAN}
-      empty={() => <p>接口已响应，但没有给出入库中的来源；这不等于一个源都没有，也不写 0 个源。</p>}
+      empty={() => (
+        <EmptyNote>
+          {respondedEmptyNote({
+            read: "但没有给出入库中的来源",
+            aside: "这不等于一个源都没有",
+            also: "也不写 0 个源。",
+          })}
+        </EmptyNote>
+      )}
       render={(value) => <TaskTable rows={value.rows} testid="knw5-ingest-status" />}
     />
   );
@@ -3275,7 +3327,15 @@ function IngestTasksSurface({ nonce }: { nonce: string }): ReactNode {
       onRetry={surface.retry}
       unwiredHead={TASKS_UNWIRED_HEAD}
       unwiredHuman={TASKS_UNWIRED_HUMAN}
-      empty={() => <p>接口已响应，但没有给出接入中的数据源；这不等于一个源都没有，也不显示 0 个。</p>}
+      empty={() => (
+        <EmptyNote>
+          {respondedEmptyNote({
+            read: "但没有给出接入中的数据源",
+            aside: "这不等于一个源都没有",
+            also: "也不显示 0 个。",
+          })}
+        </EmptyNote>
+      )}
       render={(value) => <TaskTable rows={value.rows} testid="knw5-ingest-tasks" />}
     />
   );
@@ -3338,9 +3398,14 @@ function SearchSurface({ nonce, query, onSearch }: SearchSurfaceProps): ReactNod
         unwiredHead={SEARCH_UNWIRED_HEAD}
         unwiredHuman={SEARCH_UNWIRED_HUMAN}
         empty={() => (
-          <p>
+          <EmptyNote>
             {query.trim() === ""
-              ? "没有匹配结果。接口已响应，这份回答里没有条目；这不等于知识库是空的，也不给命中数。"
+              ? respondedEmptyNote({
+                  lead: "没有匹配结果。",
+                  read: "这份回答里没有条目",
+                  aside: "这不等于知识库是空的",
+                  also: "也不给命中数。",
+                })
               : `没有匹配结果：关键词「${query.trim()}」这份回答里没有条目。接口已响应，不展示样例，也不给命中数。`}
             <Link
               className="knw5-link"
@@ -3350,7 +3415,7 @@ function SearchSurface({ nonce, query, onSearch }: SearchSurfaceProps): ReactNod
               先看会话里留下的引用
               <ArrowRight className="h-3.5 w-3.5" aria-hidden />
             </Link>
-          </p>
+          </EmptyNote>
         )}
         render={(value) => <RefList rows={value.rows} testid="knw5-search-results" />}
       />
@@ -3369,7 +3434,15 @@ function RecordsSurface({ nonce }: { nonce: string }): ReactNode {
       source="records"
       state={surface.state}
       onRetry={surface.retry}
-      empty={() => <p>接口已响应，检索审计为空；不显示 0 次命中，也不展示样例。</p>}
+      empty={() => (
+        <EmptyNote>
+          {respondedEmptyNote({
+            read: "检索审计为空",
+            aside: "不显示 0 次命中",
+            also: "也不展示样例。",
+          })}
+        </EmptyNote>
+      )}
       render={(value) => <RecordsTable rows={value.rows} />}
     />
   );
@@ -3386,7 +3459,16 @@ function CitationsSurface({ nonce }: { nonce: string }): ReactNode {
       source="citations"
       state={surface.state}
       onRetry={surface.retry}
-      empty={() => <p>暂无引用。接口已响应，这一份引用登记里没有条目；不展示样例，也不写 0 条。</p>}
+      empty={() => (
+        <EmptyNote>
+          {respondedEmptyNote({
+            lead: "暂无引用。",
+            read: "这一份引用登记里没有条目",
+            aside: "不展示样例",
+            also: "也不写 0 条。",
+          })}
+        </EmptyNote>
+      )}
       render={(value) => <RefList rows={value.rows} testid="knw5-citations-list" />}
     />
   );
@@ -3427,11 +3509,16 @@ function SessionCitationsSurface({ nonce }: { nonce: string }): ReactNode {
       state={surface.state}
       onRetry={surface.retry}
       empty={(value) => (
-        <p>
+        <EmptyNote>
           {value.scanned !== null && value.scanned > 0
             ? `暂无引用：已读取最近 ${value.scanned} 个会话，这些会话里的回答没有带引用；不展示样例。`
-            : "暂无引用。接口已响应，最近会话里没有可展示的引用记录；不展示样例，也不写 0 条。"}
-        </p>
+            : respondedEmptyNote({
+                lead: "暂无引用。",
+                read: "最近会话里没有可展示的引用记录",
+                aside: "不展示样例",
+                also: "也不写 0 条。",
+              })}
+        </EmptyNote>
       )}
       render={(value) => <RefList rows={value.rows} testid="knw5-session-cites-list" />}
     />
@@ -3476,6 +3563,16 @@ export default function KnowledgeModulePage() {
     });
   }, []);
   const forced = readForced(sp.get("state"));
+  // 预览夹具的强制态：URL 参数 state/rid 钉住、不发真实请求。可清除的等价物不是
+  // 「筛选」而是夹具本身，所以两态的单一主操作统一为「退出预览」（撤掉 state/rid）。
+  const exitForced = () => {
+    const next = new URLSearchParams(sp);
+    next.delete("state");
+    next.delete("rid");
+    setSp(next, { replace: true });
+  };
+  // 错误态 rid 复制入口的数据源：预览夹具用 URL rid 参数模拟「上游带了编号」。
+  const forcedRid = (sp.get("rid") ?? "").trim() || null;
 
   const selectTab = (key: KnowledgeTab) => {
     const next = new URLSearchParams(sp);
@@ -3738,13 +3835,40 @@ function containerQuery(key: string): HTMLElement | null {
                   <div /><div /><div />
                 </div>
               ) : forced === "empty" ? (
-                <div className="knw5-forced" data-testid="knw5-forced-empty">
-                  <p>服务已响应，这个分组没有可展示的条目；不显示 0，也不展示样例。</p>
+                <div
+                  className="knw5-forced flex min-w-0 flex-col gap-[var(--space-2)] px-[var(--space-4)] py-[var(--space-8)]"
+                  data-testid="knw5-forced-empty"
+                >
+                  <p className="knw5-forced-title text-base font-medium">这个分组没有条目</p>
+                  <p className="max-w-prose">服务已响应，这个分组没有可展示的条目；不显示 0，也不展示样例。</p>
+                  <div className="knw5-forced-actions pt-[var(--space-2)]">
+                    <Button size="sm" onClick={exitForced} data-testid="knw5-forced-exit">
+                      退出预览，读实时数据
+                    </Button>
+                  </div>
                 </div>
               ) : (
-                <div className="knw5-forced" data-testid="knw5-forced-error" role="alert">
-                  <p>预览错误：这次读取没有成功，页面没有编造知识数据。</p>
-                  <RequestId id={null} testid="knw5-forced-request-id" />
+                // 错误态组合：可读标题（含「预览错误」锁点）+ 原说明句（逐字保留）+ rid
+                // 复制入口（接 URL rid 参数）+ 技术信息折叠进「详情」+ 单一主操作。
+                // 与空态互斥由上方 forced 三元保证（单值枚举，测试已锁）；375 长 rid
+                // 由 .knw5-req/.knw5-req-value 的 overflow-wrap:anywhere 兜底，不横溢。
+                <div
+                  className="knw5-forced flex min-w-0 flex-col gap-[var(--space-2)] px-[var(--space-4)] py-[var(--space-6)]"
+                  data-testid="knw5-forced-error"
+                  role="alert"
+                >
+                  <p className="knw5-forced-title text-base font-medium">预览错误</p>
+                  <p className="max-w-prose">预览错误：这次读取没有成功，页面没有编造知识数据。</p>
+                  <RequestId id={forcedRid} testid="knw5-forced-request-id" />
+                  <details className="max-w-prose">
+                    <summary>详情</summary>
+                    <p>预览夹具由 URL 参数 state/rid 钉住，不发起真实请求；退出预览即回到实时读取。</p>
+                  </details>
+                  <div className="knw5-forced-actions pt-[var(--space-2)]">
+                    <Button size="sm" onClick={exitForced} data-testid="knw5-forced-exit-error">
+                      退出预览，读实时数据
+                    </Button>
+                  </div>
                 </div>
               )
             ) : (

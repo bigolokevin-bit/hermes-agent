@@ -57,3 +57,64 @@
 
 /* 禁斑马纹：实测基线无任何 nth-child 条纹背景源，无需覆写规则；
  * 若未来出现，在此处以 transparent 覆盖。 */
+
+/* 审计账本：本仓 /audit 无 HTML table（账本行为 role=listitem 卡片流），
+ * 40/36 行高契约不适用；此处只把 dl 字段条间隙收上 4px 档
+ * （基线 gap-x-5 为 20px 非法档）、卡内 chip 间隙 6px 归 8px 档，
+ * 并给时间/RID 数字字段补 tabular-nums。列对齐在卡片流不适用。 */
+[data-tab="events"] dl {
+  column-gap: var(--space-4);
+  row-gap: var(--space-1);
+}
+
+[data-tab="events"] dd {
+  gap: var(--space-2);
+}
+
+[data-tab="events"] [data-testid="aud3-time"] {
+  font-variant-numeric: tabular-nums;
+}
+
+/* UI-A 2026-11-21 续：/audit 事件表密度（卡片流形态）。
+ * 本仓 /audit 无 HTML table：账本行是 role="listitem" 卡片（views.tsx
+ * AuditEventRowCard），40/36 行高契约落为行壳 min-height；子级紧凑面
+ * （卡内 dl 明细流）已由上一笔的 space 档收编。时间/编号数字统一
+ * tabular-nums：audJ 同源三 surface（列表、详情、预览）共用
+ * [data-audj-value] 钩子，一次命中。375px：卡片 flex-wrap 自然折行、
+ * 无固定列宽，无需新横滚壳（audK-list 行不撑破，实测见探针）。 */
+[data-testid="audK-list"] > [role="listitem"] {
+  min-height: var(--table-row-h);
+}
+
+:is([data-audj-value], [data-testid$="-request-value"]) {
+  font-variant-numeric: tabular-nums;
+}
+
+/* UI-A 2026-11-21 /matrix：能力矩阵无 HTML table（div grid 行壳 mtx5-row-*）。
+ * 行壳 min-height 40；表头行（含 mtx5-col- 的 grid）同 40 档并把 11px/40%
+ * 白归一到令牌 12px 次级色（压 text-[11px] utility 需 !important）。
+ * 数字右对齐不适用（单元格是能力态标记非计数）；无子表面，36 档不适用；
+ * 375 由既有 mtx5-scroll overflow-x-auto + min-w-[720px] 承载，不撑破；
+ * 斑马纹无源（divide-y 分隔线）。 */
+[data-testid^="mtx5-row-"] {
+  min-height: var(--table-row-h);
+}
+
+[data-testid="mtx5-scroll"] div:has(> span[data-testid^="mtx5-col-"]) {
+  min-height: var(--table-row-h);
+  font-size: var(--font-size-1) !important;
+  color: var(--color-text-muted) !important;
+}
+
+/* UI-A 2026-11-21 /collab：委托列表无 HTML table（col5-row-* 是 GRID li 行壳，
+ * fr 比例列宽、375 自然折 2 列不撑破）。主表行壳 40；链路视图节点
+ * （col5-chain-node-*，按委托方分组的子表面）36 紧凑档。数字右对齐不适用
+ * （列为 from/to/scope/action/status/validity 文本）；计数行 col5-counts 是
+ * 整句文案非列，制式数字留给文案车道；斑马纹无源（divide-y）。 */
+[data-testid^="col5-row-"] {
+  min-height: var(--table-row-h);
+}
+
+[data-testid^="col5-chain-node-"] {
+  min-height: var(--table-row-h-compact);
+}

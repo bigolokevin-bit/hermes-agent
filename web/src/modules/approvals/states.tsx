@@ -65,11 +65,11 @@ export function RequestIdCopyField({
 
   return (
     <span className="inline-flex min-w-0 flex-wrap items-center gap-1">
-      请求编号：<code className="break-all" data-testid="apr5-request-id">{requestId}</code>
+      请求编号：<code className="ui-c-id" data-testid="apr5-request-id">{requestId}</code>
       <button
         type="button"
         data-testid="apr5-copy-request-id"
-        className="rounded-sm border border-border px-1.5 py-0.5 text-[11px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline focus-visible:outline-1 focus-visible:outline-primary/40"
+        className="shrink-0 whitespace-nowrap rounded-sm border border-border px-1.5 py-0.5 text-[11px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline focus-visible:outline-1 focus-visible:outline-primary/40"
         onClick={copy}
       >
         复制
@@ -141,7 +141,9 @@ export function DetailsDisclosure({
         type="button"
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
-        className="inline-flex items-center gap-1 text-muted-foreground underline underline-offset-2"
+        // P1-375-4: 命中区 ≥44px（1440/375 同修，此前实测只有 15px 高）；
+        // ≤767 独立成行占满一行，md 起恢复行内链接形态，桌面结构不动。
+        className="inline-flex min-h-[44px] w-full items-center gap-1 text-muted-foreground underline underline-offset-2 md:w-auto"
       >
         {open ? <ChevronUp className="h-3 w-3" aria-hidden="true" /> : <ChevronDown className="h-3 w-3" aria-hidden="true" />}
         详情
@@ -186,19 +188,27 @@ export function EmptyPanel({
 }): ReactNode {
   return (
     <Card className="border-border bg-card" data-testid={testId} >
-      <CardContent className="flex min-w-0 flex-col items-center gap-2 px-4 py-10 text-center" data-testid="apv-state-empty">
+      {/* 空态层级（UI-RUBRIC 留白/状态条目）：标题 > 一句说明 > 单一主操作 > 次级出口。
+       * 主操作 = 清筛选（有服务器筛选时唯一实心）；无筛选的真集空时，刷新就是那唯一主操作。
+       * 字号是唯一可靠台阶（Mondwest 只注册 400 face，字重令牌是死杠杆，见 approvals 前案）。 */}
+      <CardContent className="flex min-w-0 flex-col items-center gap-[var(--space-2)] px-[var(--space-4)] py-[var(--space-8)] text-center" data-testid="apv-state-empty">
         <Inbox className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
-        <p className={`min-w-0 break-words text-sm ${themedBody}`} data-testid="apv-state-empty-text">{reason}</p>
+        <p className={`min-w-0 max-w-prose break-words text-base ${themedBody}`} data-testid="apv-state-empty-text">{reason}</p>
         <p className="max-w-prose break-words text-xs text-muted-foreground">{nextStep}</p>
-        <div className="flex min-w-0 flex-wrap items-center justify-center gap-2">
-          <Button size="sm" outlined onClick={onRefresh} prefix={<RefreshCw className="h-3.5 w-3.5" />}>
-            刷新
-          </Button>
+        <div className="flex min-w-0 flex-wrap items-center justify-center gap-[var(--space-2)] pt-[var(--space-2)]">
           {clear ? (
-            <Button size="sm" outlined data-testid="apv-state-clear" onClick={clear.onClear}>
+            <Button size="sm" data-testid="apv-state-clear" onClick={clear.onClear}>
               {clear.label}
             </Button>
           ) : null}
+          <Button
+            size="sm"
+            outlined={clear ? true : undefined}
+            onClick={onRefresh}
+            prefix={<RefreshCw className="h-3.5 w-3.5" />}
+          >
+            刷新
+          </Button>
         </div>
         <PanelExits testId={`${testId}-exits`} />
       </CardContent>
@@ -221,8 +231,14 @@ export function ErrorPanel({
       data-testid={testId}
       
     >
-      <CardContent className="flex min-w-0 flex-col items-start gap-2 px-4 py-6" data-testid="apv-state-error">
-        <div className="flex min-w-0 items-center gap-2 text-sm text-destructive">
+      {/* 错误态层级（本笔工单）：标题为主（字号台阶 13.125→15px，Mondwest 无字重可依赖）、
+        * 说明与 rid 为辅助色小一号；技术信息折叠进「详情」；复制入口为次级小描边。
+        * 主操作 = 重试且唯一（实心），错误区内不再有第二枚实心按钮；空态/错误态由
+        * phase 单值枚举互斥（同屏不会同时出现空态文案与错误卡），测试已锁。
+        * 375 横溢防线：ui-c-id 自带 overflow-wrap:anywhere（layer 外压 break-all），
+        * 长 rid 自动折行；本面板全列 min-w-0/break-words。 */}
+      <CardContent className="flex min-w-0 flex-col items-start gap-[var(--space-2)] px-[var(--space-4)] py-[var(--space-6)]" data-testid="apv-state-error">
+        <div className="flex min-w-0 items-center gap-[var(--space-2)] text-base text-destructive">
           <TriangleAlert className="h-4 w-4 shrink-0" aria-hidden="true" />
           <span className="min-w-0 break-words">{title}</span>
         </div>
@@ -230,7 +246,7 @@ export function ErrorPanel({
         <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="apv-state-rid"><RequestIdCopyField requestId={failure.requestId} fallback={APPROVAL_RID_FALLBACK} /></p>
         {failure.technical ? <DetailsDisclosure lines={[failure.technical]} testId={`${testId}-details`} /> : null}
         <span data-testid="apv-state-retry">
-          <Button size="sm" outlined onClick={onRetry} data-testid={retryTestId ?? `${testId}-retry`} prefix={<RefreshCw className="h-3.5 w-3.5" />}>
+          <Button size="sm" className="shrink-0 whitespace-nowrap" onClick={onRetry} data-testid={retryTestId ?? `${testId}-retry`} prefix={<RefreshCw className="h-3.5 w-3.5" />}>
             {APPROVAL_RETRY_LABEL}
           </Button>
         </span>

@@ -16,3 +16,23 @@
 .capF-state {
   min-height: 220px;
 }
+
+/* UI-A 2026-11-21: table density on /capabilities (card-flow mapping).
+ * No HTML table here - capability rows are div.cap5-row shells (ToolsPage).
+ * 40px = row-shell min-height; sub-surface (expanded detail) is a content
+ * block, not rows, so the compact 36 tier maps onto numeric cells instead.
+ * Numeric/次数 hook cap5-usage-num (22px fixed col), time hook cap5-last;
+ * 斑马纹: no even/odd background source in this file (divide-free). */
+.cap5-row {
+  min-height: var(--table-row-h);
+}
+
+.cap5-usage-num {
+  min-width: var(--btn-hit-min);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.cap5-last {
+  font-variant-numeric: tabular-nums;
+}

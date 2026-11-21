@@ -96,6 +96,11 @@ async function exportCsv(): Promise<string> {
 
 const text = () => container.textContent ?? "";
 
+/** 导出文件名预览带着真实时钟（`…-YYYYMMDD-HHmm.csv`），它的数字会落进整页文本；
+ * 状态码类的「不出现」断言必须先剥掉文件名字形，否则分钟撞上 0403/0404 就是假红。
+ * 只改用例：产品文本与文件名预览本身都不动。 */
+const textNoFileName = () => text().replace(/-\d{8}-\d{4}\.csv/g, "");
+
 describe("SkillsPage", () => {
   it("renders the required columns and keeps missing source, status and update time honest", async () => {
     fetchJsonStrict.mockResolvedValue({
@@ -231,7 +236,7 @@ describe("SkillsPage", () => {
     expect(text()).toContain("技能读口未接入");
     expect(document.querySelector('[data-testid="capF-state-unavailable"]')?.getAttribute("title")).toContain("GAP-SKL4-01");
     expect(text()).not.toContain("GAP-");
-    expect(text()).not.toContain("404");
+    expect(textNoFileName()).not.toContain("404");
     expect(container.querySelector('[data-testid="skl4-retry"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="capF-retry"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="skl4-apply"]')).toBeTruthy();
@@ -265,7 +270,7 @@ describe("SkillsPage", () => {
     await render();
     expect(text()).toContain("技能读口未接入");
     expect(text()).toContain("当前账号无权查看");
-    expect(text()).not.toContain("403");
+    expect(textNoFileName()).not.toContain("403");
     expect(document.querySelector('[data-testid="capF-state-unavailable"]')?.getAttribute("title")).toContain("GAP-SKL4-01");
     expect(container.querySelector('[data-testid="skl4-apply"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="cap9-state-denied"]')).toBeTruthy();

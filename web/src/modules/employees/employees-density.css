@@ -1,0 +1,31 @@
+/* UI-A 2026-11-21：/employees 列表密度收编（UI-RUBRIC 3 节）。
+ * 本仓 /employees 无 HTML table：行壳是 li（employees-row-*），列是
+ * data-label 网格单元格。契约映射：行壳 min-height 40；表头 13px 次级色
+ * （压页面 utility，需 !important）；数字/时间/预算列在 md 断点（列可见
+ * 的 768px 起）右对齐 + tabular-nums；列表容器补 overflow-x 壳，375 横滚
+ * 不撑破。斑马纹：基线仅 divide-y 分隔线，无条纹背景源（禁则天然成立）。
+ * 未锚项（口径已报）：SortHeader 按钮内右对齐（无钩子属性）、预览子表面
+ * 36px 档（testid 未证实）。 */
+[data-testid="emp-list-nav"] {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+[data-testid^="employees-row-"] {
+  min-height: var(--table-row-h);
+}
+
+/* 表头行 = 排序口径说明段落的前一个兄弟 div（无 testid，:has 邻接锚定）。 */
+[data-testid="employees-table"] div:has(+ [data-testid="emp-list-sort-scope-note"]) {
+  font-size: var(--font-size-2) !important;
+  color: var(--color-text-muted) !important;
+}
+
+@media (min-width: 768px) {
+  [data-label="最近活跃"],
+  [data-label="知识"],
+  [data-label="月度预算"] {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+}

@@ -36,6 +36,7 @@ import {
 } from "./tasksBoard";
 import { TaskCreateForm } from "./TaskCreateForm";
 import { ConsoleSelect } from "@/shell/ConsoleSelect";
+import "./tasks-density.css";
 
 /** 组内排序键：优先级高→低，同级按更新时间新→旧；未知按最后。 */
 const PRIORITY_RANK: Record<string, number> = { high: 0, urgent: 0, normal: 1, low: 2 };
@@ -79,11 +80,11 @@ function BoardSkeleton() {
   );
 }
 
-function DetailField({ label, children }: { label: string; children: React.ReactNode }) {
+function DetailField({ label, children, num }: { label: string; children: React.ReactNode; num?: boolean }) {
   return (
-    <div className="min-w-0">
-      <dt className="text-[11px] text-muted-foreground">{label}</dt>
-      <dd className="mt-0.5 min-w-0 break-words text-sm">{children}</dd>
+    <div className="ui-c-field">
+      <dt className="ui-c-field-label">{label}</dt>
+      <dd className={num ? "ui-c-field-value ui-c-num" : "ui-c-field-value"}>{children}</dd>
     </div>
   );
 }
@@ -103,33 +104,35 @@ function TaskDetailCard({
   const title = state.k === "ready" ? state.data.title : "任务详情";
   return (
     <Card className="min-w-0" data-testid={`tsk4-detail-${state.k}`}>
-      <CardContent className="space-y-4 p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
+      <CardContent className="ui-c-container min-w-0 space-y-4 p-4">
+        <div className="ui-c-head ui-c-head--plain ui-c-head--start">
+          <div className="ui-c-head-text">
             {state.k === "ready" ? (
               <Link
                 to={`/tasks/${encodeURIComponent(state.data.taskId)}`}
-                className="truncate text-base font-semibold hover:underline"
+                className="ui-c-head-title ui-c-head-title--lead hover:underline"
                 title={state.data.taskId}
                 data-testid="tsk4-detail-link"
               >
                 {title}
               </Link>
             ) : (
-              <h2 className="truncate text-base font-semibold" title={title}>{title}</h2>
+              <h2 className="ui-c-head-title ui-c-head-title--lead" title={title}>{title}</h2>
             )}
-            <p className="text-xs text-muted-foreground" title="深链 /tasks/<任务编号> 可直开；分享与刷新都保持同一屏。" data-testid="tsk4-detail-note">
+            <p className="ui-c-head-sub" title="深链 /tasks/<任务编号> 可直开；分享与刷新都保持同一屏。" data-testid="tsk4-detail-note">
               详情支持按任务深链（/tasks/ 加任务编号）；页面里显示的是短码，完整编号在标题悬停。
             </p>
             {state.k === "ready" ? (
-              <p className="mt-0.5 text-xs text-muted-foreground">
+              <p className="ui-c-head-sub ui-c-num">
                 {statusLabel(state.data.status)} · 更新 {beijing(state.data.updatedAt)}
               </p>
             ) : null}
           </div>
-          <Button size="sm" outlined onClick={onClose} prefix={<X className="h-3.5 w-3.5" />}>
-            关闭
-          </Button>
+          <span className="ui-c-head-actions">
+            <Button size="sm" outlined onClick={onClose} prefix={<X className="h-3.5 w-3.5" />}>
+              关闭
+            </Button>
+          </span>
         </div>
 
         {state.k === "loading" ? (
@@ -148,11 +151,11 @@ function TaskDetailCard({
             </Button>
           </div>
         ) : (
-          <dl className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <dl className="ui-c-fields ui-c-fields--compact">
             <DetailField label="优先级">{priorityLabel(state.data.priority).text}</DetailField>
             <DetailField label="负责人">{actorLabel(state.data.assignee, nameMap)}</DetailField>
-            <DetailField label="截止时间">{beijing(state.data.dueAt)}</DetailField>
-            <DetailField label="成本">
+            <DetailField label="截止时间" num>{beijing(state.data.dueAt)}</DetailField>
+            <DetailField label="成本" num>
               {typeof state.data.cost === "number" && Number.isFinite(state.data.cost)
                 ? money(state.data.cost)
                 : <span title="后台没有回传这条任务的成本。">—</span>}
@@ -161,31 +164,31 @@ function TaskDetailCard({
               <span title={state.data.source ? undefined : "后台没有回传这条任务的来源信息。"}>{sourceLabel(state.data.source)}</span>
             </DetailField>
             <DetailField label="创建人">{actorLabel(state.data.createdBy, nameMap)}</DetailField>
-            <DetailField label="创建时间">{beijing(state.data.createdAt)}</DetailField>
+            <DetailField label="创建时间" num>{beijing(state.data.createdAt)}</DetailField>
             <DetailField label="任务编号">
-              <span className="font-mono text-xs" title={state.data.taskId}>{shortRef(state.data.taskId)}</span>
+              <span className="ui-c-id" title={state.data.taskId}>{shortRef(state.data.taskId)}</span>
             </DetailField>
-            <DetailField label="完成时间">{beijing(state.data.closedAt)}</DetailField>
-            <DetailField label="关联任务">
+            <DetailField label="完成时间" num>{beijing(state.data.closedAt)}</DetailField>
+            <DetailField label="关联任务" num>
               {state.data.relatedTaskIds?.length ? `${state.data.relatedTaskIds.length} 项` : "—"}
             </DetailField>
-            <div className="sm:col-span-2 xl:col-span-3">
+            <div className="ui-c-field--span">
               <DetailField label="说明">{state.data.description ?? "—"}</DetailField>
             </div>
-            <div className="sm:col-span-2 xl:col-span-3">
+            <div className="ui-c-field--span">
               <DetailField label="最近进展">{state.data.progressNote ?? "—"}</DetailField>
             </div>
             {state.data.status === "blocked" || state.data.status === "cancelled" ? (
-              <div className="sm:col-span-2 xl:col-span-3">
+              <div className="ui-c-field--span">
                 <DetailField label="状态原因">{state.data.statusReason ?? "—"}</DetailField>
               </div>
             ) : null}
-            <div className="sm:col-span-2 xl:col-span-3">
+            <div className="ui-c-field--span">
               <DetailField label="最近事件">
                 {state.data.events && state.data.events.length > 0 ? (
-                  <ul className="flex flex-col gap-1 text-xs text-muted-foreground">
+                  <ul className="ui-c-rows min-w-0">
                     {state.data.events.slice(0, 3).map((ev, i) => (
-                      <li key={ev.eventId ?? `ev-${i}`} title={ev.eventId ?? undefined}>
+                      <li className="ui-c-row ui-c-num" key={ev.eventId ?? `ev-${i}`} title={ev.eventId ?? undefined}>
                         {beijing(ev.at)} · {ev.kind ?? "事件"}
                         {ev.note ? ` · ${ev.note}` : ""}
                       </li>
@@ -199,7 +202,7 @@ function TaskDetailCard({
           </dl>
         )}
         {state.k === "ready" ? (
-          <div className="flex flex-wrap items-center gap-2 pt-1">
+          <div className="ui-c-section flex flex-wrap items-center gap-2">
             <Button
               size="sm"
               outlined

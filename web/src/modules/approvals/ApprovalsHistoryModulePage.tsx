@@ -44,6 +44,7 @@ import { APPROVAL_EMPTY_SENTENCE } from "./stateCopy";
 import { useApprovalDetail, useApprovalsList, type ForcedState } from "./useApprovalsData";
 import { ApprovalDetailBody, ApprovalRowCard } from "./views";
 import { ConsoleSelect } from "@/shell/ConsoleSelect";
+import "./approvals-density.css";
 
 const FORCED_STATES: readonly string[] = ["loading", "empty", "error", "denied"];
 
@@ -408,6 +409,7 @@ export function ApprovalsHistoryModulePage(): ReactNode {
           <Button
             size="sm"
             outlined
+            className="shrink-0 whitespace-nowrap"
             onClick={list.reload}
             data-testid="apv-gates-refresh"
             title={actionGates(list.phase, list.rows.length).retry.title}
@@ -437,7 +439,7 @@ export function ApprovalsHistoryModulePage(): ReactNode {
         >
           重置筛选{filterState.active ? `（${filterState.count}）` : ""}
         </button>
-        <FilterSummary params={params} onRemove={removeFilterKeys} />
+        <FilterSummary params={params} onRemove={removeFilterKeys} phase={list.phase} />
       </div>
       <QueueSummaryBar phase={list.phase} rows={visibleRows} scope="history" singleStatus={status} />
       <QueueCsvExport rows={visibleRows} tab="history" status={status} phase={list.phase} sort={asort} dir={asort ? adir : null} />
@@ -647,6 +649,7 @@ export function ApprovalsHistoryModulePage(): ReactNode {
                 <Button
                   size="sm"
                   outlined
+                  className="shrink-0 whitespace-nowrap"
                   data-testid="apv-page-more"
                   disabled={!list.next || list.loadingMore}
                   onClick={list.loadMore}

@@ -1,0 +1,33 @@
+/* UI-A 2026-11-21 · /runs 运行列表表格密度（UI-RUBRIC §3）。
+ * 形态说明：本页无 HTML table——run5-table 是 Card + GRID 模板行
+ * （列宽全为 minmax(0,Xfr)，无固定 px，375px 自然折行不撑破，无需
+ * 新横滚壳）；行壳为 role="group" 的 li，子表面为行内预览面板
+ * （run-row-preview-*，dl 字段流）。斑马纹：基线只有 divide-y 行分隔
+ * 线，无条纹背景源，禁则天然成立。数字与时间列（开始/耗时/成本）在
+ * ≥sm 右对齐并走 tabular-nums，与全局 ui-c-num 口径一致。表头粘性
+ * 为可选项，本轮未做。锚点全部使用既有 data-testid 钩子，未触
+ * testid 与业务逻辑。 */
+
+[data-testid="run5-table"] [role="group"] {
+  min-height: var(--table-row-h);
+}
+
+/* 子表面（行内预览）字段行按紧凑档 36px */
+[data-testid^="run-row-preview-"] .ui-c-field {
+  min-height: var(--table-row-h-compact);
+}
+
+@media (min-width: 640px) {
+  /* 数字列右对齐：CostCell 外层是 flex-col items-start，需同步收尾 */
+  [data-testid="run5-table"] :is([data-testid$="-start"], [data-testid$="-elapsed"]) {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  [data-testid="run5-table"] [data-testid$="-cost"] {
+    align-items: flex-end;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+}

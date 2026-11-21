@@ -1,4 +1,4 @@
-import { ApiError } from '@/lib/api-error';
+import { ApiError, SESSION_REQUIRED_GUIDANCE } from '@/lib/api-error';
 
 const SESSION_HEADER = 'X-Hermes-Session-Token';
 
@@ -9,7 +9,7 @@ const SESSION_HEADER = 'X-Hermes-Session-Token';
  * `Unexpected token '<'`.
  */
 function humanStatus(status: number): string {
-  if (status === 401) return '需要登录：这个页面的登录状态已经失效，重新登录后再试。';
+  if (status === 401) return SESSION_REQUIRED_GUIDANCE;
   if (status === 403) return '没有查看这项数据的权限；请联系管理员开通。';
   if (status === 404) return '这个数据接口还没有接入。';
   if (status === 429) return '请求太频繁，请稍后再试。';

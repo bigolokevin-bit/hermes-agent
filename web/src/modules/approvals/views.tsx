@@ -32,6 +32,8 @@ function Field({
   value,
   reason,
   tone,
+  num,
+  muted,
   testId,
 }: {
   label: string;
@@ -39,12 +41,20 @@ function Field({
   /** Why the value is missing; shown as the `title` so the gap is explainable. */
   reason?: string;
   tone?: ReactNode;
+  /** 数字与时间字段：等宽数字，纵向可比（UI-RUBRIC §一·数字与时间） */
+  num?: boolean;
+  /** 辅助值（时间/风险档）：降为次级色，与事由同级；
+   * 待处理页行内层级的落点见 approvals-density.css（历史页不受影响）。 */
+  muted?: boolean;
   testId?: string;
 }): ReactNode {
   return (
-    <div className="flex min-w-0 items-baseline gap-1.5" data-testid={testId}>
-      <dt className="shrink-0 text-muted-foreground">{label}</dt>
-      <dd className="min-w-0 break-words text-foreground" title={reason}>
+    <div className="ui-c-field" data-testid={testId}>
+      <dt className="ui-c-field-label">{label}</dt>
+      <dd
+        className={`ui-c-field-value${num ? " ui-c-num" : ""}${muted ? " density-value-muted" : ""}`}
+        title={reason}
+      >
         {value}
         {tone}
       </dd>
@@ -178,7 +188,7 @@ export function ApprovalRowCard({
             className="min-w-0 flex-1 break-words text-left text-sm hover:underline"
           >
             <span
-              className={themedBody}
+              className={`${themedBody} density-row-title`}
               data-testid={`apv-trunc-row-title-${row.key}`}
               title={truncateDisplay(row.title).full ?? undefined}
             >
@@ -201,16 +211,26 @@ export function ApprovalRowCard({
             value={row.worker.label}
             reason={row.worker.raw ?? (row.worker.label === "—" ? "服务未提供执行员工。" : undefined)}
           />
-          {/* R76: 相对时间+title 绝对/ISO——与预览、决策链路同一 helper 同一输入。 */}
+          {/* R76: 相对时间+title 绝对/ISO——与预览、决策链路同一 helper 同一输入。
+           * P1 层级：两个时间只作辅助信息（次级色+等宽数字），主次留给标题与金额。 */}
           <Field
             label="提交"
+            num
+            muted
             value={<RelativeTime iso={row.submittedAt} testid={`apv-time-row-submitted-${row.key}`} />}
           />
           <Field
             label={row.clockLabel}
+            num
+            muted
             value={<RelativeTime iso={row.clockAt} testid={`apv-time-row-${row.key}`} />}
           />
-          <Field label="涉及金额" value={money(row.amount)} reason={row.amount === null ? MISSING_AMOUNT : undefined} />
+          <Field
+            label="涉及金额"
+            num
+            value={money(row.amount)}
+            reason={row.amount === null ? MISSING_AMOUNT : undefined}
+          />
         </dl>
 
         {row.reason ? (
@@ -262,11 +282,13 @@ export function ApprovalRowCard({
                 * 与详情的「决定时间」同一键序同一助手。缺字段口径=「该字段未返回」。 */}
               <Field
                 label="风险档"
+                muted
                 value={row.risk.label}
                 reason={row.risk.raw ?? FIELD_MISSING_SENTENCE}
               />
               <Field
                 label="更新时间"
+                num
                 value={<RelativeTime iso={row.decidedAt} testid={`apv-time-preview-${row.key}`} />}
               />
               <Field
@@ -391,12 +413,36 @@ export function DecisionTrail({ detail }: { detail: ApprovalDetail }): ReactNode
     );
   };
   return (
-    <section
-      className="flex min-w-0 flex-col gap-1"
-      data-testid="apd6-trail"
-      aria-label="决策链路（只读）"
-    >
-      <h3 className="text-xs font-medium text-muted-foreground">决策链路 · 只读（节点顺序即服务返回顺序）</h3>
+    <section className="ui-c-section" data-testid="apd6-trail" aria-label="决策链路（只读）">
+      {/* UI-C: 区块头在上，复制入口收到右上；链路节点顺序仍由服务返回决定。 */}
+      <div className="ui-c-section-head">
+        <h3 className="ui-c-section-title">决策链路 · 只读（节点顺序即服务返回顺序）</h3>
+        <span className="ui-c-section-actions">
+          <Button
+            size="sm"
+            outlined
+            className="shrink-0 whitespace-nowrap"
+            data-testid="apd8-copy"
+            disabled={emptyTrail}
+            title={
+              emptyTrail
+                ? "服务没有返回任何决策节点，也没有待办审批人：没有可复制的链路。"
+                : "按屏上同序复制为纯文本；只读屏上已有数据，不产生新请求。"
+            }
+            onClick={copyTrail}
+          >
+            复制为纯文本
+          </Button>
+          {/* R88: 动作反馈走 role=status（隐式 polite），显式 aria-live 播报位保持单点（R86 契约）。 */}
+          <span data-testid="apd8-copy-status" role="status">
+            {copyState === "done"
+              ? "已复制"
+              : copyState === "failed"
+                ? "剪贴板写入被拒绝，可用下方文本框手动复制。"
+                : ""}
+          </span>
+        </span>
+      </div>
       <ol className="flex min-w-0 flex-col gap-1 text-xs">
         <li className="min-w-0 break-words" data-testid="apd6-step-submitted" title={detail.requester.raw ?? undefined}>
           提交 · {detail.requester.label} ·{" "}
@@ -480,30 +526,6 @@ export function DecisionTrail({ detail }: { detail: ApprovalDetail }): ReactNode
           </span>
         </li>
       </ol>
-      <div className="mt-1 flex min-w-0 flex-wrap items-center gap-2 text-xs">
-        <Button
-          size="sm"
-          outlined
-          data-testid="apd8-copy"
-          disabled={emptyTrail}
-          title={
-            emptyTrail
-              ? "服务没有返回任何决策节点，也没有待办审批人：没有可复制的链路。"
-              : "按屏上同序复制为纯文本；只读屏上已有数据，不产生新请求。"
-          }
-          onClick={copyTrail}
-        >
-          复制为纯文本
-        </Button>
-        {/* R88: 动作反馈走 role=status（隐式 polite），显式 aria-live 播报位保持单点（R86 契约）。 */}
-        <span data-testid="apd8-copy-status" role="status" className="text-muted-foreground">
-          {copyState === "done"
-            ? "已复制"
-            : copyState === "failed"
-              ? "剪贴板写入被拒绝，可用下方文本框手动复制。"
-              : ""}
-        </span>
-      </div>
       {showFallback ? (
         <textarea
           data-testid="apd8-fallback"
@@ -535,15 +557,17 @@ export function ApprovalDetailBody({
     detail.risk.raw ? `风险等级原值：${detail.risk.raw}` : "",
   ];
   return (
-    <div className="flex min-w-0 flex-col gap-3" data-testid={testId}>
-      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+    <div className="ui-c-container flex min-w-0 flex-col gap-3" data-testid={testId}>
+      <div className="ui-c-head ui-c-head--plain">
         <h2
-          className={`min-w-0 flex-1 break-words text-sm ${themedBody}`}
+          className={`ui-c-head-title ui-c-head-title--lead ui-c-head-text ${themedBody}`}
           title={truncateDisplay(detail.title).full ?? detail.rawId ?? undefined}
           data-testid="apv-trunc-detail-title"
         >
           {truncateDisplay(detail.title).shown}
         </h2>
+        {/* UI-C: 徽标仍是标题的兄弟（parity 测试按位置读它们），
+         * flex-1 标题把它们推到区块头右上。 */}
         <Badge tone={detail.status.tone} title={detail.status.raw ?? undefined}>
           {detail.status.label}
         </Badge>
@@ -552,7 +576,7 @@ export function ApprovalDetailBody({
         </Badge>
       </div>
 
-      <dl className="flex min-w-0 flex-wrap gap-x-5 gap-y-1 text-xs">
+      <dl className="ui-c-fields ui-c-fields--compact">
         <Field label="类型" value={detail.kind.label} testId="apd5-field-change-kind" />
         <Field
           label="申请人"
@@ -564,15 +588,17 @@ export function ApprovalDetailBody({
           value={detail.worker.label}
           reason={detail.worker.raw ?? (detail.worker.label === "—" ? "服务未提供执行员工。" : undefined)}
         />
-        <Field label="提交" value={detail.submitted ?? "—"} reason={detail.submitted ? undefined : MISSING_TIME} />
+        <Field label="提交" num value={detail.submitted ?? "—"} reason={detail.submitted ? undefined : MISSING_TIME} />
         <Field
           label="处理期限"
+          num
           value={detail.deadline ?? "—"}
           reason={detail.deadline ? undefined : MISSING_TIME}
           tone={detail.remaining ? <span className="ml-1 text-muted-foreground">（{detail.remaining.text}）</span> : undefined}
         />
         <Field
           label="涉及金额"
+          num
           value={money(detail.amount)}
           reason={detail.amount === null ? MISSING_AMOUNT : undefined}
         />
@@ -586,6 +612,7 @@ export function ApprovalDetailBody({
         />
         <Field
           label="决定时间"
+          num
           value={detail.decided ?? "—"}
           reason={detail.decided ? undefined : MISSING_TIME}
           testId="apd5-field-decided-at"
@@ -598,21 +625,21 @@ export function ApprovalDetailBody({
         />
         <Field
           label="数据范围（快照）"
-          value={detail.dataScope ?? "—"}
+          value={<span className="ui-c-id">{detail.dataScope ?? "—"}</span>}
           reason={detail.dataScope ? "创建时的数据范围快照，只读。" : "服务未提供数据范围快照。"}
           testId="apd5-field-scope"
         />
-        <div className="flex min-w-0 items-baseline gap-1.5" data-testid="apd5-field-action-hash">
-          <dt className="shrink-0 text-muted-foreground">操作指纹</dt>
-          <dd className="min-w-0 break-words text-foreground">
+        <div className="ui-c-field" data-testid="apd5-field-action-hash">
+          <dt className="ui-c-field-label">操作指纹</dt>
+          <dd className="ui-c-field-value">
             {detail.actionHash ? (
-              <span title={detail.actionHash}>
+              <span className="ui-c-id" title={detail.actionHash}>
                 {detail.actionHash.slice(0, 8)}…
                 <button
                   type="button"
                   aria-label="复制操作指纹"
                   data-testid="apd5-copy-action-hash"
-                  className="ml-1 text-xs text-muted-foreground underline underline-offset-2"
+                  className="ui-c-field-actions ml-1 underline underline-offset-2"
                   onClick={() => {
                     void navigator.clipboard?.writeText(detail.actionHash ?? "");
                   }}
@@ -625,19 +652,21 @@ export function ApprovalDetailBody({
             )}
           </dd>
         </div>
-        <div className="flex min-w-0 items-baseline gap-1.5" data-testid="apd5-field-request-id">
-          <dt className="shrink-0 text-muted-foreground">请求编号</dt>
-          <dd className="min-w-0 break-words text-foreground">
+        <div className="ui-c-field" data-testid="apd5-field-request-id">
+          <dt className="ui-c-field-label">请求编号</dt>
+          {/* P1-375-5 × UI-C2: 栅格类负责排版，flex-wrap 让长编号就地折行、
+              复制钮豁免收缩不被挤出可视区；值与 testid 不动。 */}
+          <dd className="ui-c-field-value flex min-w-0 flex-wrap items-center gap-1">
             {detail.requestId ? (
               <>
-                <code data-testid="apd5-request-id" title={detail.requestId}>
+                <code className="ui-c-id min-w-0 break-all" data-testid="apd5-request-id" title={detail.requestId}>
                   {detail.requestId}
                 </code>
                 <button
                   type="button"
                   aria-label="复制请求编号"
                   data-testid="apd5-copy-detail-request-id"
-                  className="ml-1 text-xs underline underline-offset-2"
+                  className="ui-c-field-actions ml-1 shrink-0 whitespace-nowrap underline underline-offset-2"
                   onClick={() => {
                     void navigator.clipboard?.writeText(detail.requestId ?? "");
                   }}
@@ -654,27 +683,28 @@ export function ApprovalDetailBody({
 
       {detail.reason ? (
         <p
-          className="min-w-0 break-words text-xs text-muted-foreground"
+          className="ui-c-inline"
           data-testid="apv-trunc-detail-reason"
           title={truncateDisplay(humanizeHandles(detail.reason)).full ?? undefined}
         >
-          事由：{truncateDisplay(humanizeHandles(detail.reason)).shown}
+          <span>事由：</span>
+          <span className="ui-c-inline-value">{truncateDisplay(humanizeHandles(detail.reason)).shown}</span>
         </p>
       ) : null}
 
       {/* R28 item 2: the approver slot is always present; empty means a
         * dash with a reason, never a missing field. */}
       <p
-        className="min-w-0 break-words text-xs text-muted-foreground"
+        className="ui-c-inline"
         data-testid="apd5-field-approver"
       >
-        审批人：
+        <span>审批人：</span>
         {detail.approvers.labels.length ? (
-          <span data-testid="apd5-approver" title={detail.approvers.raw ?? undefined}>
+          <span className="ui-c-inline-value" data-testid="apd5-approver" title={detail.approvers.raw ?? undefined}>
             {detail.approvers.labels.join("、")}
           </span>
         ) : (
-          <span title="单据没有带回审批人">—</span>
+          <span className="ui-c-inline-value" title="单据没有带回审批人">—</span>
         )}
       </p>
 
@@ -685,8 +715,8 @@ export function ApprovalDetailBody({
       {/* apd7: the decision replay is a titled read-only block — every entry
         * names who decided (masked handle or 未指派), the verdict, the Beijing
         * minute, and the note; an empty list says so plainly. */}
-      <section className="flex min-w-0 flex-col gap-1" data-testid="apd5-replay" aria-label="决策回放（只读）">
-        <h3 className="text-xs font-medium text-muted-foreground">决策回放 · 只读</h3>
+      <section className="ui-c-section" data-testid="apd5-replay" aria-label="决策回放（只读）">
+        <h3 className="ui-c-section-title">决策回放 · 只读</h3>
         {detail.decisions.length ? (
           <ul className="flex min-w-0 flex-col gap-1 text-xs">
             {detail.decisions.map((entry, index) => (
@@ -710,8 +740,8 @@ export function ApprovalDetailBody({
         * 页级消费 ?resource= → 线上 resourceId=（aud8 契约），并带默认时间窗。
         * ?event= 需要审计事件 id——审批对象不带该字段，禁编造：这里给的是
         * 过滤真链，不是假事件定位链。 */}
-      <section className="flex min-w-0 flex-col gap-1 text-xs" data-testid="apd9-correlation" aria-label="相关记录">
-        <h3 className="text-xs font-medium text-muted-foreground">相关记录 · 只读</h3>
+      <section className="ui-c-section text-xs" data-testid="apd9-correlation" aria-label="相关记录">
+        <h3 className="ui-c-section-title">相关记录 · 只读</h3>
         {detail.rawId ? (
           <Link
             className="min-w-0 break-words underline underline-offset-2"

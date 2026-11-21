@@ -46,6 +46,7 @@ import { BackToList, restoreListScroll, saveListScroll } from "./BackToList";
 import { QueueCsvExport } from "./QueueCsvExport";
 import { QueueSortBar } from "./QueueSortBar";
 import { ActorBuckets } from "./ActorBuckets";
+import "./approvals-density.css";
 import { RowDetailCopy } from "./RowDetailCopy";
 import { SinceQuickFilter, isSinceValue, withinSince } from "./SinceQuickFilter";
 import { RiskQuickFilter, isRiskValue, withinRisk, type RiskValue } from "./RiskQuickFilter";
@@ -419,10 +420,12 @@ export function ApprovalsPendingModulePage(): ReactNode {
           />
         </label>
         <div className="flex min-w-0 flex-wrap items-center gap-2">
+          {/* P1-375-1: 同屏主按钮唯一——批准是这张单的最主操作，保持实心；
+              驳回降为次级（既有 outlined×destructive 组合样式），文案与 testid 不动。 */}
           <Button size="sm" onClick={() => setConfirming("approve")} disabled={inFlight}>
             批准
           </Button>
-          <Button size="sm" destructive onClick={() => setConfirming("reject")} disabled={inFlight}>
+          <Button size="sm" destructive outlined onClick={() => setConfirming("reject")} disabled={inFlight}>
             驳回
           </Button>
           {inFlight ? (
@@ -475,7 +478,15 @@ export function ApprovalsPendingModulePage(): ReactNode {
         >
           重置筛选{filterState.active ? `（${filterState.count}）` : ""}
         </button>
-        <FilterSummary params={params} onRemove={removeFilterKeys} />
+        <FilterSummary
+          params={params}
+          onRemove={removeFilterKeys}
+          phase={list.phase}
+          disclosure={{
+            expanded: filtersOpen,
+            onToggle: () => setFiltersOpen((value) => !value),
+          }}
+        />
       </div>
       {/* 结果集动作（导出/排序/行内预览复制）不进面板：它们作用于当前读数，
           与筛选控件不同归属，收起时同样可用（工单第 5 条）。 */}
@@ -533,6 +544,7 @@ export function ApprovalsPendingModulePage(): ReactNode {
           <Button
             size="sm"
             outlined
+            className="shrink-0 whitespace-nowrap"
             onClick={list.reload}
             data-testid="apv-gates-refresh"
             title={actionGates(list.phase, list.rows.length).retry.title}
@@ -665,6 +677,7 @@ export function ApprovalsPendingModulePage(): ReactNode {
                 <Button
                   size="sm"
                   outlined
+                  className="shrink-0 whitespace-nowrap"
                   data-testid="apv-page-more"
                   disabled={!list.next || list.loadingMore}
                   onClick={list.loadMore}
