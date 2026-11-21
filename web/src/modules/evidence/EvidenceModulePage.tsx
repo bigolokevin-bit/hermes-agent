@@ -19,7 +19,7 @@ import { Badge, Button, Card, CardContent } from '@nous-research/ui';
 
 import { fetchJSON } from '@/lib/api';
 import { ApiError } from '@/lib/api-error';
-import { hasConsoleSession } from '@/modules/knowledge/session';
+import { hasEvidenceSession } from './useEvidenceSession';
 
 import {
   WINDOW_DAYS,
@@ -33,7 +33,7 @@ import {
 /** Directory names only: the ids stay masked, the names make 「姓名 · 短码」 possible. */
 const EMPLOYEES_URL = '/agent-api/api/employees?limit=100';
 
-type Phase = 'loading' | 'ready' | 'empty' | 'error' | 'denied' | 'login';
+type Phase = 'checking' | 'loading' | 'ready' | 'empty' | 'error' | 'denied' | 'login';
 
 export function fmtStamp(iso: string | null): string {
   if (!iso) return '—';
@@ -167,7 +167,7 @@ function CitationItem({ row }: { row: CitationRow }) {
 }
 
 export function EvidenceModulePage() {
-  const [phase, setPhase] = useState<Phase>('loading');
+  const [phase, setPhase] = useState<Phase>('checking');
   const [payload, setPayload] = useState<CitationsPayload | null>(null);
   const [requestId, setRequestId] = useState<string | null>(null);
   const [token, setToken] = useState(0);
@@ -183,34 +183,41 @@ export function EvidenceModulePage() {
   }, []);
 
   useEffect(() => {
-    if (!hasConsoleSession()) {
-      setPayload(null);
-      setRequestId(null);
-      setPhase('login');
-      return;
-    }
     let live = true;
-    setPhase('loading');
+    setPhase('checking');
     setRequestId(null);
-    load()
-      .then((next) => {
-        if (!live) return;
-        setPayload(next);
-        setPhase(next.items.length === 0 ? 'empty' : 'ready');
-      })
-      .catch((error: unknown) => {
-        if (!live) return;
-        const apiError = error instanceof ApiError ? error : null;
-        const status = apiError?.status ?? -1;
-        setRequestId(apiError?.requestId ?? null);
+    // P0-1: decide the session exactly like the shell's identity widget does —
+    // injected token counts, otherwise a 2xx /auth/whoami is the evidence.
+    // Only after that may a data read be sent; never before.
+    void hasEvidenceSession().then((hasSession) => {
+      if (!live) return;
+      if (!hasSession) {
         setPayload(null);
-        // 403 and 404 are one answer: the pane must not say which.
-        if (status === 403 || status === 404) {
-          setPhase('denied');
-          return;
-        }
-        setPhase('error');
-      });
+        setRequestId(null);
+        setPhase('login');
+        return;
+      }
+      setPhase('loading');
+      load()
+        .then((next) => {
+          if (!live) return;
+          setPayload(next);
+          setPhase(next.items.length === 0 ? 'empty' : 'ready');
+        })
+        .catch((error: unknown) => {
+          if (!live) return;
+          const apiError = error instanceof ApiError ? error : null;
+          const status = apiError?.status ?? -1;
+          setRequestId(apiError?.requestId ?? null);
+          setPayload(null);
+          // 403 and 404 are one answer: the pane must not say which.
+          if (status === 403 || status === 404) {
+            setPhase('denied');
+            return;
+          }
+          setPhase('error');
+        });
+    });
     return () => {
       live = false;
     };
@@ -265,6 +272,18 @@ export function EvidenceModulePage() {
             </CardContent>
           </Card>
         </>
+      ) : null}
+
+      {phase === 'checking' ? (
+        <StateBlock testId="ev5-checking">
+          <div className="flex items-center gap-2 text-sm">
+            <RefreshCw className="size-4 animate-spin" />
+            正在确认登录状态…
+          </div>
+          <p className="text-sm" style={{ color: 'var(--fg-2)' }}>
+            确认结束前，这一页不会发出任何数据读取。
+          </p>
+        </StateBlock>
       ) : null}
 
       {phase === 'loading' ? (
@@ -345,7 +364,7 @@ export function EvidenceModulePage() {
             当前浏览器没有控制台会话，引用读取没有发出；登录后再打开这一页。
           </p>
           <p className="text-xs" style={{ color: 'var(--fg-3)' }}>
-            本页没有发送请求，也没有改动任何数据。
+            本页没有发出数据读取，也没有改动任何数据。
           </p>
           <Button size="sm" outlined onClick={retry} data-testid="ev5-login-retry">
             重新检查登录状态

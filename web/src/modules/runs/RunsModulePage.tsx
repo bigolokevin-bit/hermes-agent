@@ -222,6 +222,31 @@ function CostCell({ row, testId }: { row: RunRow; testId: string }): ReactNode {
 const NUM_KEYS = new Set(["started", "ended", "elapsed", "cost"]);
 
 /**
+ * P1-B4（UX r2）：窄档卡内字段名。<sm 时列表是卡片形态、没有表头，
+ * 值裸堆会丢掉列语义；复用 apr 卡片模式 ui-c-field/ui-c-field-label 给
+ * 每个字段配一行微缩 label。≥sm 由表头承担语义，label 即隐藏。只动表现
+ * 层：值节点自身的 testid、title 与文本一字不改。
+ */
+function CardField({
+  label,
+  labelTestId,
+  children,
+}: {
+  label: string;
+  labelTestId: string;
+  children: ReactNode;
+}): ReactNode {
+  return (
+    <span className="ui-c-field min-w-0 justify-center">
+      <span className="ui-c-field-label sm:hidden" data-testid={labelTestId}>
+        {label}
+      </span>
+      {children}
+    </span>
+  );
+}
+
+/**
  * The inline preview of one list row. Every value is derived from the row the
  * list already read — opening it asks the service nothing. The toggle owns
  * `aria-expanded`/`aria-controls`; Escape closes and hands focus back.
@@ -643,31 +668,45 @@ function ListRows({
                 }}
               >
                 <div className={GRID}>
-                <RunCodeCell row={row} testId={`${base}-code`} />
-                <span className="min-w-0 self-center">
-                  <Badge tone={statusTone(row.status)} data-testid={`${base}-status`}>{statusLabel(row.status)}</Badge>
-                </span>
-                <span className="min-w-0 self-center break-words" data-testid={`${base}-start`} title={row.startedAt ?? undefined}>
-                  {start.text ?? <Dashed reason={start.reason} />}
-                </span>
-                <span className="min-w-0 self-center break-words" data-testid={`${base}-elapsed`} title={elapsed.reason || undefined}>
-                  {elapsed.text ?? <Dashed reason={elapsed.reason} />}
-                </span>
-                <CostCell row={row} testId={`${base}-cost`} />
-                <span
-                  className="min-w-0 self-center break-words"
-                  data-testid={`${base}-employee`}
-                  title={
-                    row.employeeId
-                      ? row.employeeId
-                      : "这条运行没有带回负责人；不代填、不猜"
-                  }
-                >
-                  {employeeLabel(row.employeeId, names)}
-                </span>
-                <span className="min-w-0 self-center break-words" data-testid={`${base}-reason`} title={reason.reason || undefined}>
-                  {reason.text}
-                </span>
+                <CardField label="运行" labelTestId={`run5-fieldlabel-code-${index}`}>
+                  <RunCodeCell row={row} testId={`${base}-code`} />
+                </CardField>
+                <CardField label="状态" labelTestId={`run5-fieldlabel-status-${index}`}>
+                  <span className="min-w-0">
+                    <Badge tone={statusTone(row.status)} data-testid={`${base}-status`}>{statusLabel(row.status)}</Badge>
+                  </span>
+                </CardField>
+                <CardField label="开始" labelTestId={`run5-fieldlabel-start-${index}`}>
+                  <span className="min-w-0 break-words" data-testid={`${base}-start`} title={row.startedAt ?? undefined}>
+                    {start.text ?? <Dashed reason={start.reason} />}
+                  </span>
+                </CardField>
+                <CardField label="耗时" labelTestId={`run5-fieldlabel-elapsed-${index}`}>
+                  <span className="min-w-0 break-words" data-testid={`${base}-elapsed`} title={elapsed.reason || undefined}>
+                    {elapsed.text ?? <Dashed reason={elapsed.reason} />}
+                  </span>
+                </CardField>
+                <CardField label="成本" labelTestId={`run5-fieldlabel-cost-${index}`}>
+                  <CostCell row={row} testId={`${base}-cost`} />
+                </CardField>
+                <CardField label="负责人" labelTestId={`run5-fieldlabel-employee-${index}`}>
+                  <span
+                    className="min-w-0 break-words"
+                    data-testid={`${base}-employee`}
+                    title={
+                      row.employeeId
+                        ? row.employeeId
+                        : "这条运行没有带回负责人；不代填、不猜"
+                    }
+                  >
+                    {employeeLabel(row.employeeId, names)}
+                  </span>
+                </CardField>
+                <CardField label="失败原因" labelTestId={`run5-fieldlabel-reason-${index}`}>
+                  <span className="min-w-0 break-words" data-testid={`${base}-reason`} title={reason.reason || undefined}>
+                    {reason.text}
+                  </span>
+                </CardField>
                 <div className="col-span-2 flex min-w-0 flex-col items-stretch gap-1 self-center sm:col-span-1 sm:items-end">
                   <Link
                     className="flex min-h-[44px] w-full items-center justify-center rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground no-underline hover:bg-muted/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 sm:w-auto"
@@ -1314,29 +1353,37 @@ export function RunsModulePage() {
               ]}
             />
           </label>
-          <Button
-            size="sm"
-            outlined
-            className="shrink-0 whitespace-nowrap"
-            onClick={reloadList}
-            disabled={phase === "loading" || isForced}
-            title={forcedTitle ?? "重新向服务要一次运行记录"}
-            data-testid="run5-refresh"
-            prefix={phase === "loading" ? <Spinner className="h-3.5 w-3.5" /> : <RefreshCw className="h-3.5 w-3.5" />}
+          {/* wave-125：读取动作自成一组，375 档不再与时间芯片、状态选择器穿插换行。 */}
+          <div
+            className="flex min-w-0 flex-wrap items-center gap-1"
+            role="group"
+            aria-label="读取动作"
+            data-testid="run5-filter-actions"
           >
-            重新读取
-          </Button>
-          <Button
-            size="sm"
-            outlined
-            className="shrink-0 whitespace-nowrap"
-            onClick={resetFilters}
-            disabled={filterReset.removed.length === 0}
-            data-testid="run-reset-filters"
-            title={resetTitle ?? "当前没有可清除的筛选条件"}
-          >
-            清除筛选
-          </Button>
+            <Button
+              size="sm"
+              outlined
+              className="shrink-0 whitespace-nowrap"
+              onClick={reloadList}
+              disabled={phase === "loading" || isForced}
+              title={forcedTitle ?? "重新向服务要一次运行记录"}
+              data-testid="run5-refresh"
+              prefix={phase === "loading" ? <Spinner className="h-3.5 w-3.5" /> : <RefreshCw className="h-3.5 w-3.5" />}
+            >
+              重新读取
+            </Button>
+            <Button
+              size="sm"
+              outlined
+              className="shrink-0 whitespace-nowrap"
+              onClick={resetFilters}
+              disabled={filterReset.removed.length === 0}
+              data-testid="run-reset-filters"
+              title={resetTitle ?? "当前没有可清除的筛选条件"}
+            >
+              清除筛选
+            </Button>
+          </div>
         </div>
         {filterChips.length > 0 ? (
           <div
@@ -1686,18 +1733,26 @@ export function RunsModulePage() {
           仅在当前已加载 {sortedRows.length} 行内排序；服务端读口不接受排序参数，点表头不会重新读取。
         </p>
       ) : null}
+      {/* wave-125：复制/导出/链接是同一层级的次级动作，收进一条操作栏；
+          375 档下不再各自占一条散行，主按钮仍只有页首「刷新」一个。 */}
       {forced === null && phase !== "loading" ? (
-        <RunListCopy
-          rows={sortedRows}
-          names={names}
-          copyGate={listGate.copy}
-          exportGate={listGate.export}
-          windowKey={params.get("window")}
-          statusKey={params.get("status")}
-        />
+        <div
+          className="flex min-w-0 flex-col gap-2 rounded-md border border-border bg-card p-2"
+          role="group"
+          aria-label="列表操作"
+          data-testid="run5-utility-bar"
+        >
+          <RunListCopy
+            rows={sortedRows}
+            names={names}
+            copyGate={listGate.copy}
+            exportGate={listGate.export}
+            windowKey={params.get("window")}
+            statusKey={params.get("status")}
+          />
+          <RunPermalink href={selected ? hrefOf(selected) : null} />
+        </div>
       ) : null}
-
-      {forced === null ? <RunPermalink href={selected ? hrefOf(selected) : null} /> : null}
 
       {phase === "ready" && rows.length > 0 ? (
         <TechnicalDisclosure lines={technical} testId="run5-list-details" />

@@ -1,0 +1,99 @@
+{
+ "entry": [
+  "assets/index-BuZxlyEv.js",
+  "assets/index-BuZxlyEv.js"
+ ],
+ "faces": [],
+ "collapsedHex": 2,
+ "reqToggle": [],
+ "freshCount": 1,
+ "freshSample": [
+  "台账只复用本页已经发过的读取：展开、收起、切面都不新增请求；采集时刻只取响应顶层的 ISO 时间， 不使用本机时钟，缺就「—」。"
+ ],
+ "tabs1440": 7,
+ "kOver1440": 11,
+ "k375": {
+  "overCount": 0,
+  "overSamples": [],
+  "leftOut": 0,
+  "tabRows": {
+   "tabCount": 7,
+   "distinctRows": 3
+  }
+ },
+ "hist": {
+  "url": "",
+  "rows": 22,
+  "footer": [
+   "已到末页 · 已显示 11 条"
+  ],
+  "hasMore": true,
+  "moreDisabled": [
+   true
+  ],
+  "tail": [
+   "详情",
+   "加载更多",
+   "已到末页 · 已显示 11 条",
+   "复制固定链接",
+   "还没有选中记录",
+   "点开一条记录可以看到它当时的结论。要给结论，请去「待处理」里那张还没处理的单。"
+  ]
+ },
+ "r375": {
+  "labels": 0,
+  "vis": 0,
+  "caliber": [
+   "已计价",
+   "已计价",
+   "已计价",
+   "已计价",
+   "已计价"
+  ],
+  "over": 0,
+  "samples": []
+ },
+ "r1440": {
+  "th": [],
+  "labelHidden": 0,
+  "of": 0
+ },
+ "bad": [
+  "404:t-api/api/documents?limit=50",
+  "404:pi/knowledge/spaces?limit=20",
+  "404:t-api/api/documents?limit=50",
+  "404:pi/knowledge/spaces?limit=20"
+ ],
+ "errs": 4,
+ "notes": [
+  "knowledge: no req toggle found"
+ ],
+ "shots": [
+  {
+   "name": "knowledge-collapsed-1440-r5",
+   "bytes": 216302,
+   "pngH": 2600
+  },
+  {
+   "name": "knowledge-list-375-r5",
+   "bytes": 75156,
+   "pngH": 800
+  },
+  {
+   "name": "approvals-history-foot-1440-r5",
+   "bytes": 295986,
+   "pngH": 2600
+  },
+  {
+   "name": "runs-cards-375-r5",
+   "bytes": 72532,
+   "pngH": 800
+  },
+  {
+   "name": "runs-list-1440-r5",
+   "bytes": 455429,
+   "pngH": 2600
+  }
+ ]
+}
+EXIT=0

@@ -1,0 +1,512 @@
+{
+  "base": "http://100.117.184.117:8183",
+  "mode": "auth(ui-qa storageState)",
+  "entryBefore": "assets/index-GXGeT7Wz.js",
+  "entryAfter": "assets/index-GXGeT7Wz.js",
+  "entryDrift": false,
+  "viewports": [
+    "1440x2600",
+    "375x3200"
+  ],
+  "shots": [
+    {
+      "state": "list",
+      "vp": "1440",
+      "url": "http://100.117.184.117:8183/knowledge",
+      "consoleErrors": 0,
+      "errorSample": null,
+      "http": 200,
+      "probe": {
+        "mainChars": 845,
+        "head": "治理 · 控制台 知识与数据 知识空间 数据源 证据与引用 知识空间 空间、文档、检索与引用 · 只读 刷新 按文档名搜索 搜索 只在已加载的文档里搜索：这份文档读口今天不接受关键词参数，所以这里不叫全库搜索。 来源：文档名（当前已加载",
+        "expiredShell": false,
+        "overflowX": 0,
+        "smallTapTargets": 22,
+        "smallTapSample": [
+          "A:知识空间 77x35",
+          "A:数据源 64x35",
+          "A:证据与引用 90x35",
+          "BUTTON:刷新 63x28",
+          "kn6-search-input 1105x32",
+          "kn6-search-submit 63x28",
+          "BUTTON:复制 48x21",
+          "kn6-search-retry 44x27",
+          "kn6-search-apply 134x16",
+          "knG-copy 65x28",
+          "knw5-tab-spaces 69x30",
+          "knw5-tab-ingest 69x30"
+        ],
+        "rawIdsTech": [
+          "rid-on-screenx2: 请求编号：\n85617d8c0f7c4851b66583745b2c67eb"
+        ],
+        "selects": [],
+        "emptyHits": true,
+        "errorHits": false
+      },
+      "expiredShell": false,
+      "spacesRows": 0,
+      "docRows": 0,
+      "focus": {
+        "stage": "list",
+        "stops": [
+          {
+            "tag": "BUTTON",
+            "testid": null,
+            "label": "",
+            "outline": "auto 1px rgb(0, 95, 204)",
+            "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0",
+            "rect": "164,12 28x28",
+            "clipped": false
+          },
+          {
+            "tag": "A",
+            "testid": null,
+            "label": "运营总览",
+            "outline": "solid 2px rgb(255, 230, 203)",
+            "shadow": "none",
+            "rect": "0,115 207x34",
+            "clipped": false
+          },
+          {
+            "tag": "A",
+            "testid": null,
+            "label": "数字员工",
+            "outline": "solid 2px rgb(255, 230, 203)",
+            "shadow": "none",
+            "rect": "0,149 207x34",
+            "clipped": false
+          },
+          {
+            "tag": "A",
+            "testid": null,
+            "label": "任务与运行",
+            "outline": "solid 2px rgb(255, 230, 203)",
+            "shadow": "none",
+            "rect": "0,183 207x34",
+            "clipped": false
+          },
+          {
+            "tag": "A",
+            "testid": null,
+            "label": "审批与发布门",
+            "outline": "solid 2px rgb(255, 230, 203)",
+            "shadow": "none",
+            "rect": "0,217 207x34",
+            "clipped": false
+          },
+          {
+            "tag": "A",
+            "testid": null,
+            "label": "人员与访问",
+            "outline": "solid 2px rgb(255, 230, 203)",
+            "shadow": "none",
+            "rect": "0,274 207x34",
+            "clipped": false
+          }
+        ]
+      },
+      "needle": "人事",
+      "settleChars": 469,
+      "png": "docs/_artifacts/ux/shots/knowledge-list-1440-r1.png",
+      "pngBytes": 209468,
+      "consoleErrorSample": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "state": "search-hit",
+      "vp": "1440",
+      "url": null,
+      "consoleErrors": 0,
+      "errorSample": null,
+      "note": "no knw5-search-input on landing tab",
+      "settleChars": 845,
+      "png": "docs/_artifacts/ux/shots/knowledge-search-hit-1440-r1.png",
+      "pngBytes": 209703,
+      "consoleErrorSample": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "state": "search-miss",
+      "vp": "1440",
+      "url": null,
+      "consoleErrors": 0,
+      "errorSample": null,
+      "note": "no knw5-search-input",
+      "settleChars": 845,
+      "png": "docs/_artifacts/ux/shots/knowledge-search-miss-1440-r1.png",
+      "pngBytes": 209906,
+      "consoleErrorSample": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "state": "detail",
+      "vp": "1440",
+      "url": null,
+      "consoleErrors": 0,
+      "errorSample": null,
+      "note": "no spaces rows to open",
+      "settleChars": 845,
+      "png": "docs/_artifacts/ux/shots/knowledge-detail-1440-r1.png",
+      "pngBytes": 209357,
+      "consoleErrorSample": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "state": "evidence",
+      "vp": "1440",
+      "url": "http://100.117.184.117:8183/knowledge?panel=evidence",
+      "consoleErrors": 0,
+      "errorSample": null,
+      "http": 200,
+      "probe": {
+        "mainChars": 724,
+        "head": "治理 · 控制台 知识与数据 知识空间 数据源 证据与引用 知识空间 空间、文档、检索与引用 · 只读 刷新 按文档名搜索 搜索 只在已加载的文档里搜索：这份文档读口今天不接受关键词参数，所以这里不叫全库搜索。 来源：文档名（当前已加载",
+        "expiredShell": false,
+        "overflowX": 0,
+        "smallTapTargets": 18,
+        "smallTapSample": [
+          "A:知识空间 77x35",
+          "A:数据源 64x35",
+          "A:证据与引用 90x35",
+          "BUTTON:刷新 63x28",
+          "kn6-search-input 1105x32",
+          "kn6-search-submit 63x28",
+          "BUTTON:复制 48x21",
+          "kn6-search-retry 44x27",
+          "kn6-search-apply 134x16",
+          "knG-copy 65x28",
+          "knw5-tab-spaces 69x30",
+          "knw5-tab-ingest 69x30"
+        ],
+        "rawIdsTech": [
+          "rid-on-screenx2: 请求编号：\n9b95422802aa4f2d98a7591683344ba7"
+        ],
+        "selects": [],
+        "emptyHits": true,
+        "errorHits": false
+      },
+      "evRows": 0,
+      "focus": {
+        "stage": "evidence",
+        "stops": [
+          {
+            "tag": "BUTTON",
+            "testid": null,
+            "label": "",
+            "outline": "auto 1px rgb(0, 95, 204)",
+            "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0",
+            "rect": "164,12 28x28",
+            "clipped": false
+          },
+          {
+            "tag": "A",
+            "testid": null,
+            "label": "运营总览",
+            "outline": "solid 2px rgb(255, 230, 203)",
+            "shadow": "none",
+            "rect": "0,115 207x34",
+            "clipped": false
+          },
+          {
+            "tag": "A",
+            "testid": null,
+            "label": "数字员工",
+            "outline": "solid 2px rgb(255, 230, 203)",
+            "shadow": "none",
+            "rect": "0,149 207x34",
+            "clipped": false
+          },
+          {
+            "tag": "A",
+            "testid": null,
+            "label": "任务与运行",
+            "outline": "solid 2px rgb(255, 230, 203)",
+            "shadow": "none",
+            "rect": "0,183 207x34",
+            "clipped": false
+          },
+          {
+            "tag": "A",
+            "testid": null,
+            "label": "审批与发布门",
+            "outline": "solid 2px rgb(255, 230, 203)",
+            "shadow": "none",
+            "rect": "0,217 207x34",
+            "clipped": false
+          },
+          {
+            "tag": "A",
+            "testid": null,
+            "label": "人员与访问",
+            "outline": "solid 2px rgb(255, 230, 203)",
+            "shadow": "none",
+            "rect": "0,274 207x34",
+            "clipped": false
+          }
+        ]
+      },
+      "settleChars": 359,
+      "png": "docs/_artifacts/ux/shots/knowledge-evidence-1440-r1.png",
+      "pngBytes": 183971,
+      "consoleErrorSample": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "state": "evidence-open",
+      "vp": "1440",
+      "url": null,
+      "consoleErrors": 0,
+      "errorSample": null,
+      "note": "no ev5-open links (empty/denied state?)",
+      "settleChars": 724,
+      "png": "docs/_artifacts/ux/shots/knowledge-evidence-open-1440-r1.png",
+      "pngBytes": 184202,
+      "consoleErrorSample": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "state": "list",
+      "vp": "375",
+      "url": "http://100.117.184.117:8183/knowledge",
+      "consoleErrors": 0,
+      "errorSample": null,
+      "http": 200,
+      "probe": {
+        "mainChars": 845,
+        "head": "治理 · 控制台 知识与数据 知识空间 数据源 证据与引用 知识空间 空间、文档、检索与引用 · 只读 刷新 按文档名搜索 搜索 只在已加载的文档里搜索：这份文档读口今天不接受关键词参数，所以这里不叫全库搜索。 来源：文档名（当前已加载",
+        "expiredShell": false,
+        "overflowX": 0,
+        "smallTapTargets": 22,
+        "smallTapSample": [
+          "A:知识空间 77x35",
+          "A:数据源 64x35",
+          "A:证据与引用 90x35",
+          "BUTTON:刷新 342x28",
+          "kn6-search-input 342x32",
+          "kn6-search-submit 63x28",
+          "BUTTON:复制 48x21",
+          "kn6-search-retry 44x27",
+          "kn6-search-apply 134x16",
+          "knG-copy 342x28",
+          "knw5-tab-spaces 170x30",
+          "knw5-tab-ingest 170x30"
+        ],
+        "rawIdsTech": [
+          "rid-on-screenx2: 请求编号：\n73c31192dbf2453086b4e4cfd710403e"
+        ],
+        "selects": [],
+        "emptyHits": true,
+        "errorHits": false
+      },
+      "expiredShell": false,
+      "spacesRows": 0,
+      "docRows": 0,
+      "focus": {
+        "stage": "list",
+        "stops": [
+          {
+            "tag": "BUTTON",
+            "testid": null,
+            "label": "菜单",
+            "outline": "auto 1px rgb(0, 95, 204)",
+            "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0",
+            "rect": "15,8 72x62",
+            "clipped": false
+          },
+          {
+            "tag": "BUTTON",
+            "testid": null,
+            "label": "",
+            "outline": "auto 1px rgb(0, 95, 204)",
+            "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0",
+            "rect": "-44,12 28x28",
+            "clipped": true
+          },
+          {
+            "tag": "A",
+            "testid": null,
+            "label": "运营总览",
+            "outline": "solid 2px rgb(255, 230, 203)",
+            "shadow": "none",
+            "rect": "-240,115 239x34",
+            "clipped": true
+          },
+          {
+            "tag": "A",
+            "testid": null,
+            "label": "数字员工",
+            "outline": "solid 2px rgb(255, 230, 203)",
+            "shadow": "none",
+            "rect": "-240,149 239x34",
+            "clipped": true
+          },
+          {
+            "tag": "A",
+            "testid": null,
+            "label": "任务与运行",
+            "outline": "solid 2px rgb(255, 230, 203)",
+            "shadow": "none",
+            "rect": "-240,183 239x34",
+            "clipped": true
+          },
+          {
+            "tag": "A",
+            "testid": null,
+            "label": "审批与发布门",
+            "outline": "solid 2px rgb(255, 230, 203)",
+            "shadow": "none",
+            "rect": "-240,217 239x34",
+            "clipped": true
+          }
+        ]
+      },
+      "needle": "人事",
+      "settleChars": 845,
+      "png": "docs/_artifacts/ux/shots/knowledge-list-375-r1.png",
+      "pngBytes": 172501,
+      "consoleErrorSample": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "state": "search-hit",
+      "vp": "375",
+      "url": null,
+      "consoleErrors": 0,
+      "errorSample": null,
+      "note": "no knw5-search-input on landing tab",
+      "settleChars": 845,
+      "png": "docs/_artifacts/ux/shots/knowledge-search-hit-375-r1.png",
+      "pngBytes": 172412,
+      "consoleErrorSample": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "state": "search-miss",
+      "vp": "375",
+      "url": null,
+      "consoleErrors": 0,
+      "errorSample": null,
+      "note": "no knw5-search-input",
+      "settleChars": 845,
+      "png": "docs/_artifacts/ux/shots/knowledge-search-miss-375-r1.png",
+      "pngBytes": 172443,
+      "consoleErrorSample": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "state": "detail",
+      "vp": "375",
+      "url": null,
+      "consoleErrors": 0,
+      "errorSample": null,
+      "note": "no spaces rows to open",
+      "settleChars": 845,
+      "png": "docs/_artifacts/ux/shots/knowledge-detail-375-r1.png",
+      "pngBytes": 172200,
+      "consoleErrorSample": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "state": "evidence",
+      "vp": "375",
+      "url": "http://100.117.184.117:8183/knowledge?panel=evidence",
+      "consoleErrors": 0,
+      "errorSample": null,
+      "http": 200,
+      "probe": {
+        "mainChars": 724,
+        "head": "治理 · 控制台 知识与数据 知识空间 数据源 证据与引用 知识空间 空间、文档、检索与引用 · 只读 刷新 按文档名搜索 搜索 只在已加载的文档里搜索：这份文档读口今天不接受关键词参数，所以这里不叫全库搜索。 来源：文档名（当前已加载",
+        "expiredShell": false,
+        "overflowX": 0,
+        "smallTapTargets": 18,
+        "smallTapSample": [
+          "A:知识空间 77x35",
+          "A:数据源 64x35",
+          "A:证据与引用 90x35",
+          "BUTTON:刷新 342x28",
+          "kn6-search-input 342x32",
+          "kn6-search-submit 63x28",
+          "BUTTON:复制 48x21",
+          "kn6-search-retry 44x27",
+          "kn6-search-apply 134x16",
+          "knG-copy 342x28",
+          "knw5-tab-spaces 170x30",
+          "knw5-tab-ingest 170x30"
+        ],
+        "rawIdsTech": [
+          "rid-on-screenx2: 请求编号：\n9693caa565a746fa9b0b089d44e6e7f1"
+        ],
+        "selects": [],
+        "emptyHits": true,
+        "errorHits": false
+      },
+      "evRows": 0,
+      "focus": {
+        "stage": "evidence",
+        "stops": [
+          {
+            "tag": "BUTTON",
+            "testid": null,
+            "label": "菜单",
+            "outline": "auto 1px rgb(0, 95, 204)",
+            "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0",
+            "rect": "15,8 72x62",
+            "clipped": false
+          },
+          {
+            "tag": "BUTTON",
+            "testid": null,
+            "label": "",
+            "outline": "auto 1px rgb(0, 95, 204)",
+            "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0",
+            "rect": "-44,12 28x28",
+            "clipped": true
+          },
+          {
+            "tag": "A",
+            "testid": null,
+            "label": "运营总览",
+            "outline": "solid 2px rgb(255, 230, 203)",
+            "shadow": "none",
+            "rect": "-240,115 239x34",
+            "clipped": true
+          },
+          {
+            "tag": "A",
+            "testid": null,
+            "label": "数字员工",
+            "outline": "solid 2px rgb(255, 230, 203)",
+            "shadow": "none",
+            "rect": "-240,149 239x34",
+            "clipped": true
+          },
+          {
+            "tag": "A",
+            "testid": null,
+            "label": "任务与运行",
+            "outline": "solid 2px rgb(255, 230, 203)",
+            "shadow": "none",
+            "rect": "-240,183 239x34",
+            "clipped": true
+          },
+          {
+            "tag": "A",
+            "testid": null,
+            "label": "审批与发布门",
+            "outline": "solid 2px rgb(255, 230, 203)",
+            "shadow": "none",
+            "rect": "-240,217 239x34",
+            "clipped": true
+          }
+        ]
+      },
+      "settleChars": 359,
+      "png": "docs/_artifacts/ux/shots/knowledge-evidence-375-r1.png",
+      "pngBytes": 146913,
+      "consoleErrorSample": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "state": "evidence-open",
+      "vp": "375",
+      "url": null,
+      "consoleErrors": 0,
+      "errorSample": null,
+      "note": "no ev5-open links (empty/denied state?)",
+      "settleChars": 724,
+      "png": "docs/_artifacts/ux/shots/knowledge-evidence-open-375-r1.png",
+      "pngBytes": 146547,
+      "consoleErrorSample": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    }
+  ],
+  "ok": true
+}

@@ -1,0 +1,125 @@
+{
+ "startedAt": "2026-11-21T15:00:35.999Z",
+ "notes": [],
+ "legs": {
+  "kn1440": {
+   "probes": {
+    "hexOnScreen": 0,
+    "readKou": 2,
+    "mixedState": false,
+    "rowFontPx": "15px",
+    "cellFontPx": null,
+    "innerTabs": [
+     "知识空间",
+     "数据源",
+     "证据与引用",
+     "知识空间",
+     "数据接入",
+     "检索",
+     "证据与引用"
+    ]
+   },
+   "shot": {
+    "file": "shots/knowledge-list-1440-r4.png",
+    "bytes": 216322,
+    "pngHeight": 2660,
+    "stretched": true
+   }
+  },
+  "kn375": {
+   "over": {
+    "overCount": 0,
+    "overSample": []
+   },
+   "shot": {
+    "file": "shots/knowledge-list-375-r4.png",
+    "bytes": 78626,
+    "pngHeight": 860,
+    "stretched": true
+   }
+  },
+  "pendingFooter": {
+   "countText": "已到末页 · 已显示 1 条",
+   "endPresent": false,
+   "endText": null,
+   "morePresent": true,
+   "moreDisabled": true,
+   "hasTotalUnavailable": false,
+   "hasEndOfList": true,
+   "hasLoadMoreText": true
+  },
+  "pendingRowTime": "行内预览message.send待处理申请人成员 · 86A81CE8执行员工—提交13 小时前处理期限2026-11-22 09:09涉及金额—事由：policy.requires_approval: 该动作需要审批。 knowledge_scope_departme…复制这一行详情",
+  "detailUrl": "http://100.117.184.117:8183/approvals?id=ap_85119755436347F1864B96F6A8",
+  "detailTimeText": [],
+  "detailFooter": {
+   "countText": "已到末页 · 已显示 1 条",
+   "endPresent": false,
+   "endText": null,
+   "morePresent": true,
+   "moreDisabled": true,
+   "hasTotalUnavailable": false,
+   "hasEndOfList": true,
+   "hasLoadMoreText": true
+  },
+  "timeShot": {
+   "file": "shots/approvals-time-detail-1440-r4.png",
+   "bytes": 236992,
+   "pngHeight": 2660,
+   "stretched": true
+  },
+  "missFooter": {
+   "countText": null,
+   "endPresent": false,
+   "endText": null,
+   "morePresent": false,
+   "moreDisabled": null,
+   "hasTotalUnavailable": false,
+   "hasEndOfList": false,
+   "hasLoadMoreText": false
+  },
+  "missEmptyMarker": 1,
+  "missRows": 0,
+  "missShot": {
+   "file": "shots/approvals-miss-empty-1440-r4.png",
+   "bytes": 280976,
+   "pngHeight": 2660,
+   "stretched": true
+  },
+  "historyFooter": {
+   "countText": "已到末页 · 已显示 11 条",
+   "endPresent": false,
+   "endText": null,
+   "morePresent": true,
+   "moreDisabled": true,
+   "hasTotalUnavailable": false,
+   "hasEndOfList": true,
+   "hasLoadMoreText": true
+  },
+  "historyUrl": "http://100.117.184.117:8183/approvals?tab=history&id=ap_85119755436347F1864B96F6A8",
+  "historyShot": {
+   "file": "shots/approvals-history-footer-1440-r4.png",
+   "bytes": 394967,
+   "pngHeight": 2660,
+   "stretched": true
+  }
+ },
+ "entryStart": "http://100.117.184.117:8183/assets/index-Bx_m7yAP.js",
+ "entryAfter": "http://100.117.184.117:8183/assets/index-Bx_m7yAP.js",
+ "bag": {
+  "badResponses": [
+   {
+    "url": "http://100.117.184.117:8183/agent-api/api/documents?limit=50",
+    "status": 404
+   },
+   {
+    "url": "http://100.117.184.117:8183/agent-api/api/knowledge/spaces?limit=20",
+    "status": 404
+   }
+  ],
+  "consoleErrors": [
+   "Failed to load resource: the server responded with a status of 404 (Not Found)",
+   "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  ]
+ },
+ "finishedAt": "2026-11-21T15:00:50.816Z"
+}

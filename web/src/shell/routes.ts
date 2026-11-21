@@ -166,9 +166,9 @@ export const CONSOLE_TABS: readonly ConsoleRoute[] = [
   // at /knowledge — path collision, stage 2 arbitrates precedence.
   { hash: '#/knowledge', path: '/knowledge', module: 'knowledge', tabId: 'spaces', kind: 'tab', visible: true, label: '知识空间', dataSource: '知识空间登记（读取接口未开放，显示诚实空态）', planned: true, conflict: "existing App route '/knowledge' renders upstream KnowledgePage/FilesPage; PRD BOUNDARY-09 says FilesPage 不进 — stage 2 decides precedence" },
   // #13 sources 数据源 — GAP-03: no endpoint; test/sync disabled.
-  { hash: '#/knowledge?tab=sources', path: '/knowledge', module: 'knowledge', tabId: 'sources', kind: 'tab', visible: true, label: '数据源', dataSource: '数据源管理（尚无读取接口）', tab: 'sources', planned: true },
+  { hash: '#/knowledge?tab=sources', path: '/knowledge', module: 'knowledge', tabId: 'sources', kind: 'tab', visible: true, label: '数据源', dataSource: '知识模块数据接入面板（真实读取，未开放时显示原因）', tab: 'sources' },
   // #14 evidence 证据与引用 — NEW; NO_EVIDENCE rows explicit, no fallback.
-  { hash: '#/knowledge?tab=evidence', path: '/knowledge', module: 'knowledge', tabId: 'evidence', kind: 'tab', visible: true, label: '证据与引用', dataSource: '运行事件引用与审计接口', tab: 'evidence' },
+  { hash: '#/knowledge?tab=evidence', path: '/knowledge', module: 'knowledge', tabId: 'evidence', kind: 'tab', visible: true, label: '审计证据', dataSource: '审计事件读取接口（七日窗口）', tab: 'evidence' },
   // #15 skills 技能 — Hermes SkillsPage 整块; toggle is profile-level.
   { hash: '#/capabilities', path: '/capabilities', module: 'capabilities', tabId: 'skills', kind: 'tab', visible: true, label: '技能', dataSource: '技能列表与技能详情接口' },
   // #16 tools 工具与 MCP — Hermes McpPage 整块; CRUD disabled.
@@ -243,8 +243,8 @@ const COMPAT_TABS: readonly ConsoleRoute[] = [
   // `to` column transcribes appendix A's "→target(view=…)" notation.
   { hash: '#/knowledge?tab=scope', path: '/knowledge', module: 'knowledge', tabId: 'spaces', kind: 'compat-tab', visible: false, label: '知识空间', dataSource: '随目标', tab: 'scope', to: '#/knowledge' },
   { hash: '#/knowledge?tab=ingest', path: '/knowledge', module: 'knowledge', tabId: 'sources', kind: 'compat-tab', visible: false, label: '数据源', dataSource: '随目标', tab: 'ingest', to: '#/knowledge?tab=sources' },
-  { hash: '#/knowledge?tab=retrieval', path: '/knowledge', module: 'knowledge', tabId: 'evidence', kind: 'compat-tab', visible: false, label: '证据与引用', dataSource: '随目标', tab: 'retrieval', to: '#/knowledge?tab=evidence' },
-  { hash: '#/knowledge?tab=citations', path: '/knowledge', module: 'knowledge', tabId: 'evidence', kind: 'compat-tab', visible: false, label: '证据与引用', dataSource: '随目标', tab: 'citations', to: '#/knowledge?tab=evidence' },
+  { hash: '#/knowledge?tab=retrieval', path: '/knowledge', module: 'knowledge', tabId: 'spaces', kind: 'compat-tab', visible: false, label: '检索', dataSource: '随目标', tab: 'retrieval', to: '#/knowledge?tab=spaces&panel=retrieval' },
+  { hash: '#/knowledge?tab=citations', path: '/knowledge', module: 'knowledge', tabId: 'spaces', kind: 'compat-tab', visible: false, label: '证据与引用', dataSource: '随目标', tab: 'citations', to: '#/knowledge?tab=spaces&panel=evidence' },
   { hash: '#/identity?tab=tenant', path: '/identity', module: 'identity', tabId: 'people', kind: 'compat-tab', visible: false, label: '人员目录', dataSource: '随目标', tab: 'tenant', to: '#/identity' },
   { hash: '#/identity?tab=admins', path: '/identity', module: 'identity', tabId: 'people', kind: 'compat-tab', visible: false, label: '人员目录', dataSource: '随目标', tab: 'admins', to: '#/identity?tab=people&view=admins' },
   { hash: '#/identity?tab=binding', path: '/identity', module: 'identity', tabId: 'people', kind: 'compat-tab', visible: false, label: '人员目录', dataSource: '随目标', tab: 'binding', to: '#/identity' },
@@ -341,7 +341,7 @@ export const REDIRECTS: readonly ConsoleRedirect[] = [
  * ------------------------------------------------------------------ */
 
 export const TAB_ALIAS: Readonly<Partial<Record<ConsoleModule, Readonly<Record<string, string>>>>> = {
-  knowledge: { scope: 'spaces', ingest: 'sources', retrieval: 'evidence', citations: 'evidence' },
+  knowledge: { scope: 'spaces', ingest: 'sources', retrieval: 'spaces', citations: 'spaces' },
   identity: { tenant: 'people', admins: 'people', binding: 'people', checks: 'people' },
   approvals: { mine: 'pending', release: 'pending', policy: 'pending' },
   work: { cron: 'board' },

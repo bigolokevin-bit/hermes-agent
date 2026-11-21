@@ -1,0 +1,71 @@
+{
+ "entry": [
+  "http://100.117.184.117:8183/assets/index-DzYbPXfO.js",
+  "http://100.117.184.117:8183/assets/index-DzYbPXfO.js"
+ ],
+ "gate1440": {
+  "note": false,
+  "btns": 0,
+  "disabledSample": []
+ },
+ "gate375": {
+  "note": false,
+  "btnCount": 0,
+  "allDisabled": false,
+  "sample": [],
+  "shot": {
+   "file": "shots/approvals-gate-375-r3.png",
+   "bytes": 121263,
+   "pngH": 1339,
+   "stretched": true,
+   "tallEnough": true
+  }
+ },
+ "knProbes": {
+  "hexOnScreen": 1,
+  "readKou": 4,
+  "mixedState": true,
+  "innerTabs": [
+   "知识空间",
+   "数据源",
+   "证据与引用",
+   "知识空间",
+   "数据接入",
+   "检索",
+   "证据与引用"
+  ],
+  "rowFontPx": "10.8px"
+ },
+ "knTaps": [
+  16,
+  0
+ ],
+ "kn375over": 0,
+ "drawer": [
+  {
+   "left": -240,
+   "ariaHidden": null,
+   "inert": false,
+   "cls": "fixed top-0 left-0 z-50 flex h"
+  },
+  {
+   "left": -240,
+   "ariaHidden": null,
+   "inert": false,
+   "cls": "min-h-0 w-full flex-1 overflow"
+  }
+ ],
+ "deeplinkUrl": "http://100.117.184.117:8183/knowledge?panel=evidence",
+ "loginContra": true,
+ "bad": [
+  "404.184.117:8183/agent-api/api/documents?limit=50",
+  "4047:8183/agent-api/api/knowledge/spaces?limit=20",
+  "404.184.117:8183/agent-api/api/documents?limit=50",
+  "4047:8183/agent-api/api/knowledge/spaces?limit=20",
+  "404183/agent-api/api/knowledge/citations?limit=20",
+  "404.184.117:8183/agent-api/api/documents?limit=50"
+ ],
+ "errs": 6,
+ "notes": []
+}
+EXIT=0

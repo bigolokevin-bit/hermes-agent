@@ -103,6 +103,7 @@
 [data-testid="mtx5-scroll"] div:has(> span[data-testid^="mtx5-col-"]) {
   min-height: var(--table-row-h);
   font-size: var(--font-size-1) !important;
+  font-weight: var(--font-weight-medium);
   color: var(--color-text-muted) !important;
 }
 
@@ -117,4 +118,30 @@
 
 [data-testid^="col5-chain-node-"] {
   min-height: var(--table-row-h-compact);
+}
+
+/* UI-A 2026-11-21 wave-106 增补：collab 时间制式收口。数字/时间列右对齐仍不适用
+ * （validity 单元格是起至两行文本加 Badge 注记，非纯数字定宽列），只补时间值
+ * 的 tabular-nums：列表起/至单元格、详情到期行、链路视图节点时刻。行高 40/36、
+ * 斑马纹（无源）与 375 fr 折行结论沿前笔不变。 */
+[data-testid^="col5-row-"]:is([data-testid$="-validity"], [data-testid$="-effective"], [data-testid$="-expiry"]),
+[data-testid$="-detail-expiry"],
+[data-testid^="col5-chain-node-"][data-testid$="-at"] {
+  font-variant-numeric: tabular-nums;
+}
+
+/* UI-A 2026-11-21 wave-71：/audit 表头粘性映射（卡片流适配）。
+ * 本仓 /audit 无 HTML table，无 thead——页面唯一表头形态是排序条
+ * aud-sort-bar-block（内含 role=table 控件行），按派单 sticky 口径钉住
+ * 滚动容器顶边，背景令牌沿 metrics metAF-sticky 与 sys3 先例。
+ * 其余派单项现查均既有：行高 40=上方 audK-list 行壳规则；时间制式
+ * tabular-nums=aud3-time 与 data-audj-value 两处；事件名与 actor 单行
+ * 省略 + title 全量已在 tsx（views.tsx truncatedView + truncate 类 +
+ * title 拼接），定宽在卡片流不适用（min-w-0 flex 弹性列）；分页条与
+ * 表体同父容器天然同宽；斑马纹无源；375 flex-wrap 自然折行不撑破。 */
+[data-testid="aud-sort-bar-block"] {
+  position: sticky;
+  top: 0;
+  z-index: 0;
+  background: var(--color-card);
 }

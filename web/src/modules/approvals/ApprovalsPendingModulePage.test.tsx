@@ -10,6 +10,7 @@ import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ApiError } from "@/lib/api-error";
+import { CsrfMissingError, postDecision } from "@/modules/approvals/api";
 import { rawCorrelationReturn, saveCorrelationReturn } from "@/modules/approvals/correlationReturn";
 
 const api = vi.hoisted(() => ({ fetchJSON: vi.fn() }));
@@ -356,138 +357,96 @@ describe("decision writes", () => {
   };
 
   it("opens the ticket through the detail route", async () => {
-    await mount(queue());
+    // P1-A2 ① — 同源读数：详情带上可读的 deadline（此刻起约 67 分钟后），同时
+    // 服务端 ttl 快照故意给成 1 天。「剩…」必须由 deadline 现场推导，不回吐快照。
+    await mount(async (url) => {
+      if (url.startsWith("/agent-api/api/approval?")) {
+        return { ...DETAIL, remainingSeconds: 99999, expiresAt: new Date(Date.now() + 4050 * 1000).toISOString() };
+      }
+      return queue()(url);
+    });
     await openTicket();
     expect(urls()).toContain("/agent-api/api/approval?id=ap_9F3A1111");
     expect(text()).toContain("高风险");
     expect(text()).toContain("对外发送消息");
-    expect(text()).toContain("剩 1 小时 7 分");
+    expect(text()).toMatch(/剩 1 小时/);
     expect(text()).not.toContain("th_0123456789abcdef");
   });
 
-  it("confirms, then posts the decision the BFF asks for, and re-reads instead of assuming", async () => {
+  // P0-1r（2026-11-21）：L0 对终态单 ap_AEEC078E0C824E749513AFEC9A 实测
+  // POST /agent-api/api/approval/decision → HTTP 405 console.read_only，写路径
+  // 在此部署根本不存在。产品侧据此把批准/驳回/apr5-comment 恒禁用（三属性同源）
+  // 并上人话说明段，口径对齐 runs 页 run5-retry-new（RunsModulePage.tsx
+  // L1532-1547）。原先四案「点钮→弹窗→data-confirm→断请求」依赖的 UI 提交路径
+  // 已按门控封死：门控契约在本文件首案验收「点击不产生任何请求」；请求形状契约
+  // （POST/三头/body）改由 postDecision 数据层直测承接，不再经 UI 弹窗。
+  it("decision actions are gated readonly: three attributes in sync, plain sentence on screen, click sends nothing", async () => {
     await mount(queue());
     await openTicket();
-    const before = urls().length;
-
     const approve = buttonNamed("批准");
+    const reject = buttonNamed("驳回");
     expect(approve).toBeTruthy();
+    expect(reject).toBeTruthy();
+    const comment = document.getElementById("apr5-comment") as HTMLInputElement | null;
+    expect(comment?.disabled).toBe(true);
+    expect(approve!.disabled).toBe(true);
+    expect(approve!.getAttribute("aria-disabled")).toBe("true");
+    expect(reject!.disabled).toBe(true);
+    expect(reject!.getAttribute("aria-disabled")).toBe("true");
+    // 三属性同源：title 与人话说明段是同一句话的两个出口。
+    const note = document.querySelector("[data-testid='apr5-actions-readonly-note']") as HTMLElement | null;
+    expect(note?.textContent).toContain("控制台是只读的");
+    expect(note?.textContent).toContain("请走它原本产生决定的渠道");
+    for (const el of [approve!, reject!, comment!]) {
+      const title = el.getAttribute("title") ?? "";
+      expect(title).toContain("这个环境的控制台只读");
+      expect(title).toContain("点它不会发起任何请求");
+    }
+    // 不得裸显内部 code 与状态码。
+    const spoken = text() + (approve!.getAttribute("title") ?? "");
+    expect(spoken).not.toContain("console.read_only");
+    expect(spoken).not.toContain("X-Console-CSRF");
+    expect(spoken).not.toContain("405");
+    // jsdom 不会像真浏览器那样拦截 disabled 钮的 click 派发——
+    // 浏览器原生拦截 + 门控恒真（disabled={inFlight || DECISION_GATE.disabled}）
+    // 共同保证：即便事件被强行派发，也不出弹窗、更不出决定请求。
+    const before = urls().length;
     await act(async () => {
-      (approve as HTMLButtonElement).click();
+      approve!.click();
     });
-    // The confirm step asks first and sends nothing yet.
-    expect(document.querySelector("[role='dialog']")).toBeTruthy();
+    await act(async () => {
+      reject!.click();
+    });
+    expect(document.querySelector("[role='dialog']")).toBeNull();
+    expect(urls().filter((u) => u.startsWith("/agent-api/api/approval/decision"))).toHaveLength(0);
     expect(urls().length).toBe(before);
+  });
 
-    const confirm = document.querySelector("[data-confirm]") as HTMLButtonElement;
-    await act(async () => {
-      confirm.click();
-    });
-    await waitFor(() => urls().some((u) => u.startsWith("/agent-api/api/approval/decision")), "decision sent");
-
-    const call = api.fetchJSON.mock.calls.find((c) => String(c[0]).startsWith("/agent-api/api/approval/decision"));
-    const [url, init] = call as [string, RequestInit];
-    expect(url).toBe("/agent-api/api/approval/decision?id=ap_9F3A1111");
-    expect(init.method).toBe("POST");
-    const headers = new Headers(init.headers as HeadersInit);
+  it("postDecision still shapes the write exactly as the BFF demands (kept for the day the gate opens)", async () => {
+    document.cookie = "console_csrf=tok_p01r";
+    api.fetchJSON.mockImplementation(async () => ({ ok: true }));
+    await postDecision("ap_9F3A1111", "reject", "  先补一份数据出处  ");
+    const call = api.fetchJSON.mock.calls[0] as [string, RequestInit];
+    expect(call[0]).toBe("/agent-api/api/approval/decision?id=ap_9F3A1111");
+    expect(call[1].method).toBe("POST");
+    const headers = new Headers(call[1].headers as HeadersInit);
     expect(headers.get("Content-Type")).toBe("application/json");
     expect(headers.get("X-Console-Write")).toBe("1");
-    expect(JSON.parse(String(init.body))).toEqual({ verdict: "approve" });
-    // An empty comment is dropped, not sent as "".
-    expect(String(init.body)).not.toContain("comment");
-
-    await waitFor(() => !document.querySelector("[role='dialog']"), "dialog closed");
-    // Success is proven by re-reading: both surfaces asked again.
-    expect(urls().filter((u) => u.startsWith("/agent-api/api/approvals"))).toHaveLength(2);
-    expect(urls().filter((u) => u.startsWith("/agent-api/api/approval?id="))).toHaveLength(2);
-    expect(document.querySelector("[role='dialog']")).toBeNull();
-  });
-
-  it("sends a written comment with the rejection", async () => {
-    await mount(queue());
-    await openTicket();
-    const field = document.getElementById("apr5-comment") as HTMLInputElement;
-    // React owns the value: write it through the native setter so the change
-    // reaches the controlled input the same way typing would.
-    const writeValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
-    await act(async () => {
-      writeValue?.call(field, "先补一份数据出处");
-      field.dispatchEvent(new Event("input", { bubbles: true }));
-    });
-    expect(field.value).toBe("先补一份数据出处");
-    await act(async () => {
-      (buttonNamed("驳回") as HTMLButtonElement).click();
-    });
-    await act(async () => {
-      (document.querySelector("[data-confirm]") as HTMLButtonElement).click();
-    });
-    await waitFor(() => urls().some((u) => u.startsWith("/agent-api/api/approval/decision")), "rejection sent");
-    const call = api.fetchJSON.mock.calls.find((c) => String(c[0]).startsWith("/agent-api/api/approval/decision"));
-    expect(JSON.parse(String((call as [string, RequestInit])[1].body))).toEqual({
-      verdict: "reject",
-      comment: "先补一份数据出处",
-    });
-  });
-
-  it("a refused decision shows the sentence and trace id, and the list is not touched", async () => {
-    let decisions = 0;
-    await mount(async (url) => {
-      if (url.startsWith("/agent-api/api/approval/decision")) {
-        decisions += 1;
-        throw new ApiError("not_approver", {
-          status: 403,
-          body: '{"code":"approval.not_approver","request_id":"wr-7791"}',
-          url,
-          requestId: "wr-7791",
-        });
-      }
-      if (url.startsWith("/agent-api/api/approval?")) return DETAIL;
-      return PENDING_PAGE;
-    });
-    const listBefore = urls().filter((u) => u.startsWith("/agent-api/api/approvals")).length;
-    await openTicket();
-    await act(async () => {
-      (buttonNamed("批准") as HTMLButtonElement).click();
-    });
-    await act(async () => {
-      (document.querySelector("[data-confirm]") as HTMLButtonElement).click();
-    });
-    await waitFor(() => decisions === 1, "decision attempted");
-    expect(text()).toContain("决定没有提交");
-    expect(text()).toContain("这张单据不归你审批");
-    expect(text()).toContain("请求编号：wr-7791");
-    // 时钟竞态修复（R231 全量抓到）：导出文件名预览的北京时间 HHmm
-    // 恰在 04:03/04:04/14:03/14:03 分时含「403/404」子串——剥掉文件名
-    // token 再断言，语义不变（状态码不上屏），不再按分钟翻红。
-    expect(text().replace(/-\d{8}-\d{4}\.csv/g, "")).not.toContain("403");
-    // No optimistic move: the ticket still reads 待处理 and the queue was not rewritten.
-    expect(text()).toContain("待处理");
-    expect(urls().filter((u) => u.startsWith("/agent-api/api/approvals"))).toHaveLength(listBefore);
-  });
-
-  it("buttons are disabled while the decision is in flight", async () => {
-    let releaseDecision: (value: unknown) => void = () => {};
-    await mount(async (url) => {
-      if (url.startsWith("/agent-api/api/approval/decision")) {
-        return new Promise((resolve) => {
-          releaseDecision = resolve;
-        });
-      }
-      if (url.startsWith("/agent-api/api/approval?")) return DETAIL;
-      return PENDING_PAGE;
-    });
-    await openTicket();
-    await act(async () => {
-      (buttonNamed("批准") as HTMLButtonElement).click();
-    });
-    await act(async () => {
-      (document.querySelector("[data-confirm]") as HTMLButtonElement).click();
-    });
-    await waitFor(() => text().includes("正在提交…"), "in flight");
-    expect(buttonNamed("批准")?.disabled).toBe(true);
-    expect(buttonNamed("驳回")?.disabled).toBe(true);
-    releaseDecision({ ok: true });
-    await waitFor(() => !text().includes("正在提交…"), "flight over");
+    expect(headers.get("X-Console-CSRF")).toBe("tok_p01r");
+    expect(JSON.parse(String(call[1].body))).toEqual({ verdict: "reject", comment: "先补一份数据出处" });
+    api.fetchJSON.mockClear();
+    await postDecision("ap_9F3A1111", "approve", "   ");
+    const second = api.fetchJSON.mock.calls[0] as [string, RequestInit];
+    expect(JSON.parse(String(second[1].body))).toEqual({ verdict: "approve" });
+    // 空 comment 省略，不是 ""。
+    expect(String(second[1].body)).not.toContain("comment");
+    // 撤销会话 cookie：应诚实拒发，不再产生任何决定请求。
+    document.cookie = "console_csrf=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; max-age=0";
+    api.fetchJSON.mockClear();
+    // 没有会话 cookie 就诚实拒发（api.test.ts 的 node 腿只测了拒发本身，
+    // 这里补 jsdom 下「cookie 存在才发、撤销后不再发」的成对腿）。
+    await expect(postDecision("ap_9F3A1111", "approve")).rejects.toBeInstanceOf(CsrfMissingError);
+    expect(api.fetchJSON.mock.calls.filter((c) => String(c[0]).startsWith("/agent-api/api/approval/decision"))).toHaveLength(0);
   });
 
   it("a settled ticket offers no decision at all", async () => {
@@ -680,6 +639,8 @@ describe("R71 pending column sorting", () => {
     await act(async () => {});
     expect(btn.getAttribute("aria-sort")).toBe("ascending");
     expect(api.fetchJSON.mock.calls.length, "sorting never fetches").toBe(before);
+    // P1-A1: 元说明三行已移入筛选折叠面板——先展开再断言（口径断言原样保留）。
+    await openFilters();
     expect(document.querySelector('[data-testid="apv-sort-scope-note"]')?.textContent).toContain("条内排序");
   });
 });
@@ -705,6 +666,9 @@ describe("R73 pending keyboard navigation (apv-nav-*)", () => {
     expect(qa("apv9-preview-ap_9F3A1111"), "Esc closes").toBeNull();
     expect(document.activeElement).toBe(row);
     expect(api.fetchJSON.mock.calls.length, "no keyboard-triggered requests").toBe(before);
+    // P1-A1: nav note 现居筛选折叠面板内——展开后再断其在场；键盘断言不受影响
+    // （本行钮点开面板不产生任何请求，above 已证零增量取数）。
+    await openFilters();
     expect(qa("apv-nav-note"), "nav note present").toBeTruthy();
   });
 });
@@ -760,11 +724,13 @@ describe("R79 pending pagination rail (apv-page-*)", () => {
   it("the pending tab shows the same rail: no-total sentence, end state disabled", async () => {
     await mount(queue(), "/approvals?tab=pending");
     await waitFor(() => !!qa("apv-page"), "rail");
-    expect(qa("apv-page-count")?.textContent).toContain("总数不可用");
+    // P1-A2 ② — 改判：无 total 且已到末页时只出一句「已到末页 · 已显示 N 条」，
+    // 「总数不可用」与「已到末页」不再并存；end chip 在此腿退出。
+    expect(qa("apv-page-count")?.textContent, "末页单句，不并存").toBe("已到末页 · 已显示 1 条");
     const more = qa("apv-page-more") as HTMLButtonElement;
     expect(more.disabled, "queue fits one page — no cursor").toBe(true);
     expect(more.getAttribute("title")).toContain("已到末页");
-    expect(qa("apv-page-end")?.textContent).toBe("已到末页");
+    expect(qa("apv-page-end"), "end chip retired when total unavailable").toBeNull();
   });
 });
 

@@ -245,7 +245,11 @@ function FailurePanel({
       data-testid={denied ? "tol5-denied" : login ? "tol5-login" : "tol5-error"}
       title={denied ? GAP : failure?.technical ?? undefined}
     >
-      <CardContent className="flex min-w-0 flex-col items-start gap-2 px-4 py-6">
+      {/* UI-B 错误态组合：留白走令牌（数值不变，px-4/gap-2=space-2、py-6=space-6）；
+        * 「重试」抬起为卡内唯一实心主操作（tl3-apply 是链接、不占按钮位）；互斥=页面
+        * 相位单值分支（error 卡与空态卡不同相渲染）、rid 可复制（RequestId 复制钮）与
+        * 技术信息只进卡 title tooltip 为既有达标，本笔截图实测复核。testid/文案 0 改动。 */}
+      <CardContent className="flex min-w-0 flex-col items-start gap-[var(--space-2)] px-[var(--space-4)] py-[var(--space-6)]">
         <span className="sr-only" data-testid={denied ? "tl3-denied" : login ? "tl3-login" : "tl3-error"} />
         <div className="flex min-w-0 items-start gap-2">
           {denied ? <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden /> : <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />}
@@ -271,7 +275,7 @@ function FailurePanel({
         <RequestId failure={failure} />
         <span className="contents" data-testid="tl3-retry">
           <span className="contents" data-testid="capF-retry">
-            <Button size="sm" outlined onClick={onRetry} prefix={<RefreshCw className="h-3.5 w-3.5" />} data-testid="tol5-retry">
+            <Button size="sm" onClick={onRetry} prefix={<RefreshCw className="h-3.5 w-3.5" />} data-testid="tol5-retry">
               重试
             </Button>
           </span>
@@ -501,17 +505,22 @@ export function ToolsPage(): ReactNode {
     if (phase === "login") return <FailurePanel kind="login" failure={tools.failure} onRetry={retry} />;
     if (phase === "error") return <FailurePanel kind="error" failure={tools.failure} onRetry={retry} />;
     if (phase === "empty") {
+      // UI-B 空态组合：标题（15px 台阶，Mondwest 死字重先例）+ 既有锚句作说明 +
+      // 单一主操作=重新读取（空台账无可筛维度）；py-10 违规 → space-8 令牌。
       return (
         <Card className="capF-state border-border bg-card" data-testid="tol5-empty" data-fixture={forced ?? undefined}>
-          <CardContent className="flex min-w-0 flex-col items-center gap-2 px-4 py-10 text-center">
+          <CardContent className="flex min-w-0 flex-col items-center gap-[var(--space-2)] px-[var(--space-4)] py-[var(--space-8)] text-center">
             <span className="sr-only" data-testid="tl3-empty" />
             <span className="sr-only" data-testid="cap9-state-empty" />
             <Inbox className="h-6 w-6 text-muted-foreground" aria-hidden />
+            <p className="text-base font-medium" data-testid="tol5-empty-title">
+              暂无工具与 MCP 条目
+            </p>
             <CapStateAnchor testid="capF-state-empty" anchor={stateAnchor({ kind: "empty", subject: "工具与 MCP 清单" })} />
             <p className="max-w-prose break-words text-xs text-muted-foreground">
               这不是加载失败，也不显示样例；在原生工具与 MCP 管理页登记后回到这里重新读取。
             </p>
-            <Button size="sm" outlined onClick={retry} prefix={<RefreshCw className="h-3.5 w-3.5" />} data-testid="tol5-retry">
+            <Button size="sm" onClick={retry} prefix={<RefreshCw className="h-3.5 w-3.5" />} data-testid="tol5-retry">
               重新读取
             </Button>
           </CardContent>
@@ -520,14 +529,18 @@ export function ToolsPage(): ReactNode {
     }
 
     if (q && visibleRows.length === 0) {
+      // UI-B 筛空组合：标题 + 既有锚句作说明 + 单一主操作=清空搜索（筛选是空态根因）。
       return (
         <Card className="capF-state border-border bg-card" data-testid="tl3-no-match">
-          <CardContent className="flex min-w-0 flex-col items-center gap-2 px-4 py-8 text-center">
+          <CardContent className="flex min-w-0 flex-col items-center gap-[var(--space-2)] px-[var(--space-4)] py-[var(--space-8)] text-center">
+            <p className="text-base font-medium" data-testid="tl3-no-match-title">
+              工具条目没有匹配项
+            </p>
             <CapStateAnchor
               testid="capF-state-filter-empty"
               anchor={stateAnchor({ kind: "filter-empty", subject: "工具与 MCP 清单", reason: q, loaded: rows.length })}
             />
-            <Button size="sm" outlined onClick={() => setQ("")} data-testid="tl3-clear">
+            <Button size="sm" onClick={() => setQ("")} data-testid="tl3-clear">
               清空搜索
             </Button>
           </CardContent>

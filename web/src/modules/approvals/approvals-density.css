@@ -35,3 +35,76 @@
 [data-testid="apr5-page-pending"] [data-testid^="apr5-row-"] .density-value-muted {
   color: var(--color-text-muted);
 }
+
+/* UI-A wave-73 2026-11-22：/approvals 队列表密度收尾（承 wave-71 audit 卡片流映射口径）。
+ * 本轮现查结论——已在位只回证据、不重复声明：行高 40/36（本文件前三条规则）；
+ * 时间（提交/决定 clock）与涉及金额单元格走 Field num=true 挂全局 ui-c-num
+ * （detail.css tabular-nums）；右对齐不适用（卡片流 label/value 非固定列，沿既有口径）；
+ * 标题列定宽省略 + title 全量由 R80 truncateDisplay 在 tsx 完成（apv-trunc-row-title，
+ * min-w-0 flex-1，title 恒全文）；状态徽章首行容器 flex items-center 已垂直居中；
+ * 375 flex-wrap 自然折行不撑破。本笔补两处真缺口： */
+
+/* 表头 sticky 映射：/approvals 无 thead，列排序条（QueueSortBar 的 role=group 行）
+ * 即表头等价物——粘顶直到整个说明区（apv-sort-wrap）滚出，底边 1px 分隔线。
+ * 配方沿 metAF/sys3/knw5 先例；实底防穿帮。 */
+[data-testid="apv-sort-wrap"] > div:first-child {
+  position: sticky;
+  top: 0;
+  z-index: 0;
+  background: var(--color-card);
+  padding-block: var(--space-1);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+/* 空态保底高：空表不塌陷（沿 audit audp-empty-min-h 240px 先例，覆盖队列与历史两态）。 */
+[data-testid^="apr5-empty"] {
+  min-height: 240px;
+}
+
+/* UI-A wave-73 勘误 2026-11-22：observer 像素核验判 375 视口横溢（列内容裁切、
+ * 卡片右缘在视口外）。根因：apv-state 双栏 grid 在 lg 以下走隐式 1fr 轨道，
+ * 其 min=auto 被不可断长 token（CSV 文件名、汇总桶项）撑大，整列超宽——
+ * flex-wrap 口径救不了 grid 轨道。修复全在样式层：窄档显式 minmax(0,1fr) 单列、
+ * 直接子级 min-width:0、长 token 容器内 anywhere 折行。 */
+@media (max-width: 1023.98px) {
+  [data-testid="apv-state"] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  [data-testid="apv-state"] > * {
+    min-width: 0;
+  }
+  [data-testid="apv-state"] :is(span, b) {
+    overflow-wrap: anywhere;
+  }
+}
+
+/* 页面车道 B：历史页折叠面板沿用 b7ad5f01 的 grid-track 纪律——窄档下
+ * 面板子级 min-width:0、长 token（桶名/关键字回显）anywhere 折行，
+ * 保证 375 视口不出现横向溢出。 */
+@media (max-width: 1023.98px) {
+  .apv-h-filter-panel > * {
+    min-width: 0;
+  }
+  .apv-h-filter-panel :is(span, b) {
+    overflow-wrap: anywhere;
+  }
+}
+
+/* P1-A1（wave-128）：待处理页把「汇总条 + 生效筛选 chips」合并为一行
+ * （apv-summary-row），并把三行元说明收进筛选折叠面板（apv-filter-panel）。
+ * 两容器沿用 b7ad5f01 同款窄档纪律：直接子级 min-width:0、长 token
+ * （桶名、关键字回显、口径句）anywhere 折行，保证 375 视口不横溢。 */
+@media (max-width: 1023.98px) {
+  [data-testid="apv-summary-row"] > * {
+    min-width: 0;
+  }
+  [data-testid="apv-summary-row"] :is(span, b) {
+    overflow-wrap: anywhere;
+  }
+  [data-testid="apv-filter-panel"] > * {
+    min-width: 0;
+  }
+  [data-testid="apv-filter-panel"] :is(span, b) {
+    overflow-wrap: anywhere;
+  }
+}

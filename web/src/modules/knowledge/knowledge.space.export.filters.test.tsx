@@ -158,4 +158,47 @@ describe("knowledge space detail deep-link filter scale frame (R248)", () => {
     expect(capM()).toBe(48); // M=在屏数（R244γ′ 语义沿用）
     expect(urls().length).toBe(u0); // 两次复制零新请求（R215③ 口径）
   });
+
+  // ── R252 追加（同文件；R248 例① 逐字保留）──────────────────────────────
+  // 三腿裁决：①＝R248①:135-160 + R234②(locale.cross:175) + R243α——三段各缺一角：
+  //   R234② 无「三方首行」、R243α 无「全链==屏上」、R248① 无「名筛叠加」→ **五量单例
+  //   同帧**（深链 ktype × 本地名筛：三方首行 + 三值 + 全链==屏上 + cap M + 零新请求）
+  //   从未被一条用例锁死 = 新增维，落例②。
+  // ②翻页导出/切筛零残留零请求＝全锁引用不复写：R229①(export.paged:140)/R249①
+  //   (export.space.paging)/R237②(rowcopy.triple:170-191)/R244γ′δ′/R247①
+  //   (export.paging.filter:140-162)/R235③/R131①；「恰 1 次」驳回为 0（本地派生）。
+  // ③ cap 换算＝kn3-page-cap（kn-space-page-cap 不存在，R187）；true-0/error/拒绝/
+  //   非法枚举实测 **null 非 0**（「显 0」驳回；R108/R157/R187/R231②/R234③/R236③）；
+  //   空集 disabled+title+零写零请求+spy 0＝R190④(escape:190-205)/R231②⑤/R236③
+  //   (open.detail:182-210)/R138 → 引用。名实沿用文件头：?source= 无控件、导出=knF
+  //   数据行、51 行页 2 夹具与 cursor 请求线断言（②族已锁，本例深链起点无翻页）、
+  //   行钮 -space- 族、缺值两式、短码尾段、clip 桩 Promise+unstub。
+  it("② 新增维（R252）：深链 ?ktype=PDF × 本地名筛「卷 1」——五量单例同帧：三方首行 + 三值 [10,10,10] + 全链==屏上 + cap M=10 + 全程 urls 逐字（②③裁决见上：全锁引用不复写）", async () => {
+    const writeText = clipStub();
+    wire();
+    await render(`${"/knowledge?tab=spaces&panel=spaces&space=sp_x"}&ktype=${encodeURIComponent("PDF")}`);
+    const uMount = urls().length;
+    expect(uMount).toBe(3); // spaces+plain+p1（本地动作前的既有读）
+    const box = q("kn3-docs-filter-input") as HTMLInputElement | null;
+    expect(box, "kn3-docs-filter-input").toBeTruthy();
+    await act(async () => {
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+      setter?.call(box, "卷 1");
+      box?.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await act(async () => {});
+    const names = detailNames();
+    expect(names).toHaveLength(10); // 卷 10..19（"卷 01" 不含 "卷 1"——垫零名实注记）
+    await clickNode(document.querySelector('button[data-testid="kn-row-copy-space-0"]'), "btn 0");
+    const btnHead = String(writeText.mock.calls[0][0]).split("\n")[1].split(" | ")[0];
+    await clickNode(q("knF-copy"), "knF overlay");
+    const lines = dataLines(String(writeText.mock.calls[1][0]));
+    expect(btnHead).toBe(names[0]); // 量一：三方首行同帧
+    expect(lines[0].split(" | ")[0]).toBe(names[0]);
+    expect([names.length, btnIds().length, lines.length]).toEqual([10, 10, 10]); // 量二：三值
+    expect(lines.map((l) => l.split(" | ")[0])).toEqual(names); // 量三：全链==屏上
+    expect(capM()).toBe(10); // 量四：cap M=在屏数（R244γ′ 语义）
+    expect(urls().length).toBe(uMount); // 量五：名筛+两复制全程零新请求（禁「恰 1 次」）
+  });
+
 });

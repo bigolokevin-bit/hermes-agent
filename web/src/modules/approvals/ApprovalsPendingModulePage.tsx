@@ -44,7 +44,7 @@ import { PermalinkCopy } from "./PermalinkCopy";
 import { dropCorrelationReturn, peekCorrelationReturn } from "./correlationReturn";
 import { BackToList, restoreListScroll, saveListScroll } from "./BackToList";
 import { QueueCsvExport } from "./QueueCsvExport";
-import { QueueSortBar } from "./QueueSortBar";
+import { QueueMetaNotes, QueueSortBar } from "./QueueSortBar";
 import { ActorBuckets } from "./ActorBuckets";
 import "./approvals-density.css";
 import { RowDetailCopy } from "./RowDetailCopy";
@@ -53,6 +53,18 @@ import { RiskQuickFilter, isRiskValue, withinRisk, type RiskValue } from "./Risk
 import { ApprovalDetailBody, ApprovalRowCard } from "./views";
 
 const VERDICT_LABEL: Record<Verdict, string> = { approve: "批准", reject: "驳回" };
+
+// P0-1r（wave-126）：控制台写通道在 BFF 层整体关闭，与单据状态无关。L0 于 2026-11-21
+// 用终态单 ap_AEEC078E0C824E749513AFEC9A 一次性实测：POST /agent-api/api/approval/decision?id=
+// → HTTP 405（服务端只允许 GET/HEAD）。批准/驳回若呈现可点，是「必然失败却不提示」的误导。
+// 这里取 runs 页 run5-retry-new 的同源口径：一个对象同时驱动 disabled / aria-disabled /
+// 人话原因，首帧即禁用，不拿用户的点击去撞 405（原因句不裸显服务端 code）。
+// send()、确认弹窗与 405 兜底路径原样保留，供写通道开闸的后代直接复用。
+const DECISION_GATE = {
+  disabled: true,
+  title:
+    "这个环境的控制台只读：实测决定提交一律被拒（服务端当前只允许读请求，写请求没有入口）。所以批准、驳回在这里以禁用态出现，点它不会发起任何请求；要处理这张单，请走它原本产生决定的渠道。",
+} as const;
 
 const FORCED_STATES: readonly string[] = ["loading", "empty", "error", "denied"];
 
@@ -415,17 +427,34 @@ export function ApprovalsPendingModulePage(): ReactNode {
             id="apr5-comment"
             value={comment}
             placeholder="写一句理由"
-            disabled={inFlight}
+            disabled={inFlight || DECISION_GATE.disabled}
+            title={DECISION_GATE.title}
             onChange={(event) => setComment(event.target.value)}
           />
         </label>
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           {/* P1-375-1: 同屏主按钮唯一——批准是这张单的最主操作，保持实心；
-              驳回降为次级（既有 outlined×destructive 组合样式），文案与 testid 不动。 */}
-          <Button size="sm" onClick={() => setConfirming("approve")} disabled={inFlight}>
+              驳回降为次级（既有 outlined×destructive 组合样式），文案与 testid 不动。
+              P0-1r: 三属性同源于 DECISION_GATE（runs 的 run5-retry-new 口径），
+              onClick 保留——开闸后代去掉 gate 常量即可恢复整条确认流。 */}
+          <Button
+            size="sm"
+            onClick={() => setConfirming("approve")}
+            disabled={inFlight || DECISION_GATE.disabled}
+            aria-disabled={DECISION_GATE.disabled}
+            title={DECISION_GATE.title}
+          >
             批准
           </Button>
-          <Button size="sm" destructive outlined onClick={() => setConfirming("reject")} disabled={inFlight}>
+          <Button
+            size="sm"
+            destructive
+            outlined
+            onClick={() => setConfirming("reject")}
+            disabled={inFlight || DECISION_GATE.disabled}
+            aria-disabled={DECISION_GATE.disabled}
+            title={DECISION_GATE.title}
+          >
             驳回
           </Button>
           {inFlight ? (
@@ -435,6 +464,9 @@ export function ApprovalsPendingModulePage(): ReactNode {
             </span>
           ) : null}
         </div>
+        <p className="max-w-prose min-w-0 break-words text-xs text-muted-foreground" data-testid="apr5-actions-readonly-note">
+          当前环境的控制台是只读的：批准、驳回在这里点了也不会生效，所以两个按钮先禁用了。要处理这张单，请走它原本产生决定的渠道。
+        </p>
       </div>
     ) : (
       <p className="min-w-0 break-words border-t border-border pt-3 text-xs text-muted-foreground">
@@ -466,27 +498,32 @@ export function ApprovalsPendingModulePage(): ReactNode {
           筛选条件（{filterState.count > 0 ? filterState.count : "无"}）
         </button>
       </div>
-      <QueueSummaryBar phase={list.phase} rows={visibleRows} scope="queue" detail={summaryLine} />
-      <div className="flex min-w-0 flex-wrap items-center gap-2" data-testid="apv-reset-row">
-        <button
-          type="button"
-          data-testid="apv-reset-filters"
-          disabled={!filterState.active}
-          title={resetTitle(filterState.count)}
-          onClick={clearFilters}
-          className="h-6 rounded-md border border-white/15 px-2 text-xs text-muted-foreground hover:bg-white/5 focus-visible:outline focus-visible:outline-1 focus-visible:outline-white/60 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          重置筛选{filterState.active ? `（${filterState.count}）` : ""}
-        </button>
-        <FilterSummary
-          params={params}
-          onRemove={removeFilterKeys}
-          phase={list.phase}
-          disclosure={{
-            expanded: filtersOpen,
-            onToggle: () => setFiltersOpen((value) => !value),
-          }}
-        />
+      {/* P1-A1（wave-128）：375 首屏控制带瘦身——汇总条与重置/chips 收拢成一行
+          （内部结构与 testid 原样，只是外面并带；窄档 flex 自动换行不溢出）。
+          元说明三行移入下方折叠面板（QueueSortBar hideNotes，History 零变化）。 */}
+      <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1" data-testid="apv-summary-row">
+        <QueueSummaryBar phase={list.phase} rows={visibleRows} scope="queue" detail={summaryLine} />
+        <div className="flex min-w-0 flex-wrap items-center gap-2" data-testid="apv-reset-row">
+          <button
+            type="button"
+            data-testid="apv-reset-filters"
+            disabled={!filterState.active}
+            title={resetTitle(filterState.count)}
+            onClick={clearFilters}
+            className="h-6 rounded-md border border-white/15 px-2 text-xs text-muted-foreground hover:bg-white/5 focus-visible:outline focus-visible:outline-1 focus-visible:outline-white/60 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            重置筛选{filterState.active ? `（${filterState.count}）` : ""}
+          </button>
+          <FilterSummary
+            params={params}
+            onRemove={removeFilterKeys}
+            phase={list.phase}
+            disclosure={{
+              expanded: filtersOpen,
+              onToggle: () => setFiltersOpen((value) => !value),
+            }}
+          />
+        </div>
       </div>
       {/* 结果集动作（导出/排序/行内预览复制）不进面板：它们作用于当前读数，
           与筛选控件不同归属，收起时同样可用（工单第 5 条）。 */}
@@ -526,11 +563,14 @@ export function ApprovalsPendingModulePage(): ReactNode {
           <ActorBuckets rows={riskBaseRows} phase={list.phase} actor={actor} onPick={pickActor} />
           <SinceQuickFilter phase={list.phase} since={since} loadedCount={list.rows.length} onPick={pickSince} />
           <RiskQuickFilter rows={actorBaseRows} phase={list.phase} risk={risk} onPick={pickRisk} />
+          {/* P1-A1: 三行元说明（动作矩阵/键盘导航/本地排序口径）收进面板尾——
+              testid 与文案逐字不变，收起时随面板卸载，展开即见。 */}
+          <QueueMetaNotes phase={list.phase} loadedCount={list.rows.length} />
         </div>
       ) : null}
 
       <QueueCsvExport rows={visibleRows} tab="pending" status="pending" phase={list.phase} sort={asort} dir={asort ? adir : null} />
-      <QueueSortBar phase={list.phase} sort={asort} dir={adir} loadedCount={list.rows.length} onCycle={cycleSort} />
+      <QueueSortBar phase={list.phase} sort={asort} dir={adir} loadedCount={list.rows.length} onCycle={cycleSort} hideNotes />
       <RowDetailCopy row={visibleRows.find((r) => r.key === previewKey) ?? null} />
 
       <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
@@ -673,41 +713,51 @@ export function ApprovalsPendingModulePage(): ReactNode {
 
               {list.pageFailure ? <InlineFailure failure={list.pageFailure} action="后续记录没有加载成功" onRetry={list.loadMore} /> : null}
 
-              <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs" data-testid="apv-page">
-                <Button
-                  size="sm"
-                  outlined
-                  className="shrink-0 whitespace-nowrap"
-                  data-testid="apv-page-more"
-                  disabled={!list.next || list.loadingMore}
-                  onClick={list.loadMore}
-                  title={
-                    list.next
-                      ? "带服务端游标续取下一页（追加时按单号去重，重复行不上屏）。"
-                      : "服务端没有给出下一页游标：已到末页。"
-                  }
-                  prefix={list.loadingMore ? <Spinner className="h-3.5 w-3.5" /> : <RefreshCw className="h-3.5 w-3.5" />}
-                >
-                  {list.loadingMore ? "加载中…" : "加载更多"}
-                </Button>
-                <span
-                  data-testid="apv-page-count"
-                  title={
-                    list.total === null
-                      ? "读口响应顶层只有 items/nextCursor（无 total 键，实测本页响应）；按已加载条数推算会撒谎，故不推算。"
-                      : "总数来自读口 total 键；已显示=当前已加载行数"
-                  }
-                >
-                  {list.total !== null
-                    ? `共 ${list.total} 条 / 已显示 ${list.rows.length} 条`
-                    : `总数不可用 · 已显示 ${list.rows.length} 条`}
-                </span>
-                {!list.next && list.rows.length > 0 ? (
-                  <span className="text-muted-foreground" data-testid="apv-page-end">
-                    已到末页
+              {/* P1-A2 ③ 分页 footer 状态机：只有「有可见行」才出分页条。
+                  过滤 miss / 空态时由各自的空卡说话，页尾不留一枚永远点动的「加载更多」。
+                  ② 「总数不可用」与「已到末页」互斥：total 未知且已到末页时，
+                  计数句本身就报「已到末页 · 已显示 N 条」，不再叠第三块牌子。 */}
+              {visibleRows.length > 0 ? (
+                <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs" data-testid="apv-page">
+                  <Button
+                    size="sm"
+                    outlined
+                    className="shrink-0 whitespace-nowrap"
+                    data-testid="apv-page-more"
+                    disabled={!list.next || list.loadingMore}
+                    onClick={list.loadMore}
+                    title={
+                      list.next
+                        ? "带服务端游标续取下一页（追加时按单号去重，重复行不上屏）。"
+                        : "服务端没有给出下一页游标：已到末页。"
+                    }
+                    prefix={list.loadingMore ? <Spinner className="h-3.5 w-3.5" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                  >
+                    {list.loadingMore ? "加载中…" : "加载更多"}
+                  </Button>
+                  <span
+                    data-testid="apv-page-count"
+                    title={
+                      list.total !== null
+                        ? "总数来自读口 total 键；已显示=当前已加载行数"
+                        : list.next
+                          ? "读口响应顶层只有 items/nextCursor（无 total 键，实测本页响应）；按已加载条数推算会撒谎，故不推算。"
+                          : "读口没有回传 total 键；服务端已无下一页游标，屏上这些就是全部取到的记录。"
+                    }
+                  >
+                    {list.total !== null
+                      ? `共 ${list.total} 条 / 已显示 ${list.rows.length} 条`
+                      : list.next
+                        ? `总数不可用 · 已显示 ${list.rows.length} 条`
+                        : `已到末页 · 已显示 ${list.rows.length} 条`}
                   </span>
-                ) : null}
-              </div>
+                  {!list.next && list.total !== null ? (
+                    <span className="text-muted-foreground" data-testid="apv-page-end">
+                      已到末页
+                    </span>
+                  ) : null}
+                </div>
+              ) : null}
 
               {pendingCount === 0 ? (
                 <p className="min-w-0 break-words text-xs text-muted-foreground">

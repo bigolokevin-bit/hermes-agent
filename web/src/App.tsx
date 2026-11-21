@@ -967,9 +967,16 @@ export default function App() {
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <div className="flex min-h-0 min-w-0 flex-1">
+          {/* P1-S1（UX r2）：375 档闭合抽屉此前只是 translate-x-full 移出屏外
+              （left=-256），既无 aria-hidden 也无 inert——Tab 序列第 2~6 站仍进入
+              屏外导航，两轮复现未修（r1 P1-2）。React 19.3 原生支持 inert 布尔，
+              闭合且窄档时整棵子树退出焦点序列（display:contents 类豁免不存在于此）。
+              只动 <aside> 本体：≥1024 桌面 sticky 常驻侧栏 inert 恒 false，零影响；
+              宽窄切换由 isMobile（既有 useBelowBreakpoint 单点）判定，不新造媒体查询监听。 */}
           <aside
             id="app-sidebar"
             aria-label={t.app.navigation}
+            inert={isMobile && !mobileOpen}
             className={cn(
               "fixed top-0 left-0 z-50 flex h-dvh max-h-dvh w-64 min-h-0 flex-col font-sans",
               "border-r border-current/20",
@@ -1202,7 +1209,7 @@ export default function App() {
                         element={
                           <ConsoleModulePage
                             module="knowledge"
-                            live={{ evidence: <EvidenceConsolePage />, spaces: <KnowledgeConsolePage /> }}
+                            live={{ evidence: <EvidenceConsolePage />, spaces: <KnowledgeConsolePage />, sources: <KnowledgeConsolePage /> }}
                           />
                         }
                       />

@@ -1,0 +1,14 @@
+SHOT list@1440 chars=469 bytes=209468 overflow=0 errs=2
+SHOT search-hit@1440 chars=845 bytes=209703 overflow=undefined errs=2
+SHOT search-miss@1440 chars=845 bytes=209906 overflow=undefined errs=2
+SHOT detail@1440 chars=845 bytes=209357 overflow=undefined errs=2
+SHOT evidence@1440 chars=359 bytes=183971 overflow=0 errs=2
+SHOT evidence-open@1440 chars=724 bytes=184202 overflow=undefined errs=2
+SHOT list@375 chars=845 bytes=172501 overflow=0 errs=2
+SHOT search-hit@375 chars=845 bytes=172412 overflow=undefined errs=2
+SHOT search-miss@375 chars=845 bytes=172443 overflow=undefined errs=2
+SHOT detail@375 chars=845 bytes=172200 overflow=undefined errs=2
+SHOT evidence@375 chars=359 bytes=146913 overflow=0 errs=2
+SHOT evidence-open@375 chars=724 bytes=146547 overflow=undefined errs=2
+DONE shots=12 entry=assets/index-GXGeT7Wz.js
+EXIT=0

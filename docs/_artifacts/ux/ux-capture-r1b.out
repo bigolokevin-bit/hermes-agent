@@ -1,0 +1,16 @@
+SHOT spaces-dom@1440 chars=845 bytes=209552 overflow=0 errs=2 bad=404 /agent-api/api/knowledge/spaces?limit=20|404 /agent-api/api/documents?limit=50
+SHOT search-hit2@1440 chars=865 bytes=212157 overflow=0 errs=2 bad=404 /agent-api/api/documents?limit=50|404 /agent-api/api/knowledge/spaces?limit=20
+SHOT search-miss2@1440 chars=871 bytes=212875 overflow=0 errs=2 bad=404 /agent-api/api/documents?limit=50|404 /agent-api/api/knowledge/spaces?limit=20
+SHOT detail2@1440 chars=845 bytes=209261 overflow=0 errs=2 bad=404 /agent-api/api/documents?limit=50|404 /agent-api/api/knowledge/spaces?limit=20
+SHOT evidence2@1440 chars=197 bytes=92390 overflow=0 errs=2 bad=404 /agent-api/api/documents?limit=50|404 /agent-api/api/knowledge/spaces?limit=20
+SHOT evidence-open2@1440 chars=197 bytes=92390 overflow=0 errs=2 bad=404 /agent-api/api/documents?limit=50|404 /agent-api/api/knowledge/spaces?limit=20
+SHOT deeplink-evidence@1440 chars=724 bytes=183815 overflow=0 errs=2 bad=404 /agent-api/api/knowledge/citations?limit=20|404 /agent-api/api/documents?limit=50
+SHOT spaces-dom@375 chars=845 bytes=172715 overflow=0 errs=2 bad=404 /agent-api/api/documents?limit=50|404 /agent-api/api/knowledge/spaces?limit=20
+SHOT search-hit2@375 chars=865 bytes=174649 overflow=0 errs=2 bad=404 /agent-api/api/documents?limit=50|404 /agent-api/api/knowledge/spaces?limit=20
+SHOT search-miss2@375 chars=871 bytes=174864 overflow=0 errs=2 bad=404 /agent-api/api/documents?limit=50|404 /agent-api/api/knowledge/spaces?limit=20
+SHOT detail2@375 chars=845 bytes=172591 overflow=0 errs=2 bad=404 /agent-api/api/documents?limit=50|404 /agent-api/api/knowledge/spaces?limit=20
+SHOT evidence2@375 chars=197 bytes=57065 overflow=0 errs=2 bad=404 /agent-api/api/documents?limit=50|404 /agent-api/api/knowledge/spaces?limit=20
+SHOT evidence-open2@375 chars=197 bytes=57065 overflow=0 errs=2 bad=404 /agent-api/api/documents?limit=50|404 /agent-api/api/knowledge/spaces?limit=20
+SHOT deeplink-evidence@375 chars=724 bytes=146766 overflow=0 errs=2 bad=404 /agent-api/api/knowledge/citations?limit=20|404 /agent-api/api/documents?limit=50
+DONE r1b shots=14
+EXIT=0

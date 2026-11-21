@@ -1,0 +1,18 @@
+{
+ "entry": [
+  "http://100.117.184.117:8183/assets/index-DTYdDF4J.js",
+  "http://100.117.184.117:8183/assets/index-DTYdDF4J.js"
+ ],
+ "tiering": 2,
+ "tier375Clipped": 0,
+ "approvals375RightOut": 0,
+ "runs375RightOut": 0,
+ "bad": [],
+ "errs": 0,
+ "notes": [
+  "approvals: no search input",
+  "approvals: no search input",
+  "runs: no filter chip found for hit/clear legs"
+ ]
+}
+CAPTURE_EXIT=0

@@ -2054,8 +2054,12 @@ export function MetricsModulePage() {
           {usageDown ? (
             <div data-testid="metH-page-error">
             <Card data-testid={usageDenied ? 'met6-denied' : 'met6-error'}>
-              <CardContent className="space-y-2 p-6">
-                <p className="font-medium">{usageDenied ? '这几项数据暂时读不到' : '这次没能读取用量与成本'}</p>
+              {/* UI-B 错误态细化：留白走令牌（数值不变，口径与 collab/approvals 系一致）、
+                * 标题抬到 text-base 台阶（Mondwest 死字重，字号是唯一可靠层级手段）。
+                * 互斥=usageDown/空态分支单值 if 链；rid 可复制（RequestId 复制钮）与
+                * 技术信息只进 title tooltip 为既有达标，本笔截图实测复核。 */}
+              <CardContent className="flex min-w-0 flex-col gap-[var(--space-2)] px-[var(--space-4)] py-[var(--space-6)]">
+                <p className="text-base font-medium">{usageDenied ? '这几项数据暂时读不到' : '这次没能读取用量与成本'}</p>
                 <p className="text-sm text-muted-foreground" data-testid="metD-card-reason">
                   {usageLeadReason ??
                     (usageDenied
@@ -2068,7 +2072,10 @@ export function MetricsModulePage() {
                 <div data-testid="metD-card-rid">
                   <RequestId id={usageLeadRid} />
                 </div>
-                <Button size="sm" outlined onClick={() => setAttempt((value) => value + 1)} data-testid="met6-retry">
+                {/* UI-B 错误态组合：卡内唯一主操作=重试（抬起实心）；rid 复制与技术信息
+                    （gap 只进 title tooltip）为既有达标现状，本笔实测复核。denied 腿共用本卡，
+                    重试同相抬起。单卡小错误腿与刷新条不抬起：整页读不出时「刷新」仍是唯一出口（R207）。 */}
+                <Button size="sm" onClick={() => setAttempt((value) => value + 1)} data-testid="met6-retry">
                   重试
                 </Button>
               </CardContent>
@@ -2083,13 +2090,21 @@ export function MetricsModulePage() {
                 <p className="text-sm text-muted-foreground">
                   运行统计没有返回这个窗口的运行，账本也没有今天的实扣行，因此这里既没有次数也没有金额——不补 0，也不拿别的时段顶替。
                 </p>
+                {/* UI-B 空态组合：空窗口只有一个主操作——可换窗时「换到 7 天看看」抬起为实心
+                    （工单口径：主操作=切时间窗）；已是 7 天窗口时没有可切的窗，
+                    「重新读取」接任唯一主操作（runs/approvals 同型条件互斥姿势）。 */}
                 <div className="metD-empty-acts">
                   {usageWindow.id !== '7d' ? (
-                    <Button size="sm" outlined onClick={() => chooseUsageWindow('7d')} data-testid="metD-empty-window">
+                    <Button size="sm" onClick={() => chooseUsageWindow('7d')} data-testid="metD-empty-window">
                       换到 7 天看看
                     </Button>
                   ) : null}
-                  <Button size="sm" outlined onClick={() => setAttempt((value) => value + 1)} data-testid="metD-empty-retry">
+                  <Button
+                    size="sm"
+                    outlined={usageWindow.id !== '7d' ? true : undefined}
+                    onClick={() => setAttempt((value) => value + 1)}
+                    data-testid="metD-empty-retry"
+                  >
                     重新读取
                   </Button>
                 </div>
@@ -3280,15 +3295,19 @@ export function MetricsModulePage() {
 
       {view.kind === 'error' ? (
         <Card data-testid="met5-error">
-          <CardContent className="space-y-2 p-6">
-            <p className="font-medium">这次没能读取运行活动</p>
+          {/* UI-B 错误态细化：同 met6 口径——令牌留白（数值不变）+ 标题 text-base 台阶；
+            * 唯一实心主操作=「全部重试」（上笔已抬起），单项 CardRetryButton 保持次级。 */}
+          <CardContent className="flex min-w-0 flex-col gap-[var(--space-2)] px-[var(--space-4)] py-[var(--space-6)]">
+            <p className="text-base font-medium">这次没能读取运行活动</p>
             <div data-testid="metH-card-error-heat">
               <p className="text-sm text-muted-foreground" title={view.gap ?? undefined}>{view.message}</p>
               <RequestId id={view.requestId} />
             </div>
             <div className="metH-card-acts">
               <CardRetryButton busy={refreshBusy} onClick={retryHeat} testId="metH-card-retry-heat" />
-              <Button size="sm" outlined onClick={() => setAttempt((value) => value + 1)} data-testid="met5-retry">
+              {/* UI-B 错误态组合：卡内唯一主操作=「全部重试」（抬起实心），
+                  单项重试保持次级；互斥=view.kind 单值枚举 by construction。 */}
+              <Button size="sm" onClick={() => setAttempt((value) => value + 1)} data-testid="met5-retry">
                 全部重试
               </Button>
             </div>
