@@ -6786,3 +6786,49 @@ kn-doc-copy*/kn7-preview*/kn3-page-cap/kn-type*/kn-sort*/kn-gates/导出 absent 
 ```
 未测如实：带登录会话真屏；全缺行在抽屉/预览第三式（R233① 地盘）；`?sdoc=` 命中展开
 侧全缺镜像（同族外推未叠）；腿③纯引用未复测。
+
+# KNW5 追加 R261：交替序列逐轮互等 + 拒绝态跨面免疫（纯测试单·本体交付；腿③单面环引用）（2026-11-21 BJT）
+
+安全门：porcelain 空起做、显式 refspec fetch 后 merge 实测 tip 即预期 `fb7a2a8c`
+（普通 merge commit、**未用 `-B`**、knowledge delta 零、无冲突）；基线先跑 72/285
+全绿 Errors 0、目标文件确认缺席再动笔。零产品文件改动。新增
+knowledge.export.copy.concurrency.test.tsx 两例（本体）。
+
+## 三腿裁决（file:line）与两新增维
+
+```text
+腿①「blob 逐字相等」换算（驳回字面）：无 Blob 路径（源级 0，R190①）→ 同一复制器
+  连点两次 **writeText 投递参数 toBe 相等**（实测 calls[0]==calls[1]）并入例 A。
+腿②交替：R223 锁的是**单轮遍历**（清单 vs 逐钮）——**新增维 A**：交替再取
+  （knF→钮0→knF→钮1→knF）每轮清单第 k 行与钮 k 串逐字互等 + 他控扰动后清单文本
+  不变 + 检索面同型（knG 去所属空间@2==行钮整串，R226①-b 的交替再取位）+ 三值
+  [3,3,3] 不变 + cap 冻结 + urls join 全程逐字（零新请求，禁「恰 1 次」）+ spy 0。
+腿③「导出失败重试」无可触发路径（驳回）→ 真实失败=剪贴板拒绝；**单面拒绝环全锁
+  引用**：主套件 knF-fallback 环（KnowledgeModulePage.test.tsx:2712-2760）、knG 环
+  （:2844-2862：拒→兜底逐字→成→收起→无 clipboard 再兜底+零 fetch）、行钮/预览兜底
+  R167③(copy.a11y:178-204，「剪贴板没接受」句)。真缺口=**新增维 B：交替拒绝跨面
+  免疫**——检索行钮被拒（fallback 值==投递）期间，详情面 knF 成功「已复制」**不抹
+  对面兜底、不改对面状态句**；被拒面重试成功→自家 fallback 收起、自家播报「已复制」
+  、urls 逐字、blob spy 0（面间状态机互不串写的首个组合帧）。
+```
+
+## 验证尾行（R261）
+
+```text
+A：连点参数互等；f3 toBe 首轮文本；清单[0]/[1] 行 == 钮0/钮1 串；knG 去列==行钮；
+  三值 [3,3,3]、cap 逐字、urls join 恒等。B：拒→「剪贴板没接受」+fallback 值==投递；
+  对面成功两不变式在场；重试→fallback null+「已复制」；urls 恒等、spy 0。
+$ npx vitest run src/modules/knowledge → 73 files / 287 tests passed（285+2 ≥286），
+  grep unhandled = 0
+$ eslint → 0 errors（1 既有 warning）；模块 tsc → 0
+$ build /tmp/knw-r261-dist → exit 0；全仓 → 449 files / 3412 passed **零红**
+  （metrics 跨日两条本轮未复现，不视为已修复）
+$ 三档 1440/1280/375 vw==bodySW==docSW 全等（用毕即杀）
+零破：kn3*/kn6–kn9/knB/knD/knE-page-*/knF/knG/knI/knL*/kn-row-copy*/
+kn-row-copy-space*/kn-row-copy-fallback/kn-doc-copy*/kn7-preview*/kn3-page-cap/
+kn-type*/kn-sort*/kn-gates/导出 absent + 既有 72 套全绿。过程自纠一处（A 例调用索引
+计数错位 6/5→5/4），产品零触碰。
+```
+未测如实：带登录会话真屏；真并发（同帧双 Promise 竞速）——jsdom 串行派发下「交替+
+跨面免疫」为可测最大并发形态，微任务级竞态未造；详情面按钮（-space-）被拒×检索面
+成功的镜像方向（同族单侧已钉）；fallback 期间再改筛选的状态收敛（超预算不扩）。
