@@ -1,0 +1,249 @@
+{
+ "startedAt": "2026-11-21T14:11:23.846Z",
+ "notes": [],
+ "legs": {
+  "gate1440": {
+   "readonlyNotePresent": false,
+   "readonlyNoteText": "",
+   "decisionBtns": [],
+   "decisionBtnCount": 0,
+   "shot": {
+    "file": "shots/approvals-gate-1440-r3.png",
+    "bytes": 164022,
+    "pngH": 2640,
+    "stretched": true,
+    "tallEnough": true
+   }
+  },
+  "kn1440": {
+   "taps": {
+    "count": 16,
+    "sample": [
+     {
+      "tag": "A",
+      "t": "知识空间",
+      "w": 77,
+      "h": 35
+     },
+     {
+      "tag": "A",
+      "t": "数据源",
+      "w": 64,
+      "h": 35
+     },
+     {
+      "tag": "A",
+      "t": "证据与引用",
+      "w": 90,
+      "h": 35
+     },
+     {
+      "tag": "BUTTON",
+      "t": "刷新",
+      "w": 63,
+      "h": 28
+     },
+     {
+      "tag": "INPUT",
+      "t": "按文档名搜索",
+      "w": 1105,
+      "h": 32
+     },
+     {
+      "tag": "BUTTON",
+      "t": "搜索",
+      "w": 63,
+      "h": 28
+     },
+     {
+      "tag": "BUTTON",
+      "t": "复制结果",
+      "w": 65,
+      "h": 28
+     },
+     {
+      "tag": "BUTTON",
+      "t": "知识空间",
+      "w": 69,
+      "h": 30
+     },
+     {
+      "tag": "BUTTON",
+      "t": "数据接入",
+      "w": 69,
+      "h": 30
+     },
+     {
+      "tag": "BUTTON",
+      "t": "检索",
+      "w": 47,
+      "h": 30
+     },
+     {
+      "tag": "BUTTON",
+      "t": "证据与引用",
+      "w": 81,
+      "h": 30
+     },
+     {
+      "tag": "INPUT",
+      "t": "按空间名或来源搜索",
+      "w": 1103,
+      "h": 32
+     }
+    ]
+   },
+   "text": "治理 · 控制台\n知识与数据\n知识空间\n数据源\n证据与引用\n知识空间\n空间、文档、检索与引用 · 只读\n刷新\n按文档名搜索\n搜索\n\n只在已加载的文档里搜索：这份文档读口今天不接受关键词参数，所以这里不叫全库搜索。\n\n来源：文档名（当前已加载的列表） · 数据截至 未知\n正在读取，数据截至时间未知。\n\n复制结果\n—\n当前不可复制：列表还在读取\n知识\n知识空间\n数据接入\n检索\n证据与引用\n跨空间搜索\n搜索\n\n只在已加载的空间里搜索：空间读口今天不接受关键词参数，所以这里不叫全库搜索。\n\n来源：知识空间登记 · 数据截至 未知\n正在读取，数据截至时间未知。\n\n复制清单\n—\n当前不可复制：列表还在读取\n数据来源与新鲜度\n展开\n\n台账只复用本页已经发过的读取：展开、收起、切面都不新增请求；采集时刻只取响应顶层的 ISO 时间， 不使用本机时钟，缺就「—」。\n\n本页只读：数量、更新时间与状态都以真实接口为准；读不到时写「未接入」并说明原因，不以 0 或样例冒充。 检索与引用只展示上游给出的原文位置，打不开时直接说明原因。\n\n看证据与引用",
+   "probes": {
+    "hexOnScreen": 1,
+    "readKou": 4,
+    "mixedState": true,
+    "innerTabs": [
+     "知识空间",
+     "数据源",
+     "证据与引用",
+     "知识空间",
+     "数据接入",
+     "检索",
+     "证据与引用"
+    ],
+    "rowFontPx": "10.8px"
+   },
+   "shot": {
+    "file": "shots/knowledge-list-1440-r3.png",
+    "bytes": 210193,
+    "pngH": 2640,
+    "stretched": true,
+    "tallEnough": true
+   }
+  },
+  "kn375": {
+   "taps": {
+    "count": 0,
+    "sample": []
+   },
+   "over": {
+    "rightOut": 0,
+    "sample": []
+   },
+   "shot": {
+    "file": "shots/knowledge-list-375-r3.png",
+    "bytes": 165086,
+    "pngH": 1384,
+    "stretched": true,
+    "tallEnough": true
+   }
+  },
+  "drawer375": [
+   {
+    "left": -240,
+    "ariaHidden": null,
+    "inert": false,
+    "cls": "fixed top-0 left-0 z-50 flex h"
+   },
+   {
+    "left": -240,
+    "ariaHidden": null,
+    "inert": false,
+    "cls": "min-h-0 w-full flex-1 overflow"
+   }
+  ],
+  "deeplink": {
+   "finalUrl": "http://100.117.184.117:8183/knowledge?panel=evidence",
+   "head": "治理 · 控制台\n知识与数据\n知识空间\n数据源\n证据与引用\n知识空间\n空间、文档、检索与引用 · 只读\n刷新\n按文档名搜索\n搜索\n\n只在已加载的文档里搜索：这份文档读口今天不接受关键词参数，所以这里不叫全库搜索。\n\n来源：文档名（当前已加载的列表） · 数据截至 未知\n这块数据没有读到，数据截至时间未知。\n\n文档登记读口未接入\n文档登记接口尚未接入本控制台，或当前账号没有查看它的权限。接入或开通后，这里会列出真实登记的文档与其数量、更新时间和状态；在此之前不展示样例，也不写「0 篇」。\n请求编号：\n6ba80c9e69024f95994bc8a86609856e\n复制\n重试\n去审批中心提交开通申请\n复制结果\n—\n当前不可复制：读口未接入或没有权限\n知识\n知识空间\n数据接入\n检索\n证据与引用\n\n来源：知识库引用登记 · 数据截至 未知\n这块数据没有读到，数据截至时间未知。\n\n未接入\n知识服务",
+   "shot": {
+    "file": "shots/knowledge-deeplink-1440-r3.png",
+    "bytes": 183980,
+    "pngH": 2640,
+    "stretched": true,
+    "tallEnough": true
+   }
+  },
+  "evidenceClick": {
+   "finalUrl": "http://100.117.184.117:8183/knowledge?tab=evidence&panel=evidence",
+   "text": "治理 · 控制台\n知识与数据\n知识空间\n数据源\n证据与引用\n证据与引用\n\n每条记录都写明谁留下的、动了什么对象、什么时候；能点回原文的给链接，点不回去的说清原因。\n\n重新读取\n需要登录\n\n当前浏览器没有控制台会话，引用读取没有发出；登录后再打开这一页。\n\n本页没有发送请求，也没有改动任何数据。\n\n重新检查登录状态\n\n引用只读：这里不改原文，也不补写来源；原文打不开时如实说明，不拿空白页顶替。",
+   "loginContradiction": true,
+   "shot": {
+    "file": "shots/evidence-click-1440-r3.png",
+    "bytes": 92943,
+    "pngH": 2680,
+    "stretched": true,
+    "tallEnough": true
+   }
+  },
+  "gate375": {
+   "note": false,
+   "btnCount": 0,
+   "allDisabled": false,
+   "sample": [],
+   "shot": {
+    "file": "shots/approvals-gate-375-r3.png",
+    "bytes": 121263,
+    "pngH": 1339,
+    "stretched": true,
+    "tallEnough": true
+   }
+  }
+ },
+ "bags": {
+  "approvals": {
+   "badResponses": [],
+   "consoleErrors": []
+  },
+  "knowledge": {
+   "badResponses": [
+    {
+     "url": "http://100.117.184.117:8183/agent-api/api/documents?limit=50",
+     "status": 404
+    },
+    {
+     "url": "http://100.117.184.117:8183/agent-api/api/knowledge/spaces?limit=20",
+     "status": 404
+    }
+   ],
+   "consoleErrors": [
+    "Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "Failed to load resource: the server responded with a status of 404 (Not Found)"
+   ]
+  },
+  "kn375": {
+   "badResponses": [
+    {
+     "url": "http://100.117.184.117:8183/agent-api/api/documents?limit=50",
+     "status": 404
+    },
+    {
+     "url": "http://100.117.184.117:8183/agent-api/api/knowledge/spaces?limit=20",
+     "status": 404
+    }
+   ],
+   "consoleErrors": [
+    "Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "Failed to load resource: the server responded with a status of 404 (Not Found)"
+   ]
+  },
+  "deeplink": {
+   "badResponses": [
+    {
+     "url": "http://100.117.184.117:8183/agent-api/api/knowledge/citations?limit=20",
+     "status": 404
+    },
+    {
+     "url": "http://100.117.184.117:8183/agent-api/api/documents?limit=50",
+     "status": 404
+    }
+   ],
+   "consoleErrors": [
+    "Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "Failed to load resource: the server responded with a status of 404 (Not Found)"
+   ]
+  },
+  "appr375": {
+   "badResponses": [],
+   "consoleErrors": []
+  }
+ },
+ "entryStart": "http://100.117.184.117:8183/assets/index-DzYbPXfO.js",
+ "entryEnd": "http://100.117.184.117:8183/assets/index-DzYbPXfO.js",
+ "finishedAt": "2026-11-21T14:11:43.124Z"
+}

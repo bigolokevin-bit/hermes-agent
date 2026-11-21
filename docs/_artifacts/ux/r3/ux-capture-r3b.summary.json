@@ -1,0 +1,165 @@
+{
+ "startedAt": "2026-11-21T14:15:56.795Z",
+ "notes": [],
+ "legs": {
+  "gateDetail": {
+   "readonlyNotePresent": true,
+   "readonlyNoteText": "当前环境的控制台是只读的：批准、驳回在这里点了也不会生效，所以两个按钮先禁用了。要处理这张单，请走它原本产生决定的渠道。",
+   "decisionBtnCount": 2,
+   "btns": [
+    {
+     "t": "批准",
+     "disabled": true,
+     "ariaDisabled": "true",
+     "title": "这个环境的控制台只读：实测决定提交一律被拒（服务端当前只允许读请求，写请求没有入口）。所以批准、驳回在这里以禁用态出现，",
+     "visible": true
+    },
+    {
+     "t": "驳回",
+     "disabled": true,
+     "ariaDisabled": "true",
+     "title": "这个环境的控制台只读：实测决定提交一律被拒（服务端当前只允许读请求，写请求没有入口）。所以批准、驳回在这里以禁用态出现，",
+     "visible": true
+    }
+   ],
+   "remarkDisabled": null,
+   "detailUrl": "http://100.117.184.117:8183/approvals?id=ap_85119755436347F1864B96F6A8",
+   "shot": {
+    "file": "shots/approvals-gate-detail-1440-r3b.png",
+    "pngH": 2600,
+    "stretched": false,
+    "bytes": 257686
+   }
+  },
+  "kn375Taps": {
+   "count": 22,
+   "sample": [
+    {
+     "tag": "A",
+     "t": "知识空间",
+     "w": 77,
+     "h": 35
+    },
+    {
+     "tag": "A",
+     "t": "数据源",
+     "w": 64,
+     "h": 35
+    },
+    {
+     "tag": "A",
+     "t": "证据与引用",
+     "w": 90,
+     "h": 35
+    },
+    {
+     "tag": "BUTTON",
+     "t": "刷新",
+     "w": 342,
+     "h": 28
+    },
+    {
+     "tag": "INPUT",
+     "t": "按文档名搜索",
+     "w": 342,
+     "h": 32
+    },
+    {
+     "tag": "BUTTON",
+     "t": "搜索",
+     "w": 63,
+     "h": 28
+    },
+    {
+     "tag": "BUTTON",
+     "t": "复制请求编号",
+     "w": 48,
+     "h": 21
+    },
+    {
+     "tag": "BUTTON",
+     "t": "重试",
+     "w": 44,
+     "h": 27
+    },
+    {
+     "tag": "A",
+     "t": "去审批中心提交开通申请",
+     "w": 134,
+     "h": 16
+    },
+    {
+     "tag": "BUTTON",
+     "t": "复制结果",
+     "w": 342,
+     "h": 28
+    },
+    {
+     "tag": "BUTTON",
+     "t": "知识空间",
+     "w": 170,
+     "h": 30
+    },
+    {
+     "tag": "BUTTON",
+     "t": "数据接入",
+     "w": 170,
+     "h": 30
+    },
+    {
+     "tag": "BUTTON",
+     "t": "检索",
+     "w": 170,
+     "h": 30
+    },
+    {
+     "tag": "BUTTON",
+     "t": "证据与引用",
+     "w": 170,
+     "h": 30
+    },
+    {
+     "tag": "INPUT",
+     "t": "按空间名或来源搜索",
+     "w": 340,
+     "h": 32
+    },
+    {
+     "tag": "BUTTON",
+     "t": "搜索",
+     "w": 63,
+     "h": 28
+    },
+    {
+     "tag": "BUTTON",
+     "t": "复制请求编号",
+     "w": 48,
+     "h": 21
+    },
+    {
+     "tag": "BUTTON",
+     "t": "重试",
+     "w": 44,
+     "h": 27
+    },
+    {
+     "tag": "A",
+     "t": "去审批中心提交开通申请",
+     "w": 134,
+     "h": 16
+    },
+    {
+     "tag": "BUTTON",
+     "t": "复制清单",
+     "w": 340,
+     "h": 28
+    }
+   ],
+   "rowCount": 2
+  }
+ },
+ "badResponses": [],
+ "consoleErrors": [],
+ "entry": "http://100.117.184.117:8183/assets/index-DzYbPXfO.js",
+ "finishedAt": "2026-11-21T14:16:00.848Z"
+}
