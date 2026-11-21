@@ -762,7 +762,7 @@
   "routesWithConsoleErrors": 51,
   "parseErrors": [],
   "ok": true,
-  "headHash": "f4bd0505",
+  "headHash": "068833bc",
   "exitCode": 0,
   "counts": {
     "probed": 75,
@@ -774,7 +774,7 @@
     }
   },
   "ceAuthority": "login-state",
-  "carriedFrom": "e66ceba3",
+  "carriedFrom": "37b6481e",
   "carried": true,
-  "stampNote": "wave-96 两笔全纯测试（appr R271/ui1 R252），entry CF-7ZVka 同 96d769e5 代未再换代、CSS 未变；本件未重跑，证据沿用 e66ceba3 代（96d769e5 波注章被改锚切树打回，本拍自 e66ceba3 仓内态直接重注）"
+  "stampNote": "wave-98 三笔（gov R249/ui1 R253/ui-b metrics 空态），entry 换代 OCLu6KCF/CSS 未变；本件未重跑，证据沿用 37b6481e 波（unsealed intermediate，其盘值系 f4bd0505 章 carried 版）"
 }
