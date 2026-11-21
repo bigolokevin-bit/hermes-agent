@@ -1598,3 +1598,10 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - 六件 assert 现值==7cb41601 注 headHash=fb7a2a8c+carriedFrom="7cb41601"+carried=true+stampNote（双换代但本件未重跑）+写后回读全过；state-quad 本代真跑 sampled=20 passed=20 head=fb7a2a8c 非 carried。
 - shots 双腿本代真跑（12:04:22→12:07:16）：auth 102/102 failures=[] **obs=1 routes=['#/access']**（与上上代 7cb41601 的 auth 读数同路由，如实非编造）distinct=26 envOnly=51；anon aux **obs=1 routes=['#/access']**（上代 #/system 收敛至 access，与 auth 面合流）distinct=24 envOnly=51；三键含 css 双键+served 两端同值 0rhpOHmI+ceAuthority=login-state。
 - TALLY {'fb7a2a8c': 9} count 9 BAD=[]（None 清零）；无 amend/force；detached push HEAD 映射形；web/src/9122/BFF/caddy/qa-verify/ACC 判词节未动。
+
+## 一九八轮 · 波次代次九件重章 @ 8d0725d4（wave-109 并入，entry/CSS 未换代 0rhpOHmI/B7znF4xN，2026-11-21 12:1x）
+
+- wave-109（3afa56af 并入）纯门禁/账本波次，entry/CSS 双未换代（盘现算 172175/35b3907c…1d64、146328/0ac2884f…47c4 ==卡面==9122 served）；c55f091a（fb7a2a8c 章）不重做。
+- 六件 assert 现值==fb7a2a8c 注 headHash=8d0725d4+carriedFrom="fb7a2a8c"+carried+stampNote+回读全过；state-quad 本代真跑 sampled=20 passed=20 head=8d0725d4 非 carried。
+- shots 双腿本代真跑（12:14:46→12:18:04）：auth 102/102 failures=[] **obs=1 ['#/capabilities?tab=channels']**（上代 #/access 收敛、channels 系历史 ENV 同源路由复现，如实不入判据）distinct=26 envOnly=51；anon aux 102/102 **obs=0 routes=[]** distinct=23 envOnly=51；三键（entry+css 六键）+served 两端同值+ceAuthority=login-state，routesWithConsoleErrors 全自产非编造。
+- TALLY {'8d0725d4': 9} count 9 BAD=[]；无 amend/force；detached push HEAD 映射形；web/src/9122/BFF/caddy/qa-verify/ACC 判词节未动。
