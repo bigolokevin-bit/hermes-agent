@@ -6457,3 +6457,53 @@ kn-doc-copy*/kn7-preview*/kn3-page-cap/kn-type*/kn-sort*/kn-gates/导出 absent 
 未测如实：带登录会话真屏；②的 size 首点落向未钉（只锁序变+集合等+链跟随——方向族
 R235② 地盘）；旧 ?sort/dir 兜底跨面帧（R240① 单面位外推）；①③纯引用位若上游行为
 变动需回补探针。
+
+# KNW5 追加 R254：叠载三键深链逐位三方序 + 翻向无重复负断言 + 缺值 nulls-last/清除拍（纯测试单·本体交付）（2026-11-21 BJT）
+
+安全门：porcelain 空起做、`merge-base --is-ancestor` 为是 → **`git merge --ff-only`**
+无损快进至实测 `068833bc`（**未用 `-B`**）、knowledge delta 零、无冲突；基线先跑
+65/270 全绿 Errors 0、目标文件确认缺席再动笔。零产品文件改动。新增
+knowledge.export.sort.filter.order.test.tsx 三例（本体）。
+
+## 三腿裁决与名实（file:line）
+
+```text
+① 新增维：叠载三键深链 ?ksort=updated&kdir=asc&ktype=PDF（真实键；旧 sort/dir 兜底
+  引 R118①/R240① 不复写）——**逐位**三方（钮 i 串首段==屏上第 i 行==knF 全链第 i）+
+  三值 [4,4,4] + asc 精确序 [丙,乙,甲,丁]（戊被 PDF 桶排除）+ cap M=4 + 键集
+  {limit,spaceId} + 首屏恰三读零追加。旧锁各缺一角：R243α/247①/248①/249① 三方无
+  排序叠参、R253② 排序帧未点行钮做逐位首段。
+② 翻向换代：详情侧排序跟随已锁 R235②/R240②（引用）；筛选侧归位/弃页/零残留全锁
+  R131①:115-125/R235③/R244γ′δ′/R237②:170-191（引用）——本笔补**无重复夹带**负断言
+  （Set 大小==长度，此前零 pin）+ 钮续号 [0..3] 不脱节 + 严格反序 + urls join 逐字。
+③ 缺值定位（双实测新锁）：(a) 尺寸排序深链双帧直挂——缺 size 行 **nulls-last 两向
+  都末位、不随翻向镜像**（asc 有值段 [丁,乙,甲]、desc [甲,乙,丁]），该行导出句两向
+  逐字相同、大小列「—」（复制行式，两式禁统一引 R226②）、钮位==链位；(b) **深链
+  kdir=asc 态点活动列 = 清除拍**：实测 URL 失 ksort/kdir 双键、ktype 逐字留存、序回
+  落默认 updated 降序、零新请求——表头三拍语义（默认→翻向→清除）的「清除拍自翻向
+  态」URL 效果此前零 pin（R235/R240 只走过默认↔翻向两拍）。
+换算：无 ?source=（未造）；无真 CSV→导出=knF 数据行（knG 6 列引 R214②:158 域）；
+「kn-row-copy-<i>」按测量面映射 -space- 族（声明）；spy 全程 0；本地动作零请求禁
+「恰 1 次」；clip 桩 Promise+unstub；cap null 态引 R108/R157/R187。
+```
+
+## 验证尾行（R254）
+
+```text
+① 4 行精确序、逐位 4 钮首段 toBe、链==屏上、urls==3、键集全 {limit,spaceId}。
+  ② 翻向 [丁,甲,乙,丙]→反序、无重复、链跟随、urls 逐字。③ 双帧 nulls-last 末位、
+  清除拍两键消失 ktype 留存、默认序回落、句互等、钮==链。
+$ npx vitest run src/modules/knowledge → 66 files / 273 tests passed（270+3），
+  grep unhandled = 0
+$ eslint → 0 errors（1 既有 warning）；模块 tsc → 0
+$ build /tmp/knw-r254-dist → exit 0；全仓 → 427 files / 3366 passed **零红**
+  （metrics 跨日两条本轮未复现，不视为已修复）
+$ 三档 1440/1280/375 vw==bodySW==docSW 全等（用毕即杀）
+零破：kn3*/kn6–kn9/knB/knD/knE-page-*/knF/knG/knI/knL*/kn-row-copy*/kn-row-copy-space*/
+kn-doc-copy*/kn7-preview*/kn3-page-cap/kn-type*/kn-sort*/kn-gates/导出 absent + 既有
+65 套全绿。过程自纠一处（③ 首稿把「点活动列」当翻向预期红——打印两帧 URL 实测为
+**清除拍**后按实重写为双帧直挂+清除语义三段式），产品零触碰。
+```
+未测如实：带登录会话真屏；③ 缺值行在 updated/type 列排序下的落位（只锁 size 列——
+缺 size 才有列义定位问题）；清除拍后再点回默认方向的三拍循环完整态（R235② 走过
+默认↔翻向，三拍全环未单例）。
