@@ -118,3 +118,13 @@
 [data-testid^="col5-chain-node-"] {
   min-height: var(--table-row-h-compact);
 }
+
+/* UI-A 2026-11-21 wave-106 增补：collab 时间制式收口。数字/时间列右对齐仍不适用
+ * （validity 单元格是起至两行文本加 Badge 注记，非纯数字定宽列），只补时间值
+ * 的 tabular-nums：列表起/至单元格、详情到期行、链路视图节点时刻。行高 40/36、
+ * 斑马纹（无源）与 375 fr 折行结论沿前笔不变。 */
+[data-testid^="col5-row-"]:is([data-testid$="-validity"], [data-testid$="-effective"], [data-testid$="-expiry"]),
+[data-testid$="-detail-expiry"],
+[data-testid^="col5-chain-node-"][data-testid$="-at"] {
+  font-variant-numeric: tabular-nums;
+}
