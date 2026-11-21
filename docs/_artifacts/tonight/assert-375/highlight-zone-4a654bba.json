@@ -1,0 +1,331 @@
+{
+  "z1-tasks-panel-err": {
+    "url": "/employees/EMP-01/tasks?panel=retrieval&state=error&rid=abc12345",
+    "zoneLinkCount": 5,
+    "zones": [
+      {
+        "zone": "workbench",
+        "ariaSelected": "false",
+        "href": "/employees/EMP-01?zone=workbench&state=error&rid=abc12345",
+        "panel": false,
+        "stateKept": true,
+        "ridKept": true,
+        "tabLeak": false,
+        "viewLeak": false,
+        "ownZone": true
+      },
+      {
+        "zone": "config",
+        "ariaSelected": "false",
+        "href": "/employees/EMP-01?zone=config&state=error&rid=abc12345",
+        "panel": false,
+        "stateKept": true,
+        "ridKept": true,
+        "tabLeak": false,
+        "viewLeak": false,
+        "ownZone": true
+      },
+      {
+        "zone": "tasks",
+        "ariaSelected": "true",
+        "href": "/employees/EMP-01?zone=tasks&state=error&rid=abc12345",
+        "panel": false,
+        "stateKept": true,
+        "ridKept": true,
+        "tabLeak": false,
+        "viewLeak": false,
+        "ownZone": true
+      },
+      {
+        "zone": "runs",
+        "ariaSelected": "false",
+        "href": "/employees/EMP-01?zone=runs&state=error&rid=abc12345",
+        "panel": false,
+        "stateKept": true,
+        "ridKept": true,
+        "tabLeak": false,
+        "viewLeak": false,
+        "ownZone": true
+      },
+      {
+        "zone": "evidence",
+        "ariaSelected": "false",
+        "href": "/employees/EMP-01?zone=evidence&state=error&rid=abc12345",
+        "panel": false,
+        "stateKept": true,
+        "ridKept": true,
+        "tabLeak": false,
+        "viewLeak": false,
+        "ownZone": true
+      }
+    ],
+    "anyPanel": false,
+    "allStateKept": true,
+    "allRidKept": true,
+    "anyTabLeak": false,
+    "anyViewLeak": false,
+    "allOwnZone": true,
+    "ridText": "abc12345",
+    "viol": 0,
+    "maxRight": 375,
+    "mainLen": 61
+  },
+  "z2-config-panel-ready": {
+    "url": "/employees/EMP-01/config?panel=ingest&state=ready&rid=r7z",
+    "zoneLinkCount": 10,
+    "zones": [
+      {
+        "zone": "workbench",
+        "ariaSelected": "false",
+        "href": "/employees/EMP-01?zone=workbench&state=ready&rid=r7z",
+        "panel": false,
+        "stateKept": true,
+        "ridKept": true,
+        "tabLeak": false,
+        "viewLeak": false,
+        "ownZone": true
+      },
+      {
+        "zone": "config",
+        "ariaSelected": "true",
+        "href": "/employees/EMP-01?zone=config&state=ready&rid=r7z",
+        "panel": false,
+        "stateKept": true,
+        "ridKept": true,
+        "tabLeak": false,
+        "viewLeak": false,
+        "ownZone": true
+      },
+      {
+        "zone": "tasks",
+        "ariaSelected": "false",
+        "href": "/employees/EMP-01?zone=tasks&state=ready&rid=r7z",
+        "panel": false,
+        "stateKept": true,
+        "ridKept": true,
+        "tabLeak": false,
+        "viewLeak": false,
+        "ownZone": true
+      },
+      {
+        "zone": "runs",
+        "ariaSelected": "false",
+        "href": "/employees/EMP-01?zone=runs&state=ready&rid=r7z",
+        "panel": false,
+        "stateKept": true,
+        "ridKept": true,
+        "tabLeak": false,
+        "viewLeak": false,
+        "ownZone": true
+      },
+      {
+        "zone": "evidence",
+        "ariaSelected": "false",
+        "href": "/employees/EMP-01?zone=evidence&state=ready&rid=r7z",
+        "panel": false,
+        "stateKept": true,
+        "ridKept": true,
+        "tabLeak": false,
+        "viewLeak": false,
+        "ownZone": true
+      },
+      {
+        "zone": "overview",
+        "ariaSelected": "true",
+        "href": "/employees/EMP-01",
+        "panel": false,
+        "stateKept": false,
+        "ridKept": false,
+        "tabLeak": false,
+        "viewLeak": false,
+        "ownZone": false
+      },
+      {
+        "zone": "capability",
+        "ariaSelected": "false",
+        "href": "/employees/EMP-01?zone=capability",
+        "panel": false,
+        "stateKept": false,
+        "ridKept": false,
+        "tabLeak": false,
+        "viewLeak": false,
+        "ownZone": true
+      },
+      {
+        "zone": "approvals",
+        "ariaSelected": "false",
+        "href": "/employees/EMP-01?zone=approvals",
+        "panel": false,
+        "stateKept": false,
+        "ridKept": false,
+        "tabLeak": false,
+        "viewLeak": false,
+        "ownZone": true
+      },
+      {
+        "zone": "runs",
+        "ariaSelected": "false",
+        "href": "/employees/EMP-01?zone=runs",
+        "panel": false,
+        "stateKept": false,
+        "ridKept": false,
+        "tabLeak": false,
+        "viewLeak": false,
+        "ownZone": true
+      },
+      {
+        "zone": "audit",
+        "ariaSelected": "false",
+        "href": "/employees/EMP-01?zone=audit",
+        "panel": false,
+        "stateKept": false,
+        "ridKept": false,
+        "tabLeak": false,
+        "viewLeak": false,
+        "ownZone": true
+      }
+    ],
+    "anyPanel": false,
+    "allStateKept": false,
+    "allRidKept": false,
+    "anyTabLeak": false,
+    "anyViewLeak": false,
+    "allOwnZone": false,
+    "ridText": null,
+    "viol": 0,
+    "maxRight": 375,
+    "mainLen": 143
+  },
+  "z3-bare-panel": {
+    "url": "/employees/EMP-01?panel=retrieval",
+    "zoneLinkCount": 10,
+    "zones": [
+      {
+        "zone": "workbench",
+        "ariaSelected": "false",
+        "href": "/employees/EMP-01?zone=workbench",
+        "panel": false,
+        "stateKept": false,
+        "ridKept": false,
+        "tabLeak": false,
+        "viewLeak": false,
+        "ownZone": true
+      },
+      {
+        "zone": "config",
+        "ariaSelected": "false",
+        "href": "/employees/EMP-01?zone=config",
+        "panel": false,
+        "stateKept": false,
+        "ridKept": false,
+        "tabLeak": false,
+        "viewLeak": false,
+        "ownZone": true
+      },
+      {
+        "zone": "tasks",
+        "ariaSelected": "false",
+        "href": "/employees/EMP-01?zone=tasks",
+        "panel": false,
+        "stateKept": false,
+        "ridKept": false,
+        "tabLeak": false,
+        "viewLeak": false,
+        "ownZone": true
+      },
+      {
+        "zone": "runs",
+        "ariaSelected": "false",
+        "href": "/employees/EMP-01?zone=runs",
+        "panel": false,
+        "stateKept": false,
+        "ridKept": false,
+        "tabLeak": false,
+        "viewLeak": false,
+        "ownZone": true
+      },
+      {
+        "zone": "evidence",
+        "ariaSelected": "false",
+        "href": "/employees/EMP-01?zone=evidence",
+        "panel": false,
+        "stateKept": false,
+        "ridKept": false,
+        "tabLeak": false,
+        "viewLeak": false,
+        "ownZone": true
+      },
+      {
+        "zone": "overview",
+        "ariaSelected": "true",
+        "href": "/employees/EMP-01",
+        "panel": false,
+        "stateKept": false,
+        "ridKept": false,
+        "tabLeak": false,
+        "viewLeak": false,
+        "ownZone": false
+      },
+      {
+        "zone": "capability",
+        "ariaSelected": "false",
+        "href": "/employees/EMP-01?zone=capability",
+        "panel": false,
+        "stateKept": false,
+        "ridKept": false,
+        "tabLeak": false,
+        "viewLeak": false,
+        "ownZone": true
+      },
+      {
+        "zone": "approvals",
+        "ariaSelected": "false",
+        "href": "/employees/EMP-01?zone=approvals",
+        "panel": false,
+        "stateKept": false,
+        "ridKept": false,
+        "tabLeak": false,
+        "viewLeak": false,
+        "ownZone": true
+      },
+      {
+        "zone": "runs",
+        "ariaSelected": "false",
+        "href": "/employees/EMP-01?zone=runs",
+        "panel": false,
+        "stateKept": false,
+        "ridKept": false,
+        "tabLeak": false,
+        "viewLeak": false,
+        "ownZone": true
+      },
+      {
+        "zone": "audit",
+        "ariaSelected": "false",
+        "href": "/employees/EMP-01?zone=audit",
+        "panel": false,
+        "stateKept": false,
+        "ridKept": false,
+        "tabLeak": false,
+        "viewLeak": false,
+        "ownZone": true
+      }
+    ],
+    "anyPanel": false,
+    "allStateKept": false,
+    "allRidKept": false,
+    "anyTabLeak": false,
+    "anyViewLeak": false,
+    "allOwnZone": false,
+    "ridText": null,
+    "viol": 0,
+    "maxRight": 375,
+    "mainLen": 143
+  },
+  "face": {
+    "buildFace": "4a654bba (entry index-DiNZbuB-.js)",
+    "tipAtRun": "e808d90e32 (test-only, 未重建)",
+    "port": 9122,
+    "viewport": "375x812"
+  }
+}

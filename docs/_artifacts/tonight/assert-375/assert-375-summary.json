@@ -10,9 +10,9 @@
     "matrix": "required png, nonzero"
   },
   "routes": 51,
-  "pass": 50,
+  "pass": 49,
   "fail": 0,
-  "notMeasured": 1,
+  "notMeasured": 2,
   "matrixHash": "#/employees?tab=matrix",
   "matrixPresent": true,
   "matrixOk": true,
@@ -52,7 +52,7 @@
       "mainTextLen": 344,
       "navError": null,
       "png": "approvals-375.png",
-      "pngBytes": 56668,
+      "pngBytes": 57319,
       "pngW": 375,
       "pngH": 812,
       "elementsChecked": 201,
@@ -67,7 +67,37 @@
       "scrollOverflow": [],
       "domOverflowPx": 0,
       "fontBypass": false,
-      "consoleErrorsProduct": 0
+      "consoleErrorsProduct": 0,
+      "firstRunRow": {
+        "verdict": "PASS",
+        "mainTextLen": 344,
+        "png": "approvals-375.png",
+        "pngBytes": 56668,
+        "pngH": 812,
+        "elementsChecked": 201,
+        "violCount": 0,
+        "scrollOverflowCount": 0,
+        "offscreenLeft": 60,
+        "fontBypass": false,
+        "contentFit": true,
+        "navError": null,
+        "reroll_0a258f7b": {
+          "verdict": "PASS",
+          "mainTextLen": 344,
+          "pngH": 812,
+          "violCount": 0,
+          "offscreenLeft": 60
+        },
+        "reroll_6edcba4d": {
+          "verdict": "PASS",
+          "mainTextLen": 344,
+          "pngH": 812,
+          "violCount": 0,
+          "offscreenLeft": 60,
+          "fontBypass": false
+        }
+      },
+      "rerollFace": "6edcba4d"
     },
     {
       "hash": "#/approvals?tab=history",
@@ -78,7 +108,7 @@
       "mainTextLen": 530,
       "navError": null,
       "png": "approvals-tab-history-375.png",
-      "pngBytes": 84832,
+      "pngBytes": 84898,
       "pngW": 375,
       "pngH": 812,
       "elementsChecked": 239,
@@ -93,7 +123,37 @@
       "scrollOverflow": [],
       "domOverflowPx": 0,
       "fontBypass": false,
-      "consoleErrorsProduct": 0
+      "consoleErrorsProduct": 0,
+      "firstRunRow": {
+        "verdict": "PASS",
+        "mainTextLen": 530,
+        "png": "approvals-tab-history-375.png",
+        "pngBytes": 84832,
+        "pngH": 812,
+        "elementsChecked": 239,
+        "violCount": 0,
+        "scrollOverflowCount": 0,
+        "offscreenLeft": 60,
+        "fontBypass": false,
+        "contentFit": true,
+        "navError": null,
+        "reroll_0a258f7b": {
+          "verdict": "PASS",
+          "mainTextLen": 530,
+          "pngH": 812,
+          "violCount": 0,
+          "offscreenLeft": 60
+        },
+        "reroll_6edcba4d": {
+          "verdict": "PASS",
+          "mainTextLen": 530,
+          "pngH": 812,
+          "violCount": 0,
+          "offscreenLeft": 60,
+          "fontBypass": false
+        }
+      },
+      "rerollFace": "6edcba4d"
     },
     {
       "hash": "#/approvals?tab=mine",
@@ -104,7 +164,7 @@
       "mainTextLen": 344,
       "navError": null,
       "png": "approvals-tab-mine-375.png",
-      "pngBytes": 56950,
+      "pngBytes": 57155,
       "pngW": 375,
       "pngH": 812,
       "elementsChecked": 201,
@@ -119,7 +179,37 @@
       "scrollOverflow": [],
       "domOverflowPx": 0,
       "fontBypass": false,
-      "consoleErrorsProduct": 0
+      "consoleErrorsProduct": 0,
+      "firstRunRow": {
+        "verdict": "PASS",
+        "mainTextLen": 344,
+        "png": "approvals-tab-mine-375.png",
+        "pngBytes": 56950,
+        "pngH": 812,
+        "elementsChecked": 201,
+        "violCount": 0,
+        "scrollOverflowCount": 0,
+        "offscreenLeft": 60,
+        "fontBypass": false,
+        "contentFit": true,
+        "navError": null,
+        "reroll_0a258f7b": {
+          "verdict": "PASS",
+          "mainTextLen": 344,
+          "pngH": 812,
+          "violCount": 0,
+          "offscreenLeft": 60
+        },
+        "reroll_6edcba4d": {
+          "verdict": "PASS",
+          "mainTextLen": 344,
+          "pngH": 812,
+          "violCount": 0,
+          "offscreenLeft": 60,
+          "fontBypass": false
+        }
+      },
+      "rerollFace": "6edcba4d"
     },
     {
       "hash": "#/approvals?tab=pending&view=mine",
@@ -130,7 +220,7 @@
       "mainTextLen": 344,
       "navError": null,
       "png": "approvals-tab-pending-view-mine-375.png",
-      "pngBytes": 56981,
+      "pngBytes": 56780,
       "pngW": 375,
       "pngH": 812,
       "elementsChecked": 201,
@@ -145,7 +235,37 @@
       "scrollOverflow": [],
       "domOverflowPx": 0,
       "fontBypass": false,
-      "consoleErrorsProduct": 0
+      "consoleErrorsProduct": 0,
+      "firstRunRow": {
+        "verdict": "PASS",
+        "mainTextLen": 344,
+        "png": "approvals-tab-pending-view-mine-375.png",
+        "pngBytes": 56981,
+        "pngH": 812,
+        "elementsChecked": 201,
+        "violCount": 0,
+        "scrollOverflowCount": 0,
+        "offscreenLeft": 60,
+        "fontBypass": false,
+        "contentFit": true,
+        "navError": null,
+        "reroll_0a258f7b": {
+          "verdict": "PASS",
+          "mainTextLen": 344,
+          "pngH": 812,
+          "violCount": 0,
+          "offscreenLeft": 60
+        },
+        "reroll_6edcba4d": {
+          "verdict": "PASS",
+          "mainTextLen": 344,
+          "pngH": 812,
+          "violCount": 0,
+          "offscreenLeft": 60,
+          "fontBypass": false
+        }
+      },
+      "rerollFace": "6edcba4d"
     },
     {
       "hash": "#/approvals?tab=pending&view=release",
@@ -156,7 +276,7 @@
       "mainTextLen": 344,
       "navError": null,
       "png": "approvals-tab-pending-view-release-375.png",
-      "pngBytes": 56972,
+      "pngBytes": 56953,
       "pngW": 375,
       "pngH": 812,
       "elementsChecked": 201,
@@ -171,7 +291,37 @@
       "scrollOverflow": [],
       "domOverflowPx": 0,
       "fontBypass": false,
-      "consoleErrorsProduct": 0
+      "consoleErrorsProduct": 0,
+      "firstRunRow": {
+        "verdict": "PASS",
+        "mainTextLen": 344,
+        "png": "approvals-tab-pending-view-release-375.png",
+        "pngBytes": 56972,
+        "pngH": 812,
+        "elementsChecked": 201,
+        "violCount": 0,
+        "scrollOverflowCount": 0,
+        "offscreenLeft": 60,
+        "fontBypass": false,
+        "contentFit": true,
+        "navError": null,
+        "reroll_0a258f7b": {
+          "verdict": "PASS",
+          "mainTextLen": 344,
+          "pngH": 812,
+          "violCount": 0,
+          "offscreenLeft": 60
+        },
+        "reroll_6edcba4d": {
+          "verdict": "PASS",
+          "mainTextLen": 344,
+          "pngH": 812,
+          "violCount": 0,
+          "offscreenLeft": 60,
+          "fontBypass": false
+        }
+      },
+      "rerollFace": "6edcba4d"
     },
     {
       "hash": "#/approvals?tab=policy",
@@ -182,7 +332,7 @@
       "mainTextLen": 344,
       "navError": null,
       "png": "approvals-tab-policy-375.png",
-      "pngBytes": 56796,
+      "pngBytes": 57149,
       "pngW": 375,
       "pngH": 812,
       "elementsChecked": 201,
@@ -197,7 +347,37 @@
       "scrollOverflow": [],
       "domOverflowPx": 0,
       "fontBypass": false,
-      "consoleErrorsProduct": 0
+      "consoleErrorsProduct": 0,
+      "firstRunRow": {
+        "verdict": "PASS",
+        "mainTextLen": 344,
+        "png": "approvals-tab-policy-375.png",
+        "pngBytes": 56796,
+        "pngH": 812,
+        "elementsChecked": 201,
+        "violCount": 0,
+        "scrollOverflowCount": 0,
+        "offscreenLeft": 60,
+        "fontBypass": false,
+        "contentFit": true,
+        "navError": null,
+        "reroll_0a258f7b": {
+          "verdict": "PASS",
+          "mainTextLen": 344,
+          "pngH": 812,
+          "violCount": 0,
+          "offscreenLeft": 60
+        },
+        "reroll_6edcba4d": {
+          "verdict": "PASS",
+          "mainTextLen": 344,
+          "pngH": 812,
+          "violCount": 0,
+          "offscreenLeft": 60,
+          "fontBypass": false
+        }
+      },
+      "rerollFace": "6edcba4d"
     },
     {
       "hash": "#/approvals?tab=release",
@@ -208,7 +388,7 @@
       "mainTextLen": 344,
       "navError": null,
       "png": "approvals-tab-release-375.png",
-      "pngBytes": 57325,
+      "pngBytes": 57138,
       "pngW": 375,
       "pngH": 812,
       "elementsChecked": 201,
@@ -223,7 +403,37 @@
       "scrollOverflow": [],
       "domOverflowPx": 0,
       "fontBypass": false,
-      "consoleErrorsProduct": 0
+      "consoleErrorsProduct": 0,
+      "firstRunRow": {
+        "verdict": "PASS",
+        "mainTextLen": 344,
+        "png": "approvals-tab-release-375.png",
+        "pngBytes": 57325,
+        "pngH": 812,
+        "elementsChecked": 201,
+        "violCount": 0,
+        "scrollOverflowCount": 0,
+        "offscreenLeft": 60,
+        "fontBypass": false,
+        "contentFit": true,
+        "navError": null,
+        "reroll_0a258f7b": {
+          "verdict": "PASS",
+          "mainTextLen": 344,
+          "pngH": 812,
+          "violCount": 0,
+          "offscreenLeft": 60
+        },
+        "reroll_6edcba4d": {
+          "verdict": "PASS",
+          "mainTextLen": 344,
+          "pngH": 812,
+          "violCount": 0,
+          "offscreenLeft": 60,
+          "fontBypass": false
+        }
+      },
+      "rerollFace": "6edcba4d"
     },
     {
       "hash": "#/audit",
@@ -282,26 +492,26 @@
       "label": "平台接入",
       "source": "CONSOLE_TABS",
       "viewport": "375",
-      "verdict": "PASS",
+      "verdict": "NOT_MEASURED",
       "mainTextLen": 10,
-      "navError": null,
+      "navError": "font-bypass: page.screenshot: Timeout 45000ms exceeded.\nCall log:\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - f",
       "png": "capabilities-tab-channels-375.png",
-      "pngBytes": 6468,
-      "pngW": 375,
-      "pngH": 812,
+      "pngBytes": 0,
+      "pngW": null,
+      "pngH": null,
       "elementsChecked": 87,
       "offscreenLeft": 62,
-      "expandApplied": true,
+      "expandApplied": false,
       "scrollersExpanded": 0,
-      "contentFit": true,
-      "targetHeight": 812,
+      "contentFit": false,
+      "targetHeight": null,
       "violCount": 0,
       "viol": [],
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
       "fontBypass": true,
-      "consoleErrorsProduct": 0,
+      "consoleErrorsProduct": 7,
       "firstRunRow": {
         "mainTextLen": 113,
         "elementsChecked": 125,
@@ -327,7 +537,7 @@
       "mainTextLen": 178,
       "navError": null,
       "png": "capabilities-tab-models-375.png",
-      "pngBytes": 44346,
+      "pngBytes": 44749,
       "pngW": 375,
       "pngH": 812,
       "elementsChecked": 118,
@@ -342,7 +552,19 @@
       "scrollOverflow": [],
       "domOverflowPx": 0,
       "fontBypass": false,
-      "consoleErrorsProduct": 0
+      "consoleErrorsProduct": 0,
+      "firstRunRow": {
+        "verdict": "PASS",
+        "mainTextLen": 178,
+        "png": "capabilities-tab-models-375.png",
+        "pngBytes": 44346,
+        "pngH": 812,
+        "elementsChecked": 118,
+        "violCount": 0,
+        "fontBypass": false,
+        "contentFit": true,
+        "navError": null
+      }
     },
     {
       "hash": "#/capabilities?tab=tools",
@@ -394,7 +616,37 @@
       "scrollOverflow": [],
       "domOverflowPx": 0,
       "fontBypass": false,
-      "consoleErrorsProduct": 0
+      "consoleErrorsProduct": 0,
+      "firstRunRow": {
+        "verdict": "PASS",
+        "mainTextLen": 296,
+        "png": "employees-375.png",
+        "pngBytes": 52429,
+        "pngH": 812,
+        "elementsChecked": 183,
+        "violCount": 0,
+        "scrollOverflowCount": 0,
+        "offscreenLeft": 60,
+        "fontBypass": false,
+        "contentFit": true,
+        "navError": null,
+        "reroll_0a258f7b": {
+          "verdict": "PASS",
+          "mainTextLen": 296,
+          "pngH": 812,
+          "violCount": 0,
+          "offscreenLeft": 60
+        },
+        "reroll_6edcba4d": {
+          "verdict": "PASS",
+          "mainTextLen": 296,
+          "pngH": 812,
+          "violCount": 0,
+          "offscreenLeft": 60,
+          "fontBypass": false
+        }
+      },
+      "rerollFace": "6edcba4d"
     },
     {
       "hash": "#/employees?tab=matrix",
@@ -405,7 +657,7 @@
       "mainTextLen": 213,
       "navError": null,
       "png": "employees-tab-matrix-375.png",
-      "pngBytes": 52757,
+      "pngBytes": 52935,
       "pngW": 375,
       "pngH": 812,
       "elementsChecked": 141,
@@ -420,7 +672,23 @@
       "scrollOverflow": [],
       "domOverflowPx": 0,
       "fontBypass": false,
-      "consoleErrorsProduct": 0
+      "consoleErrorsProduct": 0,
+      "rerollFace": "4a654bba",
+      "prevFaceSnapshot": {
+        "verdict": "PASS",
+        "violCount": 0,
+        "mainTextLen": 213,
+        "pngH": 812,
+        "pngBytes": 52807,
+        "rerollFace": "6edcba4d"
+      },
+      "faceNote": "4a654bba 点名重跑（manifest 冷链归一入面后复测）PASS viol=0 main=213；历面读数按 firstRunRow/链保留",
+      "faceSnapshotChain": [
+        {
+          "face": "a382334c",
+          "verdict": "PASS"
+        }
+      ]
     },
     {
       "hash": "#/employees/:employeeId",
@@ -509,7 +777,7 @@
       "mainTextLen": 42,
       "navError": null,
       "png": "employees-employeeId-zone-runs-375.png",
-      "pngBytes": 36945,
+      "pngBytes": 36211,
       "pngW": 375,
       "pngH": 812,
       "elementsChecked": 102,
@@ -524,7 +792,22 @@
       "scrollOverflow": [],
       "domOverflowPx": 0,
       "fontBypass": false,
-      "consoleErrorsProduct": 0
+      "consoleErrorsProduct": 0,
+      "firstRunRow": {
+        "verdict": "PASS",
+        "mainTextLen": 42,
+        "png": "employees-employeeId-zone-runs-375.png",
+        "pngBytes": 36945,
+        "pngH": 812,
+        "elementsChecked": 102,
+        "violCount": 0,
+        "scrollOverflowCount": 0,
+        "offscreenLeft": 62,
+        "fontBypass": false,
+        "contentFit": true,
+        "navError": null
+      },
+      "rerollFace": "d2cc49fe"
     },
     {
       "hash": "#/employees/:employeeId?zone=tasks",
@@ -766,13 +1049,13 @@
       "source": "CONSOLE_TABS",
       "viewport": "375",
       "verdict": "PASS",
-      "mainTextLen": 549,
+      "mainTextLen": 533,
       "navError": null,
       "png": "knowledge-375.png",
-      "pngBytes": 66705,
+      "pngBytes": 61362,
       "pngW": 375,
       "pngH": 812,
-      "elementsChecked": 176,
+      "elementsChecked": 178,
       "offscreenLeft": 62,
       "expandApplied": true,
       "scrollersExpanded": 1,
@@ -784,7 +1067,37 @@
       "scrollOverflow": [],
       "domOverflowPx": 0,
       "fontBypass": false,
-      "consoleErrorsProduct": 0
+      "consoleErrorsProduct": 0,
+      "firstRunRow": {
+        "verdict": "PASS",
+        "mainTextLen": 549,
+        "png": "knowledge-375.png",
+        "pngBytes": 66705,
+        "pngH": 812,
+        "elementsChecked": 176,
+        "violCount": 0,
+        "scrollOverflowCount": 0,
+        "offscreenLeft": 62,
+        "fontBypass": false,
+        "contentFit": true,
+        "navError": null,
+        "reroll_0a258f7b": {
+          "verdict": "PASS",
+          "mainTextLen": 533,
+          "pngH": 812,
+          "violCount": 0,
+          "offscreenLeft": 62
+        },
+        "reroll_6edcba4d": {
+          "verdict": "PASS",
+          "mainTextLen": 533,
+          "pngH": 812,
+          "violCount": 0,
+          "offscreenLeft": 62,
+          "fontBypass": false
+        }
+      },
+      "rerollFace": "6edcba4d"
     },
     {
       "hash": "#/knowledge?tab=citations",
@@ -792,13 +1105,13 @@
       "source": "COMPAT_TABS",
       "viewport": "375",
       "verdict": "PASS",
-      "mainTextLen": 477,
+      "mainTextLen": 494,
       "navError": null,
       "png": "knowledge-tab-citations-375.png",
-      "pngBytes": 64869,
+      "pngBytes": 62735,
       "pngW": 375,
       "pngH": 812,
-      "elementsChecked": 163,
+      "elementsChecked": 166,
       "offscreenLeft": 62,
       "expandApplied": true,
       "scrollersExpanded": 1,
@@ -810,21 +1123,51 @@
       "scrollOverflow": [],
       "domOverflowPx": 0,
       "fontBypass": false,
-      "consoleErrorsProduct": 0
+      "consoleErrorsProduct": 0,
+      "firstRunRow": {
+        "verdict": "PASS",
+        "mainTextLen": 477,
+        "png": "knowledge-tab-citations-375.png",
+        "pngBytes": 64869,
+        "pngH": 812,
+        "elementsChecked": 163,
+        "violCount": 0,
+        "scrollOverflowCount": 0,
+        "offscreenLeft": 62,
+        "fontBypass": false,
+        "contentFit": true,
+        "navError": null,
+        "reroll_0a258f7b": {
+          "verdict": "PASS",
+          "mainTextLen": 494,
+          "pngH": 812,
+          "violCount": 0,
+          "offscreenLeft": 62
+        },
+        "reroll_6edcba4d": {
+          "verdict": "PASS",
+          "mainTextLen": 494,
+          "pngH": 812,
+          "violCount": 0,
+          "offscreenLeft": 62,
+          "fontBypass": false
+        }
+      },
+      "rerollFace": "6edcba4d"
     },
     {
       "hash": "#/knowledge?tab=evidence",
-      "label": "证据与引用",
+      "label": "审计证据",
       "source": "CONSOLE_TABS",
       "viewport": "375",
       "verdict": "PASS",
-      "mainTextLen": 477,
+      "mainTextLen": 494,
       "navError": null,
       "png": "knowledge-tab-evidence-375.png",
-      "pngBytes": 64869,
+      "pngBytes": 62735,
       "pngW": 375,
       "pngH": 812,
-      "elementsChecked": 163,
+      "elementsChecked": 166,
       "offscreenLeft": 62,
       "expandApplied": true,
       "scrollersExpanded": 1,
@@ -836,7 +1179,37 @@
       "scrollOverflow": [],
       "domOverflowPx": 0,
       "fontBypass": false,
-      "consoleErrorsProduct": 0
+      "consoleErrorsProduct": 0,
+      "firstRunRow": {
+        "verdict": "PASS",
+        "mainTextLen": 477,
+        "png": "knowledge-tab-evidence-375.png",
+        "pngBytes": 64869,
+        "pngH": 812,
+        "elementsChecked": 163,
+        "violCount": 0,
+        "scrollOverflowCount": 0,
+        "offscreenLeft": 62,
+        "fontBypass": false,
+        "contentFit": true,
+        "navError": null,
+        "reroll_0a258f7b": {
+          "verdict": "PASS",
+          "mainTextLen": 494,
+          "pngH": 812,
+          "violCount": 0,
+          "offscreenLeft": 62
+        },
+        "reroll_6edcba4d": {
+          "verdict": "PASS",
+          "mainTextLen": 494,
+          "pngH": 812,
+          "violCount": 0,
+          "offscreenLeft": 62,
+          "fontBypass": false
+        }
+      },
+      "rerollFace": "6edcba4d"
     },
     {
       "hash": "#/knowledge?tab=ingest",
@@ -844,36 +1217,10 @@
       "source": "COMPAT_TABS",
       "viewport": "375",
       "verdict": "PASS",
-      "mainTextLen": 553,
+      "mainTextLen": 575,
       "navError": null,
       "png": "knowledge-tab-ingest-375.png",
-      "pngBytes": 64845,
-      "pngW": 375,
-      "pngH": 812,
-      "elementsChecked": 170,
-      "offscreenLeft": 62,
-      "expandApplied": true,
-      "scrollersExpanded": 1,
-      "contentFit": true,
-      "targetHeight": 812,
-      "violCount": 0,
-      "viol": [],
-      "scrollOverflowCount": 0,
-      "scrollOverflow": [],
-      "domOverflowPx": 0,
-      "fontBypass": false,
-      "consoleErrorsProduct": 0
-    },
-    {
-      "hash": "#/knowledge?tab=retrieval",
-      "label": "证据与引用",
-      "source": "COMPAT_TABS",
-      "viewport": "375",
-      "verdict": "PASS",
-      "mainTextLen": 508,
-      "navError": null,
-      "png": "knowledge-tab-retrieval-375.png",
-      "pngBytes": 65109,
+      "pngBytes": 63071,
       "pngW": 375,
       "pngH": 812,
       "elementsChecked": 174,
@@ -888,7 +1235,93 @@
       "scrollOverflow": [],
       "domOverflowPx": 0,
       "fontBypass": false,
-      "consoleErrorsProduct": 0
+      "consoleErrorsProduct": 0,
+      "firstRunRow": {
+        "verdict": "PASS",
+        "mainTextLen": 553,
+        "png": "knowledge-tab-ingest-375.png",
+        "pngBytes": 64845,
+        "pngH": 812,
+        "elementsChecked": 170,
+        "violCount": 0,
+        "scrollOverflowCount": 0,
+        "offscreenLeft": 62,
+        "fontBypass": false,
+        "contentFit": true,
+        "navError": null,
+        "reroll_0a258f7b": {
+          "verdict": "PASS",
+          "mainTextLen": 575,
+          "pngH": 812,
+          "violCount": 0,
+          "offscreenLeft": 62
+        },
+        "reroll_6edcba4d": {
+          "verdict": "PASS",
+          "mainTextLen": 575,
+          "pngH": 812,
+          "violCount": 0,
+          "offscreenLeft": 62,
+          "fontBypass": false
+        }
+      },
+      "rerollFace": "6edcba4d"
+    },
+    {
+      "hash": "#/knowledge?tab=retrieval",
+      "label": "检索",
+      "source": "COMPAT_TABS",
+      "viewport": "375",
+      "verdict": "PASS",
+      "mainTextLen": 526,
+      "navError": null,
+      "png": "knowledge-tab-retrieval-375.png",
+      "pngBytes": 61585,
+      "pngW": 375,
+      "pngH": 812,
+      "elementsChecked": 177,
+      "offscreenLeft": 62,
+      "expandApplied": true,
+      "scrollersExpanded": 1,
+      "contentFit": true,
+      "targetHeight": 812,
+      "violCount": 0,
+      "viol": [],
+      "scrollOverflowCount": 0,
+      "scrollOverflow": [],
+      "domOverflowPx": 0,
+      "fontBypass": false,
+      "consoleErrorsProduct": 0,
+      "firstRunRow": {
+        "verdict": "PASS",
+        "mainTextLen": 508,
+        "png": "knowledge-tab-retrieval-375.png",
+        "pngBytes": 65109,
+        "pngH": 812,
+        "elementsChecked": 174,
+        "violCount": 0,
+        "scrollOverflowCount": 0,
+        "offscreenLeft": 62,
+        "fontBypass": false,
+        "contentFit": true,
+        "navError": null,
+        "reroll_0a258f7b": {
+          "verdict": "PASS",
+          "mainTextLen": 526,
+          "pngH": 812,
+          "violCount": 0,
+          "offscreenLeft": 62
+        },
+        "reroll_6edcba4d": {
+          "verdict": "PASS",
+          "mainTextLen": 526,
+          "pngH": 812,
+          "violCount": 0,
+          "offscreenLeft": 62,
+          "fontBypass": false
+        }
+      },
+      "rerollFace": "6edcba4d"
     },
     {
       "hash": "#/knowledge?tab=scope",
@@ -896,13 +1329,13 @@
       "source": "COMPAT_TABS",
       "viewport": "375",
       "verdict": "PASS",
-      "mainTextLen": 549,
+      "mainTextLen": 533,
       "navError": null,
       "png": "knowledge-tab-scope-375.png",
-      "pngBytes": 66705,
+      "pngBytes": 61362,
       "pngW": 375,
       "pngH": 812,
-      "elementsChecked": 176,
+      "elementsChecked": 178,
       "offscreenLeft": 62,
       "expandApplied": true,
       "scrollersExpanded": 1,
@@ -914,7 +1347,37 @@
       "scrollOverflow": [],
       "domOverflowPx": 0,
       "fontBypass": false,
-      "consoleErrorsProduct": 0
+      "consoleErrorsProduct": 0,
+      "firstRunRow": {
+        "verdict": "PASS",
+        "mainTextLen": 549,
+        "png": "knowledge-tab-scope-375.png",
+        "pngBytes": 66705,
+        "pngH": 812,
+        "elementsChecked": 176,
+        "violCount": 0,
+        "scrollOverflowCount": 0,
+        "offscreenLeft": 62,
+        "fontBypass": false,
+        "contentFit": true,
+        "navError": null,
+        "reroll_0a258f7b": {
+          "verdict": "PASS",
+          "mainTextLen": 533,
+          "pngH": 812,
+          "violCount": 0,
+          "offscreenLeft": 62
+        },
+        "reroll_6edcba4d": {
+          "verdict": "PASS",
+          "mainTextLen": 533,
+          "pngH": 812,
+          "violCount": 0,
+          "offscreenLeft": 62,
+          "fontBypass": false
+        }
+      },
+      "rerollFace": "6edcba4d"
     },
     {
       "hash": "#/knowledge?tab=sources",
@@ -922,13 +1385,13 @@
       "source": "CONSOLE_TABS",
       "viewport": "375",
       "verdict": "PASS",
-      "mainTextLen": 553,
+      "mainTextLen": 575,
       "navError": null,
       "png": "knowledge-tab-sources-375.png",
-      "pngBytes": 64845,
+      "pngBytes": 63071,
       "pngW": 375,
       "pngH": 812,
-      "elementsChecked": 170,
+      "elementsChecked": 174,
       "offscreenLeft": 62,
       "expandApplied": true,
       "scrollersExpanded": 1,
@@ -940,7 +1403,37 @@
       "scrollOverflow": [],
       "domOverflowPx": 0,
       "fontBypass": false,
-      "consoleErrorsProduct": 0
+      "consoleErrorsProduct": 0,
+      "firstRunRow": {
+        "verdict": "PASS",
+        "mainTextLen": 553,
+        "png": "knowledge-tab-sources-375.png",
+        "pngBytes": 64845,
+        "pngH": 812,
+        "elementsChecked": 170,
+        "violCount": 0,
+        "scrollOverflowCount": 0,
+        "offscreenLeft": 62,
+        "fontBypass": false,
+        "contentFit": true,
+        "navError": null,
+        "reroll_0a258f7b": {
+          "verdict": "PASS",
+          "mainTextLen": 575,
+          "pngH": 812,
+          "violCount": 0,
+          "offscreenLeft": 62
+        },
+        "reroll_6edcba4d": {
+          "verdict": "PASS",
+          "mainTextLen": 575,
+          "pngH": 812,
+          "violCount": 0,
+          "offscreenLeft": 62,
+          "fontBypass": false
+        }
+      },
+      "rerollFace": "6edcba4d"
     },
     {
       "hash": "#/metrics",
@@ -977,7 +1470,7 @@
       "mainTextLen": 154,
       "navError": null,
       "png": "org-375.png",
-      "pngBytes": 39024,
+      "pngBytes": 38630,
       "pngW": 375,
       "pngH": 812,
       "elementsChecked": 128,
@@ -992,7 +1485,37 @@
       "scrollOverflow": [],
       "domOverflowPx": 0,
       "fontBypass": false,
-      "consoleErrorsProduct": 0
+      "consoleErrorsProduct": 0,
+      "firstRunRow": {
+        "verdict": "PASS",
+        "mainTextLen": 154,
+        "png": "org-375.png",
+        "pngBytes": 39024,
+        "pngH": 812,
+        "elementsChecked": 128,
+        "violCount": 0,
+        "scrollOverflowCount": 0,
+        "offscreenLeft": 60,
+        "fontBypass": false,
+        "contentFit": true,
+        "navError": null,
+        "reroll_0a258f7b": {
+          "verdict": "PASS",
+          "mainTextLen": 154,
+          "pngH": 812,
+          "violCount": 0,
+          "offscreenLeft": 60
+        },
+        "reroll_6edcba4d": {
+          "verdict": "PASS",
+          "mainTextLen": 154,
+          "pngH": 812,
+          "violCount": 0,
+          "offscreenLeft": 60,
+          "fontBypass": false
+        }
+      },
+      "rerollFace": "6edcba4d"
     },
     {
       "hash": "#/overview",
@@ -1003,7 +1526,7 @@
       "mainTextLen": 1061,
       "navError": null,
       "png": "overview-375.png",
-      "pngBytes": 53709,
+      "pngBytes": 53770,
       "pngW": 375,
       "pngH": 812,
       "elementsChecked": 354,
@@ -1018,7 +1541,37 @@
       "scrollOverflow": [],
       "domOverflowPx": 0,
       "fontBypass": false,
-      "consoleErrorsProduct": 0
+      "consoleErrorsProduct": 0,
+      "firstRunRow": {
+        "verdict": "PASS",
+        "mainTextLen": 1061,
+        "png": "overview-375.png",
+        "pngBytes": 53709,
+        "pngH": 812,
+        "elementsChecked": 354,
+        "violCount": 0,
+        "scrollOverflowCount": 0,
+        "offscreenLeft": 60,
+        "fontBypass": false,
+        "contentFit": true,
+        "navError": null,
+        "reroll_0a258f7b": {
+          "verdict": "PASS",
+          "mainTextLen": 1061,
+          "pngH": 812,
+          "violCount": 0,
+          "offscreenLeft": 60
+        },
+        "reroll_6edcba4d": {
+          "verdict": "PASS",
+          "mainTextLen": 1061,
+          "pngH": 812,
+          "violCount": 0,
+          "offscreenLeft": 60,
+          "fontBypass": false
+        }
+      },
+      "rerollFace": "6edcba4d"
     },
     {
       "hash": "#/overview?tab=usage",
@@ -1029,7 +1582,7 @@
       "mainTextLen": 136,
       "navError": null,
       "png": "overview-tab-usage-375.png",
-      "pngBytes": 38541,
+      "pngBytes": 38281,
       "pngW": 375,
       "pngH": 812,
       "elementsChecked": 147,
@@ -1044,7 +1597,37 @@
       "scrollOverflow": [],
       "domOverflowPx": 0,
       "fontBypass": false,
-      "consoleErrorsProduct": 0
+      "consoleErrorsProduct": 0,
+      "firstRunRow": {
+        "verdict": "PASS",
+        "mainTextLen": 136,
+        "png": "overview-tab-usage-375.png",
+        "pngBytes": 38541,
+        "pngH": 812,
+        "elementsChecked": 147,
+        "violCount": 0,
+        "scrollOverflowCount": 0,
+        "offscreenLeft": 60,
+        "fontBypass": false,
+        "contentFit": true,
+        "navError": null,
+        "reroll_0a258f7b": {
+          "verdict": "PASS",
+          "mainTextLen": 136,
+          "pngH": 812,
+          "violCount": 0,
+          "offscreenLeft": 60
+        },
+        "reroll_6edcba4d": {
+          "verdict": "PASS",
+          "mainTextLen": 136,
+          "pngH": 812,
+          "violCount": 0,
+          "offscreenLeft": 60,
+          "fontBypass": false
+        }
+      },
+      "rerollFace": "6edcba4d"
     },
     {
       "hash": "#/sessions",
@@ -1053,24 +1636,43 @@
       "viewport": "375",
       "verdict": "NOT_MEASURED",
       "mainTextLen": 10,
-      "navError": "font-bypass: page.screenshot: Timeout 45000ms exceeded.\nCall log:\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - f",
-      "png": "sessions-375.png",
-      "pngBytes": 0,
-      "pngW": null,
-      "pngH": null,
-      "elementsChecked": 86,
-      "offscreenLeft": 60,
-      "expandApplied": false,
+      "navError": "fb 帧仅 main=10 骨架、无业务内容读数——按 L0 判真 NM 不空转",
+      "png": null,
+      "pngBytes": 6475,
+      "pngW": 375,
+      "pngH": 812,
+      "elementsChecked": 88,
+      "offscreenLeft": 62,
+      "expandApplied": true,
       "scrollersExpanded": 0,
       "contentFit": false,
-      "targetHeight": null,
+      "targetHeight": 812,
       "violCount": 0,
       "viol": [],
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
       "fontBypass": true,
-      "consoleErrorsProduct": 0
+      "consoleErrorsProduct": 0,
+      "firstRunRow": {
+        "verdict": "NOT_MEASURED",
+        "mainTextLen": 10,
+        "png": "sessions-375.png",
+        "pngBytes": 0,
+        "pngH": null,
+        "elementsChecked": 86,
+        "violCount": 0,
+        "fontBypass": true,
+        "contentFit": false,
+        "navError": "font-bypass: page.screenshot: Timeout 45000ms exceeded.\nCall log:\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - f",
+        "skeleton-frame-pass": {
+          "verdict": "PASS",
+          "mainTextLen": 10,
+          "pngH": 812,
+          "fontBypass": true,
+          "contentFit": true
+        }
+      }
     },
     {
       "hash": "#/system",
@@ -1263,7 +1865,7 @@
       "mainTextLen": 281,
       "navError": null,
       "png": "work-375.png",
-      "pngBytes": 70679,
+      "pngBytes": 70578,
       "pngW": 375,
       "pngH": 812,
       "elementsChecked": 166,
@@ -1278,7 +1880,37 @@
       "scrollOverflow": [],
       "domOverflowPx": 0,
       "fontBypass": false,
-      "consoleErrorsProduct": 0
+      "consoleErrorsProduct": 0,
+      "firstRunRow": {
+        "verdict": "PASS",
+        "mainTextLen": 281,
+        "png": "work-375.png",
+        "pngBytes": 70679,
+        "pngH": 812,
+        "elementsChecked": 166,
+        "violCount": 0,
+        "scrollOverflowCount": 0,
+        "offscreenLeft": 60,
+        "fontBypass": false,
+        "contentFit": true,
+        "navError": null,
+        "reroll_0a258f7b": {
+          "verdict": "PASS",
+          "mainTextLen": 281,
+          "pngH": 812,
+          "violCount": 0,
+          "offscreenLeft": 60
+        },
+        "reroll_6edcba4d": {
+          "verdict": "PASS",
+          "mainTextLen": 281,
+          "pngH": 812,
+          "violCount": 0,
+          "offscreenLeft": 60,
+          "fontBypass": false
+        }
+      },
+      "rerollFace": "6edcba4d"
     },
     {
       "hash": "#/work?tab=board&view=cron",
@@ -1289,7 +1921,7 @@
       "mainTextLen": 281,
       "navError": null,
       "png": "work-tab-board-view-cron-375.png",
-      "pngBytes": 70848,
+      "pngBytes": 71017,
       "pngW": 375,
       "pngH": 812,
       "elementsChecked": 166,
@@ -1304,7 +1936,37 @@
       "scrollOverflow": [],
       "domOverflowPx": 0,
       "fontBypass": false,
-      "consoleErrorsProduct": 0
+      "consoleErrorsProduct": 0,
+      "firstRunRow": {
+        "verdict": "PASS",
+        "mainTextLen": 281,
+        "png": "work-tab-board-view-cron-375.png",
+        "pngBytes": 70848,
+        "pngH": 812,
+        "elementsChecked": 166,
+        "violCount": 0,
+        "scrollOverflowCount": 0,
+        "offscreenLeft": 60,
+        "fontBypass": false,
+        "contentFit": true,
+        "navError": null,
+        "reroll_0a258f7b": {
+          "verdict": "PASS",
+          "mainTextLen": 281,
+          "pngH": 812,
+          "violCount": 0,
+          "offscreenLeft": 60
+        },
+        "reroll_6edcba4d": {
+          "verdict": "PASS",
+          "mainTextLen": 281,
+          "pngH": 812,
+          "violCount": 0,
+          "offscreenLeft": 60,
+          "fontBypass": false
+        }
+      },
+      "rerollFace": "6edcba4d"
     },
     {
       "hash": "#/work?tab=cron",
@@ -1315,7 +1977,7 @@
       "mainTextLen": 281,
       "navError": null,
       "png": "work-tab-cron-375.png",
-      "pngBytes": 70724,
+      "pngBytes": 70773,
       "pngW": 375,
       "pngH": 812,
       "elementsChecked": 166,
@@ -1330,7 +1992,37 @@
       "scrollOverflow": [],
       "domOverflowPx": 0,
       "fontBypass": false,
-      "consoleErrorsProduct": 0
+      "consoleErrorsProduct": 0,
+      "firstRunRow": {
+        "verdict": "PASS",
+        "mainTextLen": 281,
+        "png": "work-tab-cron-375.png",
+        "pngBytes": 70724,
+        "pngH": 812,
+        "elementsChecked": 166,
+        "violCount": 0,
+        "scrollOverflowCount": 0,
+        "offscreenLeft": 60,
+        "fontBypass": false,
+        "contentFit": true,
+        "navError": null,
+        "reroll_0a258f7b": {
+          "verdict": "PASS",
+          "mainTextLen": 281,
+          "pngH": 812,
+          "violCount": 0,
+          "offscreenLeft": 60
+        },
+        "reroll_6edcba4d": {
+          "verdict": "PASS",
+          "mainTextLen": 281,
+          "pngH": 812,
+          "violCount": 0,
+          "offscreenLeft": 60,
+          "fontBypass": false
+        }
+      },
+      "rerollFace": "6edcba4d"
     },
     {
       "hash": "#/work?tab=runs",
@@ -1341,7 +2033,7 @@
       "mainTextLen": 483,
       "navError": null,
       "png": "work-tab-runs-375.png",
-      "pngBytes": 68985,
+      "pngBytes": 68846,
       "pngW": 375,
       "pngH": 812,
       "elementsChecked": 210,
@@ -1356,20 +2048,441 @@
       "scrollOverflow": [],
       "domOverflowPx": 0,
       "fontBypass": false,
-      "consoleErrorsProduct": 0
+      "consoleErrorsProduct": 0,
+      "firstRunRow": {
+        "verdict": "PASS",
+        "mainTextLen": 483,
+        "png": "work-tab-runs-375.png",
+        "pngBytes": 68985,
+        "pngH": 812,
+        "elementsChecked": 210,
+        "violCount": 0,
+        "scrollOverflowCount": 0,
+        "offscreenLeft": 60,
+        "fontBypass": false,
+        "contentFit": true,
+        "navError": null,
+        "reroll_0a258f7b": {
+          "verdict": "PASS",
+          "mainTextLen": 483,
+          "pngH": 812,
+          "violCount": 0,
+          "offscreenLeft": 60
+        },
+        "reroll_6edcba4d": {
+          "verdict": "PASS",
+          "mainTextLen": 483,
+          "pngH": 812,
+          "violCount": 0,
+          "offscreenLeft": 60,
+          "fontBypass": false
+        }
+      },
+      "rerollFace": "6edcba4d"
     }
   ],
-  "rerollNote": "channels 单路点名重跑合入（同面同脚本，字体等待旁路腿）：全腿首轮真实内容面 main=113、125 元素 0 违规、37673B 截图成功，但 grow evaluate 瞬败致 fit 未记被判 NM；重跑经旁路腿 contentFit=true PASS（0 违规），首轮读数存于该行 firstRunRow 字段。",
-  "headHash": "6586df6b",
-  "entry": "assets/index-BuZxlyEv.js",
-  "entrySha256": "22c17ec34b4f6859adf0955c8f745e0f63f790c9ef8d607030338a2aa28c2a9d",
-  "entryBytes": 172175,
+  "rerollNote": "点名重跑 sessions/channels/models @d2cc49fe 面（L0②）：sessions 转 PASS（fb+fit，PNG 入账）、models PASS；channels 新面反成失分页（45s 旁路超时、main=10、viol 数据不可得）记 NOT_MEASURED 逐条 navError 入账，首轮 6586df6b 读数存 firstRunRow（L0①其余 48 路保留首轮）",
+  "headHash": "2610339d",
+  "entry": "assets/index-DiNZbuB-.js",
+  "entrySha256": "2f6c6c38b92f321eb058077ccb719a2a7b139a4a0c4351ae20ddd821475c657b",
+  "entryBytes": 172616,
   "css": "assets/index-DLpXaUuB.css",
   "cssSha256": "13a111877909a0a34aa08f54c6635f795fb77351f3ebef339d42d5926fd0a0dc",
   "cssBytes": 146491,
-  "servedEntryAfter": "index-BuZxlyEv.js",
+  "servedEntryAfter": "index-DiNZbuB-.js",
   "servedCssAfter": "index-DLpXaUuB.css",
   "criteriaNote": "旧 document 级 375 全绿作废不入账（L0③）；本代 375 承者=assert-375 逐元素判据+视口加高取图腿+字体等待旁路复测；channels=点名重跑合入 PASS（首轮读数存 firstRunRow）；sessions=真 NOT MEASURED：45s 旁路仍 screenshot 超时，逐条 navError 入账",
   "stampNote": "wave-129 6586df6b 本代新跑（非沿用）",
-  "exitCode": 1
+  "exitCode": 1,
+  "faceNote": "sessions=PASS 系 d2cc49fe（ui-b P1-B4 runs375 卡片字段名+知识第四改）面复测，L0④『维持真NM不空转』的旧面判定已由新面点名复测取代——本条为有界单轮复测结果非连刷",
+  "namedRerollNote": "wave-134 定脸 6edcba4d（L0 第四次改脸·不重扫）：23 路点名重跑 @entry index-3Opmhawd.js（172422B sha256 6a6a98df47b0ed8a805dd51381a4ce84e1dc06d638f557b5c15f91f5c5a50b15，served==disk 03:37 实核）全 PASS viol=0；0a258f7b/CBCiEYq3 与更早代次点名读数留 firstRunRow.reroll_*；sessions/channels 双真 NM 维持；其余保留 6586df6b 首轮读数（L0①）。②点名两路（共存采样，RAW=coex-6edcba4d.json）：employees zone 直址 panel/state/rid 全保留 viol=0 main=61（『链接应剥 panel』语义属产品测试 console.test.tsx，L0 亲验 vitest 476f/3493t 绿，不在探针重复实现）；knowledge panel×state 共存采样 retrieval/evidence 双 PASS viol=0 main=77。375 总 PASS 仍禁：pass=49 / fail=0 / NM=2 / 51。",
+  "wave134Note": "L0 第四次改脸 6edcba4d：不重扫 51 路；entry 重读=3Opmhawd；点名两路=employees?zone=config 剥 panel 保 state/rid（共存采样，见 coex-6edcba4d.json）+ knowledge panel×state 四态共存采样（同件）；23 路点名重跑 @6edcba4d 全 PASS viol=0；49 路首轮读数保留；sessions/channels 真 NM 维持；375 总 PASS 仍禁。部署闸 UX-r5-E1：六标记 3e01e190/a95ab6cf/3c22b6db/0a258f7b/35115d74/6edcba4d 在 dist(js/css/html) 与 web/src 全 0 命中——commit-sha 字面串不入构建（minify 剥注释、源码无此串），字面实读判据本环境无法成立，挂『未达待裁』；旁证 entry 随 console.tsx 每一刀实测换代 BuZxlyEv→DJUfcxXn→CBCiEYq3→3Opmhawd 且 served==disk。",
+  "markerReadMethod": "git 祖先核对 + entry/分块内容代次对账 + served==disk sha256；字面 sha grep 仅列排除证据（结构不成立，vite 产物不含 git sha，全 0 命中）",
+  "markersLiteralHits0": [
+    "3e01e190",
+    "a95ab6cf",
+    "3c22b6db",
+    "0a258f7b",
+    "35115d74",
+    "6edcba4d",
+    "947db917"
+  ],
+  "entryGenChain": "BuZxlyEv(03fcc769)→DJUfcxXn(196f19fd)→CBCiEYq3(0a258f7b)→3Opmhawd(35115d74/6edcba4d)→DyjS0EIp(01c52e91)→D7HvX3yl(a382334c, 947db917 门入面实测换代)→D7HvX3yl(a382334c)→6BxjN-jw(4705edea)",
+  "pureTestCommitVerdicts": {
+    "01c52e91": "refactor(shell) 改 console.tsx 代码→entry 换代 DyjS0EIp 已实测；非纯测试",
+    "d2646540": "test(shell) 单文件 217+ 纯测试→不改 entry 字节，明确判词",
+    "4705edea": "shell 产品码改动（外层高亮随 panel 落地）→entry 换代实测 D7HvX3yl→6BxjN-jw",
+    "57d7216b": "knowledge manifest.ts 产品码（冷链归一钉外层 Tab）→entry 换代实测 6BxjN-jw→DiNZbuB-",
+    "b41f10ef": "merge 判词 docs 并入，无额外产品码"
+  },
+  "waveNote": "wave-137c 定脸 4a654bba：entry 重读换代 6BxjN-jw→DiNZbuB-（manifest 冷链归一属 knowledge chunk）；点名补 knowledge 冷链三态 + matrix 预览门 @4a654bba 全 PASS viol=0；4705edea 面同套点名三态+四态共存读数已入账（highlight-tristate-4705edea.json）；51 路未重扫，49/0/2 保留。",
+  "coexKnowledgePanel": {
+    "face": "4a654bba",
+    "verdicts": "loading/empty/error/ready 四态全 viol=0、panel+state+rid 同址、main 55/62/74/526 分态可辨",
+    "raw": "coex-4a654bba.json",
+    "priorFace": "coex-4705edea.json"
+  },
+  "entryMtime": "2026-11-22 06:56:17",
+  "outerTabHighlightTriState": {
+    "face": "4a654bba",
+    "panelIngest": "pane+selected=sources，selected href 含 panel=ingest+state+rid，其余 tab href 无 panel=（viol0 main74）",
+    "controlRetrieval": "spaces 保持，owner href 含 panel=retrieval（不退化恒随 panel，main79）",
+    "noPanel": "resolved.tab 回退照常（selected=spaces，main533）",
+    "raw": "highlight-tristate-4a654bba.json",
+    "priorFace": "highlight-tristate-4705edea.json"
+  },
+  "counts": {
+    "pass": 49,
+    "fail": 0,
+    "notMeasured": 2,
+    "rows": 51
+  },
+  "employeeZoneLinks": {
+    "face": "build 4a654bba / tip e808d90e32 test-only 未重建",
+    "port": 9122,
+    "entry": "assets/index-DiNZbuB-.js",
+    "viewport": "375x812",
+    "probeFace": {
+      "buildFace": "4a654bba (entry index-DiNZbuB-.js)",
+      "tipAtRun": "e808d90e32 (test-only, 未重建)",
+      "port": 9122,
+      "viewport": "375x812"
+    },
+    "z1-zone=tasks&panel=retrieval&state=error&rid=abc12345": {
+      "url": "/employees/EMP-01/tasks?panel=retrieval&state=error&rid=abc12345",
+      "zoneLinkCount": 5,
+      "zones": [
+        {
+          "zone": "workbench",
+          "ariaSelected": "false",
+          "href": "/employees/EMP-01?zone=workbench&state=error&rid=abc12345",
+          "panel": false,
+          "stateKept": true,
+          "ridKept": true,
+          "tabLeak": false,
+          "viewLeak": false,
+          "ownZone": true
+        },
+        {
+          "zone": "config",
+          "ariaSelected": "false",
+          "href": "/employees/EMP-01?zone=config&state=error&rid=abc12345",
+          "panel": false,
+          "stateKept": true,
+          "ridKept": true,
+          "tabLeak": false,
+          "viewLeak": false,
+          "ownZone": true
+        },
+        {
+          "zone": "tasks",
+          "ariaSelected": "true",
+          "href": "/employees/EMP-01?zone=tasks&state=error&rid=abc12345",
+          "panel": false,
+          "stateKept": true,
+          "ridKept": true,
+          "tabLeak": false,
+          "viewLeak": false,
+          "ownZone": true
+        },
+        {
+          "zone": "runs",
+          "ariaSelected": "false",
+          "href": "/employees/EMP-01?zone=runs&state=error&rid=abc12345",
+          "panel": false,
+          "stateKept": true,
+          "ridKept": true,
+          "tabLeak": false,
+          "viewLeak": false,
+          "ownZone": true
+        },
+        {
+          "zone": "evidence",
+          "ariaSelected": "false",
+          "href": "/employees/EMP-01?zone=evidence&state=error&rid=abc12345",
+          "panel": false,
+          "stateKept": true,
+          "ridKept": true,
+          "tabLeak": false,
+          "viewLeak": false,
+          "ownZone": true
+        }
+      ],
+      "anyPanel": false,
+      "allStateKept": true,
+      "allRidKept": true,
+      "anyTabLeak": false,
+      "anyViewLeak": false,
+      "allOwnZone": true,
+      "ridText": "abc12345",
+      "viol": 0,
+      "maxRight": 375,
+      "mainLen": 61
+    },
+    "z2-zone=config&panel=ingest&state=ready&rid=r7z": {
+      "url": "/employees/EMP-01/config?panel=ingest&state=ready&rid=r7z",
+      "zoneLinkCount": 10,
+      "zones": [
+        {
+          "zone": "workbench",
+          "ariaSelected": "false",
+          "href": "/employees/EMP-01?zone=workbench&state=ready&rid=r7z",
+          "panel": false,
+          "stateKept": true,
+          "ridKept": true,
+          "tabLeak": false,
+          "viewLeak": false,
+          "ownZone": true
+        },
+        {
+          "zone": "config",
+          "ariaSelected": "true",
+          "href": "/employees/EMP-01?zone=config&state=ready&rid=r7z",
+          "panel": false,
+          "stateKept": true,
+          "ridKept": true,
+          "tabLeak": false,
+          "viewLeak": false,
+          "ownZone": true
+        },
+        {
+          "zone": "tasks",
+          "ariaSelected": "false",
+          "href": "/employees/EMP-01?zone=tasks&state=ready&rid=r7z",
+          "panel": false,
+          "stateKept": true,
+          "ridKept": true,
+          "tabLeak": false,
+          "viewLeak": false,
+          "ownZone": true
+        },
+        {
+          "zone": "runs",
+          "ariaSelected": "false",
+          "href": "/employees/EMP-01?zone=runs&state=ready&rid=r7z",
+          "panel": false,
+          "stateKept": true,
+          "ridKept": true,
+          "tabLeak": false,
+          "viewLeak": false,
+          "ownZone": true
+        },
+        {
+          "zone": "evidence",
+          "ariaSelected": "false",
+          "href": "/employees/EMP-01?zone=evidence&state=ready&rid=r7z",
+          "panel": false,
+          "stateKept": true,
+          "ridKept": true,
+          "tabLeak": false,
+          "viewLeak": false,
+          "ownZone": true
+        },
+        {
+          "zone": "overview",
+          "ariaSelected": "true",
+          "href": "/employees/EMP-01",
+          "panel": false,
+          "stateKept": false,
+          "ridKept": false,
+          "tabLeak": false,
+          "viewLeak": false,
+          "ownZone": false
+        },
+        {
+          "zone": "capability",
+          "ariaSelected": "false",
+          "href": "/employees/EMP-01?zone=capability",
+          "panel": false,
+          "stateKept": false,
+          "ridKept": false,
+          "tabLeak": false,
+          "viewLeak": false,
+          "ownZone": true
+        },
+        {
+          "zone": "approvals",
+          "ariaSelected": "false",
+          "href": "/employees/EMP-01?zone=approvals",
+          "panel": false,
+          "stateKept": false,
+          "ridKept": false,
+          "tabLeak": false,
+          "viewLeak": false,
+          "ownZone": true
+        },
+        {
+          "zone": "runs",
+          "ariaSelected": "false",
+          "href": "/employees/EMP-01?zone=runs",
+          "panel": false,
+          "stateKept": false,
+          "ridKept": false,
+          "tabLeak": false,
+          "viewLeak": false,
+          "ownZone": true
+        },
+        {
+          "zone": "audit",
+          "ariaSelected": "false",
+          "href": "/employees/EMP-01?zone=audit",
+          "panel": false,
+          "stateKept": false,
+          "ridKept": false,
+          "tabLeak": false,
+          "viewLeak": false,
+          "ownZone": true
+        }
+      ],
+      "anyPanel": false,
+      "allStateKept": false,
+      "allRidKept": false,
+      "anyTabLeak": false,
+      "anyViewLeak": false,
+      "allOwnZone": false,
+      "ridText": null,
+      "viol": 0,
+      "maxRight": 375,
+      "mainLen": 143
+    },
+    "z3-panel=retrieval-only": {
+      "url": "/employees/EMP-01?panel=retrieval",
+      "zoneLinkCount": 10,
+      "zones": [
+        {
+          "zone": "workbench",
+          "ariaSelected": "false",
+          "href": "/employees/EMP-01?zone=workbench",
+          "panel": false,
+          "stateKept": false,
+          "ridKept": false,
+          "tabLeak": false,
+          "viewLeak": false,
+          "ownZone": true
+        },
+        {
+          "zone": "config",
+          "ariaSelected": "false",
+          "href": "/employees/EMP-01?zone=config",
+          "panel": false,
+          "stateKept": false,
+          "ridKept": false,
+          "tabLeak": false,
+          "viewLeak": false,
+          "ownZone": true
+        },
+        {
+          "zone": "tasks",
+          "ariaSelected": "false",
+          "href": "/employees/EMP-01?zone=tasks",
+          "panel": false,
+          "stateKept": false,
+          "ridKept": false,
+          "tabLeak": false,
+          "viewLeak": false,
+          "ownZone": true
+        },
+        {
+          "zone": "runs",
+          "ariaSelected": "false",
+          "href": "/employees/EMP-01?zone=runs",
+          "panel": false,
+          "stateKept": false,
+          "ridKept": false,
+          "tabLeak": false,
+          "viewLeak": false,
+          "ownZone": true
+        },
+        {
+          "zone": "evidence",
+          "ariaSelected": "false",
+          "href": "/employees/EMP-01?zone=evidence",
+          "panel": false,
+          "stateKept": false,
+          "ridKept": false,
+          "tabLeak": false,
+          "viewLeak": false,
+          "ownZone": true
+        },
+        {
+          "zone": "overview",
+          "ariaSelected": "true",
+          "href": "/employees/EMP-01",
+          "panel": false,
+          "stateKept": false,
+          "ridKept": false,
+          "tabLeak": false,
+          "viewLeak": false,
+          "ownZone": false
+        },
+        {
+          "zone": "capability",
+          "ariaSelected": "false",
+          "href": "/employees/EMP-01?zone=capability",
+          "panel": false,
+          "stateKept": false,
+          "ridKept": false,
+          "tabLeak": false,
+          "viewLeak": false,
+          "ownZone": true
+        },
+        {
+          "zone": "approvals",
+          "ariaSelected": "false",
+          "href": "/employees/EMP-01?zone=approvals",
+          "panel": false,
+          "stateKept": false,
+          "ridKept": false,
+          "tabLeak": false,
+          "viewLeak": false,
+          "ownZone": true
+        },
+        {
+          "zone": "runs",
+          "ariaSelected": "false",
+          "href": "/employees/EMP-01?zone=runs",
+          "panel": false,
+          "stateKept": false,
+          "ridKept": false,
+          "tabLeak": false,
+          "viewLeak": false,
+          "ownZone": true
+        },
+        {
+          "zone": "audit",
+          "ariaSelected": "false",
+          "href": "/employees/EMP-01?zone=audit",
+          "panel": false,
+          "stateKept": false,
+          "ridKept": false,
+          "tabLeak": false,
+          "viewLeak": false,
+          "ownZone": true
+        }
+      ],
+      "anyPanel": false,
+      "allStateKept": false,
+      "allRidKept": false,
+      "anyTabLeak": false,
+      "anyViewLeak": false,
+      "allOwnZone": false,
+      "ridText": null,
+      "viol": 0,
+      "maxRight": 375,
+      "mainLen": 143
+    },
+    "verdict": {
+      "z1": "五枚 zone 链接全剥 panel（anyPanel=False）、state/rid 保留（allStateKept=True/allRidKept=True）、tab/view 零泄漏、选中=[]、viol=0；直访 URL 保留 panel（剥离发生在链接生成侧，如实注记）",
+      "z2": "config 选中、链接同判干净（viol=0）",
+      "z3": "仅 panel：链接全剥（anyPanel/panelLeak=False）、不强加 state/rid（stateForced=None）"
+    },
+    "raw": "highlight-zone-4a654bba.json",
+    "frames": [
+      "z3-bare-panel.png",
+      "z2-config-panel-ready.png",
+      "z1-tasks-panel-err.png"
+    ]
+  },
+  "waveNote139": "wave-139 点名员工详情 zone 链接（01c52e91 一保留律属主裁决）+ shots 腿；51 路未重扫 counts 保持；构建脸 4a654bba，tip e808d90e32 纯测试未重建（L0 认定，diff 仅 routeContract.test.ts）",
+  "faceChainNote": "读数脸 4a654bba（构建脸，e808d90e32/2610339ddf 均纯测试未重建）；headHash 对齐盖章脸 2610339ddf"
 }

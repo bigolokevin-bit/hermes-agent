@@ -236,6 +236,7 @@ const index = [];
 const oversize = [];
 const failures = [];
 let pngCount = 0;
+const raiseLog = [];
 
 // baseline: what the shell's root page renders, to detect hash-route effect.
 // Root shell baseline, measured with the SAME main-only probe as the routes.
@@ -355,7 +356,58 @@ for (const row of target) {
       try {
         await page.evaluate(() => document.fonts.ready.then(() => true)).catch(() => false);
       } catch {}
-      await page.screenshot({ path: file, fullPage: false, timeout: 45_000 });
+      await page.screenshot({ path: file, fullPage: true, timeout: 45_000 });
+      // L0 wave-130 令：fullPage 强制；内部滚动壳下 fullPage 可能仍=视口高，
+      // 按视口加高取图法（assert-375 先例）宽不动、抬视口重拍；抬不动即 fit。
+      const pngH = (() => {
+        try {
+          const b = readFileSync(file);
+          return b.length > 24 && b.readUInt32BE(0) === 0x89504e47 ? b.readUInt32BE(20) : 0;
+        } catch {
+          return 0;
+        }
+      })();
+      if (pngH <= vp.height) {
+        const req = await page
+          .evaluate(() => {
+            const de = document.documentElement;
+            const force = (el) => {
+              if (!el || el === document) return;
+              const s = el.style;
+              s.setProperty('overflow', 'visible', 'important');
+              s.setProperty('height', 'auto', 'important');
+              s.setProperty('max-height', 'none', 'important');
+              s.setProperty('min-height', '0', 'important');
+            };
+            force(de);
+            force(document.body);
+            const root = document.getElementById('root');
+            if (root) force(root);
+            let best = de.scrollHeight;
+            for (const el of document.querySelectorAll('body *')) {
+              const cs = getComputedStyle(el);
+              if (/(?:auto|scroll)/.test(cs.overflowY) && el.scrollHeight > el.clientHeight + 1) {
+                force(el);
+                let p = el.parentElement;
+                while (p) {
+                  force(p);
+                  p = p.parentElement;
+                }
+                best = Math.max(best, el.scrollHeight + (window.innerHeight - el.clientHeight));
+              }
+            }
+            return Math.min(best, 10_000);
+          })
+          .catch(() => 0);
+        if (req > vp.height) {
+          await page.setViewportSize({ width: vp.width, height: req });
+          await page.waitForTimeout(400);
+          await page.screenshot({ path: file, fullPage: true, timeout: 45_000 });
+          raiseLog.push({ hash: row.hash, viewport: vp.name, targetHeight: req });
+        } else {
+          raiseLog.push({ hash: row.hash, viewport: vp.name, contentFit: true });
+        }
+      }
       return statSync(file).size;
     };
     const snapCdp = async () => {
@@ -369,10 +421,10 @@ for (const row of target) {
         await p2.goto(`${BASE}/${h}`, { waitUntil: 'domcontentloaded', timeout: 30_000 });
         await p2.waitForTimeout(2_000);
         try {
-          await p2.screenshot({ path: file, fullPage: false, timeout: 20_000 });
+          await p2.screenshot({ path: file, fullPage: true, timeout: 20_000 });
         } catch {
           const cdp = await p2.context().newCDPSession(p2);
-          const { data } = await cdp.send('Page.captureScreenshot', { format: 'png' });
+          const { data } = await cdp.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true });
           await cdp.detach().catch(() => {});
           writeFileSync(file, Buffer.from(data, 'base64'));
         }
@@ -469,6 +521,8 @@ const summary = {
   mode: AUTH_STATE ? 'auth' : 'anon',
   authStateFile: AUTH_STATE, // 登录态工件路径（文件本身不入仓；此处只留指针）
   navForm: 'fresh-goto hash-form #/<route> (crawl-parity, 二十三轮修复)',
+  fullPageCapture: true,
+  raiseLog,
   routesEnumerated: rows.length,
   expectedShots: target.length * VIEWPORTS.length,
   producedShots: pngCount,
