@@ -1,4 +1,4 @@
-# assert-375 index（wave-131 @d2cc49fe 账本位 · 数据源=6586df6b RAW · L0 P0 判据纠偏令 · 新判据）
+# assert-375 index（wave-132 @196f19fd 账本位 · 旧 d2cc49fe 条目作废不重章 · 数据源=6586df6b RAW · L0 P0 判据纠偏令 · 新判据）
 
 | route | verdict | viol | scrollOvf | domOvf(旧) | pngH | main |
 | --- | --- | ---: | ---: | ---: | ---: | ---: |
@@ -58,4 +58,6 @@ matrix(#/employees?tab=matrix) present=true ok=true
 
 点名重跑合入法（瞬败页留首轮读数）：channels 首轮真实面 main=113、125 元素 0 违规，grow evaluate 瞬败致 NM；同脚本同面单路重跑经字体等待旁路腿 contentFit=true 转 PASS，首轮读数整体存该行 firstRunRow，判据不动。sessions 重跑仍 45s screenshot 超时＝真失分页，保留 NOT_MEASURED，逐条 navError 入账。
 
-缺口行（pending · D1 位未回，勿等勿催）：d2cc49fe 本代 bundle 面未测——entry/css 承 6586df6b RAW（index-BuZxlyEv.js / index-DLpXaUuB.css）；P1-B4 runs 卡片 label 与知识页第四改的 375 新图、以及 shots 旧面，待 D1 新图后补记本表。
+缺口行（pending · D1 位未回，勿等勿催）：196f19fd 本代 bundle 面未测——entry/css 承 6586df6b RAW（index-BuZxlyEv.js / index-DLpXaUuB.css）；P1-B4 runs 卡片 label 与知识页第四改的 375 新图、以及 shots 旧面，待 D1 新图后补记本表。
+
+改键注（L0 2026-11-22）：本账本 headHash 一律改键 196f19fd（wave-132）；旧 wave-131 @d2cc49fe 条目作废不重章，pending 标注制照旧，不追不等等 aud。
