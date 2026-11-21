@@ -1,0 +1,399 @@
+[
+  {
+    "case": "live-unwired",
+    "path": "/knowledge?panel=retrieval",
+    "png": "/private/var/folders/2b/bnpsyz450pn98w375q_803yw0000gn/T/opencode/knw-density/ev-w135/w135-live-unwired-375.png",
+    "pngViewport": [
+      375,
+      1518
+    ],
+    "consoleErrors": 13,
+    "textLenAfterStabilize": 965,
+    "reading": {
+      "vw": 375,
+      "elementsChecked": 193,
+      "violCount": 0,
+      "worstRight": 375,
+      "violSample": [],
+      "docOverflowPx": 0,
+      "scrollOverflow": [],
+      "named": {
+        "refresh": [
+          {
+            "tag": "button",
+            "cls": "font-mono group relative grid cursor-pointer grid-co",
+            "tid": "",
+            "text": "刷新",
+            "left": 11.3,
+            "right": 352.8,
+            "w": 342
+          }
+        ],
+        "seg": [
+          {
+            "tag": "button",
+            "cls": "",
+            "tid": "knw5-tab-spaces",
+            "text": "空间台账",
+            "left": 12.3,
+            "right": 182,
+            "w": 170,
+            "selected": "false"
+          },
+          {
+            "tag": "button",
+            "cls": "",
+            "tid": "knw5-tab-ingest",
+            "text": "数据接入",
+            "left": 182,
+            "right": 351.8,
+            "w": 170,
+            "selected": "false"
+          },
+          {
+            "tag": "button",
+            "cls": "",
+            "tid": "knw5-tab-retrieval",
+            "text": "检索",
+            "left": 12.3,
+            "right": 182,
+            "w": 170,
+            "selected": "true"
+          },
+          {
+            "tag": "button",
+            "cls": "",
+            "tid": "knw5-tab-evidence",
+            "text": "运行事件引用",
+            "left": 182,
+            "right": 351.8,
+            "w": 170,
+            "selected": "false"
+          }
+        ],
+        "segBox": {
+          "tag": "div",
+          "cls": "knw5-seg",
+          "tid": "",
+          "text": "空间台账数据接入检索运行事件引用",
+          "left": 11.3,
+          "right": 352.8,
+          "w": 342,
+          "cols": "169.75px 169.75px"
+        },
+        "editProbe": [],
+        "searchBox": [
+          {
+            "tag": "input",
+            "cls": "knw5-input",
+            "tid": "kn6-search-input",
+            "text": "",
+            "left": 11.3,
+            "right": 352.8,
+            "w": 342
+          },
+          {
+            "tag": "input",
+            "cls": "flex h-9 w-full border border-midground/15 bg-backgr",
+            "tid": "knw5-search-input",
+            "text": "",
+            "left": 12.3,
+            "right": 351.8,
+            "w": 340
+          }
+        ],
+        "copyBtn": [
+          {
+            "tag": "button",
+            "cls": "font-mono group relative grid cursor-pointer grid-co",
+            "tid": "knG-copy",
+            "text": "复制结果",
+            "left": 11.3,
+            "right": 352.8,
+            "w": 342
+          }
+        ],
+        "actions": [
+          {
+            "tag": "span",
+            "cls": "knw5-actions",
+            "tid": "",
+            "text": "重试去审批中心提交开通申请",
+            "left": 11.3,
+            "right": 199.5,
+            "w": 188
+          },
+          {
+            "tag": "span",
+            "cls": "knw5-actions",
+            "tid": "",
+            "text": "重试去审批中心提交开通申请",
+            "left": 12.3,
+            "right": 200.5,
+            "w": 188
+          },
+          {
+            "tag": "span",
+            "cls": "knw5-actions",
+            "tid": "",
+            "text": "重试去审批中心提交开通申请",
+            "left": 12.3,
+            "right": 200.5,
+            "w": 188
+          }
+        ],
+        "req": [
+          {
+            "tag": "span",
+            "cls": "knw5-req",
+            "tid": "kn6-search-request-id",
+            "text": "本次回答没有带请求编号",
+            "left": 11.3,
+            "right": 142.4,
+            "w": 131
+          },
+          {
+            "tag": "span",
+            "cls": "knw5-req",
+            "tid": "knw5-search-request-id",
+            "text": "本次回答没有带请求编号",
+            "left": 12.3,
+            "right": 143.4,
+            "w": 131
+          },
+          {
+            "tag": "span",
+            "cls": "knw5-req",
+            "tid": "knw5-records-request-id",
+            "text": "本次回答没有带请求编号",
+            "left": 12.3,
+            "right": 143.4,
+            "w": 131
+          }
+        ],
+        "faceTitle": [
+          {
+            "tag": "h3",
+            "cls": "knw5-surface-title",
+            "tid": "",
+            "text": "文档命中",
+            "left": 11.3,
+            "right": 352.8,
+            "w": 342
+          },
+          {
+            "tag": "h3",
+            "cls": "knw5-surface-title",
+            "tid": "",
+            "text": "检索命中",
+            "left": 12.3,
+            "right": 351.8,
+            "w": 340
+          },
+          {
+            "tag": "h3",
+            "cls": "knw5-surface-title",
+            "tid": "",
+            "text": "读取记录",
+            "left": 12.3,
+            "right": 351.8,
+            "w": 340
+          }
+        ],
+        "table": [],
+        "scrollShell": []
+      },
+      "state": {
+        "url": "http://127.0.0.1:9135/knowledge?panel=retrieval",
+        "dataTab": "retrieval",
+        "selectedInner": "knw5-tab-retrieval",
+        "selectedLabel": "检索",
+        "forcedTestid": null,
+        "faces": [
+          "文档命中",
+          "检索命中",
+          "读取记录"
+        ],
+        "unwiredBlocks": 3,
+        "hexOnScreen": 0,
+        "textLen": 965
+      }
+    }
+  },
+  {
+    "case": "loading",
+    "path": "/knowledge?panel=retrieval&state=loading",
+    "png": "/private/var/folders/2b/bnpsyz450pn98w375q_803yw0000gn/T/opencode/knw-density/ev-w135/w135-loading-375.png",
+    "pngViewport": [
+      375,
+      812
+    ],
+    "consoleErrors": 10,
+    "textLenAfterStabilize": 231,
+    "reading": {
+      "vw": 375,
+      "elementsChecked": 114,
+      "violCount": 0,
+      "worstRight": 375,
+      "violSample": [],
+      "docOverflowPx": 0,
+      "scrollOverflow": [],
+      "named": {
+        "refresh": [],
+        "seg": [],
+        "segBox": null,
+        "editProbe": [],
+        "searchBox": [],
+        "copyBtn": [],
+        "actions": [],
+        "req": [],
+        "faceTitle": [],
+        "table": [],
+        "scrollShell": []
+      },
+      "state": {
+        "url": "http://127.0.0.1:9135/knowledge?panel=retrieval&state=loading",
+        "dataTab": null,
+        "selectedInner": null,
+        "selectedLabel": null,
+        "forcedTestid": null,
+        "faces": [],
+        "unwiredBlocks": 0,
+        "hexOnScreen": 0,
+        "textLen": 231
+      }
+    }
+  },
+  {
+    "case": "empty",
+    "path": "/knowledge?panel=retrieval&state=empty",
+    "png": "/private/var/folders/2b/bnpsyz450pn98w375q_803yw0000gn/T/opencode/knw-density/ev-w135/w135-empty-375.png",
+    "pngViewport": [
+      375,
+      812
+    ],
+    "consoleErrors": 10,
+    "textLenAfterStabilize": 237,
+    "reading": {
+      "vw": 375,
+      "elementsChecked": 113,
+      "violCount": 0,
+      "worstRight": 375,
+      "violSample": [],
+      "docOverflowPx": 0,
+      "scrollOverflow": [],
+      "named": {
+        "refresh": [],
+        "seg": [],
+        "segBox": null,
+        "editProbe": [],
+        "searchBox": [],
+        "copyBtn": [],
+        "actions": [],
+        "req": [],
+        "faceTitle": [],
+        "table": [],
+        "scrollShell": []
+      },
+      "state": {
+        "url": "http://127.0.0.1:9135/knowledge?panel=retrieval&state=empty",
+        "dataTab": null,
+        "selectedInner": null,
+        "selectedLabel": null,
+        "forcedTestid": null,
+        "faces": [],
+        "unwiredBlocks": 0,
+        "hexOnScreen": 0,
+        "textLen": 237
+      }
+    }
+  },
+  {
+    "case": "error",
+    "path": "/knowledge?panel=retrieval&state=error",
+    "png": "/private/var/folders/2b/bnpsyz450pn98w375q_803yw0000gn/T/opencode/knw-density/ev-w135/w135-error-375.png",
+    "pngViewport": [
+      375,
+      812
+    ],
+    "consoleErrors": 10,
+    "textLenAfterStabilize": 254,
+    "reading": {
+      "vw": 375,
+      "elementsChecked": 115,
+      "violCount": 0,
+      "worstRight": 375,
+      "violSample": [],
+      "docOverflowPx": 0,
+      "scrollOverflow": [],
+      "named": {
+        "refresh": [],
+        "seg": [],
+        "segBox": null,
+        "editProbe": [],
+        "searchBox": [],
+        "copyBtn": [],
+        "actions": [],
+        "req": [],
+        "faceTitle": [],
+        "table": [],
+        "scrollShell": []
+      },
+      "state": {
+        "url": "http://127.0.0.1:9135/knowledge?panel=retrieval&state=error",
+        "dataTab": null,
+        "selectedInner": null,
+        "selectedLabel": null,
+        "forcedTestid": null,
+        "faces": [],
+        "unwiredBlocks": 0,
+        "hexOnScreen": 0,
+        "textLen": 254
+      }
+    }
+  },
+  {
+    "case": "denied",
+    "path": "/knowledge?panel=retrieval&state=denied",
+    "png": "/private/var/folders/2b/bnpsyz450pn98w375q_803yw0000gn/T/opencode/knw-density/ev-w135/w135-denied-375.png",
+    "pngViewport": [
+      375,
+      812
+    ],
+    "consoleErrors": 10,
+    "textLenAfterStabilize": 269,
+    "reading": {
+      "vw": 375,
+      "elementsChecked": 113,
+      "violCount": 0,
+      "worstRight": 375,
+      "violSample": [],
+      "docOverflowPx": 0,
+      "scrollOverflow": [],
+      "named": {
+        "refresh": [],
+        "seg": [],
+        "segBox": null,
+        "editProbe": [],
+        "searchBox": [],
+        "copyBtn": [],
+        "actions": [],
+        "req": [],
+        "faceTitle": [],
+        "table": [],
+        "scrollShell": []
+      },
+      "state": {
+        "url": "http://127.0.0.1:9135/knowledge?panel=retrieval&state=denied",
+        "dataTab": null,
+        "selectedInner": null,
+        "selectedLabel": null,
+        "forcedTestid": null,
+        "faces": [],
+        "unwiredBlocks": 0,
+        "hexOnScreen": 0,
+        "textLen": 269
+      }
+    }
+  }
+]
