@@ -603,9 +603,24 @@ function TrendCard({
               这次没有读到趋势数据，表格不补 0。
             </p>
           ) : summary.empty ? (
-            <p className="duty-note" data-testid="duty-trend-table-empty">
-              该区间没有运行记录，表体没有可列出的行。
-            </p>
+            /* UI-B 空态组合：卡片 h2 + 表格 caption 承担标题，testid 句承担一句说明，
+             * 下方给单一主操作=重新读取（区间是观察窗口而非筛选，没有"清筛选"可落；
+             * 根因出口要么换窗口要么重读，重读留在卡内）。 */
+            <>
+              <p className="duty-note duty-empty-lead" data-testid="duty-trend-table-empty">
+                该区间没有运行记录，表体没有可列出的行。
+              </p>
+              <div className="duty-empty-actions">
+                <Button
+                  size="sm"
+                  onClick={onRetry}
+                  data-testid="duty-trend-empty-retry"
+                  prefix={<RefreshCw className="h-3.5 w-3.5" />}
+                >
+                  重新读取
+                </Button>
+              </div>
+            </>
           ) : null}
         </div>
       ) : null}
