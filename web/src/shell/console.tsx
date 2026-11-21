@@ -594,7 +594,12 @@ export function ConsoleEmployeeDetailPage({
   const preserveDetail = useMemo(() => {
     const keep: Record<string, string> = {};
     for (const [key, value] of sp.entries()) {
-      if (key !== "zone") keep[key] = value;
+      // n4: `panel` addresses an inner panel of the knowledge tab. No detail
+      // zone owns it (the five zones are workbench/config/tasks/runs/evidence),
+      // so a knowledge deep link that detoured through the outer strip would
+      // otherwise stamp a stale, unread ?panel= on every zone address. state
+      // and rid stay preserved: this pane reads them through usePaneForced.
+      if (key !== "zone" && key !== "panel") keep[key] = value;
     }
     return keep;
   }, [sp]);

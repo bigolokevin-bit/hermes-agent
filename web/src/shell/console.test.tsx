@@ -57,6 +57,18 @@ function remountAt(element: ReactElement, entry: string) {
   });
 }
 
+// n4: same fresh-router-per-entry rule as `remountAt`, for the legs that also
+// need the Suspense flush (the detail probe lazy-loads its module page).
+async function remountAtAsync(element: ReactElement, entry: string) {
+  await act(async () => {
+    root.render(
+      <MemoryRouter key={entry} initialEntries={[entry]}>
+        {element}
+      </MemoryRouter>,
+    );
+  });
+}
+
 // Wave-2: the detail probe lazy-loads the (mocked) module page — flush the
 // Suspense microtask so the lazy component actually mounts before asserting.
 async function renderAtAsync(element: ReactElement, entry: string) {
@@ -427,5 +439,43 @@ describe("ConsoleEmployeeDetailPage (hidden 23rd pane)", () => {
     const pane = container.querySelector(".pane");
     expect(pane?.getAttribute("data-tabname")).toBe("详情");
     expect(container.querySelectorAll('[role="tab"][data-zone]').length).toBe(5);
+  });
+
+  // n4 (P0 n1 residual, detail leg): no zone owns ?panel=, so a knowledge panel
+  // value must not be stamped onto zone addresses; the four-state legs the pane
+  // does read (?state=/?rid=) have to survive every zone switch.
+  it("n4: zone links drop ?panel= while state/rid survive", async () => {
+    const routes = detailRoute({ fallback: <div data-testid="existing-detail" /> });
+    await remountAtAsync(
+      routes,
+      "/employees/emp_9f3a4b7c?zone=config&panel=retrieval&state=error&rid=abc12345",
+    );
+    const zones = Array.from(
+      container.querySelectorAll<HTMLAnchorElement>('[role="tab"][data-zone]'),
+    );
+    expect(zones.length).toBeGreaterThan(1);
+    let seenActive = 0;
+    for (const z of zones) {
+      const href = z.getAttribute("href") ?? "";
+      expect(href).not.toContain("panel=");
+      expect(href).toContain("state=error");
+      expect(href).toContain("rid=abc12345");
+      if (z.getAttribute("aria-selected") === "true") {
+        expect(href).toContain("zone=config");
+        seenActive += 1;
+      }
+    }
+    expect(seenActive).toBe(1);
+
+    // reverse leg: a zone address without a panel must not fabricate one
+    await remountAtAsync(
+      routes,
+      "/employees/emp_9f3a4b7c?zone=tasks&state=empty",
+    );
+    for (const z of container.querySelectorAll('[role="tab"][data-zone]')) {
+      const href = z.getAttribute("href") ?? "";
+      expect(href).not.toContain("panel=");
+      expect(href).toContain("state=empty");
+    }
   });
 });
