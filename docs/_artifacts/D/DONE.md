@@ -1488,3 +1488,11 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - 三腿并行 08:25:52 起跑→08:29:15 全齐：quad sampled=20 passed=20 head=86496824 真刷新非 carried；shots auth 102/102 failures=[] **obs=2（#/access、#/employees/:employeeId?zone=evidence；上代 0，+2 如实不入判据）** distinct=26 envOnly=50；anon aux 102/102 **obs=2（#/access、#/employees/:employeeId?zone=tasks）** distinct=26 envOnly=51；routesWithConsoleErrors 均按自产写入（非编造，无需 unknown）；三键+served 两端同值+ceAuthority=login-state。
 - TALLY {'86496824': 9} count 9 BAD=[]（glob+isinstance 恰九件，None 清零）；逐件写后回读通过。
 - 90a9961d（007b6841 章）不重做；无 amend/force；web/src/9122/BFF/caddy/qa-verify/ACC 判词节未动。
+
+## 一七〇轮 · 波次代次九件重章 @ 7de87bc0（shots/quad 本代真跑 + 六件 carried，2026-11-21 08:3x）
+
+- wave-85 并入 7de87bc0（remote 7de87bc056933 现查==ls-remote；本代仅 UI-B 三笔表现层）。entry 换代 assets/index-BeCxh3sC.js/172175B/sha256 39311c09…59b3 逐字==卡面；CSS IyhtleuY/145872 未换代；9122 served=index-BeCxh3sC.js==磁盘。
+- 六件 carried（ia×2/fake/reuse/crawl×2）：headHash=7de87bc0 + carriedFrom="86496824" + carried=true + stampNote（entry/CSS 见三键，本件未重跑证据沿用）；state-quad 与 shots 双腿本代真跑。
+- 三腿并行 08:31:42→08:35:38 全齐：quad sampled=20 passed=20 head=7de87bc0 真刷新；shots auth 102/102 failures=[] **obs=2（#/access、#/capabilities?tab=channels；上代 evidence 路由本代不复现、channels 复现，按自产写）** distinct=25 envOnly=51；anon aux 102/102 **obs=3（#/access、#/employees、#/knowledge?tab=scope；上代 2，+1 如实不入判据）** distinct=26 envOnly=51；routesWithConsoleErrors=自产数组非编造（卡面预期路由未复现属读数差非违规）；三键+served 两端同值+ceAuthority=login-state。
+- TALLY {'7de87bc0': 9} count 9 BAD=[]（glob+isinstance 恰九件，None 清零；逐件写后回读）。
+- c48491b4（86496824 章）不重做；无 amend/force；web/src/9122/BFF/caddy/qa-verify/ACC 判词节未动。

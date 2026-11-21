@@ -9,25 +9,29 @@
   "failures": [],
   "oversize": [],
   "rootBaseline": {
-    "textLen": 1072,
+    "textLen": 1108,
     "head": "运营 · 控制台 运营总览 值班台用量与成本 值班台 运营总览 · 只读 采集时刻 —（北京时间） 近 24 小时 近 7 天 近 14 天 近 30 天 刷新",
     "hasMainEl": true,
     "ok": true
   },
-  "distinctMainHeads": 26,
-  "routesWithEmptyMain": [],
-  "routesWithoutMainEl": [],
+  "distinctMainHeads": 25,
+  "routesWithEmptyMain": [
+    "#/sessions"
+  ],
+  "routesWithoutMainEl": [
+    "#/sessions"
+  ],
   "mainCharsByRoute": [
     {
       "route": "#/access",
       "viewport": "1440",
-      "chars": 201,
+      "chars": 199,
       "hasMainEl": true
     },
     {
       "route": "#/access",
       "viewport": "375",
-      "chars": 199,
+      "chars": 201,
       "hasMainEl": true
     },
     {
@@ -207,7 +211,7 @@
     {
       "route": "#/employees/:employeeId",
       "viewport": "375",
-      "chars": 66,
+      "chars": 42,
       "hasMainEl": true
     },
     {
@@ -489,13 +493,13 @@
     {
       "route": "#/sessions",
       "viewport": "1440",
-      "chars": 1,
-      "hasMainEl": true
+      "chars": 0,
+      "hasMainEl": false
     },
     {
       "route": "#/sessions",
       "viewport": "375",
-      "chars": 1,
+      "chars": 10,
       "hasMainEl": true
     },
     {
@@ -634,10 +638,10 @@
   "consoleErrorsObservedByShots": 2,
   "consoleErrorRoutesObservedByShots": [
     "#/access",
-    "#/employees/:employeeId?zone=evidence"
+    "#/capabilities?tab=channels"
   ],
   "ceAuthority": "login-state",
-  "routesWithEnvOnlyConsoleErrors": 50,
+  "routesWithEnvOnlyConsoleErrors": 51,
   "envAttribution": "401/404 Failed-to-load-resource = env (no login session at proxy); see crawl-routes env=auth-required-401 同口径",
   "overflowing": [],
   "driver": {
@@ -645,15 +649,15 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "86496824",
+  "headHash": "7de87bc0",
   "exitCode": 0,
-  "entry": "assets/index-6g0IMx1G.js",
-  "entrySha256": "4407188fca95d1468ac3d2344108398303ac5d824c4c1f9c620f57fdc11d686b",
+  "entry": "assets/index-BeCxh3sC.js",
+  "entrySha256": "39311c09c21a77c82acc58f6a4cb04683e461865026fafc323d53188eec659b3",
   "entryBytes": 172175,
-  "servedEntryBefore": "index-6g0IMx1G.js",
-  "servedEntryAfter": "index-6g0IMx1G.js",
+  "servedEntryBefore": "index-BeCxh3sC.js",
+  "servedEntryAfter": "index-BeCxh3sC.js",
   "routesWithConsoleErrors": [
     "#/access",
-    "#/employees/:employeeId?zone=evidence"
+    "#/capabilities?tab=channels"
   ]
 }
