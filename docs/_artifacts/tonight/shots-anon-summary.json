@@ -646,7 +646,7 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "dc9341dd",
+  "headHash": "e66ceba3",
   "exitCode": 0,
   "entry": "assets/index-Chru2g4H.js",
   "entrySha256": "bb6f679cbd4ad23a9c51f2ecf97d0b897923a24e07e0acfdc6cfbbea9fef4a16",
@@ -659,5 +659,7 @@
     "#/work"
   ],
   "auxiliary": true,
-  "stampNote": "本代 shots 在本代入口产物上采集（entry sha 与 09f1ba9f/03cd4658 逐字节相同）；headHash 由 L0 校正为 dc9341dd"
+  "stampNote": "wave-94 本代未重跑 anon，沿用同 entry sha（Chru2g4H）dc9341dd 代读数；obs 路由名自产在位",
+  "carriedFrom": "dc9341dd",
+  "carried": true
 }
