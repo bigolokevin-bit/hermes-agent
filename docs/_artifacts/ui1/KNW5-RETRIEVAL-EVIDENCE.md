@@ -6057,3 +6057,57 @@ kn-doc-copy*/kn7-preview*/kn3-page-cap/kn-type*/kn-sort*/kn-gates/导出 absent 
 已锁清名筛往返，叠加 ktype 存活组合未测，抽代表即止）；?q= 变更时详情钮序帧（R242②
 反向位已锁不变性，钮序在其下由 indexBase 定律外推）；腿③④若未来落真 CSV 需整组转红
 复核（哨兵已声明）。
+
+# KNW5 追加 R244：名筛归位弃页首帧 + 页 2 叠筛移除桶键不回帧（纯测试单·本体交付；①④腿判定引用）（2026-11-21 BJT）
+
+安全门：porcelain 空起做、显式 refspec fetch 后 merge——**上游已较派工再前进**：实测
+tip `7de87bc0`（非派工时的 `ba41a09f` 后代 `86496824` 线，audit 新增笔），无冲突、
+如实记录；基线先跑 59/256 全绿 Errors 0、目标文件确认缺席再动笔。零产品文件改动。
+新增 knowledge.export.paging.filters.test.tsx 两例（本体）。
+
+## 四腿判定与现场发现（file:line；已覆盖禁重复用例）
+
+```text
+①（第 2 页三值+首行==屏上）＝全锁 R229①(export.paged:140)+R238A(paging.triple:124)
+  →引用；且「首行非第 1 页首行」不成立（追加保序，R238A 已裁）。
+②（ktype×名筛三值同步）主体＝R234②(locale.cross:175)+R243α(filters.rowcopy:~150)
+  （非分页帧）→ 本笔落分页合并帧。
+③（移筛选换代）主体＝R243β（非分页移除向）+R237②（51 帧切桶弃页）→ 本笔落 δ′。
+④（空集/失败门+cap+spy）＝全锁 R190④(escape:190-205)+R231②⑤+R236③(open.detail:
+  182-210)+R232③+R234③/R235③ →引用；cap「0」不可兑现（null）。
+**现场发现（γ′，比两条建议方向更硬）**：本地名筛同列归位依赖（KnowledgeModulePage
+  :2344 deps 含 filter）——ktype 在场 append 成 51（cap M=51）后**打名筛立即弃页**：
+  集缩 [手册B,手册A]、「手册51」出局、**cap M 双回落 51→2**（M 实测语义=当前条件后
+  在屏加载数，非 base 总数）；R235③ 弃页位从切桶扩到名筛、且首次锁在分页帧。
+δ′：页 2 叠筛态点「全部」移除桶键——名筛存活、集仍 [B,A]、钮 [0,1] 逐字不动、**被弃
+  「手册51」不回归**（不可逆直证）、导出链==屏上、cap M=2、q 面逐字、urls 快照逐字
+  零新请求（禁「恰 1 次」话术，实测 0）。
+换算声明：无 ?source= 控件（未造）；无真 CSV→导出=knF 数据行、spy 0；kn-list-copy
+  不存在；键集复跑：P1 {limit,spaceId}、P2 且只多 cursor；clip 桩 Promise+unstub。
+真新增维（点名两条）：γ′ 名筛归位弃页分页帧+cap M 语义位；δ′ 移除桶键不回帧（钮序
+不动作直接取证）。
+```
+
+## 验证尾行（R244）
+
+```text
+γ ktype 在场 append：51 行、cap「51 篇」→名筛后 [B,A]、无手册51、cap「2 篇」、
+  三值 [2,2,2]、btnHead==names[0]==链首、urls 2 读键集 {limit,spaceId}/+cursor。
+  δ 清 ktype：null、q…（名筛本地）集 [B,A]、钮 [0,1]、链==屏上、cap「2 篇」、
+  hitNames 逐字、urls join 逐字。
+$ npx vitest run src/modules/knowledge → 60 files / 258 tests passed（256+2），
+  grep unhandled = 0
+$ eslint → 0 errors（1 既有 warning）；模块 tsc → 0；build /tmp/knw-r244-dist exit 0
+$ 全仓 → 398 files：397 files passed + 1 files failed = **2 红均既有域外**
+  （MetricsModulePage.test.tsx 7d/30d 与 sparkline，Date.now() 跨 UTC 日界，
+  点名不修不豁免）
+$ 三档 1440/1280/375 vw==bodySW==docSW 全等（用毕即杀）
+零破：kn3*/kn6–kn9/knB/knD/knE-page-*/knF/knG/knI/knL*/kn-row-copy*/kn-row-copy-space*/
+kn-doc-copy*/kn7-preview*/kn3-page-cap/kn-type*/kn-sort*/kn-gates/导出 absent 标记 +
+既有 59 套全绿。过程自纠三处（首跑按「追加行入集」预期红→探针查实**名筛归位弃页**
+实测重写 γ/δ 并按实锁 cap M 语义；mockClear 索引；未用辅助 bucketByLabel 触发双红→删），
+产品零触碰。
+```
+未测如实：带登录会话真屏；cap M 在「筛空」帧的存在性（null 已由 R234③/主套件分支
+处理，本笔只锁非空两值 51/2）；名筛先打再 append（γ′ 为 append 先、名筛后向，反向
+顺序未测）；q 键移除帧（R157② 地盘）。
