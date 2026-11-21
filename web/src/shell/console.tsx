@@ -414,12 +414,23 @@ function ConsoleTabStrip({
     [module],
   );
   const [sp] = useSearchParams();
-  const preserve = useMemo(() => {
+  // n3: `panel` addresses an inner panel of one tab. It must not ride along on
+  // every outer tab link (that was the P0 n1 leak), but dropping it outright
+  // also destroyed the address a tab owns: `?panel=` and `?state=`/`?rid=` could
+  // no longer coexist on one URL. So `panel` is collected separately and only
+  // re-attached to the link of the tab that owns it, while state/rid stay in the
+  // shared preserve (four-state legs).
+  const { preserve, panel } = useMemo(() => {
     const keep: Record<string, string> = {};
+    let panelValue: string | null = null;
     for (const [key, value] of sp.entries()) {
+      if (key === "panel") {
+        panelValue = value;
+        continue;
+      }
       if (key !== "tab" && key !== "view" && key !== "zone") keep[key] = value;
     }
-    return keep;
+    return { preserve: keep, panel: panelValue };
   }, [sp]);
   return (
     <div
@@ -429,11 +440,19 @@ function ConsoleTabStrip({
       style={{ borderColor: "var(--color-border)" }}
     >
       {tabs.map((tab) => {
+        const active = tab.tabId === activeTabId;
+        // n3: the owning (active) tab keeps its `panel` on its own link, so a
+        // deep link such as ?tab=spaces&panel=retrieval&state=error survives a
+        // reload and a click on itself; every other outer tab still drops it.
         const to = {
           pathname: pathFor(tab),
-          search: searchFor(tab.tab ?? "", "", "", preserve),
+          search: searchFor(
+            tab.tab ?? "",
+            "",
+            "",
+            active && panel ? { ...preserve, panel } : preserve,
+          ),
         };
-        const active = tab.tabId === activeTabId;
         return (
           <NavLink
             key={tab.tabId}
@@ -575,7 +594,12 @@ export function ConsoleEmployeeDetailPage({
   const preserveDetail = useMemo(() => {
     const keep: Record<string, string> = {};
     for (const [key, value] of sp.entries()) {
-      if (key !== "zone") keep[key] = value;
+      // n4: `panel` addresses an inner panel of the knowledge tab. No detail
+      // zone owns it (the five zones are workbench/config/tasks/runs/evidence),
+      // so a knowledge deep link that detoured through the outer strip would
+      // otherwise stamp a stale, unread ?panel= on every zone address. state
+      // and rid stay preserved: this pane reads them through usePaneForced.
+      if (key !== "zone" && key !== "panel") keep[key] = value;
     }
     return keep;
   }, [sp]);

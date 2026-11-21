@@ -43,6 +43,32 @@ function renderAt(element: ReactElement, entry: string) {
   });
 }
 
+// n3: `renderAt` reuses the same root, so calling it twice reconciles the
+// already-mounted MemoryRouter and its `initialEntries` are ignored — the second
+// URL never lands. A changing `key` forces one fresh router per entry, which is
+// what a both-directions addressability leg needs.
+function remountAt(element: ReactElement, entry: string) {
+  act(() => {
+    root.render(
+      <MemoryRouter key={entry} initialEntries={[entry]}>
+        {element}
+      </MemoryRouter>,
+    );
+  });
+}
+
+// n4: same fresh-router-per-entry rule as `remountAt`, for the legs that also
+// need the Suspense flush (the detail probe lazy-loads its module page).
+async function remountAtAsync(element: ReactElement, entry: string) {
+  await act(async () => {
+    root.render(
+      <MemoryRouter key={entry} initialEntries={[entry]}>
+        {element}
+      </MemoryRouter>,
+    );
+  });
+}
+
 // Wave-2: the detail probe lazy-loads the (mocked) module page — flush the
 // Suspense microtask so the lazy component actually mounts before asserting.
 async function renderAtAsync(element: ReactElement, entry: string) {
@@ -260,6 +286,67 @@ describe("ConsoleModulePage pane contract", () => {
     expect(tab?.getAttribute("href")).toContain("rid=abc12345");
   });
 
+  it("outer tab links carry ?panel= only on the owning tab while state/rid survive on all", () => {
+    renderAt(<ConsoleModulePage module="knowledge" />, "/knowledge?tab=spaces&panel=retrieval&state=error&rid=abc12345");
+    const tabs = Array.from(container.querySelectorAll("[role='tab']"));
+    expect(tabs.length).toBeGreaterThan(1);
+    let seenOther = 0;
+    for (const t of tabs) {
+      const href = t.getAttribute("href") ?? "";
+      expect(href).toContain("state=error");
+      expect(href).toContain("rid=abc12345");
+      if (t.getAttribute("aria-selected") === "true") {
+        expect(href).toContain("panel=retrieval");
+      } else {
+        expect(href).not.toContain("panel=");
+        seenOther += 1;
+      }
+    }
+    expect(seenOther).toBeGreaterThan(0);
+  });
+
+  // n3 (P0 n1 follow-up): the newly addressable panels and the four-state legs
+  // must be combinable on ONE url and reachable in both directions, otherwise
+  // UI-QA cannot sample a panel's error state by address.
+  it("n3: ?panel= and ?state=/?rid= coexist on one address, both directions", () => {
+    for (const panelKey of ["retrieval", "evidence"] as const) {
+      for (const state of ["error", "empty", "loading"] as const) {
+        remountAt(
+          <ConsoleModulePage module="knowledge" />,
+          `/knowledge?tab=spaces&panel=${panelKey}&state=${state}&rid=abc12345`,
+        );
+        const pane = container.querySelector(".pane");
+        expect(pane?.getAttribute("data-tab")).toBe("spaces");
+        expect(pane?.getAttribute("data-state")).toBe(state);
+        if (state === "error") {
+          // rid is only rendered on the error/denied legs
+          expect(pane?.querySelector("[data-testid='state-rid']")?.textContent).toBe("abc12345");
+        }
+        const tabs = Array.from(container.querySelectorAll("[role='tab']"));
+        let others = 0;
+        for (const t of tabs) {
+          const href = t.getAttribute("href") ?? "";
+          expect(href).toContain(`state=${state}`);
+          if (t.getAttribute("aria-selected") === "true") {
+            expect(href).toContain(`panel=${panelKey}`);
+          } else {
+            expect(href).not.toContain("panel=");
+            others += 1;
+          }
+        }
+        expect(others).toBeGreaterThan(0);
+        // reverse leg: the same tab without a panel must not fabricate one
+        remountAt(
+          <ConsoleModulePage module="knowledge" />,
+          `/knowledge?tab=spaces&state=${state}`,
+        );
+        for (const t of Array.from(container.querySelectorAll("[role='tab']"))) {
+          expect(t.getAttribute("href") ?? "").not.toContain("panel=");
+        }
+      }
+    }
+  });
+
   // T42 item 2: the forced-state legs must be reproducible on ALL eight
   // console tabs, and item 1's honest exits (retry + back, or back alone)
   // must be present in every forced pane.
@@ -352,5 +439,43 @@ describe("ConsoleEmployeeDetailPage (hidden 23rd pane)", () => {
     const pane = container.querySelector(".pane");
     expect(pane?.getAttribute("data-tabname")).toBe("详情");
     expect(container.querySelectorAll('[role="tab"][data-zone]').length).toBe(5);
+  });
+
+  // n4 (P0 n1 residual, detail leg): no zone owns ?panel=, so a knowledge panel
+  // value must not be stamped onto zone addresses; the four-state legs the pane
+  // does read (?state=/?rid=) have to survive every zone switch.
+  it("n4: zone links drop ?panel= while state/rid survive", async () => {
+    const routes = detailRoute({ fallback: <div data-testid="existing-detail" /> });
+    await remountAtAsync(
+      routes,
+      "/employees/emp_9f3a4b7c?zone=config&panel=retrieval&state=error&rid=abc12345",
+    );
+    const zones = Array.from(
+      container.querySelectorAll<HTMLAnchorElement>('[role="tab"][data-zone]'),
+    );
+    expect(zones.length).toBeGreaterThan(1);
+    let seenActive = 0;
+    for (const z of zones) {
+      const href = z.getAttribute("href") ?? "";
+      expect(href).not.toContain("panel=");
+      expect(href).toContain("state=error");
+      expect(href).toContain("rid=abc12345");
+      if (z.getAttribute("aria-selected") === "true") {
+        expect(href).toContain("zone=config");
+        seenActive += 1;
+      }
+    }
+    expect(seenActive).toBe(1);
+
+    // reverse leg: a zone address without a panel must not fabricate one
+    await remountAtAsync(
+      routes,
+      "/employees/emp_9f3a4b7c?zone=tasks&state=empty",
+    );
+    for (const z of container.querySelectorAll('[role="tab"][data-zone]')) {
+      const href = z.getAttribute("href") ?? "";
+      expect(href).not.toContain("panel=");
+      expect(href).toContain("state=empty");
+    }
   });
 });
