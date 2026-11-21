@@ -100,9 +100,12 @@ function StateLine({
     );
   }
   if (state.k === "error") {
+    /* UI-B 错误态组合：人话标题在外，技术句（HTTP 语义的 message）折叠进「详情」；
+     * rid 复制入口保持可见可复制；重试=卡内唯一实心主操作（刷新条的「再试」
+     * 不在卡内、且两错误腿不同层，不与之争主操作位）。 */
     return (
       <div className="duty-error" role="alert">
-        <p>{state.message}</p>
+        <p className="duty-error-title">这一块没有读取成功</p>
         <p className="duty-req">
           {state.requestId ? (
             <>
@@ -113,9 +116,12 @@ function StateLine({
             "本次请求未记录编号，可复制时间与操作路径反馈"
           )}
         </p>
+        <details className="duty-error-details">
+          <summary>详情</summary>
+          <p>{state.message}</p>
+        </details>
         <Button
           size="sm"
-          outlined
           onClick={onRetry}
           disabled={!retryGate.enabled}
           title={retryGate.title ?? undefined}
@@ -1083,7 +1089,11 @@ export default function DutyPage() {
         ) : null}
         {!refreshState.refreshing && refreshState.refreshError ? (
           <div className="duty-refresh-error" data-testid="duty-refresh-error">
-            <span>这次刷新没成功：{refreshState.refreshError.message}</span>
+            <span>这次刷新没成功</span>
+            <details className="duty-error-details">
+              <summary>详情</summary>
+              <p>{refreshState.refreshError.message}</p>
+            </details>
             {refreshState.refreshError.requestId ? (
               <span className="duty-rid">
                 请求编号 <code>{refreshState.refreshError.requestId}</code>
