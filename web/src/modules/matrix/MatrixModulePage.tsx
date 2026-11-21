@@ -276,21 +276,33 @@ export function MatrixModulePage() {
             </div>
           ) : null}
 
+          {/* UI-B 错误态组合：标题抬 15px 台阶（文案逐字=测试锁）；说明句与 rid 行
+            * （可见可复制）原样保留=既有达标实测复核；技术句 errorNote.detail
+            * （原本完全不上屏）收进「详情」折叠=主可见层以下；重试去 outlined=
+            * 卡内唯一实心主操作。与空态锚互斥=phase 单值枚举 by construction。 */}
           {phase === "error" ? (
-            <div className="flex flex-col items-center gap-2 py-10 text-center" data-testid="mtx5-error">
+            <div
+              className="flex min-w-0 flex-col items-center gap-[var(--space-2)] px-[var(--space-4)] py-[var(--space-6)] text-center"
+              data-testid="mtx5-error"
+            >
               <TriangleAlert className="size-8 text-rose-300/80" aria-hidden="true" />
-              <p className="text-sm text-white/80">这份矩阵没能读出来</p>
+              <p className="text-base font-medium text-white/80">这份矩阵没能读出来</p>
               {/* 设计车道 ①：401 不再自绘「需要登录」专属卡（含 auth-reload-exit 出口）。
                   全站只有顶部一条 SessionExpiredBanner 说「会话已过期」（lib/session-expiry
-                  置位），同一状态不再同屏双播。errorNote.detail 里 `lib/api-error` 给 401 的
-                  那句人话因此也不上屏，这里只留通用错误 + 请求编号 + 重试。 */}
-              <p className="max-w-md text-xs text-white/50">
+                  置位），同一状态不再同屏双播。 */}
+              <p className="max-w-prose text-sm text-white/50">
                 刚才的读取没有改动任何东西，可以重试一次。
               </p>
               <p className="text-xs text-white/40">
                 <RequestIdCopy requestId={errorNote?.requestId} fallback="本次请求未记录编号，可复制时间与操作路径反馈" />
               </p>
-              <Button size="sm" outlined onClick={retry} data-testid="mtx5-error-retry">
+              {!/需要登录|登录状态已失效/.test(errorNote?.detail ?? "") ? (
+                <details className="max-w-prose text-xs text-white/45" data-testid="mtx5-error-details">
+                  <summary className="cursor-pointer select-none">详情</summary>
+                  <p className="mt-1 break-words">{errorNote?.detail}</p>
+                </details>
+              ) : null}
+              <Button size="sm" onClick={retry} data-testid="mtx5-error-retry">
                 重试
               </Button>
             </div>
