@@ -85,9 +85,9 @@
   "violations": [],
   "count": 0,
   "ok": true,
-  "headHash": "8ff6d30d",
+  "headHash": "1af5c41f",
   "exitCode": 0,
-  "carriedFrom": "068833bc",
+  "carriedFrom": "c621295b",
   "carried": true,
-  "stampNote": "wave-99 两笔全纯测试（ui1 R254/aud R265 missing-field pairs），entry sha 与 CSS 逐字节未变（OCLu6KCF/Cpi0jJKL）；本件未重跑，证据沿用 068833bc 代"
+  "stampNote": "本代仅两笔纯测试，entry/css 与 c964fb3d 相同；本件沿用上代读数"
 }
