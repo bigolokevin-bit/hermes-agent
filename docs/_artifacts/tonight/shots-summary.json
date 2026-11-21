@@ -9,19 +9,19 @@
   "failures": [],
   "oversize": [],
   "rootBaseline": {
-    "textLen": 1061,
-    "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 采集时刻 —（北京时间） 近 24 小时 近 7 天 近 14 天 近 30 天 刷",
+    "textLen": 958,
+    "head": "运营 · 控制台 运营总览 值班台用量与成本 值班台 运营总览 · 只读 采集时刻 —（北京时间） 近 24 小时 近 7 天 近 14 天 近 30 天 刷新",
     "hasMainEl": true,
     "ok": true
   },
-  "distinctMainHeads": 24,
+  "distinctMainHeads": 25,
   "routesWithEmptyMain": [],
   "routesWithoutMainEl": [],
   "mainCharsByRoute": [
     {
       "route": "#/access",
       "viewport": "1440",
-      "chars": 201,
+      "chars": 199,
       "hasMainEl": true
     },
     {
@@ -147,7 +147,7 @@
     {
       "route": "#/capabilities?tab=channels",
       "viewport": "375",
-      "chars": 113,
+      "chars": 10,
       "hasMainEl": true
     },
     {
@@ -631,8 +631,11 @@
       "hasMainEl": true
     }
   ],
-  "consoleErrorsObservedByShots": 0,
-  "consoleErrorRoutesObservedByShots": [],
+  "consoleErrorsObservedByShots": 2,
+  "consoleErrorRoutesObservedByShots": [
+    "#/access",
+    "#/employees/:employeeId?zone=config"
+  ],
   "ceAuthority": "login-state",
   "routesWithEnvOnlyConsoleErrors": 51,
   "envAttribution": "401/404 Failed-to-load-resource = env (no login session at proxy); see crawl-routes env=auth-required-401 同口径",
@@ -642,13 +645,15 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "e66ceba3",
+  "headHash": "f4bd0505",
   "exitCode": 0,
-  "entry": "assets/index-Chru2g4H.js",
-  "entrySha256": "bb6f679cbd4ad23a9c51f2ecf97d0b897923a24e07e0acfdc6cfbbea9fef4a16",
+  "entry": "assets/index-CF-7ZVka.js",
+  "entrySha256": "107c201de6d0d82aef09e762a2fa4ea3d48b0eed2bcd0cc432e6de4fbd758c99",
   "entryBytes": 172175,
-  "servedEntryBefore": "index-Chru2g4H.js",
-  "servedEntryAfter": "index-Chru2g4H.js",
-  "routesWithConsoleErrors": [],
-  "routesAttribution": "ENV 归因 product=0（承 03cd4658 代口径，同 entry sha 路由可复用注同源）"
+  "servedEntryBefore": "index-CF-7ZVka.js",
+  "servedEntryAfter": "index-CF-7ZVka.js",
+  "routesWithConsoleErrors": [
+    "#/access",
+    "#/employees/:employeeId?zone=config"
+  ]
 }
