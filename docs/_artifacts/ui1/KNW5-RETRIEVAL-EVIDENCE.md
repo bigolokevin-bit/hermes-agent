@@ -5913,3 +5913,47 @@ kn-doc-copy*/kn7-preview*/kn3-page-cap/kn-type*/kn-sort*/kn-gates/导出 absent 
 未测如实：带登录会话真屏；旧 dir 非法值兜底态（R118④ 地盘）；size 列首点落向方向
 （land-dir 具体值未钉——只锁链==屏上，方向由排序族 R172/R179 地盘）；切桶×切排序
 双动作叠加弃页链（R237② 单动作位外推）。
+
+# KNW5 追加 R241：500 窗内切排序清错+续翻（查重判定驱动·真缺口本体）（2026-11-21 BJT）
+
+安全门：porcelain 空起做、显式 refspec fetch 后 merge 实测 tip 即预期 `15f58a4d`
+（wave-82）、基线先跑 56/249 全绿 Errors 0、目标文件确认缺席再动笔。零产品文件改动。
+新增 knowledge.export.sort.paging.test.tsx（两例真缺口本体 + 逐腿查重判定头注）。
+
+## 逐腿判定（红线⑤：派工三腿主体均已锁 → 不复写，只落新维）
+
+```text
+①=已全覆盖：R229①(knowledge.export.paged.test.tsx:140)+R238A(paging.triple:124)
+  +R216①——三值/首行/前缀/cursor 全在其中；「首行非第 1 页首行」不成立（追加保序，
+  R238 已裁）。②=已全覆盖：R240②(order.chain:171)——M=51 切 size 归位弃页+零新请求
+  +导出遵新序，「列表腿恰 1 次」当场裁 0；旧键兜底 R240①:152。③主体=已锁：R237③
+  (rowcopy.triple:193)+R238C:162+R239③。
+新维（点名，唯一未锁交互）：A **500 窗内切排序**（:2336-2345 归位效应含
+  setMoreErr(null)——错误锚被排序动作清除从未测）：锚消失、50 行/钮 0..49 不动、
+  cap 逐字冻结、导出遵新序、urls 逐字（清错零网络）、-more 复现（cursor 退回信封位）；
+  B **清错后续翻**：再点 -more 成功、钮 [0..50]、导出链==size 新序屏上链（卷 51 按
+  序位入链非末尾拼接）、cap「已加载 51 篇」、P2URL 恰 2（败 1+成 1）。
+```
+
+## 验证尾行（R241）
+
+```text
+① ksort=size 入 URL、error null、[50 行,钮 0..49]、cap toBe 窗帧、导出链==屏上、
+  urls join 逐字、-more 在场。② P2URL==2、[51 行]、钮 0..50、cap 51、链==屏上、
+  卷 51 入链。
+$ npx vitest run src/modules/knowledge → 57 files / 251 tests passed（249+2），
+  grep unhandled = 0
+$ eslint → 0 errors（1 既有 warning）；模块 tsc → 0；build /tmp/knw-r241-dist exit 0
+$ 全仓 → 388 files：386 绿 + **2 红点名（均 metrics 域外既有红，非本笔引入）**：
+  MetricsModulePage.test.tsx「really switches windows: 7d/30d…」:313+
+  「describes the trend…same slots」——断言含 met6-sparkline rect 计数与 Date.now()
+  日窗计算，**UTC 跨日界闪红**（R240 时 07:53 全仓 382/3260 绿，08:02 起确定性红，
+  本 merge 对 metrics 文件零 diff：git diff 17e2db84..HEAD -- web/src/modules/metrics
+  为空）；写域外禁修，如实点名不豁免。
+$ 三档 1440/1280/375 vw==bodySW==docSW 全等（用毕即杀）
+零破：kn3*/kn6–kn9/knB/knD/knE-page-*/knF/knG/knI/knL*/kn-row-copy*/kn-row-copy-space*/
+kn-doc-copy*/kn7-preview*/kn3-page-cap/kn-type*/kn-sort*/kn-gates/导出 absent + 既有
+56 套全绿。两例一次全过、零自纠轮，产品零触碰。
+```
+未测如实：带登录会话真屏；窗内改 q/名筛清错同族（与排序共用归位效应，抽一代表即止）；
+窗内切桶清错（R229③ 名筛版同族）；metrics 跨日红未修未深挖（域外）。
