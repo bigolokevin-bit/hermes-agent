@@ -6969,3 +6969,50 @@ kn-doc-preview*/kn3-page-cap/kn-type*/kn-sort*/kn-gates/导出 absent 等全套 
 未测如实：带登录会话真屏；错误窗内关闭后**再开**（第五帧）的读账本（重开 +1 由
 R236① 健康域外推，错误域未测）；404 unwired 窗内关闭过渡镜像（unwired 段 R232②
 地盘）；①②③纯引用未复测。
+
+# KNW5 追加 R265：空间列表「复制清单」面（knI）首次全覆核——内容行数同源 × ?q= 换代零请求 × 无命中门（纯测试单·本体交付）（2026-11-21 BJT）
+
+安全门：porcelain 空起做、`merge-base` 为是 → `git merge --ff-only` 至实测 `d356be02`
+（与派工一致、**未用 `-B`**）、knowledge delta 零；基线先跑 76/291 全绿 Errors 0、目标
+文件确认缺席再动笔。零产品文件改动。新增
+knowledge.space.copy.guards.test.tsx 三例（本体）——**整面首覆核**（派工已核 knI 四锚
+产品实存 :1316-1346 而全模块测试零引用，非重复断言轮）。
+
+## 三例读数（含实测原文）
+
+```text
+① 投递结构：lines[0] == 「当前已加载 3 个空间；本清单只覆盖这份回答，不冒充全库。」
+  （spaceCopyText :1719 原文）、表头行 == SPACE_COPY_HEADER.join(" | ")（空间名|文档数|
+  最近更新|短码）、数据行逐行第 1 列 toEqual 屏上空间名（行区起点按表头行动态定位）；
+  缺值行「伽马缺值空间」文档列「—」（两式禁统一：复制行式）；**实测短码形制=全 id 去
+  下划线大写**（sp_alpha→SPALPHA；全 id 带 sp_ 只在 title）——负断言全文/URL/屏无
+  「sp_」；播报句「已复制 3 行」（copyGates :116 单源）。
+② q=贝塔：检索句「以下为检索词「贝塔」筛后的可见行。」在场、数据行 [贝塔空间]==屏上、
+  阿尔法/伽马 not.toContain（零残留）、knI-lines 计数随筛、**urls join 逐字==筛前
+  （键入+提交+复制+清空复原全程零新请求）**；清空后 3 行复原、校准首行不变。
+③ 无命中：knI-copy disabled===true、**title 实测原文「当前没有可复制的空间」**
+  （copyGates :117）、knI-lines「—」、空间面无 kn3-page-cap（toNull 按实）、点击
+  writeText 0 调用、urls 恒等、createObjectURL spy 0、fallback 未弹；有命中对照
+  disabled===false。
+换算收口：无 ?source=、?ktype= 不涉本面；kn8-global-clear 位不重复（R259 C 已锁）；
+无独立详情页、无 cap 句（校准行走清单首行）；clip 桩 Promise+unstub（Errors 0）。
+```
+
+## 门禁四尾行 + 零破（R265）
+
+```text
+$ npx vitest run src/modules/knowledge → 77 files / 294 tests passed（291+3 ≥292），
+  grep unhandled = 0
+$ eslint → 0 errors（1 既有 warning）；模块 tsc → 0
+$ build /tmp/knw-r265-dist → exit 0；全仓 → 462 files / 3443 passed **零红**
+  （metrics 跨日两条本轮未复现，不视为已修复）
+$ 三档 1440/1280/375 vw==bodySW==docSW 全等（用毕即杀）
+零破：knI-*（首次入锁）/kn8-global-*/kn9-mark-space/kn-space-open|nolink|toggle/
+knw5-spaces-row/knD-marker/kn3*（未触）/knF/knG/knE-page-*/导出 absent（absent 位经
+kn-gates-knI data-export 在场校验）+ 既有 76 套全绿。过程自纠三处（名字格实为
+kn-space-open 分支、短码去下划线非去前缀、检索句插位使行区起点位移——全部按实测修），
+产品零触碰。
+```
+未测如实：带登录会话真屏；knI **拒绝→fallback** 环（knI-copy-fallback 兜底位——与
+主套件 knF/knG 环同族，本文件未扩）；空 items 服务端帧（zeroReason「这份回答里没有
+空间」位）；q 命中含引号/换行的怪名空间（转译族 R190①/236② 地盘）。
