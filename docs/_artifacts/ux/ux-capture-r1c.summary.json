@@ -1,0 +1,247 @@
+{
+  "base": "http://100.117.184.117:8183",
+  "mode": "r1c strict-375 (L0 P0 纠偏新口径)",
+  "rows": [
+    {
+      "state": "knowledge-landing",
+      "viewport": "375x800",
+      "settleChars": 845,
+      "url": "http://100.117.184.117:8183/knowledge",
+      "probe": {
+        "W": 375,
+        "docScrollW": 375,
+        "docClientW": 375,
+        "docScrollH": 800,
+        "rightOverflow": [],
+        "rightOverflowCount": 0,
+        "leftOut": [
+          "aside “HermesAgent控制台运营运营总览数字员工” [-240,0x240]",
+          "button [-44,-16x28]",
+          "nav “控制台运营运营总览数字员工任务与运行审批与发布门” [-240,-1x239]",
+          "li “运营总览” [-240,-1x239]",
+          "a “运营总览” [-240,-1x239]",
+          "li “数字员工” [-240,-1x239]",
+          "a “数字员工” [-240,-1x239]",
+          "li “任务与运行” [-240,-1x239]",
+          "a “任务与运行” [-240,-1x239]",
+          "li “审批与发布门” [-240,-1x239]",
+          "a “审批与发布门” [-240,-1x239]",
+          "li “人员与访问” [-240,-1x239]",
+          "a “人员与访问” [-240,-1x239]",
+          "li “知识与数据” [-240,-1x239]",
+          "a “知识与数据” [-240,-1x239]",
+          "li “能力与接入” [-240,-1x239]",
+          "a “能力与接入” [-240,-1x239]",
+          "li “系统设置” [-240,-1x239]",
+          "a “系统设置” [-240,-1x239]",
+          "a “审计” [-240,-1x239]"
+        ],
+        "leftOutCount": 28,
+        "leftOutAriaHiddenCount": 0,
+        "clippedContainers": [
+          "span.knw5-sr-only sw=89 cw=1",
+          "span.knw5-sr-only sw=74 cw=1"
+        ],
+        "clippedContainersCount": 2,
+        "xScrollers": []
+      },
+      "png": "docs/_artifacts/ux/shots/knowledge-landing-375-r1c.png",
+      "method": "viewport-stretch(1460)",
+      "px": {
+        "w": 375,
+        "h": 1460,
+        "bytes": 165696
+      },
+      "fullPageVerified": true,
+      "consoleErrors": 2,
+      "errorSample": [
+        "[object Object]",
+        "[object Object]"
+      ],
+      "badResponses": [
+        "404 /agent-api/api/knowledge/spaces?limit=20",
+        "404 /agent-api/api/documents?limit=50"
+      ]
+    },
+    {
+      "state": "knowledge-evidence-click",
+      "viewport": "375x800",
+      "settleChars": 197,
+      "url": "http://100.117.184.117:8183/knowledge?tab=evidence",
+      "probe": {
+        "W": 375,
+        "docScrollW": 375,
+        "docClientW": 375,
+        "docScrollH": 800,
+        "rightOverflow": [],
+        "rightOverflowCount": 0,
+        "leftOut": [
+          "aside “HermesAgent控制台运营运营总览数字员工” [-240,0x240]",
+          "button [-44,-16x28]",
+          "nav “控制台运营运营总览数字员工任务与运行审批与发布门” [-240,-1x239]",
+          "li “运营总览” [-240,-1x239]",
+          "a “运营总览” [-240,-1x239]",
+          "li “数字员工” [-240,-1x239]",
+          "a “数字员工” [-240,-1x239]",
+          "li “任务与运行” [-240,-1x239]",
+          "a “任务与运行” [-240,-1x239]",
+          "li “审批与发布门” [-240,-1x239]",
+          "a “审批与发布门” [-240,-1x239]",
+          "li “人员与访问” [-240,-1x239]",
+          "a “人员与访问” [-240,-1x239]",
+          "li “知识与数据” [-240,-1x239]",
+          "a “知识与数据” [-240,-1x239]",
+          "li “能力与接入” [-240,-1x239]",
+          "a “能力与接入” [-240,-1x239]",
+          "li “系统设置” [-240,-1x239]",
+          "a “系统设置” [-240,-1x239]",
+          "a “审计” [-240,-1x239]"
+        ],
+        "leftOutCount": 28,
+        "leftOutAriaHiddenCount": 0,
+        "clippedContainers": [],
+        "clippedContainersCount": 0,
+        "xScrollers": []
+      },
+      "png": "docs/_artifacts/ux/shots/knowledge-evidence-click-375-r1c.png",
+      "method": "viewport-stretch(1000)",
+      "px": {
+        "w": 375,
+        "h": 1000,
+        "bytes": 50453
+      },
+      "fullPageVerified": true,
+      "consoleErrors": 2,
+      "errorSample": [
+        "[object Object]",
+        "[object Object]"
+      ],
+      "badResponses": [
+        "404 /agent-api/api/documents?limit=50",
+        "404 /agent-api/api/knowledge/spaces?limit=20"
+      ]
+    },
+    {
+      "state": "knowledge-deeplink-evidence",
+      "viewport": "375x800",
+      "settleChars": 724,
+      "url": "http://100.117.184.117:8183/knowledge?tab=spaces&panel=evidence",
+      "probe": {
+        "W": 375,
+        "docScrollW": 375,
+        "docClientW": 375,
+        "docScrollH": 800,
+        "rightOverflow": [],
+        "rightOverflowCount": 0,
+        "leftOut": [
+          "aside “HermesAgent控制台运营运营总览数字员工” [-240,0x240]",
+          "button [-44,-16x28]",
+          "nav “控制台运营运营总览数字员工任务与运行审批与发布门” [-240,-1x239]",
+          "li “运营总览” [-240,-1x239]",
+          "a “运营总览” [-240,-1x239]",
+          "li “数字员工” [-240,-1x239]",
+          "a “数字员工” [-240,-1x239]",
+          "li “任务与运行” [-240,-1x239]",
+          "a “任务与运行” [-240,-1x239]",
+          "li “审批与发布门” [-240,-1x239]",
+          "a “审批与发布门” [-240,-1x239]",
+          "li “人员与访问” [-240,-1x239]",
+          "a “人员与访问” [-240,-1x239]",
+          "li “知识与数据” [-240,-1x239]",
+          "a “知识与数据” [-240,-1x239]",
+          "li “能力与接入” [-240,-1x239]",
+          "a “能力与接入” [-240,-1x239]",
+          "li “系统设置” [-240,-1x239]",
+          "a “系统设置” [-240,-1x239]",
+          "a “审计” [-240,-1x239]"
+        ],
+        "leftOutCount": 28,
+        "leftOutAriaHiddenCount": 0,
+        "clippedContainers": [
+          "span.knw5-sr-only sw=89 cw=1"
+        ],
+        "clippedContainersCount": 1,
+        "xScrollers": []
+      },
+      "png": "docs/_artifacts/ux/shots/knowledge-deeplink-evidence-375-r1c.png",
+      "method": "viewport-stretch(1347)",
+      "px": {
+        "w": 375,
+        "h": 1347,
+        "bytes": 138659
+      },
+      "fullPageVerified": true,
+      "consoleErrors": 2,
+      "errorSample": [
+        "[object Object]",
+        "[object Object]"
+      ],
+      "badResponses": [
+        "404 /agent-api/api/knowledge/citations?limit=20",
+        "404 /agent-api/api/documents?limit=50"
+      ]
+    },
+    {
+      "state": "knowledge-search-miss",
+      "viewport": "375x800",
+      "settleChars": 871,
+      "url": "http://100.117.184.117:8183/knowledge?q=zzz%E4%B8%8D%E5%AD%98%E5%9C%A8%E8%AF%8Dzzz",
+      "probe": {
+        "W": 375,
+        "docScrollW": 375,
+        "docClientW": 375,
+        "docScrollH": 800,
+        "rightOverflow": [],
+        "rightOverflowCount": 0,
+        "leftOut": [
+          "aside “HermesAgent控制台运营运营总览数字员工” [-240,0x240]",
+          "button [-44,-16x28]",
+          "nav “控制台运营运营总览数字员工任务与运行审批与发布门” [-240,-1x239]",
+          "li “运营总览” [-240,-1x239]",
+          "a “运营总览” [-240,-1x239]",
+          "li “数字员工” [-240,-1x239]",
+          "a “数字员工” [-240,-1x239]",
+          "li “任务与运行” [-240,-1x239]",
+          "a “任务与运行” [-240,-1x239]",
+          "li “审批与发布门” [-240,-1x239]",
+          "a “审批与发布门” [-240,-1x239]",
+          "li “人员与访问” [-240,-1x239]",
+          "a “人员与访问” [-240,-1x239]",
+          "li “知识与数据” [-240,-1x239]",
+          "a “知识与数据” [-240,-1x239]",
+          "li “能力与接入” [-240,-1x239]",
+          "a “能力与接入” [-240,-1x239]",
+          "li “系统设置” [-240,-1x239]",
+          "a “系统设置” [-240,-1x239]",
+          "a “审计” [-240,-1x239]"
+        ],
+        "leftOutCount": 28,
+        "leftOutAriaHiddenCount": 0,
+        "clippedContainers": [
+          "span.knw5-sr-only sw=89 cw=1",
+          "span.knw5-sr-only sw=74 cw=1"
+        ],
+        "clippedContainersCount": 2,
+        "xScrollers": []
+      },
+      "png": "docs/_artifacts/ux/shots/knowledge-search-miss-375-r1c.png",
+      "method": "viewport-stretch(1460)",
+      "px": {
+        "w": 375,
+        "h": 1460,
+        "bytes": 168374
+      },
+      "fullPageVerified": true,
+      "consoleErrors": 2,
+      "errorSample": [
+        "[object Object]",
+        "[object Object]"
+      ],
+      "badResponses": [
+        "404 /agent-api/api/documents?limit=50",
+        "404 /agent-api/api/knowledge/spaces?limit=20"
+      ]
+    }
+  ],
+  "ok": true
+}

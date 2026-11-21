@@ -1,0 +1,6 @@
+AUDIT knowledge-landing right=0 left=28 clipC=2 scrollers=0 shot=viewport-stretch(1460) px=375x1460 verified=true
+AUDIT knowledge-evidence-click right=0 left=28 clipC=0 scrollers=0 shot=viewport-stretch(1000) px=375x1000 verified=true
+AUDIT knowledge-deeplink-evidence right=0 left=28 clipC=1 scrollers=0 shot=viewport-stretch(1347) px=375x1347 verified=true
+AUDIT knowledge-search-miss right=0 left=28 clipC=2 scrollers=0 shot=viewport-stretch(1460) px=375x1460 verified=true
+DONE r1c rows=4
+EXIT=0
