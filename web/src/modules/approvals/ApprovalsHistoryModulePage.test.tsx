@@ -1845,13 +1845,15 @@ describe("R79 cursor pagination and honest total (apv-page-*)", () => {
     await act(async () => {
       more.click();
     });
-    await waitFor(() => !!qa("apv-page-end"), "end chip");
+    // P1-A2 ②：无 total 且无游标时不再并挂「已到末页」chip，末页证据改由 more 钮禁用承担。
+    await waitFor(() => (qa("apv-page-more") as HTMLButtonElement).disabled, "more disabled at end");
+    expect(qa("apv-page-end"), "end chip retired when total unknown").toBeNull();
     const calls = api.fetchJSON.mock.calls.map((c) => String(c[0])).filter((u) => u.includes("/api/approvals"));
     expect(calls.some((u) => u.includes("cursor=cg2")), calls.join("|")).toBe(true);
     expect(document.querySelectorAll('[data-testid^="apr5-row-ap_g"]').length, "duplicate row suppressed").toBe(2);
     expect((qa("apv-page-more") as HTMLButtonElement).disabled, "more disabled at end").toBe(true);
     expect(qa("apv-page-more")?.getAttribute("title")).toContain("已到末页");
-    expect(qa("apv-page-count")?.textContent).toBe("总数不可用 · 已显示 2 条");
+    expect(qa("apv-page-count")?.textContent).toBe("已到末页 · 已显示 2 条");
   });
 
   it("a status switch resets the list and never carries the stale cursor", async () => {
@@ -1860,7 +1862,9 @@ describe("R79 cursor pagination and honest total (apv-page-*)", () => {
     await act(async () => {
       (qa("apv-page-more") as HTMLButtonElement).click();
     });
-    await waitFor(() => !!qa("apv-page-end"), "loaded page two");
+    // P1-A2 ②：PAGE2 无 total 无游标，末页证据改由 more 钮禁用承担；end chip 在该腿退场。
+    await waitFor(() => (qa("apv-page-more") as HTMLButtonElement).disabled, "loaded page two");
+    expect(qa("apv-page-end"), "end chip retired when total unknown").toBeNull();
     const prev = api.fetchJSON.mock.calls.length;
     await act(async () => {
       (document.querySelector('[data-testid="apv5-filter-status-approved"]') as HTMLButtonElement).click();
@@ -1870,7 +1874,9 @@ describe("R79 cursor pagination and honest total (apv-page-*)", () => {
     expect(fresh.every((u) => !u.includes("cursor=")), fresh.join("|")).toBe(true);
     await waitFor(() => !!qa("apr5-row-ap_g3"), "rows replaced");
     expect(qa("apr5-row-ap_g1"), "stale page gone").toBeNull();
-    expect(qa("apv-page-count")?.textContent).toBe("总数不可用 · 已显示 1 条");
+    // P1-A2 ② 改判：切换后的 fresh 页既无 total 也无 nextCursor（聚合首屏到末页），
+    // 新语义下 count 只说一句「已到末页」，与「总数不可用」不再并存。
+    expect(qa("apv-page-count")?.textContent).toBe("已到末页 · 已显示 1 条");
   });
 });
 
