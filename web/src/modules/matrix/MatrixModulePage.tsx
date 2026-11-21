@@ -234,14 +234,29 @@ export function MatrixModulePage() {
             </div>
           ) : null}
 
+          {/* UI-B 空态组合：留白按令牌（py-10=40px 违规→space-8）；层级=标题抬到
+            * 15px 台阶（字号是本设计系统唯一可靠杠杆，Mondwest 只注册 400 face）；
+            * 单一主操作=「刷新」（工单口径）——空表根因可能是读取时机，刷新直连
+            * 重试链路；「回员工列表」降为次级文字出口（去高亮下划线观感，仍可达）。 */}
           {phase === "empty" ? (
-            <div className="flex flex-col items-center gap-2 py-10 text-center" data-testid="mtx5-empty">
+            <div
+              className="flex min-w-0 flex-col items-center gap-[var(--space-2)] px-[var(--space-4)] py-[var(--space-8)] text-center"
+              data-testid="mtx5-empty"
+            >
               <Inbox className="size-8 text-white/35" aria-hidden="true" />
-              <p className="text-sm text-white/80">还没有可展示的矩阵</p>
-              <p className="max-w-md text-xs text-white/50">
+              <p className="text-base font-medium text-white/80">还没有可展示的矩阵</p>
+              <p className="max-w-prose text-sm text-white/50">
                 要么还没有员工被授过能力，要么后端只返回了空表。先去员工页确认在岗员工，再回来查看。
               </p>
-              <Link className="text-xs text-sky-300 hover:underline" to="/employees">
+              <div
+                className="flex flex-wrap items-center justify-center gap-[var(--space-2)] pt-[var(--space-2)]"
+                data-testid="mtx5-empty-actions"
+              >
+                <Button size="sm" onClick={retry} data-testid="mtx5-empty-retry" prefix={<RefreshCw className="mr-1 size-3.5" aria-hidden="true" />}>
+                  刷新
+                </Button>
+              </div>
+              <Link className="text-xs text-white/45 hover:text-white/70" to="/employees">
                 回员工列表
               </Link>
             </div>
