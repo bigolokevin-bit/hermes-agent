@@ -2083,13 +2083,21 @@ export function MetricsModulePage() {
                 <p className="text-sm text-muted-foreground">
                   运行统计没有返回这个窗口的运行，账本也没有今天的实扣行，因此这里既没有次数也没有金额——不补 0，也不拿别的时段顶替。
                 </p>
+                {/* UI-B 空态组合：空窗口只有一个主操作——可换窗时「换到 7 天看看」抬起为实心
+                    （工单口径：主操作=切时间窗）；已是 7 天窗口时没有可切的窗，
+                    「重新读取」接任唯一主操作（runs/approvals 同型条件互斥姿势）。 */}
                 <div className="metD-empty-acts">
                   {usageWindow.id !== '7d' ? (
-                    <Button size="sm" outlined onClick={() => chooseUsageWindow('7d')} data-testid="metD-empty-window">
+                    <Button size="sm" onClick={() => chooseUsageWindow('7d')} data-testid="metD-empty-window">
                       换到 7 天看看
                     </Button>
                   ) : null}
-                  <Button size="sm" outlined onClick={() => setAttempt((value) => value + 1)} data-testid="metD-empty-retry">
+                  <Button
+                    size="sm"
+                    outlined={usageWindow.id !== '7d' ? true : undefined}
+                    onClick={() => setAttempt((value) => value + 1)}
+                    data-testid="metD-empty-retry"
+                  >
                     重新读取
                   </Button>
                 </div>

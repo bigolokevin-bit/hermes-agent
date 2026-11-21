@@ -42,9 +42,9 @@
     }
   ],
   "ok": true,
-  "headHash": "03cd4658",
+  "headHash": "f4bd0505",
   "exitCode": 0,
-  "carriedFrom": "df4b4112",
+  "carriedFrom": "e66ceba3",
   "carried": true,
-  "stampNote": "wave-91 三笔全纯测试（appr R264/R265 + aud R259），entry sha 与 CSS 逐字节未变（Chru2g4H/Cpi0jJKL）；本件未重跑，证据沿用 df4b4112 代"
+  "stampNote": "wave-96 两笔全纯测试（appr R271/ui1 R252），entry CF-7ZVka 同 96d769e5 代未再换代、CSS 未变；本件未重跑，证据沿用 e66ceba3 代（96d769e5 波注章被改锚切树打回，本拍自 e66ceba3 仓内态直接重注）"
 }
