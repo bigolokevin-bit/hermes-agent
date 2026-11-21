@@ -6924,3 +6924,48 @@ kn-doc-copy*/kn7-preview*/kn3-page-cap/kn-type*/kn-sort*/kn-gates/导出 absent 
 ```
 未测如实：带登录会话真屏；五量同帧的 404(unwired) 镜像（unwired 无 rid 复制语义，
 R232② 地盘）；重试后再切桶的账本（R245α 地盘）；①③纯引用未复测。
+
+# KNW5 追加 R264：抽屉 500 错误窗内关闭的过渡帧复原（三腿主体全锁→引用；唯一未锁组合落地）（2026-11-21 BJT）
+
+安全门：porcelain 空起做、`merge-base --is-ancestor` 为是 → **`git merge --ff-only`**
+至实测 `43f34bec`（与派工一致、**未用 `-B`**）、knowledge delta 零；基线先跑 75/290
+全绿 Errors 0、目标文件确认缺席再动笔。零产品文件改动。新增
+knowledge.export.preview.detail.test.tsx 一例（本体；三腿裁决位）。
+
+## 三腿裁决（file:line）与新增维
+
+```text
+①「预览抽屉×CSV 五字段逐字」＝全锁：R233①（dd × knL-copy-meta × knF 三方+缺值三书+
+  负扫）+R200②/R209/R223/R226①+R204① → 引用。
+②「开关不动行集序、关零请求、三值」＝全锁：R230①+R262 B（四帧回环）+R256（51×三方
+  首行+账本阶段分离）→ 引用。
+③「空集/500 disabled+title+未调 createObjectURL」＝全锁：R190④:190-205+R231②⑤+
+  R236③:182-210+R138+R257A → 引用。
+唯一未锁组合（本例=候选①坐实）：**错误窗内点「关闭」的过渡帧**——R263 锁窗内五量、
+R262 B 锁健康帧关合，交叉未测。断言：panel/错锚同帧消失（无幽灵锚）+ doc= 只删自身 +
+关段 0 请求 + 列表读集合逐字 + 导出 toBe 干净基线 ∧ 钮序==开前 ∧ cap 逐字复原 ∧
+三值 [3,3,3] + 全链详情读恒 1（失败开读不重取、关/导出不再读）+ blob spy 0。
+换算照落：无 ?preview=/无独立详情路由（「预览=抽屉」声明）；「关零请求」仅关段成立、
+开段 +1 既存详情读如实入账（禁全零）；无真 CSV→「CSV 行」=knF；cap null 族、两式
+缺值、短码尾段、clip Promise+unstub 均引用位纪律不变。
+```
+
+## 验证尾行（R264）
+
+```text
+基线 3 行快照；错误窗 error 锚+详情读 1；关闭：panel/锚 null、doc 消失、urls 恒、
+  listUrls 逐字；导出 toBe textPre、钮序==idsPre、cap toBe capPre、[3,3,3]、
+  详情读仍 1、spy 0。
+$ npx vitest run src/modules/knowledge → 76 files / 291 tests passed（290+1 ≥291），
+  grep unhandled = 0
+$ eslint → 0 errors（1 既有 warning）；模块 tsc → 0
+$ build /tmp/knw-r264-dist → exit 0；全仓 → 458 files / 3434 passed **零红**
+  （metrics 跨日两条本轮未复现，不视为已修复）
+$ 三档 1440/1280/375 vw==bodySW==docSW 全等（用毕即杀）
+零破：kn3*/kn6–kn9/knE-page-*/knF/knG/kn-row-copy*/kn-row-copy-space*/kn7-preview*/
+kn-doc-preview*/kn3-page-cap/kn-type*/kn-sort*/kn-gates/导出 absent 等全套 + 既有
+75 套全绿。过程自纠一处（clear 后导出索引 calls[1]→[0]），产品零触碰。
+```
+未测如实：带登录会话真屏；错误窗内关闭后**再开**（第五帧）的读账本（重开 +1 由
+R236① 健康域外推，错误域未测）；404 unwired 窗内关闭过渡镜像（unwired 段 R232②
+地盘）；①②③纯引用未复测。
