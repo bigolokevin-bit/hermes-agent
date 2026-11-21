@@ -65,3 +65,5 @@ matrix(#/employees?tab=matrix) present=true ok=true
 重键注（L0 2026-11-22 · wave-134）：本账本 headHash 重键现查值 6edcba4d（前端 lane/hermes-console，含 L2 6149cfa8 + L5 a5610d61；后端 l0-board main=37e28a1b 记入 stampNote）；旧 d2cc49fe/196f19fd 条目作废不重章，pending 标注制照旧，不追不等等盖章。
 
 改键说明（L0 定脸令 2026-11-22）：本账本 headHash=6edcba4d 为重键令当时前端 tip；前端现已冻结于 a382334c（wave-135 #1）至 aud 盖章落地，账本按令不重章、不再追改，待盖章代次以 D1 新 RAW 到齐后整体重组。
+
+改键说明二（L0 令 2026-11-22 · wave-136）：账本键位现查更正为——前端定脸 a382334c（非 6edcba4d，headHash 保持重键当时记录值、不重章）；后端 main=cca691e8（含 wave-136：15c4b40c L2 出口清洗 / eed18fe1 L5 五篇§+页脚 / 23abe35f L6 四跳工具）。H1 已由 L0 代跑：7 个代码 sha（3e01e190/a95ab6cf/3c22b6db/0a258f7b/35115d74/6edcba4d/947db917）对 a382334c 祖先核对 7/7=yes。按九门账本「一波一盖、中间代次不重章」：只补本行，summary.json 不动。
