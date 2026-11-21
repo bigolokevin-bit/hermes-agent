@@ -103,6 +103,7 @@
 [data-testid="mtx5-scroll"] div:has(> span[data-testid^="mtx5-col-"]) {
   min-height: var(--table-row-h);
   font-size: var(--font-size-1) !important;
+  font-weight: var(--font-weight-medium);
   color: var(--color-text-muted) !important;
 }
 
