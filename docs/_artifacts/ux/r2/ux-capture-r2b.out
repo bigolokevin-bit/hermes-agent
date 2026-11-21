@@ -1,0 +1,34 @@
+{
+ "notes": [],
+ "hit": 4,
+ "miss": 0,
+ "missMarker": 1,
+ "cleared": 4,
+ "runsChipRows": 270,
+ "clearDisabled": true,
+ "taps": [
+  35,
+  82,
+  21,
+  48
+ ],
+ "drawer": [
+  {
+   "cls": "fixed top-0 left-0 z-50 flex h-dvh max-h",
+   "hidden": false,
+   "ariaHidden": null,
+   "inert": false,
+   "left": -240
+  },
+  {
+   "cls": "min-h-0 w-full flex-1 overflow-y-auto ov",
+   "hidden": false,
+   "ariaHidden": null,
+   "inert": false,
+   "left": -240
+  }
+ ],
+ "bad": [],
+ "errs": 0,
+ "entry": "http://100.117.184.117:8183/assets/index-DTYdDF4J.js"
+}

@@ -1,0 +1,2032 @@
+{
+ "startedAt": "2026-11-21T12:17:23.457Z",
+ "base": "http://100.117.184.117:8183",
+ "entryBaseline": "http://100.117.184.117:8183/assets/index-DTYdDF4J.js",
+ "entryAfter": "http://100.117.184.117:8183/assets/index-DTYdDF4J.js",
+ "states": [],
+ "notes": [
+  "approvals: no search input",
+  "approvals: no search input",
+  "runs: no filter chip found for hit/clear legs"
+ ],
+ "tiering": {
+  "present": 2,
+  "groups": [
+   {
+    "label": "运营",
+    "buttons": []
+   },
+   {
+    "label": "治理",
+    "buttons": []
+   },
+   {
+    "label": "平台",
+    "buttons": []
+   },
+   {
+    "label": "系统",
+    "buttons": []
+   },
+   {
+    "label": "运行筛选",
+    "buttons": [
+     {
+      "t": "近 24 小时",
+      "cls": "shrink-0 whitespace-nowrap rounded-md border border-border p"
+     },
+     {
+      "t": "近 7 天",
+      "cls": "shrink-0 whitespace-nowrap rounded-md border border-border b"
+     },
+     {
+      "t": "近 30 天",
+      "cls": "shrink-0 whitespace-nowrap rounded-md border border-border p"
+     },
+     {
+      "t": "全部时间",
+      "cls": "shrink-0 whitespace-nowrap rounded-md border border-border p"
+     },
+     {
+      "t": "全部状态",
+      "cls": "min-w-0 flex-1 cursor-pointer items-center justify-between g"
+     },
+     {
+      "t": "重新读取",
+      "cls": "font-mono group relative grid cursor-pointer grid-cols-[auto"
+     },
+     {
+      "t": "清除筛选",
+      "cls": "font-mono group relative grid cursor-pointer grid-cols-[auto"
+     }
+    ]
+   },
+   {
+    "label": "时间范围",
+    "buttons": [
+     {
+      "t": "近 24 小时",
+      "cls": "shrink-0 whitespace-nowrap rounded-md border border-border p"
+     },
+     {
+      "t": "近 7 天",
+      "cls": "shrink-0 whitespace-nowrap rounded-md border border-border b"
+     },
+     {
+      "t": "近 30 天",
+      "cls": "shrink-0 whitespace-nowrap rounded-md border border-border p"
+     },
+     {
+      "t": "全部时间",
+      "cls": "shrink-0 whitespace-nowrap rounded-md border border-border p"
+     }
+    ]
+   },
+   {
+    "label": "读取动作",
+    "buttons": [
+     {
+      "t": "重新读取",
+      "cls": "font-mono group relative grid cursor-pointer grid-cols-[auto"
+     },
+     {
+      "t": "清除筛选",
+      "cls": "font-mono group relative grid cursor-pointer grid-cols-[auto"
+     }
+    ]
+   },
+   {
+    "label": "运行 · VDZ8：运行中",
+    "buttons": [
+     {
+      "t": "",
+      "cls": "inline-flex shrink-0 items-center text-xs text-muted-foregro"
+     },
+     {
+      "t": "展开预览",
+      "cls": "flex min-h-[44px] w-full items-center justify-center rounded"
+     }
+    ]
+   },
+   {
+    "label": "运行 · YTGH：成功",
+    "buttons": [
+     {
+      "t": "",
+      "cls": "inline-flex shrink-0 items-center text-xs text-muted-foregro"
+     },
+     {
+      "t": "展开预览",
+      "cls": "flex min-h-[44px] w-full items-center justify-center rounded"
+     }
+    ]
+   },
+   {
+    "label": "运行 · 3A56：成功",
+    "buttons": [
+     {
+      "t": "",
+      "cls": "inline-flex shrink-0 items-center text-xs text-muted-foregro"
+     },
+     {
+      "t": "展开预览",
+      "cls": "flex min-h-[44px] w-full items-center justify-center rounded"
+     }
+    ]
+   },
+   {
+    "label": "运行 · YKMG：成功",
+    "buttons": [
+     {
+      "t": "",
+      "cls": "inline-flex shrink-0 items-center text-xs text-muted-foregro"
+     },
+     {
+      "t": "展开预览",
+      "cls": "flex min-h-[44px] w-full items-center justify-center rounded"
+     }
+    ]
+   },
+   {
+    "label": "运行 · GPWJ：成功",
+    "buttons": [
+     {
+      "t": "",
+      "cls": "inline-flex shrink-0 items-center text-xs text-muted-foregro"
+     },
+     {
+      "t": "展开预览",
+      "cls": "flex min-h-[44px] w-full items-center justify-center rounded"
+     }
+    ]
+   },
+   {
+    "label": "运行 · J7HW：成功",
+    "buttons": [
+     {
+      "t": "",
+      "cls": "inline-flex shrink-0 items-center text-xs text-muted-foregro"
+     },
+     {
+      "t": "展开预览",
+      "cls": "flex min-h-[44px] w-full items-center justify-center rounded"
+     }
+    ]
+   },
+   {
+    "label": "运行 · MZCZ：成功",
+    "buttons": [
+     {
+      "t": "",
+      "cls": "inline-flex shrink-0 items-center text-xs text-muted-foregro"
+     },
+     {
+      "t": "展开预览",
+      "cls": "flex min-h-[44px] w-full items-center justify-center rounded"
+     }
+    ]
+   },
+   {
+    "label": "运行 · JY1V：成功",
+    "buttons": [
+     {
+      "t": "",
+      "cls": "inline-flex shrink-0 items-center text-xs text-muted-foregro"
+     },
+     {
+      "t": "展开预览",
+      "cls": "flex min-h-[44px] w-full items-center justify-center rounded"
+     }
+    ]
+   },
+   {
+    "label": "运行 · F38G：成功",
+    "buttons": [
+     {
+      "t": "",
+      "cls": "inline-flex shrink-0 items-center text-xs text-muted-foregro"
+     },
+     {
+      "t": "展开预览",
+      "cls": "flex min-h-[44px] w-full items-center justify-center rounded"
+     }
+    ]
+   },
+   {
+    "label": "运行 · N40N：成功",
+    "buttons": [
+     {
+      "t": "",
+      "cls": "inline-flex shrink-0 items-center text-xs text-muted-foregro"
+     },
+     {
+      "t": "展开预览",
+      "cls": "flex min-h-[44px] w-full items-center justify-center rounded"
+     }
+    ]
+   },
+   {
+    "label": "运行 · K5F4：成功",
+    "buttons": [
+     {
+      "t": "",
+      "cls": "inline-flex shrink-0 items-center text-xs text-muted-foregro"
+     },
+     {
+      "t": "展开预览",
+      "cls": "flex min-h-[44px] w-full items-center justify-center rounded"
+     }
+    ]
+   },
+   {
+    "label": "运行 · NG5B：成功",
+    "buttons": [
+     {
+      "t": "",
+      "cls": "inline-flex shrink-0 items-center text-xs text-muted-foregro"
+     },
+     {
+      "t": "展开预览",
+      "cls": "flex min-h-[44px] w-full items-center justify-center rounded"
+     }
+    ]
+   },
+   {
+    "label": "运行 · E0VW：成功",
+    "buttons": [
+     {
+      "t": "",
+      "cls": "inline-flex shrink-0 items-center text-xs text-muted-foregro"
+     },
+     {
+      "t": "展开预览",
+      "cls": "flex min-h-[44px] w-full items-center justify-center rounded"
+     }
+    ]
+   },
+   {
+    "label": "运行 · 7MNP：成功",
+    "buttons": [
+     {
+      "t": "",
+      "cls": "inline-flex shrink-0 items-center text-xs text-muted-foregro"
+     },
+     {
+      "t": "展开预览",
+      "cls": "flex min-h-[44px] w-full items-center justify-center rounded"
+     }
+    ]
+   },
+   {
+    "label": "运行 · P1BT：成功",
+    "buttons": [
+     {
+      "t": "",
+      "cls": "inline-flex shrink-0 items-center text-xs text-muted-foregro"
+     },
+     {
+      "t": "展开预览",
+      "cls": "flex min-h-[44px] w-full items-center justify-center rounded"
+     }
+    ]
+   },
+   {
+    "label": "运行 · K62W：成功",
+    "buttons": [
+     {
+      "t": "",
+      "cls": "inline-flex shrink-0 items-center text-xs text-muted-foregro"
+     },
+     {
+      "t": "展开预览",
+      "cls": "flex min-h-[44px] w-full items-center justify-center rounded"
+     }
+    ]
+   },
+   {
+    "label": "运行 · 3H5S：成功",
+    "buttons": [
+     {
+      "t": "",
+      "cls": "inline-flex shrink-0 items-center text-xs text-muted-foregro"
+     },
+     {
+      "t": "展开预览",
+      "cls": "flex min-h-[44px] w-full items-center justify-center rounded"
+     }
+    ]
+   },
+   {
+    "label": "运行 · 3XAH：成功",
+    "buttons": [
+     {
+      "t": "",
+      "cls": "inline-flex shrink-0 items-center text-xs text-muted-foregro"
+     },
+     {
+      "t": "展开预览",
+      "cls": "flex min-h-[44px] w-full items-center justify-center rounded"
+     }
+    ]
+   },
+   {
+    "label": "运行 · YGZM：成功",
+    "buttons": [
+     {
+      "t": "",
+      "cls": "inline-flex shrink-0 items-center text-xs text-muted-foregro"
+     },
+     {
+      "t": "展开预览",
+      "cls": "flex min-h-[44px] w-full items-center justify-center rounded"
+     }
+    ]
+   },
+   {
+    "label": "运行 · 23SK：成功",
+    "buttons": [
+     {
+      "t": "",
+      "cls": "inline-flex shrink-0 items-center text-xs text-muted-foregro"
+     },
+     {
+      "t": "展开预览",
+      "cls": "flex min-h-[44px] w-full items-center justify-center rounded"
+     }
+    ]
+   },
+   {
+    "label": "运行 · GFH3：成功",
+    "buttons": [
+     {
+      "t": "",
+      "cls": "inline-flex shrink-0 items-center text-xs text-muted-foregro"
+     },
+     {
+      "t": "展开预览",
+      "cls": "flex min-h-[44px] w-full items-center justify-center rounded"
+     }
+    ]
+   },
+   {
+    "label": "运行 · NTDS：成功",
+    "buttons": [
+     {
+      "t": "",
+      "cls": "inline-flex shrink-0 items-center text-xs text-muted-foregro"
+     },
+     {
+      "t": "展开预览",
+      "cls": "flex min-h-[44px] w-full items-center justify-center rounded"
+     }
+    ]
+   },
+   {
+    "label": "运行 · RQX6：成功",
+    "buttons": [
+     {
+      "t": "",
+      "cls": "inline-flex shrink-0 items-center text-xs text-muted-foregro"
+     },
+     {
+      "t": "展开预览",
+      "cls": "flex min-h-[44px] w-full items-center justify-center rounded"
+     }
+    ]
+   },
+   {
+    "label": "运行 · 7CVS：成功",
+    "buttons": [
+     {
+      "t": "",
+      "cls": "inline-flex shrink-0 items-center text-xs text-muted-foregro"
+     },
+     {
+      "t": "展开预览",
+      "cls": "flex min-h-[44px] w-full items-center justify-center rounded"
+     }
+    ]
+   },
+   {
+    "label": "运行 · R2NZ：成功",
+    "buttons": [
+     {
+      "t": "",
+      "cls": "inline-flex shrink-0 items-center text-xs text-muted-foregro"
+     },
+     {
+      "t": "展开预览",
+      "cls": "flex min-h-[44px] w-full items-center justify-center rounded"
+     }
+    ]
+   },
+   {
+    "label": "运行 · 9HN0：成功",
+    "buttons": [
+     {
+      "t": "",
+      "cls": "inline-flex shrink-0 items-center text-xs text-muted-foregro"
+     },
+     {
+      "t": "展开预览",
+      "cls": "flex min-h-[44px] w-full items-center justify-center rounded"
+     }
+    ]
+   },
+   {
+    "label": "运行 · NPY1：成功",
+    "buttons": [
+     {
+      "t": "",
+      "cls": "inline-flex shrink-0 items-center text-xs text-muted-foregro"
+     },
+     {
+      "t": "展开预览",
+      "cls": "flex min-h-[44px] w-full items-center justify-center rounded"
+     }
+    ]
+   },
+   {
+    "label": "运行 · Q8WE：成功",
+    "buttons": [
+     {
+      "t": "",
+      "cls": "inline-flex shrink-0 items-center text-xs text-muted-foregro"
+     },
+     {
+      "t": "展开预览",
+      "cls": "flex min-h-[44px] w-full items-center justify-center rounded"
+     }
+    ]
+   },
+   {
+    "label": "运行 · MHBS：成功",
+    "buttons": [
+     {
+      "t": "",
+      "cls": "inline-flex shrink-0 items-center text-xs text-muted-foregro"
+     },
+     {
+      "t": "展开预览",
+      "cls": "flex min-h-[44px] w-full items-center justify-center rounded"
+     }
+    ]
+   },
+   {
+    "label": "运行 · 4X41：成功",
+    "buttons": [
+     {
+      "t": "",
+      "cls": "inline-flex shrink-0 items-center text-xs text-muted-foregro"
+     },
+     {
+      "t": "展开预览",
+      "cls": "flex min-h-[44px] w-full items-center justify-center rounded"
+     }
+    ]
+   },
+   {
+    "label": "列表操作",
+    "buttons": [
+     {
+      "t": "复制为纯文本",
+      "cls": "font-mono group relative grid cursor-pointer grid-cols-[auto"
+     },
+     {
+      "t": "导出 CSV",
+      "cls": "font-mono group relative grid cursor-pointer grid-cols-[auto"
+     },
+     {
+      "t": "复制运行链接",
+      "cls": "font-mono group relative grid cursor-pointer grid-cols-[auto"
+     }
+    ]
+   }
+  ],
+  "solidButtons": [],
+  "solidCount1440": 0
+ },
+ "rowText": "行内预览message.send待处理申请人成员 · 86A81CE8执行员工—",
+ "detailUrl": "http://100.117.184.117:8183/approvals?id=ap_85119755436347F1864B96F6A8",
+ "runsUrl": "http://100.117.184.117:8183/work?tab=runs",
+ "runDetailUrl": "http://100.117.184.117:8183/runs/?tab=runs&run=rn_01M7D7421P5PA27TEXMT9YVDZ8",
+ "finishedAt": "2026-11-21T12:17:36.259Z",
+ "big": {
+  "size": "1440",
+  "badResponses": [],
+  "consoleErrors": [],
+  "probe": {
+   "vw": 1440,
+   "vh": 2600,
+   "rightOutCount": 0,
+   "rightOutSample": [],
+   "leftOutCount": 0,
+   "leftOutSample": [],
+   "overflowContainers": [],
+   "domOverflowPx": 0,
+   "smallTapTargets": [
+    {
+     "tag": "SPAN",
+     "lab": "HermesAgent",
+     "w": 75,
+     "h": 32
+    },
+    {
+     "tag": "BUTTON",
+     "lab": "Collapse",
+     "w": 28,
+     "h": 28
+    },
+    {
+     "tag": "SPAN",
+     "lab": "控制台",
+     "w": 207,
+     "h": 31
+    },
+    {
+     "tag": "SPAN",
+     "lab": "运营",
+     "w": 56,
+     "h": 26
+    },
+    {
+     "tag": "A",
+     "lab": "运营总览",
+     "w": 207,
+     "h": 34
+    },
+    {
+     "tag": "A",
+     "lab": "数字员工",
+     "w": 207,
+     "h": 34
+    },
+    {
+     "tag": "A",
+     "lab": "任务与运行",
+     "w": 207,
+     "h": 34
+    },
+    {
+     "tag": "A",
+     "lab": "审批与发布门",
+     "w": 207,
+     "h": 34
+    },
+    {
+     "tag": "SPAN",
+     "lab": "治理",
+     "w": 56,
+     "h": 26
+    },
+    {
+     "tag": "A",
+     "lab": "人员与访问",
+     "w": 207,
+     "h": 34
+    },
+    {
+     "tag": "A",
+     "lab": "知识与数据",
+     "w": 207,
+     "h": 34
+    },
+    {
+     "tag": "SPAN",
+     "lab": "平台",
+     "w": 56,
+     "h": 26
+    },
+    {
+     "tag": "A",
+     "lab": "能力与接入",
+     "w": 207,
+     "h": 34
+    },
+    {
+     "tag": "SPAN",
+     "lab": "系统",
+     "w": 56,
+     "h": 26
+    },
+    {
+     "tag": "A",
+     "lab": "系统设置",
+     "w": 207,
+     "h": 34
+    },
+    {
+     "tag": "A",
+     "lab": "审计",
+     "w": 207,
+     "h": 34
+    },
+    {
+     "tag": "SPAN",
+     "lab": "opsadmin",
+     "w": 185,
+     "h": 15
+    },
+    {
+     "tag": "SPAN",
+     "lab": "角色：—",
+     "w": 185,
+     "h": 15
+    },
+    {
+     "tag": "SPAN",
+     "lab": "租户：—",
+     "w": 185,
+     "h": 15
+    },
+    {
+     "tag": "BUTTON",
+     "lab": "退出登录",
+     "w": 62,
+     "h": 25
+    },
+    {
+     "tag": "BUTTON",
+     "lab": "切换主题",
+     "w": 114,
+     "h": 26
+    },
+    {
+     "tag": "SPAN",
+     "lab": "Hermes Teal",
+     "w": 99,
+     "h": 15
+    },
+    {
+     "tag": "SPAN",
+     "lab": "Hermes Teal",
+     "w": 81,
+     "h": 15
+    },
+    {
+     "tag": "BUTTON",
+     "lab": "切换语言",
+     "w": 31,
+     "h": 26
+    },
+    {
+     "tag": "SPAN",
+     "lab": "EN",
+     "w": 16,
+     "h": 15
+    },
+    {
+     "tag": "SPAN",
+     "lab": "EN",
+     "w": 16,
+     "h": 15
+    },
+    {
+     "tag": "SPAN",
+     "lab": "—",
+     "w": 8,
+     "h": 15
+    },
+    {
+     "tag": "A",
+     "lab": "Nous Research",
+     "w": 98,
+     "h": 24
+    },
+    {
+     "tag": "H1",
+     "lab": "Runs",
+     "w": 50,
+     "h": 19
+    },
+    {
+     "tag": "BUTTON",
+     "lab": "刷新",
+     "w": 63,
+     "h": 28
+    },
+    {
+     "tag": "SPAN",
+     "lab": "",
+     "w": 13,
+     "h": 13
+    },
+    {
+     "tag": "A",
+     "lab": "控制台",
+     "w": 34,
+     "h": 13
+    },
+    {
+     "tag": "SPAN",
+     "lab": "·",
+     "w": 10,
+     "h": 13
+    },
+    {
+     "tag": "SPAN",
+     "lab": "运行",
+     "w": 22,
+     "h": 13
+    },
+    {
+     "tag": "H1",
+     "lab": "运行",
+     "w": 380,
+     "h": 26
+    },
+    {
+     "tag": "P",
+     "lab": "按时间看运行记录。这一面只读：不取消运行",
+     "w": 380,
+     "h": 15
+    },
+    {
+     "tag": "SPAN",
+     "lab": "时间范围",
+     "w": 270,
+     "h": 15
+    },
+    {
+     "tag": "BUTTON",
+     "lab": "近 24 小时",
+     "w": 75,
+     "h": 25
+    },
+    {
+     "tag": "BUTTON",
+     "lab": "近 7 天",
+     "w": 55,
+     "h": 25
+    },
+    {
+     "tag": "BUTTON",
+     "lab": "近 30 天",
+     "w": 64,
+     "h": 25
+    }
+   ],
+   "smallTapCount": 321,
+   "requestIds": [],
+   "hexRunsCount": 0,
+   "isoTimesCount": 0,
+   "emptyHits": true,
+   "errorHits": true,
+   "textSample": "HERMES\nAGENT\n控制台\n运营\n运营总览\n数字员工\n任务与运行\n审批与发布门\n治理\n人员与访问\n知识与数据\n平台\n能力与接入\n系统\n系统设置\n审计\nopsadmin\n角色：—\n租户：—\n退出登录\nHERMES TEAL\nEN\n—\nNous Research\nRuns\n刷新\n控制台 · 运行\n运行\n\n按时间看运行记录。这一面只读：不取消运行；重试的含义是新建一次运行。\n\n时间范围\n近 24 小时\n近 7 天\n近 30 天\n全部时间\n状态\n全部状态\n重新读取\n清除筛选\n\n读取成功\n\n当前筛选可分享形态\n/runs\n未设置筛选（按默认近 7 天读取）\n复制筛选条件\n\n本页 30 次 · 失败 0 · 运行中 1（仅本页已加载，最多 30 条，不是全量统计）；服务说这一页之外还有更多\n\n已加载 30 行（每页 30 条；复制与导出也只含这些行，不报全量）可能还有更多，收窄筛选或换窗口\n\n采集时刻 —（上游给了才显示；没给就是「—」，不拿本机时间顶替）\n\n运行 · VDZ8\n\n运行中 · 开始 2026-11-14 22:24 · 耗时 —\n\n关闭\n状态\n运行中\n成本\n—\n未知\n账本没有这条运行的计价记录，金额按未知处理\n预算上限\n$10.00\n第几次尝试\n第 1 次\n结束\n该字段未返回\n失败原因\n—\n任务\n—\n员工\nAgentOS 产品助理 · 86A81CE8\n事件\n0 条\n上游运行\n运行 · 8DF9\n运行时侧的上游编号。控制台没有按上游编号查询的入口，所以这里只提供复制，不做会落空的跳转。\n事件时间线\n\n这条运行的事件流还没有读到内容。\n\n重试 · 新建一次运行（当前环境"
+  },
+  "runsProbe": {
+   "vw": 1440,
+   "vh": 2600,
+   "rightOutCount": 0,
+   "rightOutSample": [],
+   "leftOutCount": 0,
+   "leftOutSample": [],
+   "overflowContainers": [],
+   "domOverflowPx": 0,
+   "smallTapTargets": [
+    {
+     "tag": "SPAN",
+     "lab": "HermesAgent",
+     "w": 75,
+     "h": 32
+    },
+    {
+     "tag": "BUTTON",
+     "lab": "Collapse",
+     "w": 28,
+     "h": 28
+    },
+    {
+     "tag": "SPAN",
+     "lab": "控制台",
+     "w": 207,
+     "h": 31
+    },
+    {
+     "tag": "SPAN",
+     "lab": "运营",
+     "w": 56,
+     "h": 26
+    },
+    {
+     "tag": "A",
+     "lab": "运营总览",
+     "w": 207,
+     "h": 34
+    },
+    {
+     "tag": "A",
+     "lab": "数字员工",
+     "w": 207,
+     "h": 34
+    },
+    {
+     "tag": "A",
+     "lab": "任务与运行",
+     "w": 207,
+     "h": 34
+    },
+    {
+     "tag": "A",
+     "lab": "审批与发布门",
+     "w": 207,
+     "h": 34
+    },
+    {
+     "tag": "SPAN",
+     "lab": "治理",
+     "w": 56,
+     "h": 26
+    },
+    {
+     "tag": "A",
+     "lab": "人员与访问",
+     "w": 207,
+     "h": 34
+    },
+    {
+     "tag": "A",
+     "lab": "知识与数据",
+     "w": 207,
+     "h": 34
+    },
+    {
+     "tag": "SPAN",
+     "lab": "平台",
+     "w": 56,
+     "h": 26
+    },
+    {
+     "tag": "A",
+     "lab": "能力与接入",
+     "w": 207,
+     "h": 34
+    },
+    {
+     "tag": "SPAN",
+     "lab": "系统",
+     "w": 56,
+     "h": 26
+    },
+    {
+     "tag": "A",
+     "lab": "系统设置",
+     "w": 207,
+     "h": 34
+    },
+    {
+     "tag": "A",
+     "lab": "审计",
+     "w": 207,
+     "h": 34
+    },
+    {
+     "tag": "SPAN",
+     "lab": "opsadmin",
+     "w": 185,
+     "h": 15
+    },
+    {
+     "tag": "SPAN",
+     "lab": "角色：—",
+     "w": 185,
+     "h": 15
+    },
+    {
+     "tag": "SPAN",
+     "lab": "租户：—",
+     "w": 185,
+     "h": 15
+    },
+    {
+     "tag": "BUTTON",
+     "lab": "退出登录",
+     "w": 62,
+     "h": 25
+    },
+    {
+     "tag": "BUTTON",
+     "lab": "切换主题",
+     "w": 114,
+     "h": 26
+    },
+    {
+     "tag": "SPAN",
+     "lab": "Hermes Teal",
+     "w": 99,
+     "h": 15
+    },
+    {
+     "tag": "SPAN",
+     "lab": "Hermes Teal",
+     "w": 81,
+     "h": 15
+    },
+    {
+     "tag": "BUTTON",
+     "lab": "切换语言",
+     "w": 31,
+     "h": 26
+    },
+    {
+     "tag": "SPAN",
+     "lab": "EN",
+     "w": 16,
+     "h": 15
+    },
+    {
+     "tag": "SPAN",
+     "lab": "EN",
+     "w": 16,
+     "h": 15
+    },
+    {
+     "tag": "SPAN",
+     "lab": "—",
+     "w": 8,
+     "h": 15
+    },
+    {
+     "tag": "A",
+     "lab": "Nous Research",
+     "w": 98,
+     "h": 24
+    },
+    {
+     "tag": "SPAN",
+     "lab": "运营 · 控制台",
+     "w": 1176,
+     "h": 15
+    },
+    {
+     "tag": "H1",
+     "lab": "任务与运行",
+     "w": 1176,
+     "h": 26
+    },
+    {
+     "tag": "A",
+     "lab": "任务",
+     "w": 51,
+     "h": 35
+    },
+    {
+     "tag": "A",
+     "lab": "运行",
+     "w": 51,
+     "h": 35
+    },
+    {
+     "tag": "BUTTON",
+     "lab": "刷新",
+     "w": 63,
+     "h": 28
+    },
+    {
+     "tag": "SPAN",
+     "lab": "",
+     "w": 13,
+     "h": 13
+    },
+    {
+     "tag": "A",
+     "lab": "控制台",
+     "w": 34,
+     "h": 13
+    },
+    {
+     "tag": "SPAN",
+     "lab": "·",
+     "w": 10,
+     "h": 13
+    },
+    {
+     "tag": "SPAN",
+     "lab": "运行",
+     "w": 22,
+     "h": 13
+    },
+    {
+     "tag": "H1",
+     "lab": "运行",
+     "w": 380,
+     "h": 26
+    },
+    {
+     "tag": "P",
+     "lab": "按时间看运行记录。这一面只读：不取消运行",
+     "w": 380,
+     "h": 15
+    },
+    {
+     "tag": "SPAN",
+     "lab": "时间范围",
+     "w": 270,
+     "h": 15
+    }
+   ],
+   "smallTapCount": 323,
+   "requestIds": [],
+   "hexRunsCount": 0,
+   "isoTimesCount": 0,
+   "emptyHits": true,
+   "errorHits": true,
+   "textSample": "HERMES\nAGENT\n控制台\n运营\n运营总览\n数字员工\n任务与运行\n审批与发布门\n治理\n人员与访问\n知识与数据\n平台\n能力与接入\n系统\n系统设置\n审计\nopsadmin\n角色：—\n租户：—\n退出登录\nHERMES TEAL\nEN\n—\nNous Research\n运营 · 控制台\n任务与运行\n任务\n运行\n刷新\n控制台 · 运行\n运行\n\n按时间看运行记录。这一面只读：不取消运行；重试的含义是新建一次运行。\n\n时间范围\n近 24 小时\n近 7 天\n近 30 天\n全部时间\n状态\n全部状态\n重新读取\n清除筛选\n\n读取成功\n\n当前筛选可分享形态\n/runs\n未设置筛选（按默认近 7 天读取）\n复制筛选条件\n\n本页 30 次 · 失败 0 · 运行中 1（仅本页已加载，最多 30 条，不是全量统计）；服务说这一页之外还有更多\n\n已加载 30 行（每页 30 条；复制与导出也只含这些行，不报全量）可能还有更多，收窄筛选或换窗口\n\n采集时刻 —（上游给了才显示；没给就是「—」，不拿本机时间顶替）\n\n运行\n状态\n开始\n耗时\n成本（美元）\n负责人\n失败原因\n运行 · VDZ8\n运行中\n2026-11-14 22:24\n165 小时 53 分钟\n—\n未知\n账本没有这条运行的计价记录，金额按未知处理\nAgentOS 产品助理 · 86A81CE8\n—\n查看\n展开预览\n运行 · YTGH\n成功\n2026-11-14 23:24\n不足 1 分钟\n$0.01\n已计价\nAgentOS 产品助理 · 86A81CE8\n—\n查看\n展开预览\n运行 · 3A56\n成功\n2026-11-15 00:01\n不足 1 分"
+  },
+  "approvalsProbe": {
+   "vw": 1440,
+   "vh": 2600,
+   "rightOutCount": 0,
+   "rightOutSample": [],
+   "leftOutCount": 0,
+   "leftOutSample": [],
+   "overflowContainers": [],
+   "domOverflowPx": 0,
+   "smallTapTargets": [
+    {
+     "tag": "SPAN",
+     "lab": "HermesAgent",
+     "w": 75,
+     "h": 32
+    },
+    {
+     "tag": "BUTTON",
+     "lab": "Collapse",
+     "w": 28,
+     "h": 28
+    },
+    {
+     "tag": "SPAN",
+     "lab": "控制台",
+     "w": 207,
+     "h": 31
+    },
+    {
+     "tag": "SPAN",
+     "lab": "运营",
+     "w": 56,
+     "h": 26
+    },
+    {
+     "tag": "A",
+     "lab": "运营总览",
+     "w": 207,
+     "h": 34
+    },
+    {
+     "tag": "A",
+     "lab": "数字员工",
+     "w": 207,
+     "h": 34
+    },
+    {
+     "tag": "A",
+     "lab": "任务与运行",
+     "w": 207,
+     "h": 34
+    },
+    {
+     "tag": "A",
+     "lab": "审批与发布门",
+     "w": 207,
+     "h": 34
+    },
+    {
+     "tag": "SPAN",
+     "lab": "治理",
+     "w": 56,
+     "h": 26
+    },
+    {
+     "tag": "A",
+     "lab": "人员与访问",
+     "w": 207,
+     "h": 34
+    },
+    {
+     "tag": "A",
+     "lab": "知识与数据",
+     "w": 207,
+     "h": 34
+    },
+    {
+     "tag": "SPAN",
+     "lab": "平台",
+     "w": 56,
+     "h": 26
+    },
+    {
+     "tag": "A",
+     "lab": "能力与接入",
+     "w": 207,
+     "h": 34
+    },
+    {
+     "tag": "SPAN",
+     "lab": "系统",
+     "w": 56,
+     "h": 26
+    },
+    {
+     "tag": "A",
+     "lab": "系统设置",
+     "w": 207,
+     "h": 34
+    },
+    {
+     "tag": "A",
+     "lab": "审计",
+     "w": 207,
+     "h": 34
+    },
+    {
+     "tag": "SPAN",
+     "lab": "opsadmin",
+     "w": 185,
+     "h": 15
+    },
+    {
+     "tag": "SPAN",
+     "lab": "角色：—",
+     "w": 185,
+     "h": 15
+    },
+    {
+     "tag": "SPAN",
+     "lab": "租户：—",
+     "w": 185,
+     "h": 15
+    },
+    {
+     "tag": "BUTTON",
+     "lab": "退出登录",
+     "w": 62,
+     "h": 25
+    },
+    {
+     "tag": "BUTTON",
+     "lab": "切换主题",
+     "w": 114,
+     "h": 26
+    },
+    {
+     "tag": "SPAN",
+     "lab": "Hermes Teal",
+     "w": 99,
+     "h": 15
+    },
+    {
+     "tag": "SPAN",
+     "lab": "Hermes Teal",
+     "w": 81,
+     "h": 15
+    },
+    {
+     "tag": "BUTTON",
+     "lab": "切换语言",
+     "w": 31,
+     "h": 26
+    },
+    {
+     "tag": "SPAN",
+     "lab": "EN",
+     "w": 16,
+     "h": 15
+    },
+    {
+     "tag": "SPAN",
+     "lab": "EN",
+     "w": 16,
+     "h": 15
+    },
+    {
+     "tag": "SPAN",
+     "lab": "—",
+     "w": 8,
+     "h": 15
+    },
+    {
+     "tag": "A",
+     "lab": "Nous Research",
+     "w": 98,
+     "h": 24
+    },
+    {
+     "tag": "SPAN",
+     "lab": "运营 · 控制台",
+     "w": 1176,
+     "h": 15
+    },
+    {
+     "tag": "H1",
+     "lab": "审批与发布门",
+     "w": 1176,
+     "h": 26
+    },
+    {
+     "tag": "A",
+     "lab": "待处理",
+     "w": 64,
+     "h": 35
+    },
+    {
+     "tag": "A",
+     "lab": "历史决策",
+     "w": 77,
+     "h": 35
+    },
+    {
+     "tag": "BUTTON",
+     "lab": "筛选条件（无）",
+     "w": 110,
+     "h": 23
+    },
+    {
+     "tag": "SPAN",
+     "lab": "汇总（与列表同源）：",
+     "w": 112,
+     "h": 15
+    },
+    {
+     "tag": "A",
+     "lab": "待办 2",
+     "w": 32,
+     "h": 16
+    },
+    {
+     "tag": "SPAN",
+     "lab": "已批 —",
+     "w": 32,
+     "h": 16
+    },
+    {
+     "tag": "SPAN",
+     "lab": "已拒 —",
+     "w": 32,
+     "h": 16
+    },
+    {
+     "tag": "SPAN",
+     "lab": "高风险 2",
+     "w": 44,
+     "h": 16
+    },
+    {
+     "tag": "SPAN",
+     "lab": "中风险 0",
+     "w": 44,
+     "h": 16
+    },
+    {
+     "tag": "SPAN",
+     "lab": "低风险 0",
+     "w": 44,
+     "h": 16
+    }
+   ],
+   "smallTapCount": 86,
+   "requestIds": [],
+   "hexRunsCount": 0,
+   "isoTimesCount": 0,
+   "emptyHits": true,
+   "errorHits": true,
+   "textSample": "HERMES\nAGENT\n控制台\n运营\n运营总览\n数字员工\n任务与运行\n审批与发布门\n治理\n人员与访问\n知识与数据\n平台\n能力与接入\n系统\n系统设置\n审计\nopsadmin\n角色：—\n租户：—\n退出登录\nHERMES TEAL\nEN\n—\nNous Research\n运营 · 控制台\n审批与发布门\n待处理\n历史决策\n筛选条件（无）\n汇总（与列表同源）：\n待办 2\n已批 —\n已拒 —\n高风险 2\n中风险 0\n低风险 0\n已显示 2 条申请，其中 2 条待处理\n重置筛选\n无筛选\n导出 CSV\n共 2 行\n\napprovals-pending-pending-default-default-20261121-2017.csv\n\n排序：\n标题\n状态\n风险档\n更新时间\n\n动作可用性矩阵：导出 / 展开 / 详情 / 排序 / 汇总 / 重试同源判定（状态 + 行数），禁用时写明原因。\n\n键盘：↑/↓ 行间移焦，Home/End 首末行，Enter 展开/收起该行预览，空格打开详情，Esc 收起并回到该行。\n\n仅在当前已加载 2 条内排序；不是服务端排序（读口忽略排序参数，实测同序同集合），缺值的行恒排末。\n\n复制预览详情\n\n已加载 2 条\n\n刷新\n行内预览\nmessage.send\n待处理\n申请人\n成员 · 86A81CE8\n执行员工\n—\n提交\n11 小时前\n处理期限\n2026-11-22 09:09\n涉及金额\n—\n\n事由：policy.requires_approval: 该动作需要审批。 knowledge_scope_departme…\n\n复制这一行\n详情\n行内预览\nmessage."
+  },
+  "focus": [
+   {
+    "tag": "BUTTON",
+    "name": "Collapse",
+    "outline": "auto 1px rgb(0, 95, 204)",
+    "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0",
+    "rect": {
+     "x": 164,
+     "y": 12,
+     "w": 28,
+     "h": 28
+    },
+    "clipped": false
+   },
+   {
+    "tag": "A",
+    "name": "运营总览",
+    "outline": "solid 2px rgb(255, 230, 203)",
+    "shadow": "none",
+    "rect": {
+     "x": 0,
+     "y": 115,
+     "w": 207,
+     "h": 34
+    },
+    "clipped": false
+   },
+   {
+    "tag": "A",
+    "name": "数字员工",
+    "outline": "solid 2px rgb(255, 230, 203)",
+    "shadow": "none",
+    "rect": {
+     "x": 0,
+     "y": 149,
+     "w": 207,
+     "h": 34
+    },
+    "clipped": false
+   },
+   {
+    "tag": "A",
+    "name": "任务与运行",
+    "outline": "solid 2px rgb(255, 230, 203)",
+    "shadow": "none",
+    "rect": {
+     "x": 0,
+     "y": 183,
+     "w": 207,
+     "h": 34
+    },
+    "clipped": false
+   },
+   {
+    "tag": "A",
+    "name": "审批与发布门",
+    "outline": "solid 2px rgb(255, 230, 203)",
+    "shadow": "rgb(255, 230, 203) 2px 0px 0px 0px inset",
+    "rect": {
+     "x": 0,
+     "y": 217,
+     "w": 207,
+     "h": 34
+    },
+    "clipped": false
+   },
+   {
+    "tag": "A",
+    "name": "人员与访问",
+    "outline": "solid 2px rgb(255, 230, 203)",
+    "shadow": "none",
+    "rect": {
+     "x": 0,
+     "y": 274,
+     "w": 207,
+     "h": 34
+    },
+    "clipped": false
+   }
+  ]
+ },
+ "small": {
+  "size": "375",
+  "badResponses": [],
+  "consoleErrors": [],
+  "approvalsShot": {
+   "file": "shots/approvals-list-375-r2.png",
+   "bytes": 83511,
+   "pngHeight": 800,
+   "fallback": false,
+   "scrollH": 800,
+   "bodyChars": 924
+  },
+  "approvalsProbe": {
+   "vw": 375,
+   "vh": 800,
+   "rightOutCount": 0,
+   "rightOutSample": [],
+   "leftOutCount": 0,
+   "leftOutSample": [],
+   "overflowContainers": [],
+   "domOverflowPx": 0,
+   "smallTapTargets": [
+    {
+     "tag": "SPAN",
+     "lab": "菜单",
+     "w": 23,
+     "h": 15
+    },
+    {
+     "tag": "SPAN",
+     "lab": "Hermes Agent",
+     "w": 109,
+     "h": 14
+    },
+    {
+     "tag": "SPAN",
+     "lab": "HermesAgent",
+     "w": 75,
+     "h": 32
+    },
+    {
+     "tag": "BUTTON",
+     "lab": "关闭导航",
+     "w": 28,
+     "h": 28
+    },
+    {
+     "tag": "SPAN",
+     "lab": "控制台",
+     "w": 239,
+     "h": 31
+    },
+    {
+     "tag": "SPAN",
+     "lab": "运营",
+     "w": 56,
+     "h": 26
+    },
+    {
+     "tag": "A",
+     "lab": "运营总览",
+     "w": 239,
+     "h": 34
+    },
+    {
+     "tag": "A",
+     "lab": "数字员工",
+     "w": 239,
+     "h": 34
+    },
+    {
+     "tag": "A",
+     "lab": "任务与运行",
+     "w": 239,
+     "h": 34
+    },
+    {
+     "tag": "A",
+     "lab": "审批与发布门",
+     "w": 239,
+     "h": 34
+    },
+    {
+     "tag": "SPAN",
+     "lab": "治理",
+     "w": 56,
+     "h": 26
+    },
+    {
+     "tag": "A",
+     "lab": "人员与访问",
+     "w": 239,
+     "h": 34
+    },
+    {
+     "tag": "A",
+     "lab": "知识与数据",
+     "w": 239,
+     "h": 34
+    },
+    {
+     "tag": "SPAN",
+     "lab": "平台",
+     "w": 56,
+     "h": 26
+    },
+    {
+     "tag": "A",
+     "lab": "能力与接入",
+     "w": 239,
+     "h": 34
+    },
+    {
+     "tag": "SPAN",
+     "lab": "系统",
+     "w": 56,
+     "h": 26
+    },
+    {
+     "tag": "A",
+     "lab": "系统设置",
+     "w": 239,
+     "h": 34
+    },
+    {
+     "tag": "A",
+     "lab": "审计",
+     "w": 239,
+     "h": 34
+    },
+    {
+     "tag": "SPAN",
+     "lab": "opsadmin",
+     "w": 217,
+     "h": 15
+    },
+    {
+     "tag": "SPAN",
+     "lab": "角色：—",
+     "w": 217,
+     "h": 15
+    },
+    {
+     "tag": "SPAN",
+     "lab": "租户：—",
+     "w": 217,
+     "h": 15
+    },
+    {
+     "tag": "BUTTON",
+     "lab": "退出登录",
+     "w": 62,
+     "h": 25
+    },
+    {
+     "tag": "BUTTON",
+     "lab": "切换主题",
+     "w": 28,
+     "h": 24
+    },
+    {
+     "tag": "SPAN",
+     "lab": "Hermes Teal",
+     "w": 13,
+     "h": 13
+    },
+    {
+     "tag": "BUTTON",
+     "lab": "切换语言",
+     "w": 15,
+     "h": 11
+    },
+    {
+     "tag": "SPAN",
+     "lab": "—",
+     "w": 8,
+     "h": 15
+    },
+    {
+     "tag": "A",
+     "lab": "Nous Research",
+     "w": 98,
+     "h": 24
+    },
+    {
+     "tag": "SPAN",
+     "lab": "运营 · 控制台",
+     "w": 342,
+     "h": 15
+    },
+    {
+     "tag": "H1",
+     "lab": "审批与发布门",
+     "w": 342,
+     "h": 26
+    },
+    {
+     "tag": "A",
+     "lab": "待处理",
+     "w": 64,
+     "h": 35
+    },
+    {
+     "tag": "A",
+     "lab": "历史决策",
+     "w": 77,
+     "h": 35
+    },
+    {
+     "tag": "BUTTON",
+     "lab": "筛选条件（无）",
+     "w": 110,
+     "h": 23
+    },
+    {
+     "tag": "SPAN",
+     "lab": "汇总（与列表同源）：",
+     "w": 112,
+     "h": 15
+    },
+    {
+     "tag": "A",
+     "lab": "待办 2",
+     "w": 32,
+     "h": 16
+    },
+    {
+     "tag": "SPAN",
+     "lab": "已批 —",
+     "w": 32,
+     "h": 16
+    },
+    {
+     "tag": "SPAN",
+     "lab": "已拒 —",
+     "w": 32,
+     "h": 16
+    },
+    {
+     "tag": "SPAN",
+     "lab": "高风险 2",
+     "w": 44,
+     "h": 16
+    },
+    {
+     "tag": "SPAN",
+     "lab": "中风险 0",
+     "w": 44,
+     "h": 16
+    },
+    {
+     "tag": "SPAN",
+     "lab": "低风险 0",
+     "w": 44,
+     "h": 16
+    },
+    {
+     "tag": "SPAN",
+     "lab": "已显示 2 条申请，其中 2 条待处理",
+     "w": 172,
+     "h": 15
+    }
+   ],
+   "smallTapCount": 65,
+   "requestIds": [],
+   "hexRunsCount": 0,
+   "isoTimesCount": 0,
+   "emptyHits": true,
+   "errorHits": true,
+   "textSample": "菜单\nHermes Agent\nHERMES\nAGENT\n控制台\n运营\n运营总览\n数字员工\n任务与运行\n审批与发布门\n治理\n人员与访问\n知识与数据\n平台\n能力与接入\n系统\n系统设置\n审计\nopsadmin\n角色：—\n租户：—\n退出登录\n—\nNous Research\n运营 · 控制台\n审批与发布门\n待处理\n历史决策\n筛选条件（无）\n汇总（与列表同源）：\n待办 2\n已批 —\n已拒 —\n高风险 2\n中风险 0\n低风险 0\n已显示 2 条申请，其中 2 条待处理\n重置筛选\n无筛选\n导出 CSV\n共 2 行\n\napprovals-pending-pending-default-default-20261121-2017.csv\n\n排序：\n标题\n状态\n风险档\n更新时间\n\n动作可用性矩阵：导出 / 展开 / 详情 / 排序 / 汇总 / 重试同源判定（状态 + 行数），禁用时写明原因。\n\n键盘：↑/↓ 行间移焦，Home/End 首末行，Enter 展开/收起该行预览，空格打开详情，Esc 收起并回到该行。\n\n仅在当前已加载 2 条内排序；不是服务端排序（读口忽略排序参数，实测同序同集合），缺值的行恒排末。\n\n复制预览详情\n\n已加载 2 条\n\n刷新\n行内预览\nmessage.send\n待处理\n申请人\n成员 · 86A81CE8\n执行员工\n—\n提交\n11 小时前\n处理期限\n2026-11-22 09:09\n涉及金额\n—\n\n事由：policy.requires_approval: 该动作需要审批。 knowledge_scope_departme…\n\n复制这一行\n详情\n行内预览\nmessage"
+  },
+  "runsShot": {
+   "file": "shots/runs-list-375-r2.png",
+   "bytes": 77492,
+   "pngHeight": 800,
+   "fallback": false,
+   "scrollH": 800,
+   "bodyChars": 3190
+  },
+  "runsProbe": {
+   "vw": 375,
+   "vh": 800,
+   "rightOutCount": 0,
+   "rightOutSample": [],
+   "leftOutCount": 0,
+   "leftOutSample": [],
+   "overflowContainers": [],
+   "domOverflowPx": 0,
+   "smallTapTargets": [
+    {
+     "tag": "SPAN",
+     "lab": "菜单",
+     "w": 23,
+     "h": 15
+    },
+    {
+     "tag": "SPAN",
+     "lab": "Hermes Agent",
+     "w": 109,
+     "h": 14
+    },
+    {
+     "tag": "SPAN",
+     "lab": "HermesAgent",
+     "w": 75,
+     "h": 32
+    },
+    {
+     "tag": "BUTTON",
+     "lab": "关闭导航",
+     "w": 28,
+     "h": 28
+    },
+    {
+     "tag": "SPAN",
+     "lab": "控制台",
+     "w": 239,
+     "h": 31
+    },
+    {
+     "tag": "SPAN",
+     "lab": "运营",
+     "w": 56,
+     "h": 26
+    },
+    {
+     "tag": "A",
+     "lab": "运营总览",
+     "w": 239,
+     "h": 34
+    },
+    {
+     "tag": "A",
+     "lab": "数字员工",
+     "w": 239,
+     "h": 34
+    },
+    {
+     "tag": "A",
+     "lab": "任务与运行",
+     "w": 239,
+     "h": 34
+    },
+    {
+     "tag": "A",
+     "lab": "审批与发布门",
+     "w": 239,
+     "h": 34
+    },
+    {
+     "tag": "SPAN",
+     "lab": "治理",
+     "w": 56,
+     "h": 26
+    },
+    {
+     "tag": "A",
+     "lab": "人员与访问",
+     "w": 239,
+     "h": 34
+    },
+    {
+     "tag": "A",
+     "lab": "知识与数据",
+     "w": 239,
+     "h": 34
+    },
+    {
+     "tag": "SPAN",
+     "lab": "平台",
+     "w": 56,
+     "h": 26
+    },
+    {
+     "tag": "A",
+     "lab": "能力与接入",
+     "w": 239,
+     "h": 34
+    },
+    {
+     "tag": "SPAN",
+     "lab": "系统",
+     "w": 56,
+     "h": 26
+    },
+    {
+     "tag": "A",
+     "lab": "系统设置",
+     "w": 239,
+     "h": 34
+    },
+    {
+     "tag": "A",
+     "lab": "审计",
+     "w": 239,
+     "h": 34
+    },
+    {
+     "tag": "SPAN",
+     "lab": "opsadmin",
+     "w": 217,
+     "h": 15
+    },
+    {
+     "tag": "SPAN",
+     "lab": "角色：—",
+     "w": 217,
+     "h": 15
+    },
+    {
+     "tag": "SPAN",
+     "lab": "租户：—",
+     "w": 217,
+     "h": 15
+    },
+    {
+     "tag": "BUTTON",
+     "lab": "退出登录",
+     "w": 62,
+     "h": 25
+    },
+    {
+     "tag": "BUTTON",
+     "lab": "切换主题",
+     "w": 28,
+     "h": 24
+    },
+    {
+     "tag": "SPAN",
+     "lab": "Hermes Teal",
+     "w": 13,
+     "h": 13
+    },
+    {
+     "tag": "BUTTON",
+     "lab": "切换语言",
+     "w": 15,
+     "h": 11
+    },
+    {
+     "tag": "SPAN",
+     "lab": "—",
+     "w": 8,
+     "h": 15
+    },
+    {
+     "tag": "A",
+     "lab": "Nous Research",
+     "w": 98,
+     "h": 24
+    },
+    {
+     "tag": "SPAN",
+     "lab": "运营 · 控制台",
+     "w": 342,
+     "h": 15
+    },
+    {
+     "tag": "H1",
+     "lab": "任务与运行",
+     "w": 342,
+     "h": 26
+    },
+    {
+     "tag": "A",
+     "lab": "任务",
+     "w": 51,
+     "h": 35
+    },
+    {
+     "tag": "A",
+     "lab": "运行",
+     "w": 51,
+     "h": 35
+    },
+    {
+     "tag": "BUTTON",
+     "lab": "刷新",
+     "w": 63,
+     "h": 28
+    },
+    {
+     "tag": "SPAN",
+     "lab": "",
+     "w": 13,
+     "h": 13
+    },
+    {
+     "tag": "A",
+     "lab": "控制台",
+     "w": 34,
+     "h": 13
+    },
+    {
+     "tag": "SPAN",
+     "lab": "·",
+     "w": 10,
+     "h": 13
+    },
+    {
+     "tag": "SPAN",
+     "lab": "运行",
+     "w": 22,
+     "h": 13
+    },
+    {
+     "tag": "H1",
+     "lab": "运行",
+     "w": 342,
+     "h": 26
+    },
+    {
+     "tag": "P",
+     "lab": "按时间看运行记录。这一面只读：不取消运行",
+     "w": 342,
+     "h": 30
+    },
+    {
+     "tag": "SPAN",
+     "lab": "时间范围",
+     "w": 270,
+     "h": 15
+    },
+    {
+     "tag": "BUTTON",
+     "lab": "近 24 小时",
+     "w": 75,
+     "h": 25
+    }
+   ],
+   "smallTapCount": 70,
+   "requestIds": [],
+   "hexRunsCount": 0,
+   "isoTimesCount": 0,
+   "emptyHits": true,
+   "errorHits": true,
+   "textSample": "菜单\nHermes Agent\nHERMES\nAGENT\n控制台\n运营\n运营总览\n数字员工\n任务与运行\n审批与发布门\n治理\n人员与访问\n知识与数据\n平台\n能力与接入\n系统\n系统设置\n审计\nopsadmin\n角色：—\n租户：—\n退出登录\n—\nNous Research\n运营 · 控制台\n任务与运行\n任务\n运行\n刷新\n控制台 · 运行\n运行\n\n按时间看运行记录。这一面只读：不取消运行；重试的含义是新建一次运行。\n\n时间范围\n近 24 小时\n近 7 天\n近 30 天\n全部时间\n状态\n全部状态\n重新读取\n清除筛选\n\n读取成功\n\n当前筛选可分享形态\n/runs\n未设置筛选（按默认近 7 天读取）\n复制筛选条件\n\n本页 30 次 · 失败 0 · 运行中 1（仅本页已加载，最多 30 条，不是全量统计）；服务说这一页之外还有更多\n\n已加载 30 行（每页 30 条；复制与导出也只含这些行，不报全量）可能还有更多，收窄筛选或换窗口\n\n采集时刻 —（上游给了才显示；没给就是「—」，不拿本机时间顶替）\n\n运行 · VDZ8\n运行中\n2026-11-14 22:24\n165 小时 53 分钟\n—\n未知\n账本没有这条运行的计价记录，金额按未知处理\nAgentOS 产品助理 · 86A81CE8\n—\n查看\n展开预览\n运行 · YTGH\n成功\n2026-11-14 23:24\n不足 1 分钟\n$0.01\n已计价\nAgentOS 产品助理 · 86A81CE8\n—\n查看\n展开预览\n运行 · 3A56\n成功\n2026-11-15 00:01\n不足 1 分钟\n$0.01\n已计价\nAgentOS 产品助理 · "
+  },
+  "tiering375": [
+   {
+    "group": "读取动作",
+    "t": "重新读取",
+    "right": 192,
+    "left": 107,
+    "clipped": false
+   },
+   {
+    "group": "读取动作",
+    "t": "清除筛选",
+    "right": 261,
+    "left": 195,
+    "clipped": false
+   },
+   {
+    "group": "列表操作",
+    "t": "复制为纯文本",
+    "right": 122,
+    "left": 20,
+    "clipped": false
+   },
+   {
+    "group": "列表操作",
+    "t": "导出 CSV",
+    "right": 217,
+    "left": 133,
+    "clipped": false
+   },
+   {
+    "group": "列表操作",
+    "t": "复制运行链接",
+    "right": 122,
+    "left": 20,
+    "clipped": false
+   }
+  ],
+  "focus": [
+   {
+    "tag": "BUTTON",
+    "name": "打开导航",
+    "outline": "auto 1px rgb(0, 95, 204)",
+    "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0",
+    "rect": {
+     "x": 15,
+     "y": 8,
+     "w": 72,
+     "h": 62
+    },
+    "clipped": false
+   },
+   {
+    "tag": "BUTTON",
+    "name": "关闭导航",
+    "outline": "auto 1px rgb(0, 95, 204)",
+    "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0",
+    "rect": {
+     "x": -44,
+     "y": 12,
+     "w": 28,
+     "h": 28
+    },
+    "clipped": true
+   },
+   {
+    "tag": "A",
+    "name": "运营总览",
+    "outline": "solid 2px rgb(255, 230, 203)",
+    "shadow": "none",
+    "rect": {
+     "x": -240,
+     "y": 115,
+     "w": 239,
+     "h": 34
+    },
+    "clipped": true
+   },
+   {
+    "tag": "A",
+    "name": "数字员工",
+    "outline": "solid 2px rgb(255, 230, 203)",
+    "shadow": "none",
+    "rect": {
+     "x": -240,
+     "y": 149,
+     "w": 239,
+     "h": 34
+    },
+    "clipped": true
+   },
+   {
+    "tag": "A",
+    "name": "任务与运行",
+    "outline": "solid 2px rgb(255, 230, 203)",
+    "shadow": "rgb(255, 230, 203) 2px 0px 0px 0px inset",
+    "rect": {
+     "x": -240,
+     "y": 183,
+     "w": 239,
+     "h": 34
+    },
+    "clipped": true
+   },
+   {
+    "tag": "A",
+    "name": "审批与发布门",
+    "outline": "solid 2px rgb(255, 230, 203)",
+    "shadow": "none",
+    "rect": {
+     "x": -240,
+     "y": 217,
+     "w": 239,
+     "h": 34
+    },
+    "clipped": true
+   }
+  ]
+ }
+}
