@@ -6690,3 +6690,145 @@ kn-doc-preview*/kn7-preview*/kn3-page-cap/kn-type*/kn-sort*/kn-gates/导出 abse
 ```
 未测如实：带登录会话真屏；①追加后在预览内点 kn-doc-copy 的串对账（R223 地盘）；
 ②出局文档缺失句（R224① 已锁不复写）；抽屉×追加双宿主同帧（宿主分离声明覆盖）。
+
+# KNW5 追加 R259：筛选标记↔URL 叠载对应/单键清除余参/清钮实态/可用性翻转（纯测试单·本体交付）（2026-11-21 BJT）
+
+安全门：porcelain 空起做、显式 refspec fetch 后 merge——上游较派工再前进：派工值
+`210270a8`、fetch 实测 `6d3c060b`（如实记）；HEAD 非其祖先 → 普通 merge commit
+（**未用 `-B`**）、knowledge delta 零、无冲突；基线先跑 70/280 全绿 Errors 0、目标
+文件确认缺席再动笔。零产品文件改动。新增 knowledge.chips.test.tsx 三例（本体）。
+
+## 名实落地与三腿裁决（file:line）
+
+```text
+映射声明：产品无 chip 控件（源级 0，禁造）→「标记面」=kn-type-* aria-pressed ×
+kn6-search-input/clear × kn-sort-* th aria-sort（:1843）；无 ?source=（换算 ktype+q+
+ksort/kdir）；无「一键全清」（用真实入口）。「恰 1 次新取数」驳回：两清除步 urls
+join 逐字（0 请求，R215③/R243β 口径）。引用：R118①:140-163/⑤:218-235、R146①:111-
+127、R157②:140-158（双参简帧）、R164②、R235③、R243β、R244γ′δ′、R247①、R218②、
+R234③、R236③:182-210、R108/R157/R187。
+新增维（点名）：A 三参叠载同帧一一对应——**恰一桶 pressed 唯一性** + th
+  **aria-sort="ascending"(size) 首 pin** + 检索框回填 + data-len 与生效集合同源 +
+  可见层/URL 无 source/chip/裸 MIME 负断言；B 叠载帧单键清除——双删后
+  **q/ksort/kdir 三键逐字留场**（R157② 简帧不含排序键的首并置）+「全部」pressed 回正；
+  C **kn6-search-clear 实态首锁**：只清输入框与检索态、**不回写 URL**（?q= 留场——
+  「清除钮=URL 移除器」直觉不成立按实记录）+ ③段 **knF disabled true→false 可用性
+  翻转回正 + 点击恢复写入**（R235③ 只锁文本往返的可用性位补齐）+ 筛空帧 cap=null
+  复跑 + cap 整句==筛前基线 + 三值 [4,4,4,4]。
+```
+
+## 验证尾行（R259）
+
+```text
+A pressed=["PDF"]、aria-sort=ascending、输入"人事"、集 [B,C,A]（size asc）、data-len
+  3、cap 3、负断言净。B ktype/type 双删、q/ksort/kdir 留、全集 4 回、urls 逐字；
+  clear 后输入 ""、?q= 留场、排序键/桶态不染、urls 逐字。C 筛空 disabled+cap null →
+  复原 disabled false、写入 1 次、链==屏上、cap toBe 筛前、三值 4、urls 恒 3。
+$ npx vitest run src/modules/knowledge → 71 files / 283 tests passed（280+3），
+  grep unhandled = 0
+$ eslint → 0 errors（1 既有 warning）；模块 tsc → 0
+$ build /tmp/knw-r259-dist → exit 0；全仓 → 441 files / 3394 passed **零红**
+  （metrics 跨日两条本轮未复现，不视为已修复）
+$ 三档 1440/1280/375 vw==bodySW==docSW 全等（用毕即杀）
+零破：kn3*/kn6–kn9/knB/knD/knE-page-*/knF/knG/knI/knL*/kn-row-copy*/kn-row-copy-space*/
+kn-doc-preview*/kn7-preview*/kn3-page-cap/kn-type*/kn-sort*/kn-gates/导出 absent +
+既有 70 套全绿。过程自纠三处（C 默认降序名序笔误；B 按实改判 clear 不回写 URL；
+C 复原计数取全集 4），产品零触碰。
+```
+未测如实：带登录会话真屏；kn8-global-clear（空间列表面清除器）的同型 URL 实态未测
+（择面纪律：本例取所在面 kn6 位）；aria-sort 其余列向（name/type/updated）未遍；
+「清除后重打同词」回填环未叠。
+
+# KNW5 追加 R260：缺值三态×交集×双面六载体并置 + 全缺行检索面镜像（纯测试单·本体交付；腿③判定引用）（2026-11-21 BJT）
+
+安全门：porcelain 空起做、显式 refspec fetch 后 merge——上游较派工再前进：派工值
+`7cb41601`、fetch 实测 `fc498772`（如实记）；HEAD 非其祖先 → 普通 merge commit
+（**未用 `-B`**）、knowledge delta 零、无冲突；基线先跑 71/283 全绿 Errors 0、目标
+文件确认缺席再动笔。零产品文件改动。新增
+knowledge.export.missing.triple.test.tsx 两例（本体；腿③为文件尾判定注释位）。
+
+## 三腿裁决（file:line）与两新增维
+
+```text
+腿①「列表复制 vs 导出逐格」双口径**驳回**（docLine 单源、两侧皆「—」——差异记头注
+  与本节）；单面全缺位已锁 R190③(escape:171-188)、三面互等已锁 R226②(:143-172)→
+  真新增 A：**交集帧（ktype=PDF×q=人事）两缺行六载体并置**——详情 3 格/行钮/knF ×
+  检索 3 格/行钮/knG：[PDF,—,—] 逐格、「跨面同文档行钮串逐字互等」（R226①-b 系满值
+  行、缺值位零 pin）、两面三值 [2,2,2] 同帧、urls join 逐字、无 undefined/空字段；
+  实测注记：ktype 在场时全缺行 F 按「缺值不占桶」出局详情面、检索面（只吃 q）仍在场
+  ——桶/面语义并置直证。
+腿②交集三值＝A 已并入；引用 R248①:135-160/R249①/R142①:124/R164①:122/R215③。
+腿③空集门＝全锁引用不复写：R190④:190-205+R231②⑤+R236③:182-210；「上限句」在空帧
+  按实 null（R108/R157/R187）；本文件 spy 由 clipStub 注入、A/B 帧保持 0 调用面。
+新增维 B：**全缺行（三缺）检索面三载体首锁**——hit 格 [—,—,—]、行钮串实测 5 列
+  「人事全缺 | — | — | — | DF」（短码不吞、无空字段）、knG 去所属空间@2 == 行钮全串
+  （R226①-b 形制的全缺镜像）、详情面同文档行钮**同串互等**（双面单源直证）。
+红线沿用：无 ?source=（换算 ktype×q）、无真 CSV→knF/knG、本地零请求禁「恰 1 次」、
+两式缺值不统一、clip 桩 Promise+unstub、jsdom isSecureContext。
+```
+
+## 验证尾行（R260）
+
+```text
+A：交集详情 [P,OK] 三值 2、knF 行==行钮串、检索 [P,F] 三值 2、跨面钮串 toBe、
+  knG 行去列 [PDF,—,—]、urls 逐字。B：hit 格三「—」、钮串 5 列逐字、knG 去列==钮串、
+  详情钮同串、短码 /^[A-Z0-9]+$/。
+$ npx vitest run src/modules/knowledge → 72 files / 285 tests passed（283+2 ≥284），
+  grep unhandled = 0
+$ eslint → 0 errors（1 既有 warning）；模块 tsc → 0
+$ build /tmp/knw-r260-dist → exit 0；全仓 → 443 files / 3398 passed **零红**
+  （metrics 跨日两条本轮未复现，不视为已修复）
+$ 三档 1440/1280/375 vw==bodySW==docSW 全等（用毕即杀）
+零破：kn3*/kn6–kn9/knB/knD/knE-page-*/knF/knG/knI/knL*/kn-row-copy*/kn-row-copy-space*/
+kn-doc-copy*/kn7-preview*/kn3-page-cap/kn-type*/kn-sort*/kn-gates/导出 absent +
+既有 71 套全绿。过程自纠三处（A 夹具 updatedAt 笔误按「两缺」定义删；B 行钮形制经
+探查按实 5 列断言；B 帧需 space= 在场详情表才渲染），产品零触碰。
+```
+未测如实：带登录会话真屏；全缺行在抽屉/预览第三式（R233① 地盘）；`?sdoc=` 命中展开
+侧全缺镜像（同族外推未叠）；腿③纯引用未复测。
+
+# KNW5 追加 R261：交替序列逐轮互等 + 拒绝态跨面免疫（纯测试单·本体交付；腿③单面环引用）（2026-11-21 BJT）
+
+安全门：porcelain 空起做、显式 refspec fetch 后 merge 实测 tip 即预期 `fb7a2a8c`
+（普通 merge commit、**未用 `-B`**、knowledge delta 零、无冲突）；基线先跑 72/285
+全绿 Errors 0、目标文件确认缺席再动笔。零产品文件改动。新增
+knowledge.export.copy.concurrency.test.tsx 两例（本体）。
+
+## 三腿裁决（file:line）与两新增维
+
+```text
+腿①「blob 逐字相等」换算（驳回字面）：无 Blob 路径（源级 0，R190①）→ 同一复制器
+  连点两次 **writeText 投递参数 toBe 相等**（实测 calls[0]==calls[1]）并入例 A。
+腿②交替：R223 锁的是**单轮遍历**（清单 vs 逐钮）——**新增维 A**：交替再取
+  （knF→钮0→knF→钮1→knF）每轮清单第 k 行与钮 k 串逐字互等 + 他控扰动后清单文本
+  不变 + 检索面同型（knG 去所属空间@2==行钮整串，R226①-b 的交替再取位）+ 三值
+  [3,3,3] 不变 + cap 冻结 + urls join 全程逐字（零新请求，禁「恰 1 次」）+ spy 0。
+腿③「导出失败重试」无可触发路径（驳回）→ 真实失败=剪贴板拒绝；**单面拒绝环全锁
+  引用**：主套件 knF-fallback 环（KnowledgeModulePage.test.tsx:2712-2760）、knG 环
+  （:2844-2862：拒→兜底逐字→成→收起→无 clipboard 再兜底+零 fetch）、行钮/预览兜底
+  R167③(copy.a11y:178-204，「剪贴板没接受」句)。真缺口=**新增维 B：交替拒绝跨面
+  免疫**——检索行钮被拒（fallback 值==投递）期间，详情面 knF 成功「已复制」**不抹
+  对面兜底、不改对面状态句**；被拒面重试成功→自家 fallback 收起、自家播报「已复制」
+  、urls 逐字、blob spy 0（面间状态机互不串写的首个组合帧）。
+```
+
+## 验证尾行（R261）
+
+```text
+A：连点参数互等；f3 toBe 首轮文本；清单[0]/[1] 行 == 钮0/钮1 串；knG 去列==行钮；
+  三值 [3,3,3]、cap 逐字、urls join 恒等。B：拒→「剪贴板没接受」+fallback 值==投递；
+  对面成功两不变式在场；重试→fallback null+「已复制」；urls 恒等、spy 0。
+$ npx vitest run src/modules/knowledge → 73 files / 287 tests passed（285+2 ≥286），
+  grep unhandled = 0
+$ eslint → 0 errors（1 既有 warning）；模块 tsc → 0
+$ build /tmp/knw-r261-dist → exit 0；全仓 → 449 files / 3412 passed **零红**
+  （metrics 跨日两条本轮未复现，不视为已修复）
+$ 三档 1440/1280/375 vw==bodySW==docSW 全等（用毕即杀）
+零破：kn3*/kn6–kn9/knB/knD/knE-page-*/knF/knG/knI/knL*/kn-row-copy*/
+kn-row-copy-space*/kn-row-copy-fallback/kn-doc-copy*/kn7-preview*/kn3-page-cap/
+kn-type*/kn-sort*/kn-gates/导出 absent + 既有 72 套全绿。过程自纠一处（A 例调用索引
+计数错位 6/5→5/4），产品零触碰。
+```
+未测如实：带登录会话真屏；真并发（同帧双 Promise 竞速）——jsdom 串行派发下「交替+
+跨面免疫」为可测最大并发形态，微任务级竞态未造；详情面按钮（-space-）被拒×检索面
+成功的镜像方向（同族单侧已钉）；fallback 期间再改筛选的状态收敛（超预算不扩）。

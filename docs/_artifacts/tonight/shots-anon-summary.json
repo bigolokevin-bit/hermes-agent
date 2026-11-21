@@ -9,19 +9,19 @@
   "failures": [],
   "oversize": [],
   "rootBaseline": {
-    "textLen": 1027,
-    "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 采集时刻 —（北京时间） 近 24 小时 近 7 天 近 14 天 近 30 天 刷",
+    "textLen": 1060,
+    "head": "运营 · 控制台 运营总览 值班台用量与成本 值班台 运营总览 · 只读 采集时刻 —（北京时间） 近 24 小时 近 7 天 近 14 天 近 30 天 刷新",
     "hasMainEl": true,
     "ok": true
   },
-  "distinctMainHeads": 25,
+  "distinctMainHeads": 24,
   "routesWithEmptyMain": [],
   "routesWithoutMainEl": [],
   "mainCharsByRoute": [
     {
       "route": "#/access",
       "viewport": "1440",
-      "chars": 201,
+      "chars": 199,
       "hasMainEl": true
     },
     {
@@ -231,7 +231,7 @@
     {
       "route": "#/employees/:employeeId?zone=evidence",
       "viewport": "375",
-      "chars": 66,
+      "chars": 42,
       "hasMainEl": true
     },
     {
@@ -351,7 +351,7 @@
     {
       "route": "#/identity?tab=tenant",
       "viewport": "375",
-      "chars": 149,
+      "chars": 151,
       "hasMainEl": true
     },
     {
@@ -633,7 +633,7 @@
   ],
   "consoleErrorsObservedByShots": 1,
   "consoleErrorRoutesObservedByShots": [
-    "#/identity?tab=tenant"
+    "#/access"
   ],
   "ceAuthority": "login-state",
   "routesWithEnvOnlyConsoleErrors": 51,
@@ -644,16 +644,18 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "1af5c41f",
+  "headHash": "fb7a2a8c",
   "exitCode": 0,
-  "entry": "assets/index-CE4DkLMF.js",
+  "entry": "assets/index-0rhpOHmI.js",
+  "entrySha256": "35b3907c1ae79830b697ecab6786f2617311b84965b5b7f03db952f98f2a1d64",
   "entryBytes": 172175,
-  "entrySha256": "af5f2e640ff455366f0cda19e43977fda9610e12fd7d50545b4409671ce8ee9e",
-  "servedEntryBefore": "index-CE4DkLMF.js",
-  "servedEntryAfter": "index-CE4DkLMF.js",
-  "auxiliary": true,
-  "carriedFrom": null,
+  "css": "assets/index-B7znF4xN.css",
+  "cssSha256": "0ac2884f70bbe6de2112c325494f75aa3264b54ab38ae12a5d59c4328f0f47c4",
+  "cssBytes": 146328,
+  "servedEntryBefore": "index-0rhpOHmI.js",
+  "servedEntryAfter": "index-0rhpOHmI.js",
   "routesWithConsoleErrors": [
-    "#/identity?tab=tenant"
-  ]
+    "#/access"
+  ],
+  "auxiliary": true
 }

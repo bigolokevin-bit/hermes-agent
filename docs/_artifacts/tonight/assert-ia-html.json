@@ -42,9 +42,9 @@
     }
   ],
   "ok": true,
-  "headHash": "1af5c41f",
+  "headHash": "fb7a2a8c",
   "exitCode": 0,
-  "carriedFrom": "c621295b",
+  "carriedFrom": "7cb41601",
   "carried": true,
-  "stampNote": "本代仅两笔纯测试，entry/css 与 c964fb3d 相同；本件沿用上代读数"
+  "stampNote": "wave-108 并入后 entry/CSS 双换代（0rhpOHmI/B7znF4xN）；本件未重跑，证据沿用 7cb41601 代（80bc8f62 为中间代次不重章）"
 }
