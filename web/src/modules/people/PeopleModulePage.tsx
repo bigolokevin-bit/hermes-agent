@@ -233,6 +233,7 @@ function StateShell({
   body,
   gapTitle,
   onRetry,
+  details,
   children,
 }: {
   testid: string;
@@ -241,6 +242,7 @@ function StateShell({
   body?: string;
   gapTitle?: string;
   onRetry?: () => void;
+  details?: ReactNode;
   children?: ReactNode;
 }) {
   return (
@@ -251,6 +253,15 @@ function StateShell({
       </div>
       {body ? <p className="ppl5-state-body">{body}</p> : null}
       {children}
+      {/* UI-B 错误态组合：技术信息（尝试过的读取端点）折叠进「详情」，人话句保持
+        * 可见；互斥=phase 单值 if 链（错误在场时空态锚不渲染）、rid 可见可复制
+        * （RequestId 带复制钮）均既有达标，本笔以截图实测复核。 */}
+      {details ? (
+        <details className="ppl5-state-details" data-testid="ppl5-error-details">
+          <summary>详情</summary>
+          {details}
+        </details>
+      ) : null}
       {onRetry ? (
         // UI-B 状态组合：StateShell 的卡内动作抬起为唯一实心主操作（去 outlined），
         // 页头 ppl5-refresh 保持描边次级，同屏不出现双实心。
@@ -348,6 +359,11 @@ export default function PeopleModulePage() {
           title="没能加载出人员目录"
           body={people.message}
           onRetry={() => setReload((n) => n + 1)}
+          details={
+            <p className="ppl5-state-details-body">
+              这次读取依次尝试过：{PEOPLE_ENDPOINTS.join(" ")}；都失败才落到这个提示。
+            </p>
+          }
         >
           <RequestId id={people.requestId} />
         </StateShell>

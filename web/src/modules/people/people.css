@@ -70,6 +70,20 @@
   color: color-mix(in srgb, var(--color-text) 50%, transparent);
   font-size: 11px;
 }
+/* UI-B 错误态组合：技术信息折叠入口，压在可见人话句之下、主操作之上。 */
+.ppl5-state-details {
+  max-width: 68ch;
+  color: color-mix(in srgb, var(--color-text) 45%, transparent);
+  font-size: var(--font-size-1);
+}
+.ppl5-state-details summary {
+  cursor: pointer;
+  color: color-mix(in srgb, var(--color-text) 60%, transparent);
+}
+.ppl5-state-details-body {
+  margin: var(--space-2) 0 0;
+  overflow-wrap: anywhere;
+}
 .ppl5-req button {
   border: 1px solid color-mix(in srgb, var(--color-text) 15%, transparent);
   border-radius: var(--radius-1);
