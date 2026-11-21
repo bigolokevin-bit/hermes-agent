@@ -9,25 +9,25 @@
   "failures": [],
   "oversize": [],
   "rootBaseline": {
-    "textLen": 1061,
-    "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 采集时刻 —（北京时间） 近 24 小时 近 7 天 近 14 天 近 30 天 刷",
+    "textLen": 1060,
+    "head": "运营 · 控制台 运营总览 值班台用量与成本 值班台 运营总览 · 只读 采集时刻 —（北京时间） 近 24 小时 近 7 天 近 14 天 近 30 天 刷新",
     "hasMainEl": true,
     "ok": true
   },
-  "distinctMainHeads": 23,
+  "distinctMainHeads": 26,
   "routesWithEmptyMain": [],
   "routesWithoutMainEl": [],
   "mainCharsByRoute": [
     {
       "route": "#/access",
       "viewport": "1440",
-      "chars": 201,
+      "chars": 199,
       "hasMainEl": true
     },
     {
       "route": "#/access",
       "viewport": "375",
-      "chars": 201,
+      "chars": 199,
       "hasMainEl": true
     },
     {
@@ -231,7 +231,7 @@
     {
       "route": "#/employees/:employeeId?zone=evidence",
       "viewport": "375",
-      "chars": 42,
+      "chars": 37,
       "hasMainEl": true
     },
     {
@@ -591,7 +591,7 @@
     {
       "route": "#/work",
       "viewport": "375",
-      "chars": 281,
+      "chars": 273,
       "hasMainEl": true
     },
     {
@@ -631,10 +631,14 @@
       "hasMainEl": true
     }
   ],
-  "consoleErrorsObservedByShots": 0,
-  "consoleErrorRoutesObservedByShots": [],
+  "consoleErrorsObservedByShots": 3,
+  "consoleErrorRoutesObservedByShots": [
+    "#/access",
+    "#/employees/:employeeId?zone=evidence",
+    "#/work"
+  ],
   "ceAuthority": "login-state",
-  "routesWithEnvOnlyConsoleErrors": 51,
+  "routesWithEnvOnlyConsoleErrors": 50,
   "envAttribution": "401/404 Failed-to-load-resource = env (no login session at proxy); see crawl-routes env=auth-required-401 同口径",
   "overflowing": [],
   "driver": {
@@ -642,13 +646,17 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "df4b4112",
+  "headHash": "03cd4658",
   "exitCode": 0,
   "entry": "assets/index-Chru2g4H.js",
   "entrySha256": "bb6f679cbd4ad23a9c51f2ecf97d0b897923a24e07e0acfdc6cfbbea9fef4a16",
   "entryBytes": 172175,
   "servedEntryBefore": "index-Chru2g4H.js",
   "servedEntryAfter": "index-Chru2g4H.js",
-  "routesWithConsoleErrors": [],
+  "routesWithConsoleErrors": [
+    "#/access",
+    "#/employees/:employeeId?zone=evidence",
+    "#/work"
+  ],
   "auxiliary": true
 }
