@@ -6007,3 +6007,53 @@ kn-doc-copy*/kn7-preview*/kn3-page-cap/kn-type*/kn-sort*/kn-gates/导出 absent 
 未测如实：带登录会话真屏；检索面对外「所属空间」列的跨面对账（knG 6 列 vs 详情 5 列
 差异口径引 R71/R213②，本单不扩）；详情面切 ktype 时检索面钮序帧（R228 查行集/钮数，
 序位未查——与 B 同族，抽代表即止）。
+
+# KNW5 追加 R243：三叠加首行三方同帧 + ktype 单键移除的序重建/换代（纯测试单·本体交付；③④腿判定引用不复写）（2026-11-21 BJT）
+
+安全门：porcelain 空起做、显式 refspec fetch 后 merge 实测 `Already up to date`
+（上游 tip `86496824` 与派工一致）、基线先跑 58/254 全绿 Errors 0、目标文件确认缺席
+再动笔。零产品文件改动。新增 knowledge.export.filters.rowcopy.test.tsx 两例（本体）。
+
+## 四腿判定（逐条 file:line；红线：已覆盖禁重复用例）
+
+```text
+腿①主体= R234②(locale.cross:175-195)（三叠加三值+交集行名）→ 本笔落新维 α；
+腿②主体= R237②(rowcopy.triple:170-191)+R235③（切桶序重建/换代/往返）→ 本笔落新维 β
+  （**移除向单键清除**帧）；
+腿③「RFC4180 往返」不可兑现且已全锁= R236②(open.detail:155-181)：怪名四载体
+  （格/行钮/knF/knG）原样逐字、无 ""、物理行数后果 + 哨兵声明俱在 → 引用不复写；
+腿④空集门已全锁= R190④(escape:190-205)+R231②⑤(empty:99/追加⑤)+R236③(open.detail:
+  182-210 两翼判别句)+R234③（叠加筛空）；cap「显 0」不可兑现——true-0/error/拒/非法
+  实测 null（R108/R157/R187），另 R236③/主套件已锁真 0 帧计数位「—」非裸 0 →
+  引用不复写。
+换算声明：无 ?source= 控件（?type=pdf&source=upload&q= → ?ktype=PDF×本地名筛×?q=，
+未造参数）；无真 CSV→「导出」=knF 数据行、spy 全程 0；kn-list-copy 不存在→knF/knG；
+行钮分面 -space-/检索面；请求键集恰 {limit,spaceId}（α 内复跑一帧循环）；cap 只锁
+常量槽短语与冻结性、M 语义不宣称（R108 地盘）；clip 桩 Promise+unstub（R214）。
+真新增维（点名两条）：α 三叠加帧**首行三方同帧**（行钮 0 串首段==屏上首行==knF 首行
+——R234② 只两方位）+ cap 复制前后逐字冻结；β **从三叠加态移除 ktype 单键**：名筛
+本地态与 ?q= 原位存活、钮序自 0 连续重建为「仅名筛」集 [0..2]、三值随换代（丙回归
+入链、无 q 面泄漏）、检索面行/钮逐字不动、urls 快照逐字零新请求（移除向从未测）。
+```
+
+## 验证尾行（R243）
+
+```text
+α 叠加集 [甲,乙]（全 pdf）、三值 [2,2,2]、btnHead==names[0]==lines[0] 名、cap 复制
+  前后 toBe、spaceId 请求键集两笔全 {limit,spaceId}。β 清除后 ktype null、q=人事 逐字、
+  名筛存活丙回归、钮 [0,1,2]、三方首行再同帧、三值 [3,3,3]、链==names、检索面
+  [甲,丁]/钮逐字、urls join 逐字==u0。
+$ npx vitest run src/modules/knowledge → 59 files / 256 tests passed（254+2），
+  grep unhandled = 0
+$ eslint → 0 errors（1 既有 warning）；模块 tsc → 0；build /tmp/knw-r243-dist exit 0
+$ 全仓 → 395 files：394 files passed + 1 files failed（**2 红 = 既有域外
+  MetricsModulePage.test.tsx 7d/30d 与 sparkline，Date.now() 跨 UTC 日界，
+  派工已点名不修不豁免**）；三档 1440/1280/375 vw==bodySW==docSW 全等（用毕即杀）
+零破：kn3*/kn6–kn9/knB/knD/knE-page-*/knF/knG/knI/knL*/kn-row-copy*/kn-row-copy-space*/
+kn-doc-copy*/kn7-preview*/kn3-page-cap/kn-type*/kn-sort*/kn-gates/导出 absent 标记 +
+既有 58 套全绿。过程自纠一处（β mockClear 后索引→calls[0]），产品零触碰。
+```
+未测如实：带登录会话真屏；从三叠加态移除**名筛**（与 α 同帧的清除向——R235③ 单键版
+已锁清名筛往返，叠加 ktype 存活组合未测，抽代表即止）；?q= 变更时详情钮序帧（R242②
+反向位已锁不变性，钮序在其下由 indexBase 定律外推）；腿③④若未来落真 CSV 需整组转红
+复核（哨兵已声明）。
