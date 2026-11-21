@@ -762,7 +762,7 @@
   "routesWithConsoleErrors": 51,
   "parseErrors": [],
   "ok": true,
-  "headHash": "aa180f86",
+  "headHash": "1314045e",
   "exitCode": 0,
   "counts": {
     "probed": 75,
@@ -774,7 +774,7 @@
     }
   },
   "ceAuthority": "login-state",
-  "carriedFrom": "a2a6b0d3",
+  "carriedFrom": "aa180f86",
   "carried": true,
-  "stampNote": "wave-112 并入后 entry 换代 bXNYODp-（CSS 未换代 B7znF4xN）；本件未重跑，证据沿用 a2a6b0d3 代"
+  "stampNote": "wave-113 仅 aud R274 一笔纯测试，entry/CSS 均未换代（bXNYODp-/B7znF4xN）；本件未重跑，证据沿用 aa180f86 代"
 }

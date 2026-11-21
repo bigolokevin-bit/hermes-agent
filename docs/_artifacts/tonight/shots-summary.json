@@ -14,7 +14,7 @@
     "hasMainEl": true,
     "ok": true
   },
-  "distinctMainHeads": 26,
+  "distinctMainHeads": 25,
   "routesWithEmptyMain": [],
   "routesWithoutMainEl": [],
   "mainCharsByRoute": [
@@ -105,7 +105,7 @@
     {
       "route": "#/approvals?tab=release",
       "viewport": "1440",
-      "chars": 451,
+      "chars": 466,
       "hasMainEl": true
     },
     {
@@ -147,7 +147,7 @@
     {
       "route": "#/capabilities?tab=channels",
       "viewport": "375",
-      "chars": 113,
+      "chars": 10,
       "hasMainEl": true
     },
     {
@@ -230,32 +230,32 @@
     },
     {
       "route": "#/employees/:employeeId?zone=evidence",
-      "viewport": "375",
-      "chars": 42,
-      "hasMainEl": true
-    },
-    {
-      "route": "#/employees/:employeeId?zone=runs",
-      "viewport": "1440",
-      "chars": 42,
-      "hasMainEl": true
-    },
-    {
-      "route": "#/employees/:employeeId?zone=runs",
-      "viewport": "375",
-      "chars": 42,
-      "hasMainEl": true
-    },
-    {
-      "route": "#/employees/:employeeId?zone=tasks",
-      "viewport": "1440",
-      "chars": 42,
-      "hasMainEl": true
-    },
-    {
-      "route": "#/employees/:employeeId?zone=tasks",
       "viewport": "375",
       "chars": 66,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/employees/:employeeId?zone=runs",
+      "viewport": "1440",
+      "chars": 42,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/employees/:employeeId?zone=runs",
+      "viewport": "375",
+      "chars": 42,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/employees/:employeeId?zone=tasks",
+      "viewport": "1440",
+      "chars": 42,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/employees/:employeeId?zone=tasks",
+      "viewport": "375",
+      "chars": 42,
       "hasMainEl": true
     },
     {
@@ -489,7 +489,7 @@
     {
       "route": "#/sessions",
       "viewport": "1440",
-      "chars": 10,
+      "chars": 1,
       "hasMainEl": true
     },
     {
@@ -633,7 +633,7 @@
   ],
   "consoleErrorsObservedByShots": 1,
   "consoleErrorRoutesObservedByShots": [
-    "#/approvals?tab=release"
+    "#/capabilities?tab=channels"
   ],
   "ceAuthority": "login-state",
   "routesWithEnvOnlyConsoleErrors": 51,
@@ -644,7 +644,7 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "aa180f86",
+  "headHash": "1314045e",
   "exitCode": 0,
   "entry": "assets/index-bXNYODp-.js",
   "entrySha256": "d97f66f8d162401bfce4ef4ae5d0c1ca97021cdfc85e966cce283e80b5c6c66b",
@@ -652,6 +652,6 @@
   "servedEntryBefore": "index-bXNYODp-.js",
   "servedEntryAfter": "index-bXNYODp-.js",
   "routesWithConsoleErrors": [
-    "#/approvals?tab=release"
+    "#/capabilities?tab=channels"
   ]
 }

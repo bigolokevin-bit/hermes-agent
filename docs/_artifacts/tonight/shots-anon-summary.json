@@ -105,7 +105,7 @@
     {
       "route": "#/approvals?tab=release",
       "viewport": "1440",
-      "chars": 451,
+      "chars": 466,
       "hasMainEl": true
     },
     {
@@ -291,7 +291,7 @@
     {
       "route": "#/identity?tab=binding",
       "viewport": "375",
-      "chars": 154,
+      "chars": 152,
       "hasMainEl": true
     },
     {
@@ -585,7 +585,7 @@
     {
       "route": "#/work",
       "viewport": "1440",
-      "chars": 273,
+      "chars": 281,
       "hasMainEl": true
     },
     {
@@ -621,7 +621,7 @@
     {
       "route": "#/work?tab=runs",
       "viewport": "1440",
-      "chars": 483,
+      "chars": 468,
       "hasMainEl": true
     },
     {
@@ -633,19 +633,21 @@
   ],
   "consoleErrorsObservedByShots": 2,
   "consoleErrorRoutesObservedByShots": [
-    "#/approvals?tab=release",
-    "#/work"
+    "#/identity?tab=binding",
+    "#/work?tab=runs"
   ],
   "ceAuthority": "login-state",
   "routesWithEnvOnlyConsoleErrors": 51,
   "envAttribution": "401/404 Failed-to-load-resource = env (no login session at proxy); see crawl-routes env=auth-required-401 同口径",
-  "overflowing": [],
+  "overflowing": [
+    "#/identity?tab=binding"
+  ],
   "driver": {
     "playwrightFrom": "/Users/kevin_studio/Projects/seakoi-console-web/package.json",
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "aa180f86",
+  "headHash": "1314045e",
   "exitCode": 0,
   "entry": "assets/index-bXNYODp-.js",
   "entrySha256": "d97f66f8d162401bfce4ef4ae5d0c1ca97021cdfc85e966cce283e80b5c6c66b",
@@ -653,8 +655,8 @@
   "servedEntryBefore": "index-bXNYODp-.js",
   "servedEntryAfter": "index-bXNYODp-.js",
   "routesWithConsoleErrors": [
-    "#/approvals?tab=release",
-    "#/work"
+    "#/identity?tab=binding",
+    "#/work?tab=runs"
   ],
   "auxiliary": true
 }

@@ -1626,3 +1626,10 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - 六件 assert 现值==a2a6b0d3 注 headHash=aa180f86+carriedFrom+stampNote+回读全过；state-quad 本代真跑 sampled=20 passed=20 head=aa180f86 非 carried。
 - shots 双腿本代真跑（12:41:40→12:44:26）：auth 102/102 failures=[] **obs=1 routes=['#/approvals?tab=release']**（上代 obs=0，新 ENV 波动如实不入判据）distinct=26 envOnly=51；anon aux **obs=2 routes=['#/approvals?tab=release','#/work']** distinct=25 envOnly=51；routesWithConsoleErrors 全自产（未触发 ["unknown"] 回退）；entry 三键+served 两端同值+ceAuthority=login-state。
 - TALLY {'aa180f86': 9} count 9 BAD=[]（None 清零）；7210bfac（a2a6b0d3 章）不重做；无 amend/force；detached push HEAD 映射形；web/src/9122/BFF/caddy/qa-verify/ACC 判词节未动。
+
+## 二〇二轮 · 波次代次九件重章 @ 1314045e（六件 carriedFrom=aa180f86 + shots 双腿/quad 本代真跑，2026-11-21 13:0x）
+
+- wave-113 仅 aud 06ef3005（R274 导出×详情复制序，纯测试）并入 1314045e（remote 1314045e，卡面 push_rc=0）；entry/CSS 均未换代（bXNYODp-/172175/d97f66f8…c66b；B7znF4xN/146328，==9122==磁盘）。
+- 六件 assert 现值==aa180f86 注 headHash=1314045e+carriedFrom="aa180f86"+carried=true+stampNote+写后回读；state-quad 本代真跑 sampled=20 passed=20 head=1314045e 非 carried。
+- shots 双腿本代真跑（13:02:52→13:05:15）：auth 102/102 failures=[] **obs=1 routes=['#/capabilities?tab=channels']** distinct=25 envOnly=51（上代 release 收敛、channels 历史 ENV 复现）；anon aux **obs=2 routes=['#/identity?tab=binding','#/work?tab=runs']** distinct=25 envOnly=51（上代 release+work → binding+runs(tab 深化)，ENV 波动如实不入判据）；三键+served 两端同值+ceAuthority=login-state，routesWithConsoleErrors 全自产非编造。
+- TALLY {'1314045e': 9} count 9 BAD=[]；开工时 ls-remote 两次网络瞬滞超时（cat-file/checkout/log 本地已过，卡面 remote 与本地 HEAD 一致采认），收口前补核实值入回执；43f34bec（aa180f86 章）不重做；无 amend/force；detached push HEAD 映射形；web/src/9122/BFF/caddy/qa-verify/ACC 判词节未动。
