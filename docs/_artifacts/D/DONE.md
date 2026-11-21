@@ -1619,3 +1619,10 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - 六件 assert 现值==33437932 注 headHash=a2a6b0d3+carriedFrom+stampNote+回读全过；state-quad 本代真跑 sampled=20 passed=20 head=a2a6b0d3 非 carried。
 - shots 双腿本代真跑（12:34:37→12:37:17）：auth 102/102 failures=[] **obs=0 routes=[]**（上代 channels 收敛，ENV 清零如实）distinct=24 envOnly=51；anon aux **obs=0 routes=[]** distinct=24 envOnly=51；entry 三键+served 两端同值+ceAuthority=login-state，routesWithConsoleErrors 全自产。
 - TALLY {'a2a6b0d3': 9} count 9 BAD=[]（None 清零）；49f3ab1a（33437932 章）不重做；无 amend/force；detached push HEAD 映射形；web/src/9122/BFF/caddy/qa-verify/ACC 判词节未动。
+
+## 二〇一轮 · 波次代次九件重章 @ aa180f86（六件 carriedFrom=a2a6b0d3 + shots 双腿/quad 本代真跑，2026-11-21 12:4x）
+
+- wave-112 两笔并入落 aa180f86（remote aa180f861121 现查）；entry 换代 bXNYODp-/172175/d97f66f8d162401b…b5c6c66b 盘现算==卡面==9122 served；CSS 未换代 B7znF4xN/146328/0ac2884f…47c4。
+- 六件 assert 现值==a2a6b0d3 注 headHash=aa180f86+carriedFrom+stampNote+回读全过；state-quad 本代真跑 sampled=20 passed=20 head=aa180f86 非 carried。
+- shots 双腿本代真跑（12:41:40→12:44:26）：auth 102/102 failures=[] **obs=1 routes=['#/approvals?tab=release']**（上代 obs=0，新 ENV 波动如实不入判据）distinct=26 envOnly=51；anon aux **obs=2 routes=['#/approvals?tab=release','#/work']** distinct=25 envOnly=51；routesWithConsoleErrors 全自产（未触发 ["unknown"] 回退）；entry 三键+served 两端同值+ceAuthority=login-state。
+- TALLY {'aa180f86': 9} count 9 BAD=[]（None 清零）；7210bfac（a2a6b0d3 章）不重做；无 amend/force；detached push HEAD 映射形；web/src/9122/BFF/caddy/qa-verify/ACC 判词节未动。
