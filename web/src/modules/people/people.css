@@ -56,6 +56,12 @@
   position: absolute;
   inset: -8.25px;
 }
+/* UI-B2 最小步：空态两腿（ppl5-empty / ppl5-nomatch）的主操作与说明文字拉开一档
+ * （12→16px），读序 标题→说明→动作 更分明；错态腿样式 0 触碰，testid/文案 0 改动。 */
+.ppl5-state[data-testid="ppl5-empty"] > button,
+.ppl5-state[data-testid="ppl5-nomatch"] > button {
+  margin-top: var(--space-1);
+}
 .ppl5-state-head {
   display: flex;
   align-items: center;
