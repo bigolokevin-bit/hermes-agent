@@ -10,6 +10,7 @@ import { ApiError } from "@/lib/api-error";
 
 import {
   buildMatrixView,
+  MATRIX_FIXTURE,
   readMatrixPayload,
   type MatrixCellState,
   type MatrixPayload,
@@ -94,12 +95,29 @@ export function MatrixModulePage() {
         const status = error instanceof ApiError ? error.status : 0;
         const requestId = error instanceof ApiError ? (error.requestId ?? null) : null;
         if (status === 404 || status === 0) {
-          // R7.1 item 2: an unwired or unreachable endpoint is reported as it
-          // is — the page shows the honest「看不到/没接上」state with the
-          // request number and a retry. No fixture table may impersonate live
-          // data, ever.
-          setPhase("denied");
-          setErrorNote({ requestId, detail: "后台还没有提供这份矩阵（或暂时连不上）" });
+          // PRD §12 固定门（matrix 车道 docs/_artifacts/matrix/DONE.md:6）。
+          // /api/matrix 没接上（404）或连不上（status 0）时，主任务「看组织级
+          // 覆盖缺口」必须在当前构建里可达可审，所以这里加载 MATRIX_FIXTURE，
+          // 并由版面自己说清它是样例：「示例数据」角标、根节点
+          // data-fixture="1"、mtx5-fixture-note 全部只由 payload.origin 派生，
+          // 没有任何硬编码角标；失败那次读取的请求编号仍如实上屏（不暗示取到
+          // 过真数据），样例永不覆盖已到达的真数据（这条分支只在 catch 里）。
+          // 摘角标必须走真门，三条判据逐条可在代码/测试里核对：
+          //   (a) 任何 200 且能被 readMatrixPayload 解析的返回都被盖上
+          //       origin:'matrix'（matrix.ts:153），角标／说明条／data-fixture
+          //       随即自动消失，UI 一行都不用改——DONE.md:49
+          //       「删掉 fixture 兜底分支即可」说的就是这一条；
+          //   (b) 403 绝不走这里：权限缺失不是「没接入」，不许用样例冒充；
+          //   (c) 角标只有 payload.origin 这一个来源（本文件 :141/:157/:164）。
+          setPayload(MATRIX_FIXTURE);
+          setPhase("ready");
+          setErrorNote({
+            requestId,
+            detail:
+              status === 404
+                ? "后台还没有提供这份矩阵（接口未接入）"
+                : "这份矩阵暂时连不上（网络或网关没有应答）",
+          });
           return;
         }
         if (status === 403) {
@@ -219,9 +237,22 @@ export function MatrixModulePage() {
           </div>
 
           {origin === "fixture" && phase === "ready" ? (
-            <p className="rounded-lg border border-amber-400/25 bg-amber-400/10 px-3 py-2 text-xs text-amber-200" data-testid="mtx5-fixture-note">
-              真实矩阵接口还没接上，这张表用示例数据确认版面；接上后同一张表直接显示真实授权，「待核实」表示后端没有给出这一格。
-            </p>
+            <div className="space-y-1" data-testid="mtx5-fixture-block">
+              <p className="rounded-lg border border-amber-400/25 bg-amber-400/10 px-3 py-2 text-xs text-amber-200" data-testid="mtx5-fixture-note">
+                真实矩阵接口还没接上，这张表用示例数据确认版面；接上后同一张表直接显示真实授权，「待核实」表示后端没有给出这一格。
+              </p>
+              {/* 三类不可用状态的文案各自可审：404（接口未接入）与连不上
+                  走这条样例门，403 走 mtx5-denied，其余走 mtx5-error。这里
+                  把到底哪一种失败写在面上，并保留那一次读取的请求编号。 */}
+              <p className="px-3 text-xs text-white/45" data-testid="mtx5-fixture-reason">
+                这次真实读取：{errorNote?.detail ?? "没有可用的应答"}
+                {" · "}
+                <RequestIdCopy
+                  requestId={errorNote?.requestId}
+                  fallback="本次请求未记录编号，可复制时间与操作路径反馈"
+                />
+              </p>
+            </div>
           ) : null}
 
           {phase === "loading" ? (
@@ -266,7 +297,11 @@ export function MatrixModulePage() {
             <div className="flex flex-col items-center gap-2 py-10 text-center" data-testid="mtx5-denied">
               <ShieldAlert className="size-8 text-amber-300/80" aria-hidden="true" />
               <p className="text-sm text-white/80">你看不到这份矩阵</p>
-              <p className="max-w-md text-xs text-white/50">可能是这页不存在，也可能是你的账号还没有查看权限。</p>
+              {/* 接口未接入与连不上不再落到这里（它们走样例门 +
+                  mtx5-fixture-reason），所以这句话只说权限这一类。 */}
+              <p className="max-w-md text-xs text-white/50">
+                你的账号还没有查看这份矩阵的权限；需要看谁被授了什么，请找管理员开通后再刷新。
+              </p>
               <p className="text-xs text-white/40">
                 <RequestIdCopy requestId={errorNote?.requestId} fallback="本次请求未记录编号，可复制时间与操作路径反馈" />
               </p>
