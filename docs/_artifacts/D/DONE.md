@@ -1525,3 +1525,17 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - 六件 carriedFrom="6632f340"+carried=true+stampNote『wave-89 三笔…entry sha 与 CSS 逐字节未变；本件未重跑，证据沿用 6632f340 代』+写后回读；state-quad 真跑 20/20 head=6c4f3385 非 carried；shots 双腿本代真跑（三腿并行 nohup 09:14:36→09:17:52 ALL-DONE）102/102 failures=[]。
 - obs 自产：auth=2（#/access、#/capabilities?tab=channels，与上代同型）routesWithConsoleErrors 同写；anon aux=3（#/access、#/employees/:employeeId?zone=config、#/knowledge?tab=sources；上代 4→3 好转：retention/work/cron 收敛、config/knowledge-sources 新出，如实不入判据）；双腿三键+served 两端同值+ceAuthority=login-state，无 unknown。
 - TALLY {'6c4f3385': 9} count 9 BAD=[]（None 清零）。e81c4f74（6632f340 章）不重做；无 amend/force；push 走 HEAD 映射形；只做账本未写 PASS；ACC 判词节/web/src/9122/BFF/caddy/qa-verify 未动。
+
+## 一七五轮 · 波次代次九件重章 @ df4b4112（六件 carried + shots/quad 本代真跑，2026-11-21 09:2x）
+
+- wave-90 重封锚 df4b4112（remote df4b41128bed 现查==ls-remote；四线 gov aaae8388/ui2 66cf0ca1/ui-b 8686509a/ui-qa 285ef5e5）。首锚 74174d01 挂起案（对象不存在，四组证据零动作）后由 L0 重新封波，本波为真锚首章。
+- entry/CSS 本代换代：Chru2g4H 172175B sha256 bb6f679c…4a16 逐字==卡面；CSS Cpi0jJKL 146111B；9122 served 同值；/duty /matrix /metrics /knowledge 抽查 200。
+- 六件（ia×2/fake/reuse/crawl×2）carriedFrom="6c4f3385"+carried=true+stampNote+写后回读；state-quad 真跑 sampled=20 passed=20 head=df4b4112 注章 ok=True 非 carried；shots 双腿本代真跑（三腿并行 09:24:40→09:27:11 全散）102/102 failures=[] **obs auth=0 routes=[] distinct=24 envOnly=51；anon aux obs=0 routes=[] distinct=23 envOnly=51**（上代 auth2/anon3 全收敛=好转，与 ui-b/ui2 修复方向一致；routesWithConsoleErrors 空数组系自产非编造）；双腿三键+served 两端+ceAuthority=login-state。
+- TALLY {'df4b4112': 9} count 9 BAD=[]（None 清零）；4e46c7d6（6c4f3385 章）不重做；无 amend/force；push 走 HEAD 映射形；web/src/9122/BFF/caddy/qa-verify/ACC 判词节未动。
+
+## 一七六轮 · 波次代次九件重章 @ 03cd4658（六件 carried + shots/quad 本代真跑，2026-11-21 09:4x）
+
+- wave-91 三笔全纯测试并入 03cd4658（remote 03cd46584dcb 现查==ls-remote；appr R264/R265+aud R259）；entry/CSS 与 w90 逐字节相同（Chru2g4H/172175/bb6f679c…fef4a16；Cpi0jJKL/146111，==9122==磁盘）。
+- 六件 carriedFrom="df4b4112"+carried=true+stampNote+写后回读；state-quad 真跑 20/20 非 carried（head=03cd4658）；shots 双腿 09:43:12→09:47:56 真跑 102/102 failures=[]。
+- obs 自产：**auth=2（#/access、#/capabilities?tab=channels——上代 0 复现，如实不入判据）** distinct=25 envOnly=51；anon aux=3（#/access、#/employees/:employeeId?zone=evidence、#/work）distinct=26 envOnly=50。routesWithConsoleErrors 全按自产写入，无 unknown 无编造。
+- TALLY {'03cd4658': 9} count 9 BAD=[]（None 清零）；30b41a25（df4b4112 章）不重做；无 amend/force；push 走 HEAD 映射形；只做账本未写 PASS、ACC 判词节未动；web/src/9122/BFF/caddy/qa-verify 未碰。
