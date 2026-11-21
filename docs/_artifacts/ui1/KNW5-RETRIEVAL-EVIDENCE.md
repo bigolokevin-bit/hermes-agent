@@ -7016,3 +7016,51 @@ kn-space-open 分支、短码去下划线非去前缀、检索句插位使行区
 未测如实：带登录会话真屏；knI **拒绝→fallback** 环（knI-copy-fallback 兜底位——与
 主套件 knF/knG 环同族，本文件未扩）；空 items 服务端帧（zeroReason「这份回答里没有
 空间」位）；q 命中含引号/换行的怪名空间（转译族 R190①/236② 地盘）。
+
+# KNW5 追加 R266：knE-page-stale/knE-page-reload 整表重载路径首测（含 reload-500 现场裁决）（纯测试单·本体交付）（2026-11-21 BJT）
+
+安全门：porcelain 空起做、`merge-base` 为是 → ff-only 至实测 `22878598`（与派工一致、
+**未用 `-B`**）、knowledge delta 零；基线 77/294 全绿 Errors 0、目标文件确认缺席再动笔。
+零产品文件改动。新增 knowledge.stale.reload.test.tsx 三例（本体 214 行）。
+
+## 选题与查重结论
+
+```text
+`knE-page-reload`（KnowledgeModulePage.tsx:2662，onClick=surface.retry→:215 attempt++
+整表重取 P1）在全部 77 套测试 **0 命中**（stale 仅注释级引用）——坏/过期 cursor 静默
+重放首页的判定（:2405-2410：fresh 全空→setStale，不合并、不推进游标）与其重载/失败
+面从未测。既有相邻锁只引不写：错误锚/rid/R183/R210④/R237③、P2 窗保行口径 R131③/
+R216④、错帧 cap null 族 R157/R187/R231⑤、复制器错帧 disabled R232③。
+```
+
+## 三例读数（含现场裁决）
+
+```text
+① P2 回放同 50 行 id：knE-page-stale 在场、-more disabled+文案「游标已过期」、行 50
+  无重复（seen 全命中不合并）、无错误锚、三值同源（表体 50==knE-page-count 含 50==
+  knF 数据行 50）、cap「已加载 50 篇」、P2 恰 1。
+② 点 knE-page-reload：增量恰 1 且末条==P1URL **无 cursor=**、stale 消失、-more 恢复
+  enabled、行仍 50 无重复、50==50==50、blob spy 0。
+③ **现场裁决（按实断，禁改产品）**：reload 整表重读 500 = **列表换错误帧**——行 0/
+  钮 0/cap null（派工「旧 50 行保留」驳回：保行仅属 P2 load-more 窗口径 R131③/R237③，
+  两种 500 语义不同族）；kn3-docs-error 在场、rid「rid-r266-p1」投递逐字、knF disabled
+  （R232③ 同帧）；**恢复腿**：kn3-docs-retry 恰 +1（末条==P1URL）→ 50 行无重复、
+  导出 toBe 失败前快照（行集全程未变的快照不变性）、cap 复原「50 篇」、stale 不在场。
+名实收口：无真 CSV→导出=knF、kn-list-copy 不存在、spy 全程 0；cursor 只在组件态——
+重载请求 URL 实检无 cursor；无 ?source=/?preview=；clip 桩 Promise+unstub（Errors 0）。
+```
+
+## 门禁尾行（R266）
+
+```text
+$ npx vitest run src/modules/knowledge → 78 files / 297 tests passed（294+3=基线预期
+  78/297），grep unhandled = 0
+$ eslint → 0 errors（1 既有 warning）；模块 tsc → 0
+$ 全仓 → 465 files / 3452 passed 零红；三档 1440/1280/375 vw==bodySW==docSW 全等
+  （build 本轮免跑，顺带 exit 0，用毕即杀）
+零破：knI-*/knE-page-*/kn3-page-cap/knF/knG/kn-row-copy*/kn7-preview*/kn-sort*/
+kn-gates/导出 absent + 既有 77 套全绿。过程自纠两处（③ rid 索引、错误帧保行按实测
+驳回重写+恢复腿补钉），产品零触碰。
+```
+未测如实：带登录会话真屏；stale 后切筛选/排序对 stale 面板的清除向（stale 态族仅测
+reload 清除）；reload 后 P2 再 stale 二次触发环；403 denied 变体（同体族引 R183）。
