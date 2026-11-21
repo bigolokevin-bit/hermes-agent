@@ -6690,3 +6690,51 @@ kn-doc-preview*/kn7-preview*/kn3-page-cap/kn-type*/kn-sort*/kn-gates/导出 abse
 ```
 未测如实：带登录会话真屏；①追加后在预览内点 kn-doc-copy 的串对账（R223 地盘）；
 ②出局文档缺失句（R224① 已锁不复写）；抽屉×追加双宿主同帧（宿主分离声明覆盖）。
+
+# KNW5 追加 R259：筛选标记↔URL 叠载对应/单键清除余参/清钮实态/可用性翻转（纯测试单·本体交付）（2026-11-21 BJT）
+
+安全门：porcelain 空起做、显式 refspec fetch 后 merge——上游较派工再前进：派工值
+`210270a8`、fetch 实测 `6d3c060b`（如实记）；HEAD 非其祖先 → 普通 merge commit
+（**未用 `-B`**）、knowledge delta 零、无冲突；基线先跑 70/280 全绿 Errors 0、目标
+文件确认缺席再动笔。零产品文件改动。新增 knowledge.chips.test.tsx 三例（本体）。
+
+## 名实落地与三腿裁决（file:line）
+
+```text
+映射声明：产品无 chip 控件（源级 0，禁造）→「标记面」=kn-type-* aria-pressed ×
+kn6-search-input/clear × kn-sort-* th aria-sort（:1843）；无 ?source=（换算 ktype+q+
+ksort/kdir）；无「一键全清」（用真实入口）。「恰 1 次新取数」驳回：两清除步 urls
+join 逐字（0 请求，R215③/R243β 口径）。引用：R118①:140-163/⑤:218-235、R146①:111-
+127、R157②:140-158（双参简帧）、R164②、R235③、R243β、R244γ′δ′、R247①、R218②、
+R234③、R236③:182-210、R108/R157/R187。
+新增维（点名）：A 三参叠载同帧一一对应——**恰一桶 pressed 唯一性** + th
+  **aria-sort="ascending"(size) 首 pin** + 检索框回填 + data-len 与生效集合同源 +
+  可见层/URL 无 source/chip/裸 MIME 负断言；B 叠载帧单键清除——双删后
+  **q/ksort/kdir 三键逐字留场**（R157② 简帧不含排序键的首并置）+「全部」pressed 回正；
+  C **kn6-search-clear 实态首锁**：只清输入框与检索态、**不回写 URL**（?q= 留场——
+  「清除钮=URL 移除器」直觉不成立按实记录）+ ③段 **knF disabled true→false 可用性
+  翻转回正 + 点击恢复写入**（R235③ 只锁文本往返的可用性位补齐）+ 筛空帧 cap=null
+  复跑 + cap 整句==筛前基线 + 三值 [4,4,4,4]。
+```
+
+## 验证尾行（R259）
+
+```text
+A pressed=["PDF"]、aria-sort=ascending、输入"人事"、集 [B,C,A]（size asc）、data-len
+  3、cap 3、负断言净。B ktype/type 双删、q/ksort/kdir 留、全集 4 回、urls 逐字；
+  clear 后输入 ""、?q= 留场、排序键/桶态不染、urls 逐字。C 筛空 disabled+cap null →
+  复原 disabled false、写入 1 次、链==屏上、cap toBe 筛前、三值 4、urls 恒 3。
+$ npx vitest run src/modules/knowledge → 71 files / 283 tests passed（280+3），
+  grep unhandled = 0
+$ eslint → 0 errors（1 既有 warning）；模块 tsc → 0
+$ build /tmp/knw-r259-dist → exit 0；全仓 → 441 files / 3394 passed **零红**
+  （metrics 跨日两条本轮未复现，不视为已修复）
+$ 三档 1440/1280/375 vw==bodySW==docSW 全等（用毕即杀）
+零破：kn3*/kn6–kn9/knB/knD/knE-page-*/knF/knG/knI/knL*/kn-row-copy*/kn-row-copy-space*/
+kn-doc-preview*/kn7-preview*/kn3-page-cap/kn-type*/kn-sort*/kn-gates/导出 absent +
+既有 70 套全绿。过程自纠三处（C 默认降序名序笔误；B 按实改判 clear 不回写 URL；
+C 复原计数取全集 4），产品零触碰。
+```
+未测如实：带登录会话真屏；kn8-global-clear（空间列表面清除器）的同型 URL 实态未测
+（择面纪律：本例取所在面 kn6 位）；aria-sort 其余列向（name/type/updated）未遍；
+「清除后重打同词」回填环未叠。
