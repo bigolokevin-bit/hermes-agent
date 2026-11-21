@@ -9,18 +9,14 @@
   "failures": [],
   "oversize": [],
   "rootBaseline": {
-    "textLen": 1061,
+    "textLen": 1044,
     "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 采集时刻 —（北京时间） 近 24 小时 近 7 天 近 14 天 近 30 天 刷",
     "hasMainEl": true,
     "ok": true
   },
-  "distinctMainHeads": 26,
-  "routesWithEmptyMain": [
-    "#/capabilities?tab=channels"
-  ],
-  "routesWithoutMainEl": [
-    "#/capabilities?tab=channels"
-  ],
+  "distinctMainHeads": 24,
+  "routesWithEmptyMain": [],
+  "routesWithoutMainEl": [],
   "mainCharsByRoute": [
     {
       "route": "#/access",
@@ -151,8 +147,8 @@
     {
       "route": "#/capabilities?tab=channels",
       "viewport": "375",
-      "chars": 0,
-      "hasMainEl": false
+      "chars": 113,
+      "hasMainEl": true
     },
     {
       "route": "#/capabilities?tab=models",
@@ -259,55 +255,55 @@
     {
       "route": "#/employees/:employeeId?zone=tasks",
       "viewport": "375",
-      "chars": 146,
+      "chars": 42,
       "hasMainEl": true
     },
     {
       "route": "#/identity",
       "viewport": "1440",
-      "chars": 151,
+      "chars": 154,
       "hasMainEl": true
     },
     {
       "route": "#/identity",
       "viewport": "375",
-      "chars": 151,
+      "chars": 154,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=admins",
       "viewport": "1440",
-      "chars": 151,
+      "chars": 154,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=admins",
       "viewport": "375",
-      "chars": 151,
+      "chars": 154,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=binding",
       "viewport": "1440",
-      "chars": 151,
+      "chars": 154,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=binding",
       "viewport": "375",
-      "chars": 151,
+      "chars": 154,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=checks",
       "viewport": "1440",
-      "chars": 151,
+      "chars": 154,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=checks",
       "viewport": "375",
-      "chars": 151,
+      "chars": 154,
       "hasMainEl": true
     },
     {
@@ -325,13 +321,13 @@
     {
       "route": "#/identity?tab=people&view=admins",
       "viewport": "1440",
-      "chars": 151,
+      "chars": 154,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=people&view=admins",
       "viewport": "375",
-      "chars": 151,
+      "chars": 154,
       "hasMainEl": true
     },
     {
@@ -349,13 +345,13 @@
     {
       "route": "#/identity?tab=tenant",
       "viewport": "1440",
-      "chars": 151,
+      "chars": 154,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=tenant",
       "viewport": "375",
-      "chars": 151,
+      "chars": 154,
       "hasMainEl": true
     },
     {
@@ -457,13 +453,13 @@
     {
       "route": "#/org",
       "viewport": "1440",
-      "chars": 151,
+      "chars": 154,
       "hasMainEl": true
     },
     {
       "route": "#/org",
       "viewport": "375",
-      "chars": 151,
+      "chars": 154,
       "hasMainEl": true
     },
     {
@@ -648,16 +644,13 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "8d0725d4",
+  "headHash": "33437932",
   "exitCode": 0,
-  "entry": "assets/index-0rhpOHmI.js",
-  "entrySha256": "35b3907c1ae79830b697ecab6786f2617311b84965b5b7f03db952f98f2a1d64",
+  "entry": "assets/index-3NtB-rbj.js",
+  "entrySha256": "1e63e327c7677e7875d4ef3848487041489c2f9bf3789a9663fa9e2875443d7e",
   "entryBytes": 172175,
-  "css": "assets/index-B7znF4xN.css",
-  "cssSha256": "0ac2884f70bbe6de2112c325494f75aa3264b54ab38ae12a5d59c4328f0f47c4",
-  "cssBytes": 146328,
-  "servedEntryBefore": "index-0rhpOHmI.js",
-  "servedEntryAfter": "index-0rhpOHmI.js",
+  "servedEntryBefore": "index-3NtB-rbj.js",
+  "servedEntryAfter": "index-3NtB-rbj.js",
   "routesWithConsoleErrors": [
     "#/capabilities?tab=channels"
   ]
