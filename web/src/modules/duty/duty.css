@@ -704,3 +704,34 @@
 .duty-changed {
   color: var(--color-foreground);
 }
+
+/* UI-B 空态组合：说明句限宽、主操作行留白按令牌（space-2=8px） */
+.duty-empty-lead {
+  max-width: 65ch;
+}
+.duty-empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  margin-top: var(--space-2, 8px);
+}
+
+/* UI-B 错误态组合：标题抬一档（Mondwest 字重是死杠杆，用字号台阶），
+ * 技术句折叠，留白与间距收进令牌（原 gap 6px/padding 6px 0 不在清单）。 */
+.duty-error {
+  gap: var(--space-2, 8px);
+  padding: var(--space-2, 8px) 0;
+}
+.duty-error-title {
+  color: var(--color-destructive, #f87171);
+  font-size: var(--font-size-3, 15px);
+  font-weight: var(--font-weight-medium, 500);
+}
+.duty-error-details {
+  font-size: var(--font-size-1, 12px);
+  color: var(--color-text-muted, rgba(255, 255, 255, 0.55));
+}
+.duty-error-details summary {
+  cursor: pointer;
+}
