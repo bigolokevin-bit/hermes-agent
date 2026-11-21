@@ -426,11 +426,13 @@ export function SkillsPage() {
         </CardContent></Card>
       ) : null}
 
+      {/* UI-B 空态组合：既有标题/锚句保留，补单一主操作=重新读取（空台账无可筛维度）。 */}
       {page.k === "empty" ? (
-        <Card className="capF-state"><CardContent className="space-y-2 p-8 text-center" data-testid="skl4-empty">
+        <Card className="capF-state"><CardContent className="flex min-w-0 flex-col items-center gap-[var(--space-2)] px-[var(--space-4)] py-[var(--space-8)] text-center" data-testid="skl4-empty">
           <span className="sr-only" data-testid="cap9-state-empty" />
           <p className="skl4-empty-title">还没有已登记的技能</p>
           <CapStateAnchor testid="capF-state-empty" anchor={stateAnchor({ kind: "empty", subject: "技能" })} />
+          <Button size="sm" onClick={retry} data-testid="skl4-empty-retry">重新读取</Button>
         </CardContent></Card>
       ) : null}
 
@@ -464,8 +466,12 @@ export function SkillsPage() {
         <Card>
           <CardContent className="p-0">
             <p className="skl4-source" data-testid="skl4-source">来源：技能台账 · 读取于 {page.asOf ?? "—（未提供读取时刻）"}</p>
+            {/* UI-B 筛空组合：标题 + 既有锚句作说明 + 单一主操作=清空搜索（筛选是根因）。 */}
             {q && visibleRows.length === 0 ? (
               <div className="cap5-no-match" data-testid="skl4-no-match">
+                <p className="text-base font-medium" data-testid="skl4-no-match-title">
+                  技能里没有匹配项
+                </p>
                 <CapStateAnchor
                   testid="capF-state-filter-empty"
                   anchor={stateAnchor({
@@ -475,7 +481,7 @@ export function SkillsPage() {
                     loaded: page.rows.length,
                   })}
                 />
-                <button type="button" className="cap5-clear" onClick={() => setQ("")} data-testid="skl4-clear">清空搜索</button>
+                <Button size="sm" onClick={() => setQ("")} data-testid="skl4-clear">清空搜索</Button>
               </div>
             ) : (
             <div className="skl4-scroll">
