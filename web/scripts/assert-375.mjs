@@ -291,7 +291,9 @@ for (const row of target) {
   let mainLen = 0;
   try {
     const h = row.hash.startsWith('#') ? row.hash : `#${row.hash}`;
-    await page.goto(`${BASE}/${h}`, { waitUntil: 'domcontentloaded', timeout: 30_000 });
+    // 模板路由代入在岗真实 ID（L0：EMP-01/EMP-02 现网可用）
+    const nav = h.includes(':employeeId') ? h.replace(':employeeId', 'EMP-01') : h;
+    await page.goto(`${BASE}/${nav}`, { waitUntil: 'domcontentloaded', timeout: 30_000 });
     let prev = -1;
     const t0 = Date.now();
     while (Date.now() - t0 < 4000) {
@@ -313,6 +315,8 @@ for (const row of target) {
   let bytes = 0;
   let expanded = false;
   let scrollerCount = 0;
+  let contentFit = false; // 视口加高回退后实测内容高 <= 视口：整页已在一帧内
+  let targetHeight = null; // 视口加高法目标高（null=未触发）
 
   if (navError || mainLen === 0) {
     verdict = 'NOT_MEASURED';
@@ -328,46 +332,58 @@ for (const row of target) {
       }
       bytes = statSync(file).size;
       dims = pngDims(file);
-      // 判据②回退：内部滚动壳使文档恒 812 → 临时撑开纵向滚动容器再重拍
+      // 判据②回退·视口加高法（记忆配方）：宽度不动，视口高度抬到实测内容高再重拍；
+      // 抬高后仍 <=812 = 文档级无溢出且内容本就在折叠下——逐元素判据照常裁决，
+      // 内容完整可见时按 fit 记录（证据仍为首屏高，如实入表）
       if (dims && dims.h <= VH) {
-        const scrollers = await page.evaluate(() => {
-          const hit = [];
+        const grow = await page.evaluate(() => {
+          const de = document.documentElement;
+          const b = document.body;
           const force = (el) => {
             el.style.setProperty('overflow', 'visible', 'important');
             el.style.setProperty('height', 'auto', 'important');
             el.style.setProperty('max-height', 'none', 'important');
+            el.style.setProperty('min-height', '0', 'important');
           };
-          force(document.documentElement);
-          force(document.body);
+          force(de);
+          force(b);
           const rootEl = document.getElementById('root');
           if (rootEl) force(rootEl);
+          let required = de.scrollHeight;
+          let scrollers = 0;
           for (const el of document.querySelectorAll('body *')) {
             const cs = getComputedStyle(el);
             if (!/(auto|scroll)/.test(cs.overflowY)) continue;
             if (el.scrollHeight <= el.clientHeight + 1) continue;
             force(el);
             let p = el.parentElement;
-            while (p && p !== document.documentElement) {
-              force(p); // 祖先链一并放开：固定高壳（h-screen flex）会挡住文档长高
+            while (p && p !== de) {
+              force(p);
               p = p.parentElement;
             }
-            const tid = el.getAttribute('data-testid');
-            hit.push(el.tagName.toLowerCase() + (tid ? `[${tid}]` : ''));
-            if (hit.length >= 40) break;
+            scrollers += 1;
+            required = Math.max(required, el.scrollHeight + (window.innerHeight - el.clientHeight));
           }
-          return hit;
+          return { required: Math.min(required, 10_000), scrollers };
         }).catch(() => null);
-        if (scrollers && scrollers.length > 0) {
+        if (grow && grow.required > VH) {
           expanded = true;
-          scrollerCount = scrollers.length;
-          await page.waitForTimeout(400);
+          scrollerCount = grow.scrollers;
+          targetHeight = grow.required;
           try {
+            await page.setViewportSize({ width: VW, height: grow.required });
+            await page.waitForTimeout(400);
             await page.screenshot({ path: file, fullPage: true, timeout: 60_000 });
             bytes = statSync(file).size;
             dims = pngDims(file);
           } catch {
             /* 保留首拍 */
           }
+        } else if (grow) {
+          expanded = true;
+          scrollerCount = grow.scrollers;
+          targetHeight = grow.required;
+          contentFit = true; // 展开后实测内容高 <= 视口：整页已在一帧内
         }
       }
     } catch (e) {
@@ -381,8 +397,12 @@ for (const row of target) {
     } else if (!probe || !dims) {
       verdict = 'NOT_MEASURED';
       notMeasured += 1;
+    } else if (dims.h <= VH && contentFit) {
+      // 视口加高法后实测内容高 <= 视口：整页已在一帧内，逐元素判据照常生效；
+      // fit 如实入表（pngH==812 但无折叠内容），不属『旧 document 级假绿』家族
+      verdict = 'PASS';
     } else if (dims.h <= VH) {
-      // 判据②：产图高度必须 > 视口高（含撑开回退后），恰 812 = 首屏形态，不签绿
+      // 判据②：产图高度必须 > 视口高（含视口加高回退后），恰 812 且非 fit = 不签绿
       verdict = 'NOT_MEASURED';
       notMeasured += 1;
     } else {
@@ -406,6 +426,8 @@ for (const row of target) {
     offscreenLeft: probe ? probe.offscreenLeft : null,
     expandApplied: expanded,
     scrollersExpanded: scrollerCount,
+    contentFit,
+    targetHeight, // 视口加高法目标高（null=未触发）
     violCount: probe ? probe.violCount : null,
     viol: probe ? probe.viol : [],
     scrollOverflowCount: probe ? probe.scrollOverflowCount : null,
