@@ -9,19 +9,19 @@
   "failures": [],
   "oversize": [],
   "rootBaseline": {
-    "textLen": 1108,
-    "head": "运营 · 控制台 运营总览 值班台用量与成本 值班台 运营总览 · 只读 采集时刻 —（北京时间） 近 24 小时 近 7 天 近 14 天 近 30 天 刷新",
+    "textLen": 1109,
+    "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 采集时刻 —（北京时间） 近 24 小时 近 7 天 近 14 天 近 30 天 刷",
     "hasMainEl": true,
     "ok": true
   },
-  "distinctMainHeads": 26,
+  "distinctMainHeads": 23,
   "routesWithEmptyMain": [],
   "routesWithoutMainEl": [],
   "mainCharsByRoute": [
     {
       "route": "#/access",
       "viewport": "1440",
-      "chars": 199,
+      "chars": 201,
       "hasMainEl": true
     },
     {
@@ -177,7 +177,7 @@
     {
       "route": "#/employees",
       "viewport": "1440",
-      "chars": 288,
+      "chars": 296,
       "hasMainEl": true
     },
     {
@@ -417,7 +417,7 @@
     {
       "route": "#/knowledge?tab=scope",
       "viewport": "1440",
-      "chars": 547,
+      "chars": 549,
       "hasMainEl": true
     },
     {
@@ -585,7 +585,7 @@
     {
       "route": "#/work",
       "viewport": "1440",
-      "chars": 281,
+      "chars": 261,
       "hasMainEl": true
     },
     {
@@ -631,11 +631,10 @@
       "hasMainEl": true
     }
   ],
-  "consoleErrorsObservedByShots": 3,
+  "consoleErrorsObservedByShots": 2,
   "consoleErrorRoutesObservedByShots": [
     "#/access",
-    "#/employees",
-    "#/knowledge?tab=scope"
+    "#/work"
   ],
   "ceAuthority": "login-state",
   "routesWithEnvOnlyConsoleErrors": 51,
@@ -646,7 +645,7 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "7de87bc0",
+  "headHash": "de847835",
   "exitCode": 0,
   "entry": "assets/index-BeCxh3sC.js",
   "entrySha256": "39311c09c21a77c82acc58f6a4cb04683e461865026fafc323d53188eec659b3",
@@ -655,8 +654,7 @@
   "servedEntryAfter": "index-BeCxh3sC.js",
   "routesWithConsoleErrors": [
     "#/access",
-    "#/employees",
-    "#/knowledge?tab=scope"
+    "#/work"
   ],
   "auxiliary": true
 }
