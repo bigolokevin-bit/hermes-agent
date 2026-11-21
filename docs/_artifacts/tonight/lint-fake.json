@@ -9,9 +9,9 @@
   },
   "violations": [],
   "ok": true,
-  "headHash": "df4b4112",
+  "headHash": "03cd4658",
   "exitCode": 0,
-  "carriedFrom": "6c4f3385",
+  "carriedFrom": "df4b4112",
   "carried": true,
-  "stampNote": "wave-90 四线（gov aaae8388/ui2 66cf0ca1/ui-b 8686509a/ui-qa 285ef5e5），本件未重跑，证据沿用 6c4f3385 代；entry/CSS 本代换代 Chru2g4H/Cpi0jJKL"
+  "stampNote": "wave-91 三笔全纯测试（appr R264/R265 + aud R259），entry sha 与 CSS 逐字节未变（Chru2g4H/Cpi0jJKL）；本件未重跑，证据沿用 df4b4112 代"
 }
