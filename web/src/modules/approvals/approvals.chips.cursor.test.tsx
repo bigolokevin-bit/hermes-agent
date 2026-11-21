@@ -97,6 +97,15 @@ function mount(handler: (url: string) => Promise<unknown>, entry: string): void 
       ),
     );
   });
+  // 车道 B（审批筛选折叠）：本文件断言写在筛选墙全展开之上，挂载后统一点开新折叠开关。
+  const historyToggle = document.querySelector(
+    "[data-testid='apv-h-filter-toggle']",
+  ) as HTMLButtonElement | null;
+  if (historyToggle && historyToggle.getAttribute("aria-expanded") !== "true") {
+    act(() => {
+      historyToggle.click();
+    });
+  }
 }
 
 afterEach(() => {

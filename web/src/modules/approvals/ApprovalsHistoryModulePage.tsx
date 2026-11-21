@@ -19,7 +19,7 @@
  */
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useSearchParams } from "react-router";
-import { History, RefreshCw } from "lucide-react";
+import { ChevronDown, ChevronUp, History, RefreshCw } from "lucide-react";
 
 import { Button } from "@nous-research/ui/ui/components/button";
 import { Card, CardContent } from "@nous-research/ui/ui/components/card";
@@ -181,6 +181,8 @@ export function ApprovalsHistoryModulePage(): ReactNode {
   const [unaddressable, setUnaddressable] = useState(false);
   // R60: at most one row shows its inline preview; it never touches URL/filters.
   const [previewKey, setPreviewKey] = useState<string | null>(null);
+  // 页面车道 B: 次级筛选默认折叠，先例=3651ca6d 在待处理页的同款开关。
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
 
   const detail = useApprovalDetail(selected, forced);
@@ -277,6 +279,9 @@ export function ApprovalsHistoryModulePage(): ReactNode {
   }, []);
 
   const filterState = hasActiveFilters(params);
+  // 折叠开关上的读数只算面板里的四维（q/actor/since/risk）；status 维常驻，
+  // 不计入「藏起来几条」的语义。
+  const secondaryCount = [q, actor, since, risk].filter(Boolean).length;
   // R91: one chip per active filter; removal reuses the same diff plumbing.
   const removeFilterKeys = useCallback(
     (keys: readonly string[]) => {
@@ -428,6 +433,27 @@ export function ApprovalsHistoryModulePage(): ReactNode {
         ) : null}
       </div>
 
+      {/* 页面车道 B: 与待处理页（apv-filter-toggle，3651ca6d）同一方言——
+          收起时面板整体卸载，键盘序里不留空位；生效条件的读数在下方
+          汇总条与 chips 行，常显不折叠。 */}
+      <div className="flex min-w-0 flex-wrap items-center gap-2" data-testid="apv-h-filter-toggle-row">
+        <button
+          type="button"
+          data-testid="apv-h-filter-toggle"
+          aria-expanded={filtersOpen}
+          aria-controls="apv-history-filter-panel"
+          onClick={() => setFiltersOpen((value) => !value)}
+          className="inline-flex h-6 items-center gap-1 rounded-md border border-white/15 px-2 text-xs text-muted-foreground hover:bg-white/5 focus-visible:outline focus-visible:outline-1 focus-visible:outline-white/60"
+        >
+          {filtersOpen ? (
+            <ChevronUp className="h-3 w-3" aria-hidden="true" />
+          ) : (
+            <ChevronDown className="h-3 w-3" aria-hidden="true" />
+          )}
+          筛选条件（{secondaryCount > 0 ? secondaryCount : "无"}）
+        </button>
+      </div>
+
       <div className="flex min-w-0 flex-wrap items-center gap-2" data-testid="apv-reset-row">
         <button
           type="button"
@@ -443,36 +469,44 @@ export function ApprovalsHistoryModulePage(): ReactNode {
       </div>
       <QueueSummaryBar phase={list.phase} rows={visibleRows} scope="history" singleStatus={status} />
       <QueueCsvExport rows={visibleRows} tab="history" status={status} phase={list.phase} sort={asort} dir={asort ? adir : null} />
-      <div className="flex min-w-0 flex-wrap items-center gap-1.5" role="group" data-testid="apv8-search-group" aria-label="搜索审批">
-        <input
-          type="search"
-          aria-label="搜索审批"
-          data-testid="apv8-search"
-          className="min-w-0 flex-1 rounded-sm border border-border bg-transparent px-2 py-1 text-xs"
-          placeholder="关键字（标题/理由/编号）"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-        />
-        {q ? (
-          <Button size="sm" outlined data-testid="apv8-search-clear" onClick={() => setQ("")}>
-            清空搜索
-          </Button>
-        ) : null}
-      </div>
-      <p
-        className="min-w-0 break-words text-xs text-muted-foreground"
-        data-testid="apv8-scope-note"
-        data-apv8-scope-note="local-search"
-        title="实测：本页读口带 q/keyword/title 任一参数都与不带时返回同一全量（同集合），后台不做关键字过滤；为避免「假服务端搜索」，这里只做前端本地过滤。"
-      >
-        仅在当前已加载 {list.rows.length} 条内搜索；关键字是前端本地过滤，不产生新请求（实测后台 q/keyword/title 参数被忽略）。
-      </p>
+      {filtersOpen ? (
+        <div
+          id="apv-history-filter-panel"
+          data-testid="apv-h-filter-panel"
+          className="apv-h-filter-panel flex min-w-0 flex-col gap-2"
+        >
+          <div className="flex min-w-0 flex-wrap items-center gap-1.5" role="group" data-testid="apv8-search-group" aria-label="搜索审批">
+            <input
+              type="search"
+              aria-label="搜索审批"
+              data-testid="apv8-search"
+              className="min-w-0 flex-1 rounded-sm border border-border bg-transparent px-2 py-1 text-xs"
+              placeholder="关键字（标题/理由/编号）"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+            />
+            {q ? (
+              <Button size="sm" outlined data-testid="apv8-search-clear" onClick={() => setQ("")}>
+                清空搜索
+              </Button>
+            ) : null}
+          </div>
+          <p
+            className="min-w-0 break-words text-xs text-muted-foreground"
+            data-testid="apv8-scope-note"
+            data-apv8-scope-note="local-search"
+            title="实测：本页读口带 q/keyword/title 任一参数都与不带时返回同一全量（同集合），后台不做关键字过滤；为避免「假服务端搜索」，这里只做前端本地过滤。"
+          >
+            仅在当前已加载 {list.rows.length} 条内搜索；关键字是前端本地过滤，不产生新请求（实测后台 q/keyword/title 参数被忽略）。
+          </p>
+          <ActorBuckets rows={riskBaseRows} phase={list.phase} actor={actor} onPick={pickActor} />
+          <SinceQuickFilter phase={list.phase} since={since} loadedCount={list.rows.length} onPick={pickSince} />
+          <RiskQuickFilter rows={actorBaseRows} phase={list.phase} risk={risk} onPick={pickRisk} />
+        </div>
+      ) : null}
 
       <QueueSortBar phase={list.phase} sort={asort} dir={adir} loadedCount={list.rows.length} onCycle={cycleSort} />
-      <ActorBuckets rows={riskBaseRows} phase={list.phase} actor={actor} onPick={pickActor} />
       <RowDetailCopy row={visibleRows.find((r) => r.key === previewKey) ?? null} />
-      <SinceQuickFilter phase={list.phase} since={since} loadedCount={list.rows.length} onPick={pickSince} />
-      <RiskQuickFilter rows={actorBaseRows} phase={list.phase} risk={risk} onPick={pickRisk} />
 
 
       <div className="flex min-w-0 flex-wrap gap-1.5" role="group" data-testid="apr5-filter" aria-label="按处理结果筛选">
