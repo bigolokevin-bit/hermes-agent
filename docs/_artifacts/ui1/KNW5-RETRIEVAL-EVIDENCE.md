@@ -6597,3 +6597,50 @@ kn7-preview*/kn-doc-preview*/kn3-page-cap/kn-type*/kn-sort*/kn-gates/导出 abse
 ```
 未测如实：带登录会话真屏；②③的补充组合（如错误窗内抽屉开关账本——R232/R239③
 分帧地盘）；重开抽屉第三帧的 51 规模账本（R236① 系 2 行帧，规模位外推）。
+
+# KNW5 追加 R257：true-0×knE-page 全族零渲染 + 详情 500 帧全局导出全文零染（两真缺口；三腿其余引用）（2026-11-21 BJT）
+
+安全门：porcelain 空起做、显式 refspec fetch 后 merge 实测 tip 即预期 `c621295b`
+（HEAD 非其祖先 → merge commit；**未用 `-B`**）、knowledge delta 零、无冲突；基线先跑
+68/276 全绿 Errors 0、目标文件确认缺席再动笔。零产品文件改动。新增
+knowledge.space.export.empty.test.tsx 两例（本体）。
+
+## 三腿裁决（file:line）与两真缺口
+
+```text
+①门体全锁：R138②④+R190④(escape:190-205)+R231②⑤+R236③(open.detail:182-210)；
+  换算照落：kn-space-page-cap 不存在→kn3-page-cap，true-0 实测 **null 非 0**
+  （R108/R157/R187）。②主体全锁：R221①②+R232①(detail.error.export:152-176 knF 侧)
+  +R187①③+R183③。③全锁：R187②+R231⑤+R232③+R221④（**cap null→整句过渡位已被
+  R221④锁**——派工候选驳回）。
+新增维 A（grep 实证零 pin）：true-0 详情帧 `[data-testid^="knE-page-"]` **整族
+  （bar/count/more/end/stale/error/retry）0 渲染同帧**——既往只在检索面锁过无分页
+  （R164），空空间详情面全族缺席从未断；配 cap null + 禁裸 0 扫描 + knF disabled/
+  「没有可复制」+ 双族行钮 0 节点（非 disabled）+ 点击零写零请求 + spy 0（门体最小
+  引用位在场复跑）。
+新增维 B（grep 实证零 pin）：**详情 500（?doc= 深链错锚+rid 可投）帧内，全局面
+  knG 导出全文 toBe 无抽屉基线 + hit 行名逐字 + 列表读各恰 1、详情读恰 1（失败不
+  自动重试）**——R232① 只做过 knF 侧互等，knG 全文跨抽屉故障位未锁。
+换算声明：无真 CSV→「导出」=knF/knG 数据行、kn-list-copy 不存在、spy 全程 0；
+「显 0」驳回为 null；重试契约引 R183③ 不复写；clip 桩 Promise+unstub、
+isSecureContext=true 走 https 复制主路径（R210）。
+```
+
+## 验证尾行（R257）
+
+```text
+A：knE-page 族计数 0、cap null、裸 0 扫描 0、knF disabled+句、双族钮 0、点击零写、
+  urls 恒、spy 0。B：基线 knG 快照 [全局一,全局二]；故障帧错锚在场、rid 投递
+  rid-r257-d、knG toBe 基线、hits 不动、spaces/plain/p1 各 1、d_1 详情读 1、spy 0。
+$ npx vitest run src/modules/knowledge → 69 files / 278 tests passed（276+2 ≥277），
+  grep unhandled = 0
+$ eslint → 0 errors（1 既有 warning）；模块 tsc → 0
+$ build /tmp/knw-r257-dist → exit 0；全仓 → 435 files / 3381 passed **零红**
+  （metrics 跨日两条本轮未复现，不视为已修复）
+$ 三档 1440/1280/375 vw==bodySW==docSW 全等（用毕即杀）
+零破：kn3*/kn6–kn9/knB/knD/knE-page-*/knF/knG/knI/knL*/kn-row-copy*/kn-row-copy-space*/
+kn7-preview*/kn3-page-cap/kn-type*/kn-sort*/kn-gates/导出 absent + 既有 68 套全绿。
+两例一次全过、零自纠轮，产品零触碰。
+```
+未测如实：带登录会话真屏；A 帧 knG 侧（检索面读空列表）门细节（R190④/R231② 地盘，
+本例聚焦详情面全族位）；B 的错误恢复后 knG 再快照环（过渡位属 R221④ 地盘不扩）。
