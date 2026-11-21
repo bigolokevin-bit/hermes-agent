@@ -1,1 +1,122 @@
-{"base": "http://127.0.0.1:9122", "mode": "auth", "authStateFile": "/Users/kevin_studio/.local/state/sekoi-ops/ui-qa-auth-state.json", "navForm": "fresh-goto hash-form #/<route> (crawl-parity, 二十三轮修复)", "routesEnumerated": 51, "expectedShots": 51, "producedShots": 50, "failures": [{"hash": "#/sessions", "viewport": "1440", "error": "capture 挂起>5min（CDP 无响应），三轮分段续跑均止步此路由，第四轮排除后其余 50/50 全新鲜——真实卡点非探针故障；wave-123 起该页即为已知 CDP 失分页"}], "oversize": [], "rootBaseline": {"textLen": 1061, "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 采集时刻 —（北京时间） 近 24 小时 近 7 天 近 14 天 近 30 天 刷", "hasMainEl": true, "ok": true}, "distinctMainHeads": 7, "routesWithEmptyMain": [], "routesWithoutMainEl": [], "mainCharsByRoute": [{"route": "#/system", "viewport": "1440", "chars": 948, "hasMainEl": true}, {"route": "#/system?tab=defaults", "viewport": "1440", "chars": 125, "hasMainEl": true}, {"route": "#/system?tab=events", "viewport": "1440", "chars": 673, "hasMainEl": true}, {"route": "#/system?tab=events&view=anomaly", "viewport": "1440", "chars": 673, "hasMainEl": true}, {"route": "#/system?tab=retention", "viewport": "1440", "chars": 673, "hasMainEl": true}, {"route": "#/system?tab=security", "viewport": "1440", "chars": 293, "hasMainEl": true}, {"route": "#/system?tab=version", "viewport": "1440", "chars": 588, "hasMainEl": true}, {"route": "#/work", "viewport": "1440", "chars": 281, "hasMainEl": true}, {"route": "#/work?tab=board&view=cron", "viewport": "1440", "chars": 281, "hasMainEl": true}, {"route": "#/work?tab=cron", "viewport": "1440", "chars": 281, "hasMainEl": true}, {"route": "#/work?tab=runs", "viewport": "1440", "chars": 483, "hasMainEl": true}], "consoleErrorsObservedByShots": 0, "consoleErrorRoutesObservedByShots": [], "ceAuthority": "login-state", "routesWithEnvOnlyConsoleErrors": 11, "envAttribution": "401/404 Failed-to-load-resource = env (no login session at proxy); see crawl-routes env=auth-required-401 同口径", "overflowing": [], "driver": {"playwrightFrom": "/Users/kevin_studio/Projects/seakoi-console-web/package.json", "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"}, "ok": false, "headHash": "b620d85c", "entry": "assets/index-BnWixKK-.js", "entrySha256": "471893edabf76e4bac356a2acffe5d0d891e69ca9e1a20baff5af44f0a279b40", "entryBytes": 172175, "css": "assets/index-DLpXaUuB.css", "cssSha256": "13a111877909a0a34aa08f54c6635f795fb77351f3ebef339d42d5926fd0a0dc", "cssBytes": 146491, "servedEntryAfter": "index-BnWixKK-.js", "servedCssAfter": "index-DLpXaUuB.css", "criteriaNote": "旧 document 级 375 全绿一律作废不入账（L0③）；本代 375 承者=web/scripts/assert-375.mjs 逐元素判据；shots 本拍仅 1440 双面", "exitCode": 1, "segmentNote": "本腿分段完成：full run 29/51 卡死→resume1 补10（access..capabilities）→resume2 补5（employees 族）→resume3 排除 #/sessions 补11（system×7+work×4）；fullPage=false（内部滚动壳 no-op 坑已记账，375 纵向证据由 assert-375 fullPage+撑开回退承担）", "viewports": ["1440"]}
+{
+  "base": "http://127.0.0.1:9122",
+  "mode": "auth",
+  "authStateFile": "/Users/kevin_studio/.local/state/sekoi-ops/ui-qa-auth-state.json",
+  "navForm": "fresh-goto hash-form #/<route> (crawl-parity, 二十三轮修复)",
+  "routesEnumerated": 51,
+  "expectedShots": 51,
+  "producedShots": 50,
+  "failures": [
+    {
+      "hash": "#/sessions",
+      "viewport": "1440",
+      "error": "capture 挂起>5min（CDP 无响应），三轮分段续跑均止步此路由，第四轮排除后其余 50/50 全新鲜——真实卡点非探针故障；wave-123 起该页即为已知 CDP 失分页"
+    }
+  ],
+  "oversize": [],
+  "rootBaseline": {
+    "textLen": 1061,
+    "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 采集时刻 —（北京时间） 近 24 小时 近 7 天 近 14 天 近 30 天 刷",
+    "hasMainEl": true,
+    "ok": true
+  },
+  "distinctMainHeads": 7,
+  "routesWithEmptyMain": [],
+  "routesWithoutMainEl": [],
+  "mainCharsByRoute": [
+    {
+      "route": "#/system",
+      "viewport": "1440",
+      "chars": 948,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/system?tab=defaults",
+      "viewport": "1440",
+      "chars": 125,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/system?tab=events",
+      "viewport": "1440",
+      "chars": 673,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/system?tab=events&view=anomaly",
+      "viewport": "1440",
+      "chars": 673,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/system?tab=retention",
+      "viewport": "1440",
+      "chars": 673,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/system?tab=security",
+      "viewport": "1440",
+      "chars": 293,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/system?tab=version",
+      "viewport": "1440",
+      "chars": 588,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/work",
+      "viewport": "1440",
+      "chars": 281,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/work?tab=board&view=cron",
+      "viewport": "1440",
+      "chars": 281,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/work?tab=cron",
+      "viewport": "1440",
+      "chars": 281,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/work?tab=runs",
+      "viewport": "1440",
+      "chars": 483,
+      "hasMainEl": true
+    }
+  ],
+  "consoleErrorsObservedByShots": 0,
+  "consoleErrorRoutesObservedByShots": [],
+  "ceAuthority": "login-state",
+  "routesWithEnvOnlyConsoleErrors": 11,
+  "envAttribution": "401/404 Failed-to-load-resource = env (no login session at proxy); see crawl-routes env=auth-required-401 同口径",
+  "overflowing": [],
+  "driver": {
+    "playwrightFrom": "/Users/kevin_studio/Projects/seakoi-console-web/package.json",
+    "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
+  },
+  "ok": false,
+  "headHash": "03fcc769",
+  "entry": "assets/index-DzYbPXfO.js",
+  "entrySha256": "c85fe21fd0d9d89473810e7174ce03568c66c94c23950cb67a444d84ee7e765b",
+  "entryBytes": 172175,
+  "css": "assets/index-DLpXaUuB.css",
+  "cssSha256": "13a111877909a0a34aa08f54c6635f795fb77351f3ebef339d42d5926fd0a0dc",
+  "cssBytes": 146491,
+  "servedEntryAfter": "index-DzYbPXfO.js",
+  "servedCssAfter": "index-DLpXaUuB.css",
+  "criteriaNote": "旧 document 级 375 全绿作废不入账（L0③）；本代 375 承者=assert-375 逐元素判据 pass=26 fail=0 notMeasured=25 matrixOk=False 真读数含每页明细",
+  "exitCode": 1,
+  "segmentNote": "本拍分段：50 路一次成 + #/sessions 单腿败；fullPage=false 内部滚动壳 no-op 记账（见记忆）；375 证据由 assert-375 逐元素判据承担",
+  "viewports": [
+    "1440"
+  ],
+  "authStateNote": "cookie valid preflight 22:01（remaining 8h）",
+  "stampNote": "wave-127 03fcc769 本代新跑（非沿用）"
+}

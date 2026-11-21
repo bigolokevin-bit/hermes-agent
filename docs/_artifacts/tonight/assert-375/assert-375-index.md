@@ -30,13 +30,13 @@
 | #/identity?tab=people&view=admins | NOT_MEASURED | 0 | 0 | 0 | 812 | 154 |
 | #/identity?tab=roles | NOT_MEASURED | 0 | 0 | 0 | 812 | 201 |
 | #/identity?tab=tenant | NOT_MEASURED | 0 | 0 | 0 | 812 | 154 |
-| #/knowledge | PASS | 0 | 0 | 0 | 1275 | 549 |
-| #/knowledge?tab=citations | PASS | 0 | 0 | 0 | 1160 | 477 |
-| #/knowledge?tab=evidence | PASS | 0 | 0 | 0 | 1160 | 477 |
-| #/knowledge?tab=ingest | PASS | 0 | 0 | 0 | 1312 | 553 |
-| #/knowledge?tab=retrieval | PASS | 0 | 0 | 0 | 1245 | 508 |
-| #/knowledge?tab=scope | PASS | 0 | 0 | 0 | 1275 | 549 |
-| #/knowledge?tab=sources | PASS | 0 | 0 | 0 | 1312 | 553 |
+| #/knowledge | PASS | 0 | 0 | 0 | 1243 | 549 |
+| #/knowledge?tab=citations | PASS | 0 | 0 | 0 | 1155 | 477 |
+| #/knowledge?tab=evidence | PASS | 0 | 0 | 0 | 1155 | 477 |
+| #/knowledge?tab=ingest | PASS | 0 | 0 | 0 | 1307 | 553 |
+| #/knowledge?tab=retrieval | PASS | 0 | 0 | 0 | 1240 | 508 |
+| #/knowledge?tab=scope | PASS | 0 | 0 | 0 | 1243 | 549 |
+| #/knowledge?tab=sources | PASS | 0 | 0 | 0 | 1307 | 553 |
 | #/metrics | NOT_MEASURED | 0 | 0 | 0 | 812 | 818 |
 | #/org | NOT_MEASURED | 0 | 0 | 0 | 812 | 154 |
 | #/overview | PASS | 0 | 0 | 0 | 2394 | 1061 |
@@ -50,7 +50,7 @@
 | #/system?tab=security | PASS | 0 | 0 | 0 | 1065 | 293 |
 | #/system?tab=version | PASS | 0 | 0 | 0 | 1506 | 588 |
 | #/work | NOT_MEASURED | 0 | 0 | 0 | 812 | 281 |
-| #/work?tab=board&view=cron | NOT_MEASURED | 0 | 0 | 0 | 812 | 261 |
+| #/work?tab=board&view=cron | NOT_MEASURED | 0 | 0 | 0 | 812 | 281 |
 | #/work?tab=cron | NOT_MEASURED | 0 | 0 | 0 | 812 | 281 |
 | #/work?tab=runs | PASS | 0 | 0 | 0 | 1615 | 483 |
 
