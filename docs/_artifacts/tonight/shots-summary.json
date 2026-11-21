@@ -643,5 +643,13 @@
     "playwrightFrom": "/Users/kevin_studio/Projects/seakoi-console-web/package.json",
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
-  "ok": true
+  "ok": true,
+  "headHash": "dc9341dd",
+  "entry": "assets/index-Chru2g4H.js",
+  "entryBytes": 172175,
+  "entrySha256": "bb6f679cbd4ad23a9c51f2ecf97d0b897923a24e07e0acfdc6cfbbea9fef4a16",
+  "routesWithConsoleErrors": [
+    "unknown"
+  ],
+  "stampNote": "shots auth 面在本代入口产物上采集（entry sha 与 03cd4658 逐字节相同）；headHash/entry 三键由 L0 补写；obs=1 但脚本未落路由，按 unknown 记，禁编造"
 }
