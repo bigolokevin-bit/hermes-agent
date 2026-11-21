@@ -23,6 +23,7 @@ import { resolveHashTarget } from "@/shell/bridge";
 import { allTabs, validateRegistry } from "@/shell/registry";
 import {
   CONSOLE_TABS,
+  PANEL_TABS,
   ROUTE_TABLE,
   findRoute,
   parseHash,
@@ -135,10 +136,34 @@ describe("n6 route contract: reachable direct links", () => {
   });
 
   it("only knowledge compat rows carry ?panel= (no stray panel addresses)", () => {
-    for (const row of panelRows()) {
+    const rows = panelRows();
+    expect(rows.length).toBeGreaterThan(0);
+    for (const row of rows) {
       expect(row.module).toBe("knowledge");
-      expect(row.tabId).toBe("spaces");
+      // n7 (UX r7 判词①, secondary landing): a panel-bearing row no longer has
+      // to declare tabId 'spaces'. What the contract actually needs is that the
+      // declared tabId is a visible outer tab of the same module, because that
+      // tabId is what PANEL_TABS hands to the strip as the panel's owner.
+      const visible = CONSOLE_TABS.some(
+        (t) => t.visible && t.module === row.module && t.tabId === row.tabId,
+      );
+      expect(visible, `${row.hash} declares a tabId that is no visible tab`).toBe(true);
     }
+  });
+
+  it("PANEL_TABS names an owner for every ?panel= and each owner is visible", () => {
+    const rows = panelRows();
+    const panels = new Set(
+      rows.map((r) => parseHash(r.to as string).params.panel as string),
+    );
+    expect(panels.size).toBeGreaterThan(0);
+    for (const row of rows) {
+      const panel = parseHash(row.to as string).params.panel as string;
+      const owner = PANEL_TABS[row.module]?.[panel];
+      expect(owner, `PANEL_TABS has no owner for ${row.module}/${panel}`).toBe(row.tabId);
+    }
+    // The derived map adds no panel of its own beyond what the rows declare.
+    expect(Object.keys(PANEL_TABS.knowledge ?? {}).length).toBeGreaterThanOrEqual(panels.size);
   });
 });
 

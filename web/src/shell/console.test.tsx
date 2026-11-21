@@ -347,6 +347,50 @@ describe("ConsoleModulePage pane contract", () => {
     }
   });
 
+  // n7 (UX r7 判词①, secondary landing): the outer highlight has to follow the
+  // panel the module actually landed on, not the ?tab= token left behind. The
+  // knowledge deep-link normaliser rewrites ?tab=sources into
+  // ?tab=spaces&panel=ingest; PANEL_TABS derives panel=ingest from the compat
+  // row whose own tabId is `sources`, so strip highlight, pane data-tab and the
+  // rendered surface agree whether or not the module keeps its rewrite.
+  it("n7: the outer highlight follows the panel the module landed on", () => {
+    remountAt(
+      <ConsoleModulePage module="knowledge" />,
+      "/knowledge?tab=spaces&panel=ingest&state=error&rid=abc12345",
+    );
+    const pane = container.querySelector(".pane");
+    expect(pane?.getAttribute("data-tab")).toBe("sources");
+    expect(pane?.getAttribute("data-state")).toBe("error");
+    expect(pane?.querySelector("[data-testid='state-rid']")?.textContent).toBe(
+      "abc12345",
+    );
+
+    const tabs = Array.from(container.querySelectorAll("[role='tab']"));
+    expect(tabs.length).toBeGreaterThan(1);
+    const selected = tabs.filter((t) => t.getAttribute("aria-selected") === "true");
+    expect(selected.length).toBe(1);
+    expect(selected[0]?.getAttribute("data-tab")).toBe("sources");
+    expect(selected[0]?.textContent).toContain("数据源");
+    expect(selected[0]?.getAttribute("href") ?? "").toContain("panel=ingest");
+    expect(selected[0]?.getAttribute("href") ?? "").toContain("state=error");
+
+    const others = tabs.filter((t) => t.getAttribute("aria-selected") !== "true");
+    expect(others.length).toBeGreaterThan(0);
+    for (const t of others) {
+      // the panel stays home: no other outer tab inherits it
+      expect(t.getAttribute("href") ?? "").not.toContain("panel=");
+      expect(t.getAttribute("href") ?? "").toContain("state=error");
+    }
+
+    // control leg: a panel owned by spaces still highlights spaces, so the
+    // alignment does not degenerate into "always follow panel".
+    remountAt(
+      <ConsoleModulePage module="knowledge" />,
+      "/knowledge?tab=spaces&panel=retrieval&state=error",
+    );
+    expect(container.querySelector(".pane")?.getAttribute("data-tab")).toBe("spaces");
+  });
+
   // n5 (unified rule, outer family): the preserve table is now one function
   // (linkSearch) shared with the zone family, so the criterion is expressed as
   // data — panel × state × rid — instead of one hand-written URL per round.

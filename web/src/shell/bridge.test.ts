@@ -42,7 +42,10 @@ describe("console hash bridge arbitration (stage 2)", () => {
 
   it("normalizes tab-level compat rows onto canonical targets", () => {
     expect(target("#/knowledge?tab=scope")).toBe("/knowledge");
-    expect(target("#/knowledge?tab=ingest")).toBe("/knowledge?tab=sources");
+    // n7 (UX r7 判词①, secondary landing): this row now names the panel it
+    // lands on. Same pane as before — knowledge's initialTab reads ?panel= first
+    // and panel=ingest resolves to the very tab `tab=sources` already reached.
+    expect(target("#/knowledge?tab=ingest")).toBe("/knowledge?tab=sources&panel=ingest");
     // P0 n1: retrieval/citations address the knowledge module's own panels
     // through ?panel=; they are no longer aliased onto the outer evidence tab.
     expect(target("#/knowledge?tab=retrieval")).toBe("/knowledge?tab=spaces&panel=retrieval");
