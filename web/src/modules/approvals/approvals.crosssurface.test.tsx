@@ -86,6 +86,15 @@ async function renderInto(entry: string, node: ReactElement): Promise<void> {
     root.render(<MemoryRouter initialEntries={[entry]}>{node}</MemoryRouter>);
   });
   await waitFor(() => !document.querySelector(".animate-pulse"), `${entry} settled`);
+  // 车道 B（审批筛选折叠）：历史页测试断言写在筛选墙全展开之上，统一点开新折叠开关。
+  const historyToggle = document.querySelector(
+    "[data-testid='apv-h-filter-toggle']",
+  ) as HTMLButtonElement | null;
+  if (historyToggle && historyToggle.getAttribute("aria-expanded") !== "true") {
+    await act(async () => {
+      historyToggle.click();
+    });
+  }
 }
 
 const q = (id: string): Element | null => document.querySelector(`[data-testid="${id}"]`);

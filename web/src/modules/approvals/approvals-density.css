@@ -77,3 +77,15 @@
     overflow-wrap: anywhere;
   }
 }
+
+/* 页面车道 B：历史页折叠面板沿用 b7ad5f01 的 grid-track 纪律——窄档下
+ * 面板子级 min-width:0、长 token（桶名/关键字回显）anywhere 折行，
+ * 保证 375 视口不出现横向溢出。 */
+@media (max-width: 1023.98px) {
+  .apv-h-filter-panel > * {
+    min-width: 0;
+  }
+  .apv-h-filter-panel :is(span, b) {
+    overflow-wrap: anywhere;
+  }
+}

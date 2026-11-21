@@ -45,6 +45,15 @@ async function render(entry: string, page: ReactNode): Promise<void> {
   await act(async () => {
     root?.render(<MemoryRouter initialEntries={[entry]}>{page}</MemoryRouter>);
   });
+  // 车道 B（审批筛选折叠）：本文件断言写在筛选墙全展开之上，挂载后统一点开新折叠开关。
+  const historyToggle = document.querySelector(
+    "[data-testid='apv-h-filter-toggle']",
+  ) as HTMLButtonElement | null;
+  if (historyToggle && historyToggle.getAttribute("aria-expanded") !== "true") {
+    await act(async () => {
+      historyToggle.click();
+    });
+  }
 }
 
 const text = (): string => document.body.textContent ?? "";
