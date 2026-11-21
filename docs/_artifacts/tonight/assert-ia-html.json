@@ -42,9 +42,9 @@
     }
   ],
   "ok": true,
-  "headHash": "8ff6d30d",
+  "headHash": "c621295b",
   "exitCode": 0,
-  "carriedFrom": "068833bc",
+  "carriedFrom": "8ff6d30d",
   "carried": true,
-  "stampNote": "wave-99 两笔全纯测试（ui1 R254/aud R265 missing-field pairs），entry sha 与 CSS 逐字节未变（OCLu6KCF/Cpi0jJKL）；本件未重跑，证据沿用 068833bc 代"
+  "stampNote": "wave-100 四笔全纯测试（appr R273/gov R251/ui1 R255 隔离/aud R266 排序稳定），entry sha 与 CSS 逐字节未变（OCLu6KCF/Cpi0jJKL）；本件未重跑，证据沿用 8ff6d30d 代"
 }

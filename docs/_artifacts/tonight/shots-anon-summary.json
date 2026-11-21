@@ -9,19 +9,19 @@
   "failures": [],
   "oversize": [],
   "rootBaseline": {
-    "textLen": 1026,
+    "textLen": 1060,
     "head": "运营 · 控制台 运营总览 值班台用量与成本 值班台 运营总览 · 只读 采集时刻 —（北京时间） 近 24 小时 近 7 天 近 14 天 近 30 天 刷新",
     "hasMainEl": true,
     "ok": true
   },
-  "distinctMainHeads": 25,
+  "distinctMainHeads": 24,
   "routesWithEmptyMain": [],
   "routesWithoutMainEl": [],
   "mainCharsByRoute": [
     {
       "route": "#/access",
       "viewport": "1440",
-      "chars": 199,
+      "chars": 201,
       "hasMainEl": true
     },
     {
@@ -93,7 +93,7 @@
     {
       "route": "#/approvals?tab=policy",
       "viewport": "1440",
-      "chars": 451,
+      "chars": 466,
       "hasMainEl": true
     },
     {
@@ -507,7 +507,7 @@
     {
       "route": "#/system",
       "viewport": "375",
-      "chars": 948,
+      "chars": 944,
       "hasMainEl": true
     },
     {
@@ -633,8 +633,8 @@
   ],
   "consoleErrorsObservedByShots": 2,
   "consoleErrorRoutesObservedByShots": [
-    "#/access",
-    "#/approvals?tab=policy"
+    "#/approvals?tab=history",
+    "#/system"
   ],
   "ceAuthority": "login-state",
   "routesWithEnvOnlyConsoleErrors": 51,
@@ -645,7 +645,7 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "8ff6d30d",
+  "headHash": "c621295b",
   "exitCode": 0,
   "entry": "assets/index-OCLu6KCF.js",
   "entrySha256": "cdf9958a3085c280e6933498d56c6d30a435ef6bef2035633206356af61e3567",
@@ -653,8 +653,8 @@
   "servedEntryBefore": "index-OCLu6KCF.js",
   "servedEntryAfter": "index-OCLu6KCF.js",
   "routesWithConsoleErrors": [
-    "#/access",
-    "#/approvals?tab=policy"
+    "#/approvals?tab=history",
+    "#/system"
   ],
   "auxiliary": true
 }
