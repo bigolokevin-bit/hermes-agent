@@ -6155,3 +6155,50 @@ kn-doc-copy*/kn7-preview*/kn-doc-preview*/kn3-page-cap/kn-type*/kn-sort*/kn-gate
 未测如实：带登录会话真屏；β 的 denied/非法枚举分支导出无差异外推（error/unwired 两
 分支已测，同族由 R231 地盘）；γ 的 ktype 叠筛五读（R244 覆盖其 M 位，五读并置仅纯名筛）；
 错误窗内切排序链位（R241α 清错帧之外未叠）。
+
+# KNW5 追加 R247：页 2 切桶弃页帧三方首行(48) + ktype 在场错误窗筛后基数(48→49)（纯测试单·本体交付）（2026-11-21 BJT）
+
+安全门：porcelain 空起做、显式 refspec fetch 后 merge——上游 tip 实测 `dabefc7a`
+（与派工一致；ff 不可行按派工用 merge commit，knowledge delta 实测为空、无冲突）；
+基线 merge 后复跑 61/261 全绿 Errors 0、目标文件确认缺席再动笔。R246 文件名在知识域
+grep 无命中（他域车道）。零产品文件改动。新增
+knowledge.export.paging.filter.test.tsx 两例（本体）。
+
+## 现场裁决与查重（file:line）
+
+```text
+①「页 2 套筛选三值仍 51」**驳回**——实测弃页：页 2 点「PDF」桶 → base50∩PDF=**48 行**
+  （卷 51 出局），三值 [48,48,48]、三方首行同帧、cap M=48、urls 逐字零请求；「三值
+  51」不成立、实测 48（弃页机制本体已锁 R235③/R237②/R244γ′——引用；本笔新位=48 规模
+  弃页帧的三方首行+cap M 并置，R237② 只测 2 行小集）。
+②＝全锁引用：R237②(rowcopy.triple:170-191)+R243β+R244γ′/δ′+R229②+R239②+R131①。
+③＝主体引用：R237③(193-224)+R238C(paging.triple:162)+R239③——本笔落未锁子维：**ktype
+  在场的错误窗**三值按筛后基数（48 非 50）+导出字节冻结+rid+重试 [+P2URL] 后卷 51 按
+  筛序入链 49==屏上+cap M=49 帧实测记录（错误窗×筛后基数并置从未测）。
+④＝全锁引用：R190④:190-205+R231②⑤+R236③:182-210（cap null 态 R108/R157/R187）。
+换算：无 ?source= 控件（?type=pdf&source=upload→?ktype=PDF 桶点击，未造）；无真 CSV→
+「导出」=knF、kn-list-copy 不存在、spy 全程 0；cursor 从请求 URL 断言；cap M=在屏数
+（R244γ′ 语义沿用）；本地动作零请求；clip 桩 Promise+unstub（Errors 0）。
+```
+
+## 验证尾行（R247）
+
+```text
+① 51→切「PDF」：48 行、无卷 51、钮 [0..47]、btnHead==names[0]==链首、链==屏上、
+  capM 48、urls join 逐字。② ktype 在场挂载 48；-more 500：窗内 48/48/48、textWin
+  toBe textPre、rid 锚+投递逐字；重试：末条 P2URL、锚灭、49 含卷 51、链==屏上、
+  capM 49。
+$ npx vitest run src/modules/knowledge → 62 files / 263 tests passed（261+2），
+  grep unhandled = 0
+$ eslint → 0 errors（1 既有 warning）；模块 tsc → 0；build /tmp/knw-r247-dist exit 0
+$ 全仓 → 402 files：401 passed + 2 tests failed = **既有域外点名**
+  （MetricsModulePage.test.tsx 7d/30d 与 sparkline，Date.now() 跨 UTC 日界，禁修禁豁免）
+$ 三档 1440/1280/375 vw==bodySW==docSW 全等（用毕即杀）
+零破：kn3*/kn6–kn9/knB/knD/knE-page-*/knF/knG/knI/knL*/kn-row-copy*/kn-row-copy-space*/
+kn-doc-copy*/kn7-preview*/kn3-page-cap/kn-type*/kn-sort*/kn-gates/导出 absent + 既有
+61 套全绿。两例一次全过、零自纠轮，产品零触碰。
+```
+未测如实：带登录会话真屏；错误窗内**再切桶**双重叠帧（窗内切筛=R245α 无基数差版，
+基数 48→? 组合未测）；cap M 在「窗内」帧的存在性本笔未单独钉（窗在挂载即筛帧，
+cap 全程在场，两值 48/49 已顺带记录）；②中 ktype 在场 append 失败后「回全部」再
+重试的链基数变化未叠。
