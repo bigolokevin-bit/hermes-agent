@@ -591,7 +591,7 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     expect(gone?.querySelector("b")?.textContent).toBe("知识空间未接入");
     expect(gone?.getAttribute("title")).toBe("GAP-03");
     expect(bodyOf(gone)).toContain("去审批中心提交申请");
-    expect(bodyOf(gone)).toContain("证据与引用");
+    expect(bodyOf(gone)).toContain("运行事件引用");
     expect(bodyOf(gone)).not.toContain("0 个");
     expect(byTestid("knw5-spaces-table")).toBeNull();
     expect(byTestid("knw5-spaces-apply")).toBeTruthy();

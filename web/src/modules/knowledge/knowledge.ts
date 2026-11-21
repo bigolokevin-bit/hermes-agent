@@ -109,7 +109,7 @@ export const SPACE_DOC_UNWIRED_HUMAN =
 
 export const SPACES_UNWIRED_HEAD = "知识空间未接入";
 export const SPACES_UNWIRED_HUMAN =
-  "知识空间接口尚未接入本控制台，或当前账号没有查看它的权限。现在这里列不出任何空间：不编空间、不放样例，也不给数量。想先看在用知识的内容，可以打开「证据与引用」看会话里留下的引用；要开通这枚读口，去审批中心提交申请。接入或开通后，这页会自动列出真实空间、各自的来源、文档数、最近同步时间与状态。";
+  "知识空间接口尚未接入本控制台，或当前账号没有查看它的权限。现在这里列不出任何空间：不编空间、不放样例，也不给数量。想先看在用知识的内容，可以打开「运行事件引用」看会话里留下的引用；要开通这枚读口，去审批中心提交申请。接入或开通后，这页会自动列出真实空间、各自的来源、文档数、最近同步时间与状态。";
 
 /**
  * The ingest tab reads two things, and the BFF answers them with two different
@@ -130,7 +130,7 @@ export const INGEST_STATUS_UNWIRED_HUMAN =
  */
 export const SEARCH_UNWIRED_HEAD = "检索未接入";
 export const SEARCH_UNWIRED_HUMAN =
-  "知识库的检索接口尚未接入本控制台，或当前账号没有查看它的权限。现在这里搜不出结果：接口没通时不编命中、不给命中数、不放样例。要读已被引用的内容，可看「证据与引用」里会话留下的引用；要开通这枚读口，去审批中心提交申请。";
+  "知识库的检索接口尚未接入本控制台，或当前账号没有查看它的权限。现在这里搜不出结果：接口没通时不编命中、不给命中数、不放样例。要读已被引用的内容，可看「运行事件引用」里会话留下的引用；要开通这枚读口，去审批中心提交申请。";
 
 /**
  * The document drawer's own honest body: the list read may have given this row, but
@@ -146,11 +146,16 @@ export const DOCUMENTS_UNWIRED_HUMAN =
 
 export type KnowledgeTab = "spaces" | "ingest" | "retrieval" | "evidence";
 
+// P0 n1：内层 seg 的面名不得与外层三个入口（知识空间 / 数据源 / 证据与引用）撞名——
+// 撞名会「同名不同内容」：外层「证据与引用」走 `?tab=evidence` 打开的是证据模块，
+// 内层这一面读的是本页的运行事件引用与会话引用。四面各有可寻址的 ?panel= 值：
+// spaces→panel=spaces、ingest→panel=ingest(或 sources)、retrieval→panel=retrieval(或 search)、
+// evidence→panel=evidence(或 citations)。见 manifest.ts KNOWLEDGE_PANELS。
 export const TAB_LABEL: Record<KnowledgeTab, string> = {
-  spaces: "知识空间",
+  spaces: "空间台账",
   ingest: "数据接入",
   retrieval: "检索",
-  evidence: "证据与引用",
+  evidence: "运行事件引用",
 };
 
 export const TAB_ORDER: KnowledgeTab[] = ["spaces", "ingest", "retrieval", "evidence"];
