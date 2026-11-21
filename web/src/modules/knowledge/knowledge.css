@@ -1265,3 +1265,44 @@
 [data-testid="knM-source-table"] tbody > tr {
   height: var(--table-row-h-compact) !important;
 }
+
+/* UI-A 2026-11-21 wave-72：/knowledge 表头粘性、时间列与表头右对齐、文档名省略。
+ * 行高 40（共享 [data-tab] 域 + 上方 thead th 规则）、th 底边 1px 分隔线、
+ * 大小列右对齐与时间制式列 tabular-nums 均前笔在位，本笔只补缺口：
+ * sticky 沿 metrics metAF-sticky 与 sys3 先例配方；表头数字与时间列右对齐
+ * 用 SortableHead 既有按钮 testid 锚（kn-sort-size 与 kn-sort-updated，
+ * :has 锚沿 employees/matrix 先例，不动任何 testid）；文档名列定宽省略
+ * （title 全量已在 Link 上）。空表保底高：空态由 knw5-spaces-empty 与
+ * kn3-docs-empty 状态版替换整表渲染，不塌陷；375 横滚壳 knw5-scroll 与
+ * k3-docs-wrap 既有；斑马纹本文件无 even/odd 背景源。 */
+.knw5-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 0;
+  background: var(--color-card);
+}
+
+.knw5-table th:has([data-testid="kn-sort-size"]),
+.knw5-table th:has([data-testid="kn-sort-updated"]) {
+  text-align: right;
+}
+
+.knw5-table td[data-label="时间"],
+.knw5-table td[data-label="更新"],
+.knw5-table td[data-label="更新时间"],
+.knw5-table td[data-label="最近同步"],
+.knw5-table td[data-label="采集时刻"] {
+  text-align: right;
+}
+
+.knw5-table td[data-label="文档名"] {
+  max-width: 300px;
+}
+
+.knw5-table .kn3-docs-name {
+  display: block;
+  max-width: 280px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
