@@ -10,9 +10,9 @@
     "matrix": "required png, nonzero"
   },
   "routes": 51,
-  "pass": 49,
+  "pass": 50,
   "fail": 0,
-  "notMeasured": 2,
+  "notMeasured": 1,
   "matrixHash": "#/employees?tab=matrix",
   "matrixPresent": true,
   "matrixOk": true,
@@ -26,7 +26,7 @@
       "mainTextLen": 201,
       "navError": null,
       "png": "access-375.png",
-      "pngBytes": 45032,
+      "pngBytes": 44995,
       "pngW": 375,
       "pngH": 812,
       "elementsChecked": 141,
@@ -40,6 +40,7 @@
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
+      "fontBypass": false,
       "consoleErrorsProduct": 0
     },
     {
@@ -48,13 +49,13 @@
       "source": "CONSOLE_TABS",
       "viewport": "375",
       "verdict": "PASS",
-      "mainTextLen": 466,
+      "mainTextLen": 344,
       "navError": null,
       "png": "approvals-375.png",
-      "pngBytes": 71853,
+      "pngBytes": 56668,
       "pngW": 375,
       "pngH": 812,
-      "elementsChecked": 202,
+      "elementsChecked": 201,
       "offscreenLeft": 60,
       "expandApplied": true,
       "scrollersExpanded": 1,
@@ -65,6 +66,7 @@
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
+      "fontBypass": false,
       "consoleErrorsProduct": 0
     },
     {
@@ -76,7 +78,7 @@
       "mainTextLen": 530,
       "navError": null,
       "png": "approvals-tab-history-375.png",
-      "pngBytes": 84460,
+      "pngBytes": 84832,
       "pngW": 375,
       "pngH": 812,
       "elementsChecked": 239,
@@ -90,6 +92,7 @@
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
+      "fontBypass": false,
       "consoleErrorsProduct": 0
     },
     {
@@ -98,13 +101,13 @@
       "source": "COMPAT_TABS",
       "viewport": "375",
       "verdict": "PASS",
-      "mainTextLen": 466,
+      "mainTextLen": 344,
       "navError": null,
       "png": "approvals-tab-mine-375.png",
-      "pngBytes": 71373,
+      "pngBytes": 56950,
       "pngW": 375,
       "pngH": 812,
-      "elementsChecked": 202,
+      "elementsChecked": 201,
       "offscreenLeft": 60,
       "expandApplied": true,
       "scrollersExpanded": 1,
@@ -115,6 +118,7 @@
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
+      "fontBypass": false,
       "consoleErrorsProduct": 0
     },
     {
@@ -123,13 +127,13 @@
       "source": "VIEW_DEEP_LINKS",
       "viewport": "375",
       "verdict": "PASS",
-      "mainTextLen": 466,
+      "mainTextLen": 344,
       "navError": null,
       "png": "approvals-tab-pending-view-mine-375.png",
-      "pngBytes": 71689,
+      "pngBytes": 56981,
       "pngW": 375,
       "pngH": 812,
-      "elementsChecked": 202,
+      "elementsChecked": 201,
       "offscreenLeft": 60,
       "expandApplied": true,
       "scrollersExpanded": 1,
@@ -140,6 +144,7 @@
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
+      "fontBypass": false,
       "consoleErrorsProduct": 0
     },
     {
@@ -148,13 +153,13 @@
       "source": "VIEW_DEEP_LINKS",
       "viewport": "375",
       "verdict": "PASS",
-      "mainTextLen": 466,
+      "mainTextLen": 344,
       "navError": null,
       "png": "approvals-tab-pending-view-release-375.png",
-      "pngBytes": 72028,
+      "pngBytes": 56972,
       "pngW": 375,
       "pngH": 812,
-      "elementsChecked": 202,
+      "elementsChecked": 201,
       "offscreenLeft": 60,
       "expandApplied": true,
       "scrollersExpanded": 1,
@@ -165,6 +170,7 @@
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
+      "fontBypass": false,
       "consoleErrorsProduct": 0
     },
     {
@@ -173,13 +179,13 @@
       "source": "COMPAT_TABS",
       "viewport": "375",
       "verdict": "PASS",
-      "mainTextLen": 466,
+      "mainTextLen": 344,
       "navError": null,
       "png": "approvals-tab-policy-375.png",
-      "pngBytes": 71356,
+      "pngBytes": 56796,
       "pngW": 375,
       "pngH": 812,
-      "elementsChecked": 202,
+      "elementsChecked": 201,
       "offscreenLeft": 60,
       "expandApplied": true,
       "scrollersExpanded": 1,
@@ -190,6 +196,7 @@
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
+      "fontBypass": false,
       "consoleErrorsProduct": 0
     },
     {
@@ -198,13 +205,13 @@
       "source": "COMPAT_TABS",
       "viewport": "375",
       "verdict": "PASS",
-      "mainTextLen": 466,
+      "mainTextLen": 344,
       "navError": null,
       "png": "approvals-tab-release-375.png",
-      "pngBytes": 71713,
+      "pngBytes": 57325,
       "pngW": 375,
       "pngH": 812,
-      "elementsChecked": 202,
+      "elementsChecked": 201,
       "offscreenLeft": 60,
       "expandApplied": true,
       "scrollersExpanded": 1,
@@ -215,6 +222,7 @@
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
+      "fontBypass": false,
       "consoleErrorsProduct": 0
     },
     {
@@ -240,6 +248,7 @@
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
+      "fontBypass": false,
       "consoleErrorsProduct": 0
     },
     {
@@ -251,7 +260,7 @@
       "mainTextLen": 355,
       "navError": null,
       "png": "capabilities-375.png",
-      "pngBytes": 64176,
+      "pngBytes": 64281,
       "pngW": 375,
       "pngH": 812,
       "elementsChecked": 158,
@@ -265,6 +274,7 @@
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
+      "fontBypass": false,
       "consoleErrorsProduct": 0
     },
     {
@@ -272,25 +282,41 @@
       "label": "平台接入",
       "source": "CONSOLE_TABS",
       "viewport": "375",
-      "verdict": "NOT_MEASURED",
-      "mainTextLen": 113,
-      "navError": "screenshot: page.screenshot: Timeout 60000ms exceeded.\nCall log:\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m  - waiting for fonts to lo",
+      "verdict": "PASS",
+      "mainTextLen": 10,
+      "navError": null,
       "png": "capabilities-tab-channels-375.png",
-      "pngBytes": 0,
-      "pngW": null,
-      "pngH": null,
-      "elementsChecked": null,
-      "offscreenLeft": null,
-      "expandApplied": false,
+      "pngBytes": 6468,
+      "pngW": 375,
+      "pngH": 812,
+      "elementsChecked": 87,
+      "offscreenLeft": 62,
+      "expandApplied": true,
       "scrollersExpanded": 0,
-      "contentFit": false,
-      "targetHeight": null,
-      "violCount": null,
+      "contentFit": true,
+      "targetHeight": 812,
+      "violCount": 0,
       "viol": [],
-      "scrollOverflowCount": null,
+      "scrollOverflowCount": 0,
       "scrollOverflow": [],
-      "domOverflowPx": null,
-      "consoleErrorsProduct": 0
+      "domOverflowPx": 0,
+      "fontBypass": true,
+      "consoleErrorsProduct": 0,
+      "firstRunRow": {
+        "mainTextLen": 113,
+        "elementsChecked": 125,
+        "violCount": 0,
+        "scrollOverflowCount": 0,
+        "pngBytes": 37673,
+        "pngW": 375,
+        "pngH": 812,
+        "expandApplied": false,
+        "scrollersExpanded": 0,
+        "contentFit": false,
+        "targetHeight": null,
+        "fontBypass": false,
+        "verdict": "NOT_MEASURED"
+      }
     },
     {
       "hash": "#/capabilities?tab=models",
@@ -301,7 +327,7 @@
       "mainTextLen": 178,
       "navError": null,
       "png": "capabilities-tab-models-375.png",
-      "pngBytes": 44557,
+      "pngBytes": 44346,
       "pngW": 375,
       "pngH": 812,
       "elementsChecked": 118,
@@ -315,6 +341,7 @@
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
+      "fontBypass": false,
       "consoleErrorsProduct": 0
     },
     {
@@ -326,7 +353,7 @@
       "mainTextLen": 390,
       "navError": null,
       "png": "capabilities-tab-tools-375.png",
-      "pngBytes": 72616,
+      "pngBytes": 72858,
       "pngW": 375,
       "pngH": 812,
       "elementsChecked": 176,
@@ -340,6 +367,7 @@
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
+      "fontBypass": false,
       "consoleErrorsProduct": 0
     },
     {
@@ -365,6 +393,7 @@
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
+      "fontBypass": false,
       "consoleErrorsProduct": 0
     },
     {
@@ -376,7 +405,7 @@
       "mainTextLen": 213,
       "navError": null,
       "png": "employees-tab-matrix-375.png",
-      "pngBytes": 52972,
+      "pngBytes": 52757,
       "pngW": 375,
       "pngH": 812,
       "elementsChecked": 141,
@@ -390,6 +419,7 @@
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
+      "fontBypass": false,
       "consoleErrorsProduct": 0
     },
     {
@@ -401,7 +431,7 @@
       "mainTextLen": 42,
       "navError": null,
       "png": "employees-employeeId-375.png",
-      "pngBytes": 23039,
+      "pngBytes": 13319,
       "pngW": 375,
       "pngH": 812,
       "elementsChecked": 102,
@@ -415,6 +445,7 @@
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
+      "fontBypass": false,
       "consoleErrorsProduct": 0
     },
     {
@@ -426,7 +457,7 @@
       "mainTextLen": 42,
       "navError": null,
       "png": "employees-employeeId-zone-config-375.png",
-      "pngBytes": 36658,
+      "pngBytes": 13516,
       "pngW": 375,
       "pngH": 812,
       "elementsChecked": 102,
@@ -440,6 +471,7 @@
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
+      "fontBypass": false,
       "consoleErrorsProduct": 0
     },
     {
@@ -451,7 +483,7 @@
       "mainTextLen": 42,
       "navError": null,
       "png": "employees-employeeId-zone-evidence-375.png",
-      "pngBytes": 36504,
+      "pngBytes": 23715,
       "pngW": 375,
       "pngH": 812,
       "elementsChecked": 102,
@@ -465,6 +497,7 @@
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
+      "fontBypass": false,
       "consoleErrorsProduct": 0
     },
     {
@@ -476,7 +509,7 @@
       "mainTextLen": 42,
       "navError": null,
       "png": "employees-employeeId-zone-runs-375.png",
-      "pngBytes": 36169,
+      "pngBytes": 36945,
       "pngW": 375,
       "pngH": 812,
       "elementsChecked": 102,
@@ -490,6 +523,7 @@
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
+      "fontBypass": false,
       "consoleErrorsProduct": 0
     },
     {
@@ -498,14 +532,14 @@
       "source": "DETAIL_ZONES_EXTRA",
       "viewport": "375",
       "verdict": "PASS",
-      "mainTextLen": 42,
+      "mainTextLen": 143,
       "navError": null,
       "png": "employees-employeeId-zone-tasks-375.png",
-      "pngBytes": 36663,
+      "pngBytes": 36694,
       "pngW": 375,
       "pngH": 812,
-      "elementsChecked": 102,
-      "offscreenLeft": 62,
+      "elementsChecked": 133,
+      "offscreenLeft": 60,
       "expandApplied": true,
       "scrollersExpanded": 0,
       "contentFit": true,
@@ -515,6 +549,7 @@
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
+      "fontBypass": false,
       "consoleErrorsProduct": 0
     },
     {
@@ -526,7 +561,7 @@
       "mainTextLen": 154,
       "navError": null,
       "png": "identity-375.png",
-      "pngBytes": 38598,
+      "pngBytes": 38580,
       "pngW": 375,
       "pngH": 812,
       "elementsChecked": 128,
@@ -540,6 +575,7 @@
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
+      "fontBypass": false,
       "consoleErrorsProduct": 0
     },
     {
@@ -551,7 +587,7 @@
       "mainTextLen": 154,
       "navError": null,
       "png": "identity-tab-admins-375.png",
-      "pngBytes": 38831,
+      "pngBytes": 38583,
       "pngW": 375,
       "pngH": 812,
       "elementsChecked": 128,
@@ -565,6 +601,7 @@
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
+      "fontBypass": false,
       "consoleErrorsProduct": 0
     },
     {
@@ -576,7 +613,7 @@
       "mainTextLen": 154,
       "navError": null,
       "png": "identity-tab-binding-375.png",
-      "pngBytes": 38719,
+      "pngBytes": 38783,
       "pngW": 375,
       "pngH": 812,
       "elementsChecked": 128,
@@ -590,6 +627,7 @@
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
+      "fontBypass": false,
       "consoleErrorsProduct": 0
     },
     {
@@ -601,7 +639,7 @@
       "mainTextLen": 154,
       "navError": null,
       "png": "identity-tab-checks-375.png",
-      "pngBytes": 38692,
+      "pngBytes": 38623,
       "pngW": 375,
       "pngH": 812,
       "elementsChecked": 128,
@@ -615,6 +653,7 @@
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
+      "fontBypass": false,
       "consoleErrorsProduct": 0
     },
     {
@@ -640,6 +679,7 @@
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
+      "fontBypass": false,
       "consoleErrorsProduct": 0
     },
     {
@@ -651,7 +691,7 @@
       "mainTextLen": 154,
       "navError": null,
       "png": "identity-tab-people-view-admins-375.png",
-      "pngBytes": 38962,
+      "pngBytes": 39105,
       "pngW": 375,
       "pngH": 812,
       "elementsChecked": 128,
@@ -665,6 +705,7 @@
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
+      "fontBypass": false,
       "consoleErrorsProduct": 0
     },
     {
@@ -676,7 +717,7 @@
       "mainTextLen": 201,
       "navError": null,
       "png": "identity-tab-roles-375.png",
-      "pngBytes": 45073,
+      "pngBytes": 45229,
       "pngW": 375,
       "pngH": 812,
       "elementsChecked": 141,
@@ -690,6 +731,7 @@
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
+      "fontBypass": false,
       "consoleErrorsProduct": 0
     },
     {
@@ -701,7 +743,7 @@
       "mainTextLen": 154,
       "navError": null,
       "png": "identity-tab-tenant-375.png",
-      "pngBytes": 38811,
+      "pngBytes": 38880,
       "pngW": 375,
       "pngH": 812,
       "elementsChecked": 128,
@@ -715,6 +757,7 @@
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
+      "fontBypass": false,
       "consoleErrorsProduct": 0
     },
     {
@@ -726,7 +769,7 @@
       "mainTextLen": 549,
       "navError": null,
       "png": "knowledge-375.png",
-      "pngBytes": 64618,
+      "pngBytes": 66705,
       "pngW": 375,
       "pngH": 812,
       "elementsChecked": 176,
@@ -740,6 +783,7 @@
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
+      "fontBypass": false,
       "consoleErrorsProduct": 0
     },
     {
@@ -751,7 +795,7 @@
       "mainTextLen": 477,
       "navError": null,
       "png": "knowledge-tab-citations-375.png",
-      "pngBytes": 63321,
+      "pngBytes": 64869,
       "pngW": 375,
       "pngH": 812,
       "elementsChecked": 163,
@@ -765,6 +809,7 @@
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
+      "fontBypass": false,
       "consoleErrorsProduct": 0
     },
     {
@@ -776,7 +821,7 @@
       "mainTextLen": 477,
       "navError": null,
       "png": "knowledge-tab-evidence-375.png",
-      "pngBytes": 63321,
+      "pngBytes": 64869,
       "pngW": 375,
       "pngH": 812,
       "elementsChecked": 163,
@@ -790,6 +835,7 @@
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
+      "fontBypass": false,
       "consoleErrorsProduct": 0
     },
     {
@@ -801,7 +847,7 @@
       "mainTextLen": 553,
       "navError": null,
       "png": "knowledge-tab-ingest-375.png",
-      "pngBytes": 63295,
+      "pngBytes": 64845,
       "pngW": 375,
       "pngH": 812,
       "elementsChecked": 170,
@@ -815,6 +861,7 @@
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
+      "fontBypass": false,
       "consoleErrorsProduct": 0
     },
     {
@@ -826,7 +873,7 @@
       "mainTextLen": 508,
       "navError": null,
       "png": "knowledge-tab-retrieval-375.png",
-      "pngBytes": 63914,
+      "pngBytes": 65109,
       "pngW": 375,
       "pngH": 812,
       "elementsChecked": 174,
@@ -840,6 +887,7 @@
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
+      "fontBypass": false,
       "consoleErrorsProduct": 0
     },
     {
@@ -851,7 +899,7 @@
       "mainTextLen": 549,
       "navError": null,
       "png": "knowledge-tab-scope-375.png",
-      "pngBytes": 64618,
+      "pngBytes": 66705,
       "pngW": 375,
       "pngH": 812,
       "elementsChecked": 176,
@@ -865,6 +913,7 @@
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
+      "fontBypass": false,
       "consoleErrorsProduct": 0
     },
     {
@@ -876,7 +925,7 @@
       "mainTextLen": 553,
       "navError": null,
       "png": "knowledge-tab-sources-375.png",
-      "pngBytes": 63295,
+      "pngBytes": 64845,
       "pngW": 375,
       "pngH": 812,
       "elementsChecked": 170,
@@ -890,6 +939,7 @@
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
+      "fontBypass": false,
       "consoleErrorsProduct": 0
     },
     {
@@ -915,6 +965,7 @@
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
+      "fontBypass": false,
       "consoleErrorsProduct": 0
     },
     {
@@ -926,7 +977,7 @@
       "mainTextLen": 154,
       "navError": null,
       "png": "org-375.png",
-      "pngBytes": 38877,
+      "pngBytes": 39024,
       "pngW": 375,
       "pngH": 812,
       "elementsChecked": 128,
@@ -940,6 +991,7 @@
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
+      "fontBypass": false,
       "consoleErrorsProduct": 0
     },
     {
@@ -951,7 +1003,7 @@
       "mainTextLen": 1061,
       "navError": null,
       "png": "overview-375.png",
-      "pngBytes": 53616,
+      "pngBytes": 53709,
       "pngW": 375,
       "pngH": 812,
       "elementsChecked": 354,
@@ -965,6 +1017,7 @@
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
+      "fontBypass": false,
       "consoleErrorsProduct": 0
     },
     {
@@ -976,7 +1029,7 @@
       "mainTextLen": 136,
       "navError": null,
       "png": "overview-tab-usage-375.png",
-      "pngBytes": 38485,
+      "pngBytes": 38541,
       "pngW": 375,
       "pngH": 812,
       "elementsChecked": 147,
@@ -990,6 +1043,7 @@
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
+      "fontBypass": false,
       "consoleErrorsProduct": 0
     },
     {
@@ -999,7 +1053,7 @@
       "viewport": "375",
       "verdict": "NOT_MEASURED",
       "mainTextLen": 10,
-      "navError": "screenshot: page.screenshot: Timeout 60000ms exceeded.\nCall log:\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m  - waiting for fonts to lo",
+      "navError": "font-bypass: page.screenshot: Timeout 45000ms exceeded.\nCall log:\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - f",
       "png": "sessions-375.png",
       "pngBytes": 0,
       "pngW": null,
@@ -1015,6 +1069,7 @@
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
+      "fontBypass": true,
       "consoleErrorsProduct": 0
     },
     {
@@ -1026,7 +1081,7 @@
       "mainTextLen": 948,
       "navError": null,
       "png": "system-375.png",
-      "pngBytes": 61724,
+      "pngBytes": 62101,
       "pngW": 375,
       "pngH": 812,
       "elementsChecked": 255,
@@ -1040,6 +1095,7 @@
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
+      "fontBypass": false,
       "consoleErrorsProduct": 0
     },
     {
@@ -1051,7 +1107,7 @@
       "mainTextLen": 125,
       "navError": null,
       "png": "system-tab-defaults-375.png",
-      "pngBytes": 37298,
+      "pngBytes": 36640,
       "pngW": 375,
       "pngH": 812,
       "elementsChecked": 120,
@@ -1065,6 +1121,7 @@
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
+      "fontBypass": false,
       "consoleErrorsProduct": 0
     },
     {
@@ -1090,6 +1147,7 @@
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
+      "fontBypass": false,
       "consoleErrorsProduct": 0
     },
     {
@@ -1115,6 +1173,7 @@
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
+      "fontBypass": false,
       "consoleErrorsProduct": 0
     },
     {
@@ -1140,6 +1199,7 @@
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
+      "fontBypass": false,
       "consoleErrorsProduct": 0
     },
     {
@@ -1151,7 +1211,7 @@
       "mainTextLen": 293,
       "navError": null,
       "png": "system-tab-security-375.png",
-      "pngBytes": 53606,
+      "pngBytes": 53826,
       "pngW": 375,
       "pngH": 812,
       "elementsChecked": 139,
@@ -1165,6 +1225,7 @@
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
+      "fontBypass": false,
       "consoleErrorsProduct": 0
     },
     {
@@ -1190,6 +1251,7 @@
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
+      "fontBypass": false,
       "consoleErrorsProduct": 0
     },
     {
@@ -1201,7 +1263,7 @@
       "mainTextLen": 281,
       "navError": null,
       "png": "work-375.png",
-      "pngBytes": 71036,
+      "pngBytes": 70679,
       "pngW": 375,
       "pngH": 812,
       "elementsChecked": 166,
@@ -1215,6 +1277,7 @@
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
+      "fontBypass": false,
       "consoleErrorsProduct": 0
     },
     {
@@ -1226,7 +1289,7 @@
       "mainTextLen": 281,
       "navError": null,
       "png": "work-tab-board-view-cron-375.png",
-      "pngBytes": 70726,
+      "pngBytes": 70848,
       "pngW": 375,
       "pngH": 812,
       "elementsChecked": 166,
@@ -1240,6 +1303,7 @@
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
+      "fontBypass": false,
       "consoleErrorsProduct": 0
     },
     {
@@ -1251,7 +1315,7 @@
       "mainTextLen": 281,
       "navError": null,
       "png": "work-tab-cron-375.png",
-      "pngBytes": 70632,
+      "pngBytes": 70724,
       "pngW": 375,
       "pngH": 812,
       "elementsChecked": 166,
@@ -1265,6 +1329,7 @@
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
+      "fontBypass": false,
       "consoleErrorsProduct": 0
     },
     {
@@ -1276,7 +1341,7 @@
       "mainTextLen": 483,
       "navError": null,
       "png": "work-tab-runs-375.png",
-      "pngBytes": 68997,
+      "pngBytes": 68985,
       "pngW": 375,
       "pngH": 812,
       "elementsChecked": 210,
@@ -1290,19 +1355,21 @@
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
+      "fontBypass": false,
       "consoleErrorsProduct": 0
     }
   ],
-  "headHash": "03fcc769",
-  "exitCode": 1,
-  "entry": "assets/index-DzYbPXfO.js",
-  "entrySha256": "c85fe21fd0d9d89473810e7174ce03568c66c94c23950cb67a444d84ee7e765b",
+  "rerollNote": "channels 单路点名重跑合入（同面同脚本，字体等待旁路腿）：全腿首轮真实内容面 main=113、125 元素 0 违规、37673B 截图成功，但 grow evaluate 瞬败致 fit 未记被判 NM；重跑经旁路腿 contentFit=true PASS（0 违规），首轮读数存于该行 firstRunRow 字段。",
+  "headHash": "6586df6b",
+  "entry": "assets/index-BuZxlyEv.js",
+  "entrySha256": "22c17ec34b4f6859adf0955c8f745e0f63f790c9ef8d607030338a2aa28c2a9d",
   "entryBytes": 172175,
   "css": "assets/index-DLpXaUuB.css",
   "cssSha256": "13a111877909a0a34aa08f54c6635f795fb77351f3ebef339d42d5926fd0a0dc",
   "cssBytes": 146491,
-  "servedEntryAfter": "index-DzYbPXfO.js",
+  "servedEntryAfter": "index-BuZxlyEv.js",
   "servedCssAfter": "index-DLpXaUuB.css",
-  "criteriaNote": "旧 document 级 375 全绿作废不入账（L0③）；本代 375 承者=assert-375 逐元素判据+视口加高取图腿（fit 记录=实测内容一帧内，49 路全 fit）；NM=2 为 channels/sessions 截图 60s CDP 超时真失分页，逐条原因在 rows.navError",
-  "stampNote": "wave-127 NM 补齐 复跑 @ 03fcc769 面"
+  "criteriaNote": "旧 document 级 375 全绿作废不入账（L0③）；本代 375 承者=assert-375 逐元素判据+视口加高取图腿+字体等待旁路复测；channels=点名重跑合入 PASS（首轮读数存 firstRunRow）；sessions=真 NOT MEASURED：45s 旁路仍 screenshot 超时，逐条 navError 入账",
+  "stampNote": "wave-129 6586df6b 本代新跑（非沿用）",
+  "exitCode": 1
 }

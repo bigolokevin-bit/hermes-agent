@@ -3,16 +3,16 @@
 | route | verdict | viol | scrollOvf | domOvf(旧) | pngH | main |
 | --- | --- | ---: | ---: | ---: | ---: | ---: |
 | #/access | PASS | 0 | 0 | 0 | 812 | 201 |
-| #/approvals | PASS | 0 | 0 | 0 | 812 | 466 |
+| #/approvals | PASS | 0 | 0 | 0 | 812 | 344 |
 | #/approvals?tab=history | PASS | 0 | 0 | 0 | 812 | 530 |
-| #/approvals?tab=mine | PASS | 0 | 0 | 0 | 812 | 466 |
-| #/approvals?tab=pending&view=mine | PASS | 0 | 0 | 0 | 812 | 466 |
-| #/approvals?tab=pending&view=release | PASS | 0 | 0 | 0 | 812 | 466 |
-| #/approvals?tab=policy | PASS | 0 | 0 | 0 | 812 | 466 |
-| #/approvals?tab=release | PASS | 0 | 0 | 0 | 812 | 466 |
+| #/approvals?tab=mine | PASS | 0 | 0 | 0 | 812 | 344 |
+| #/approvals?tab=pending&view=mine | PASS | 0 | 0 | 0 | 812 | 344 |
+| #/approvals?tab=pending&view=release | PASS | 0 | 0 | 0 | 812 | 344 |
+| #/approvals?tab=policy | PASS | 0 | 0 | 0 | 812 | 344 |
+| #/approvals?tab=release | PASS | 0 | 0 | 0 | 812 | 344 |
 | #/audit | PASS | 0 | 0 | 0 | 812 | 673 |
 | #/capabilities | PASS | 0 | 0 | 0 | 812 | 355 |
-| #/capabilities?tab=channels | NOT_MEASURED | - | - | - | - | 113 |
+| #/capabilities?tab=channels | PASS | 0 | 0 | 0 | 812 | 113
 | #/capabilities?tab=models | PASS | 0 | 0 | 0 | 812 | 178 |
 | #/capabilities?tab=tools | PASS | 0 | 0 | 0 | 812 | 390 |
 | #/employees | PASS | 0 | 0 | 0 | 812 | 296 |
@@ -21,7 +21,7 @@
 | #/employees/:employeeId?zone=config | PASS | 0 | 0 | 0 | 812 | 42 |
 | #/employees/:employeeId?zone=evidence | PASS | 0 | 0 | 0 | 812 | 42 |
 | #/employees/:employeeId?zone=runs | PASS | 0 | 0 | 0 | 812 | 42 |
-| #/employees/:employeeId?zone=tasks | PASS | 0 | 0 | 0 | 812 | 42 |
+| #/employees/:employeeId?zone=tasks | PASS | 0 | 0 | 0 | 812 | 143 |
 | #/identity | PASS | 0 | 0 | 0 | 812 | 154 |
 | #/identity?tab=admins | PASS | 0 | 0 | 0 | 812 | 154 |
 | #/identity?tab=binding | PASS | 0 | 0 | 0 | 812 | 154 |
