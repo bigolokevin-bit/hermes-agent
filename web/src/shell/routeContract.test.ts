@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 /**
  * n6 route contract — "every outer tab and every ?panel= has a reachable
  * direct link, and no two surfaces share a label while serving different
@@ -18,8 +19,12 @@
  * the anti-collision law cannot be satisfied by a fixture that mirrors the
  * outer labels back at itself.
  */
-import { describe, expect, it } from "vitest";
+import { act, createElement } from "react";
+import { createRoot, type Root } from "react-dom/client";
+import { MemoryRouter } from "react-router";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { resolveHashTarget } from "@/shell/bridge";
+import { ConsoleModulePage } from "@/shell/console";
 import { allTabs, validateRegistry } from "@/shell/registry";
 import {
   CONSOLE_TABS,
@@ -28,9 +33,15 @@ import {
   findRoute,
   parseHash,
   pathFor,
+  resolveTab,
   type ConsoleRoute,
 } from "@/shell/routes";
-import { TAB_LABEL, TAB_ORDER } from "../modules/knowledge/knowledge";
+import {
+  TAB_LABEL,
+  TAB_ORDER,
+  initialTab,
+  type KnowledgeTab,
+} from "../modules/knowledge/knowledge";
 
 /** Same authoritative set bridge.test.ts pins (existing App routes). */
 const AUTH = new Set([
@@ -237,6 +248,157 @@ describe("n6 route contract: no same-name different-content labels", () => {
     }
     for (const [label, routes] of byLabel) {
       expect(routes.size, `label 「${label}」 splits over ${[...routes].join(", ")}`).toBe(1);
+    }
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * n8 (UX r7 判词①, shell-side upgrade): 「外层高亮 == 内容落点」 pinned as a
+ * DOM contract instead of eyeballed screenshots.
+ *
+ * Three cold-chain spellings (sources / ingest / retrieval), each as typed
+ * by the user AND as rewritten by the knowledge module's boot normaliser
+ * (UI-KD 57d7216b — read-only here). For every address the expected owner
+ * is computed from two independent truths: the module's own panel resolver
+ * (`initialTab`, UI-KD) composed with the shell's derived ownership map
+ * (`PANEL_TABS`, n7, derived from the compat rows). The rendered strip must
+ * agree — one aria-selected tab, its data-tab equal to that owner, the pane
+ * and the mounted live slot carrying the same tabId.
+ *
+ * The bare outer `?tab=evidence` address is deliberately NOT in the owner
+ * loop: it mounts the audit pane, not the knowledge module, so the inner
+ * panel resolver never applies to it (that is the P0 n1 same-name trap).
+ * It is still covered by the click leg, which compares click against direct
+ * and pins 「点击 T 条后高亮就是 T」 for every outer tab including evidence.
+ *
+ * The file was pure data until n8, so the DOM legs bring their own jsdom
+ * harness scoped inside this describe, with a fresh router per URL (the
+ * console.test.tsx trap: a second render on one root keeps the first URL).
+ * ------------------------------------------------------------------ */
+describe("n8 cold chain: outer highlight equals the panel surface", () => {
+  let container: HTMLDivElement;
+  let root: Root;
+
+  (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+
+  const probe = (id: string) => createElement("div", { "data-testid": id });
+  const LIVE = {
+    spaces: probe("live-spaces"),
+    sources: probe("live-sources"),
+    evidence: probe("live-evidence"),
+  };
+  const page = () =>
+    createElement(ConsoleModulePage, { module: "knowledge", live: LIVE });
+
+  function remountAt(entry: string) {
+    act(() => {
+      root.render(
+        createElement(
+          MemoryRouter,
+          { key: entry, initialEntries: [entry] },
+          page(),
+        ),
+      );
+    });
+  }
+
+  /** The three readings a surface is judged by: strip selection, pane, live slot. */
+  function readings() {
+    const sel = container.querySelector('[role="tab"][aria-selected="true"]');
+    const pane = container.querySelector(".pane");
+    const liveId = ["spaces", "sources", "evidence"].find(
+      (t) => container.querySelector(`[data-testid="live-${t}"]`) !== null,
+    );
+    return {
+      selected: sel?.getAttribute("data-tab") ?? null,
+      pane: pane?.getAttribute("data-tab") ?? null,
+      live: liveId ?? null,
+    };
+  }
+
+  /** Expected owner, derived from module panel truth × shell ownership map. */
+  function ownerOf(address: string): { panel: KnowledgeTab; owner: string } {
+    const parsed = parseHash(address);
+    const panel = initialTab(
+      parsed.tab === "" ? null : parsed.tab,
+      parsed.params.panel ?? null,
+    );
+    const owner =
+      PANEL_TABS.knowledge?.[panel] ?? resolveTab("knowledge", parsed.tab).tab;
+    return { panel, owner };
+  }
+
+  beforeEach(() => {
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+  });
+
+  afterEach(() => {
+    act(() => root.unmount());
+    container.remove();
+    vi.restoreAllMocks();
+  });
+
+  const ADDRESSES = [
+    "/knowledge?tab=sources", // cold spelling, 数据源
+    "/knowledge?tab=ingest", // cold spelling, aliased onto sources
+    "/knowledge?tab=retrieval", // cold spelling, aliased onto spaces
+    "/knowledge?tab=sources&panel=ingest", // normaliser output for sources/ingest
+    "/knowledge?tab=spaces&panel=retrieval", // normaliser output for retrieval
+    "/knowledge?tab=spaces&panel=ingest", // the OLD collapse form r7① killed
+  ];
+
+  it("n8: every cold-chain spelling highlights the panel's owner, pane and live slot alike", () => {
+    expect(ADDRESSES.length).toBeGreaterThan(1);
+    for (const address of ADDRESSES) {
+      remountAt(address);
+      const r = readings();
+      const e = ownerOf(address);
+      expect(
+        r.selected,
+        `${address} panel ${e.panel}: strip highlights another tab`,
+      ).toBe(e.owner);
+      expect(r.pane, `${address} panel ${e.panel}: pane lands elsewhere`).toBe(
+        e.owner,
+      );
+      expect(
+        r.live,
+        `${address} panel ${e.panel}: live slot is not the highlighted tab`,
+      ).toBe(e.owner);
+    }
+  });
+
+  it("n8: clicking an outer tab lands on the same readings as typing its address", () => {
+    // Start from a neutral surface so every link is a real cross-tab click.
+    remountAt("/knowledge");
+    const links = Array.from(container.querySelectorAll('[role="tab"]'));
+    expect(links.length).toBeGreaterThan(1);
+    for (const link of links) {
+      const href = link.getAttribute("href");
+      expect(href, "outer tab link carries no href").not.toBeNull();
+      const ownTab = link.getAttribute("data-tab");
+      if (href === null || ownTab === null) continue;
+      remountAt("/knowledge");
+      const target = container.querySelector(
+        `[role="tab"][data-tab="${ownTab}"]`,
+      ) as HTMLElement | null;
+      expect(target, `no clickable link for outer tab ${ownTab}`).not.toBeNull();
+      act(() => target?.click());
+      const clicked = readings();
+      remountAt(href);
+      const direct = readings();
+      expect(
+        clicked.selected,
+        `click on ${ownTab} highlights another tab`,
+      ).toBe(ownTab);
+      expect(clicked.selected, `click → ${href} selection differs`).toBe(
+        direct.selected,
+      );
+      expect(clicked.pane, `click → ${href} pane differs`).toBe(direct.pane);
+      expect(clicked.live, `click → ${href} live slot differs`).toBe(
+        direct.live,
+      );
     }
   });
 });
