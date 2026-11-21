@@ -41,6 +41,7 @@ import {
   CONSOLE_MODULES,
   CONSOLE_TABS,
   DETAIL_TAB,
+  PANEL_TABS,
   pathFor,
   resolveTab,
   type ConsoleModule,
@@ -518,7 +519,21 @@ export function ConsoleModulePage({ module, live }: ConsoleModulePageProps) {
     requested === ""
       ? { tab: tabs[0]?.tabId ?? "", view: "" }
       : resolveTab(module, requested);
-  const active = tabs.find((t) => t.tabId === resolved.tab) ?? tabs[0];
+  // UX r7 判词① (secondary landing): the strip's aria-selected tab and the pane
+  // must both follow the surface that is ACTUALLY rendered. A `?panel=` address
+  // selects an inner panel of one outer tab, and routes.PANEL_TABS (derived from
+  // the compat rows) declares which tab owns it. The knowledge module rewrites
+  // cold-start `?tab=sources|ingest` onto `?tab=spaces&panel=ingest`, so a
+  // `tab`-only reading highlighted 知识空间 while the content was 数据接入 —
+  // a dead-end highlight for the primary task. Honouring the panel owner first
+  // makes the highlight agree with the content regardless of whether the module
+  // keeps its rewrite (the main fix lives in UI-KD's manifest.ts, not here).
+  // Unknown or absent panels fall back to `resolved.tab`, so every address that
+  // does not carry a declared panel behaves exactly as before, and the strip and
+  // the pane keep sharing this single `active` value by construction.
+  const panelReq = sp.get("panel");
+  const panelOwner = panelReq ? PANEL_TABS[module]?.[panelReq] : undefined;
+  const active = tabs.find((t) => t.tabId === (panelOwner ?? resolved.tab)) ?? tabs[0];
   const meta = CONSOLE_MODULES.find((m) => m.module === module);
   const forced = usePaneForced();
   const rid = usePaneRid();
