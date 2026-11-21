@@ -1633,3 +1633,10 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - 六件 assert 现值==aa180f86 注 headHash=1314045e+carriedFrom="aa180f86"+carried=true+stampNote+写后回读；state-quad 本代真跑 sampled=20 passed=20 head=1314045e 非 carried。
 - shots 双腿本代真跑（13:02:52→13:05:15）：auth 102/102 failures=[] **obs=1 routes=['#/capabilities?tab=channels']** distinct=25 envOnly=51（上代 release 收敛、channels 历史 ENV 复现）；anon aux **obs=2 routes=['#/identity?tab=binding','#/work?tab=runs']** distinct=25 envOnly=51（上代 release+work → binding+runs(tab 深化)，ENV 波动如实不入判据）；三键+served 两端同值+ceAuthority=login-state，routesWithConsoleErrors 全自产非编造。
 - TALLY {'1314045e': 9} count 9 BAD=[]；开工时 ls-remote 两次网络瞬滞超时（cat-file/checkout/log 本地已过，卡面 remote 与本地 HEAD 一致采认），收口前补核实值入回执；43f34bec（aa180f86 章）不重做；无 amend/force；detached push HEAD 映射形；web/src/9122/BFF/caddy/qa-verify/ACC 判词节未动。
+
+## 二〇三轮 · 波次代次九件重章 @ 6c626741（wave-118；四改锚收束：d356be02/22878598/94fc7150/0d071bfa 中间代次不重章，2026-11-21 13:5x）
+
+- wave-118 ui-a 708ef025 audit 表密度并入（remote 6c6267414599 现查==卡面）；entry/CSS 双换代 DpeCEJrd/172175/15882c47…eea8（盘现算 64 字符全串==卡面）+ D9t_vdve/146460/dfdc086d…，==9122==磁盘。
+- 改锚链实录：w114 d356be02 起跑后卡③ auth 面换 ui-qa-auth-state；w115 22878598 令搬产物被盘证伪（树 entry 已 BJzAOOfT）；w116 94fc7150 双腿跑出 auth 375 CDP flake → 单路由重截窗被 6c626741 改锚令中止；w117 0d071bfa 双腿全齐（auth 102/102）→ L0 merge+checkout 复原今晚账（账回 {'1314045e':9}）+双换代改锚 → 按令全废重跑，未复用旧读数。
+- 本代真跑（13:52:34→13:57:0x）：auth 102/102 failures=[] **obs=1 ['#/capabilities?tab=channels']** authStateFile=ui-qa-auth-state.json authStateExpired=**false**（401 风暴解除，R-OBS-aa180f86 可核销）distinct=25 envOnly=51；anon aux obs=1 ['#/work?tab=cron'] distinct=23 envOnly=51；quad 20/20 head=6c626741。六件 carriedFrom="1314045e"+stampNote（四中间代次明记）。
+- TALLY {'6c626741': 9} count 9 BAD=[]；commit 前 git rev-parse HEAD 自证=6c626741；无 amend/force；web/src/9122/BFF/caddy/qa-verify/ACC 判词节未动；L0 承诺章落前只读。
