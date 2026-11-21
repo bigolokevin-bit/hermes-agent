@@ -260,6 +260,18 @@ describe("ConsoleModulePage pane contract", () => {
     expect(tab?.getAttribute("href")).toContain("rid=abc12345");
   });
 
+  it("outer tab links drop ?panel= while state/rid still survive", () => {
+    renderAt(<ConsoleModulePage module="knowledge" />, "/knowledge?tab=spaces&panel=retrieval&state=error&rid=abc12345");
+    const tabs = Array.from(container.querySelectorAll("[role='tab']"));
+    expect(tabs.length).toBeGreaterThan(0);
+    for (const t of tabs) {
+      const href = t.getAttribute("href") ?? "";
+      expect(href).not.toContain("panel=");
+      expect(href).toContain("state=error");
+      expect(href).toContain("rid=abc12345");
+    }
+  });
+
   // T42 item 2: the forced-state legs must be reproducible on ALL eight
   // console tabs, and item 1's honest exits (retry + back, or back alone)
   // must be present in every forced pane.

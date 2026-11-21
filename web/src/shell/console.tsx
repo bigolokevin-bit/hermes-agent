@@ -417,7 +417,16 @@ function ConsoleTabStrip({
   const preserve = useMemo(() => {
     const keep: Record<string, string> = {};
     for (const [key, value] of sp.entries()) {
-      if (key !== "tab" && key !== "view" && key !== "zone") keep[key] = value;
+      // `panel` addresses an inner panel of one tab — carrying it across an
+      // outer tab switch would silently re-open a stale panel on the next
+      // tab (P0 n1 residual). state/rid stay preserved (four-state legs).
+      if (
+        key !== "tab" &&
+        key !== "view" &&
+        key !== "zone" &&
+        key !== "panel"
+      )
+        keep[key] = value;
     }
     return keep;
   }, [sp]);
