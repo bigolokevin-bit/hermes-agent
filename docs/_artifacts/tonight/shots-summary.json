@@ -9,19 +9,23 @@
   "failures": [],
   "oversize": [],
   "rootBaseline": {
-    "textLen": 1060,
-    "head": "运营 · 控制台 运营总览 值班台用量与成本 值班台 运营总览 · 只读 采集时刻 —（北京时间） 近 24 小时 近 7 天 近 14 天 近 30 天 刷新",
+    "textLen": 1061,
+    "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 采集时刻 —（北京时间） 近 24 小时 近 7 天 近 14 天 近 30 天 刷",
     "hasMainEl": true,
     "ok": true
   },
   "distinctMainHeads": 26,
-  "routesWithEmptyMain": [],
-  "routesWithoutMainEl": [],
+  "routesWithEmptyMain": [
+    "#/capabilities?tab=channels"
+  ],
+  "routesWithoutMainEl": [
+    "#/capabilities?tab=channels"
+  ],
   "mainCharsByRoute": [
     {
       "route": "#/access",
       "viewport": "1440",
-      "chars": 199,
+      "chars": 201,
       "hasMainEl": true
     },
     {
@@ -147,8 +151,8 @@
     {
       "route": "#/capabilities?tab=channels",
       "viewport": "375",
-      "chars": 10,
-      "hasMainEl": true
+      "chars": 0,
+      "hasMainEl": false
     },
     {
       "route": "#/capabilities?tab=models",
@@ -242,20 +246,20 @@
     },
     {
       "route": "#/employees/:employeeId?zone=runs",
+      "viewport": "375",
+      "chars": 42,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/employees/:employeeId?zone=tasks",
+      "viewport": "1440",
+      "chars": 42,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/employees/:employeeId?zone=tasks",
       "viewport": "375",
       "chars": 146,
-      "hasMainEl": true
-    },
-    {
-      "route": "#/employees/:employeeId?zone=tasks",
-      "viewport": "1440",
-      "chars": 42,
-      "hasMainEl": true
-    },
-    {
-      "route": "#/employees/:employeeId?zone=tasks",
-      "viewport": "375",
-      "chars": 42,
       "hasMainEl": true
     },
     {
@@ -633,7 +637,7 @@
   ],
   "consoleErrorsObservedByShots": 1,
   "consoleErrorRoutesObservedByShots": [
-    "#/access"
+    "#/capabilities?tab=channels"
   ],
   "ceAuthority": "login-state",
   "routesWithEnvOnlyConsoleErrors": 51,
@@ -644,7 +648,7 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "fb7a2a8c",
+  "headHash": "8d0725d4",
   "exitCode": 0,
   "entry": "assets/index-0rhpOHmI.js",
   "entrySha256": "35b3907c1ae79830b697ecab6786f2617311b84965b5b7f03db952f98f2a1d64",
@@ -655,6 +659,6 @@
   "servedEntryBefore": "index-0rhpOHmI.js",
   "servedEntryAfter": "index-0rhpOHmI.js",
   "routesWithConsoleErrors": [
-    "#/access"
+    "#/capabilities?tab=channels"
   ]
 }
