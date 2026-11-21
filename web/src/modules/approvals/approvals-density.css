@@ -60,3 +60,20 @@
 [data-testid^="apr5-empty"] {
   min-height: 240px;
 }
+
+/* UI-A wave-73 勘误 2026-11-22：observer 像素核验判 375 视口横溢（列内容裁切、
+ * 卡片右缘在视口外）。根因：apv-state 双栏 grid 在 lg 以下走隐式 1fr 轨道，
+ * 其 min=auto 被不可断长 token（CSV 文件名、汇总桶项）撑大，整列超宽——
+ * flex-wrap 口径救不了 grid 轨道。修复全在样式层：窄档显式 minmax(0,1fr) 单列、
+ * 直接子级 min-width:0、长 token 容器内 anywhere 折行。 */
+@media (max-width: 1023.98px) {
+  [data-testid="apv-state"] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  [data-testid="apv-state"] > * {
+    min-width: 0;
+  }
+  [data-testid="apv-state"] :is(span, b) {
+    overflow-wrap: anywhere;
+  }
+}
