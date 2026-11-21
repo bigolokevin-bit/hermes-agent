@@ -1,8 +1,9 @@
 /* UI-A 2026-11-21: table density on /work (board cards - no HTML table).
  * Kanban rows are div[data-testid^="tsk4-card-"]; main board rhythm 40px.
  * Sub-surface: filter list rows tsk4-filter-row-* get the compact 36 tier.
- * Numeric right-align: N/A - board cells are status/next-action/owner text,
- * no count/money columns (verified by testid scan). No zebra source.
+ * Numeric right-align: board cells are status/next-action/owner text (N/A),
+ * but the filter list IS a 6-column table with time/cost columns - see the
+ * wave-68 addendum below. No zebra source.
  * 375px: lanes already scroll inside their column containers; cards have no
  * fixed px widths, so rows wrap without overflow. */
 [data-testid^="tsk4-card-"] {
@@ -11,4 +12,22 @@
 
 [data-testid="tsk4-filter-list"] [data-testid^="tsk4-filter-row-"] {
   min-height: var(--table-row-h-compact);
+}
+
+/* UI-A 2026-11-21 wave-68 硬点 2 增补：筛选任务列表是六列网格表（任務/負責人/
+ * 優先級/状態/更新/花費，sm 640px 起），更新=时间列、花費=金额列，前笔口径
+ * 「数字右对齐不适用」对看板卡成立、对本列表漏判，此处补上。表头 div 无专属
+ * testid，锚紧邻 ul 之前的兄弟；列序 button=1、span 負責人=2、優先級=3、
+ * 状態=4、更新=5、花費=6。375 走 grid-cols-1 折行兜底，无固定 px 宽。 */
+[data-testid="tsk4-filter-list"] div:has(+ ul) {
+  font-weight: var(--font-weight-medium);
+}
+
+@media (min-width: 640px) {
+  [data-testid="tsk4-filter-list"] div:has(+ ul) > :is(:nth-child(5), :nth-child(6)),
+  [data-testid^="tsk4-filter-row-"] > :is(span:nth-child(5), span:nth-child(6)) {
+    text-align: right;
+    justify-self: end;
+    font-variant-numeric: tabular-nums;
+  }
 }

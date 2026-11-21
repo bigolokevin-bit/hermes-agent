@@ -9,12 +9,12 @@
   "failures": [],
   "oversize": [],
   "rootBaseline": {
-    "textLen": 1061,
+    "textLen": 1044,
     "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 采集时刻 —（北京时间） 近 24 小时 近 7 天 近 14 天 近 30 天 刷",
     "hasMainEl": true,
     "ok": true
   },
-  "distinctMainHeads": 25,
+  "distinctMainHeads": 24,
   "routesWithEmptyMain": [],
   "routesWithoutMainEl": [],
   "mainCharsByRoute": [
@@ -27,7 +27,7 @@
     {
       "route": "#/access",
       "viewport": "375",
-      "chars": 199,
+      "chars": 201,
       "hasMainEl": true
     },
     {
@@ -207,7 +207,7 @@
     {
       "route": "#/employees/:employeeId",
       "viewport": "375",
-      "chars": 66,
+      "chars": 42,
       "hasMainEl": true
     },
     {
@@ -243,7 +243,7 @@
     {
       "route": "#/employees/:employeeId?zone=runs",
       "viewport": "375",
-      "chars": 66,
+      "chars": 42,
       "hasMainEl": true
     },
     {
@@ -261,49 +261,49 @@
     {
       "route": "#/identity",
       "viewport": "1440",
-      "chars": 151,
+      "chars": 154,
       "hasMainEl": true
     },
     {
       "route": "#/identity",
       "viewport": "375",
-      "chars": 151,
+      "chars": 154,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=admins",
       "viewport": "1440",
-      "chars": 151,
+      "chars": 154,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=admins",
       "viewport": "375",
-      "chars": 151,
+      "chars": 154,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=binding",
       "viewport": "1440",
-      "chars": 151,
+      "chars": 154,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=binding",
       "viewport": "375",
-      "chars": 151,
+      "chars": 154,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=checks",
       "viewport": "1440",
-      "chars": 151,
+      "chars": 154,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=checks",
       "viewport": "375",
-      "chars": 151,
+      "chars": 154,
       "hasMainEl": true
     },
     {
@@ -321,13 +321,13 @@
     {
       "route": "#/identity?tab=people&view=admins",
       "viewport": "1440",
-      "chars": 151,
+      "chars": 154,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=people&view=admins",
       "viewport": "375",
-      "chars": 151,
+      "chars": 154,
       "hasMainEl": true
     },
     {
@@ -345,13 +345,13 @@
     {
       "route": "#/identity?tab=tenant",
       "viewport": "1440",
-      "chars": 151,
+      "chars": 154,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=tenant",
       "viewport": "375",
-      "chars": 151,
+      "chars": 154,
       "hasMainEl": true
     },
     {
@@ -453,13 +453,13 @@
     {
       "route": "#/org",
       "viewport": "1440",
-      "chars": 151,
+      "chars": 154,
       "hasMainEl": true
     },
     {
       "route": "#/org",
       "viewport": "375",
-      "chars": 151,
+      "chars": 154,
       "hasMainEl": true
     },
     {
@@ -489,7 +489,7 @@
     {
       "route": "#/sessions",
       "viewport": "1440",
-      "chars": 1,
+      "chars": 10,
       "hasMainEl": true
     },
     {
@@ -633,7 +633,7 @@
   ],
   "consoleErrorsObservedByShots": 1,
   "consoleErrorRoutesObservedByShots": [
-    "#/access"
+    "#/capabilities?tab=channels"
   ],
   "ceAuthority": "login-state",
   "routesWithEnvOnlyConsoleErrors": 51,
@@ -644,14 +644,14 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "7cb41601",
+  "headHash": "33437932",
   "exitCode": 0,
-  "entry": "assets/index-CBaod-sX.js",
-  "entrySha256": "31f3043e03f782318d900f9a24931d73c40318a2f41290215fd65a05306a64f7",
+  "entry": "assets/index-3NtB-rbj.js",
+  "entrySha256": "1e63e327c7677e7875d4ef3848487041489c2f9bf3789a9663fa9e2875443d7e",
   "entryBytes": 172175,
-  "servedEntryBefore": "index-CBaod-sX.js",
-  "servedEntryAfter": "index-CBaod-sX.js",
+  "servedEntryBefore": "index-3NtB-rbj.js",
+  "servedEntryAfter": "index-3NtB-rbj.js",
   "routesWithConsoleErrors": [
-    "#/access"
+    "#/capabilities?tab=channels"
   ]
 }

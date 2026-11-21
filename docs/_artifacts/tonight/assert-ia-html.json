@@ -42,9 +42,9 @@
     }
   ],
   "ok": true,
-  "headHash": "7cb41601",
+  "headHash": "33437932",
   "exitCode": 0,
-  "carriedFrom": "1af5c41f",
+  "carriedFrom": "8d0725d4",
   "carried": true,
-  "stampNote": "wave-106 八笔并入（gov/ui1/ui-b/ui-a/ui-qa），entry 换代 CBaod-sX 但本件未重跑，证据沿用 1af5c41f 代；6d3c060b/210270a8 中间代次不重章"
+  "stampNote": "wave-110 四笔（R304/R262/identity 错态/docs）entry 换代 3NtB-rbj 但本件未重跑，证据沿用 8d0725d4 代；CSS 未换代"
 }
