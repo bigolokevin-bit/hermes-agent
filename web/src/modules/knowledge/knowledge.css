@@ -1343,3 +1343,47 @@
   color: var(--color-foreground);
   font-weight: var(--font-weight-medium);
 }
+
+/* ── wave-128 第四改：同屏多读口的分段与编号披露（UX r4 维度 7 两项未销）────────────
+   读图判据：① 堆在一起的面要一眼数得出是几套 —— 面题 + 令牌化分节线（1px subtle，
+   禁 --color-border 重线）；② 裸 hex 不上屏 —— 编号默认折叠在披露里。 */
+.knw5-surface {
+  gap: var(--space-2);
+  padding: var(--space-3) 0 var(--space-4);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+.knw5-surface-title {
+  margin: 0;
+  color: var(--color-foreground);
+  font-size: var(--font-size-2);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-1);
+}
+.knM-sources {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border-subtle);
+}
+.knw5-req {
+  gap: var(--space-2);
+  color: var(--color-text-muted);
+  /* 「请求编号：」这句不是机器串，不用等宽；等宽只留给披露出来的原串 */
+  font-family: inherit;
+  font-size: var(--font-size-1);
+}
+.knw5-req-value {
+  font-family: var(--font-mono, monospace);
+}
+.knw5-req-value[data-revealed="false"] {
+  /* 未销项②的落点：原串在 DOM 里，屏面不占一个像素 */
+  display: none;
+}
+.knw5-req-toggle:focus-visible {
+  outline: 2px solid var(--color-ring, var(--color-border));
+  outline-offset: 2px;
+}
+@media (max-width: 767.98px) {
+  .knw5-req {
+    gap: var(--space-1);
+  }
+}
