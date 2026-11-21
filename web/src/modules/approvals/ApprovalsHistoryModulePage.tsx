@@ -509,6 +509,9 @@ export function ApprovalsHistoryModulePage(): ReactNode {
       <RowDetailCopy row={visibleRows.find((r) => r.key === previewKey) ?? null} />
 
 
+      {/* 折叠收尾·375：Button size=xs 房规 aspect-square 会把文字 chip 撑成方框
+        * （实测最宽「已被更新替代」99×99 方格，九钮成表格状）。此两枚状态快捷钮组
+        * 用 className 覆盖回 h-6 内容宽窄条钮；仅本 History 页，Pending 不动。 */}
       <div className="flex min-w-0 flex-wrap gap-1.5" role="group" data-testid="apr5-filter" aria-label="按处理结果筛选">
         {CHOICES.map((choice) => {
           const active = choice.value === activeValue;
@@ -521,6 +524,7 @@ export function ApprovalsHistoryModulePage(): ReactNode {
               aria-pressed={active}
               onClick={() => choose(choice.sends)}
               data-testid={`apr5-filter-${choice.value}`}
+              className="aspect-auto h-6 w-auto shrink-0 whitespace-nowrap px-2 leading-none"
             >
               {choice.label}
             </Button>
@@ -544,6 +548,7 @@ export function ApprovalsHistoryModulePage(): ReactNode {
               aria-pressed={active}
               onClick={() => choose(choice.sends)}
               data-testid={`apv5-filter-${choice.value}`}
+              className="aspect-auto h-6 w-auto shrink-0 whitespace-nowrap px-2 leading-none"
             >
               {choice.label}
             </Button>
