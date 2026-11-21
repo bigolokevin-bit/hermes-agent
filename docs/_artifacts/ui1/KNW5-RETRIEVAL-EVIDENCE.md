@@ -5913,3 +5913,97 @@ kn-doc-copy*/kn7-preview*/kn3-page-cap/kn-type*/kn-sort*/kn-gates/导出 absent 
 未测如实：带登录会话真屏；旧 dir 非法值兜底态（R118④ 地盘）；size 列首点落向方向
 （land-dir 具体值未钉——只锁链==屏上，方向由排序族 R172/R179 地盘）；切桶×切排序
 双动作叠加弃页链（R237② 单动作位外推）。
+
+# KNW5 追加 R241：500 窗内切排序清错+续翻（查重判定驱动·真缺口本体）（2026-11-21 BJT）
+
+安全门：porcelain 空起做、显式 refspec fetch 后 merge 实测 tip 即预期 `15f58a4d`
+（wave-82）、基线先跑 56/249 全绿 Errors 0、目标文件确认缺席再动笔。零产品文件改动。
+新增 knowledge.export.sort.paging.test.tsx（两例真缺口本体 + 逐腿查重判定头注）。
+
+## 逐腿判定（红线⑤：派工三腿主体均已锁 → 不复写，只落新维）
+
+```text
+①=已全覆盖：R229①(knowledge.export.paged.test.tsx:140)+R238A(paging.triple:124)
+  +R216①——三值/首行/前缀/cursor 全在其中；「首行非第 1 页首行」不成立（追加保序，
+  R238 已裁）。②=已全覆盖：R240②(order.chain:171)——M=51 切 size 归位弃页+零新请求
+  +导出遵新序，「列表腿恰 1 次」当场裁 0；旧键兜底 R240①:152。③主体=已锁：R237③
+  (rowcopy.triple:193)+R238C:162+R239③。
+新维（点名，唯一未锁交互）：A **500 窗内切排序**（:2336-2345 归位效应含
+  setMoreErr(null)——错误锚被排序动作清除从未测）：锚消失、50 行/钮 0..49 不动、
+  cap 逐字冻结、导出遵新序、urls 逐字（清错零网络）、-more 复现（cursor 退回信封位）；
+  B **清错后续翻**：再点 -more 成功、钮 [0..50]、导出链==size 新序屏上链（卷 51 按
+  序位入链非末尾拼接）、cap「已加载 51 篇」、P2URL 恰 2（败 1+成 1）。
+```
+
+## 验证尾行（R241）
+
+```text
+① ksort=size 入 URL、error null、[50 行,钮 0..49]、cap toBe 窗帧、导出链==屏上、
+  urls join 逐字、-more 在场。② P2URL==2、[51 行]、钮 0..50、cap 51、链==屏上、
+  卷 51 入链。
+$ npx vitest run src/modules/knowledge → 57 files / 251 tests passed（249+2），
+  grep unhandled = 0
+$ eslint → 0 errors（1 既有 warning）；模块 tsc → 0；build /tmp/knw-r241-dist exit 0
+$ 全仓 → 388 files：386 绿 + **2 红点名（均 metrics 域外既有红，非本笔引入）**：
+  MetricsModulePage.test.tsx「really switches windows: 7d/30d…」:313+
+  「describes the trend…same slots」——断言含 met6-sparkline rect 计数与 Date.now()
+  日窗计算，**UTC 跨日界闪红**（R240 时 07:53 全仓 382/3260 绿，08:02 起确定性红，
+  本 merge 对 metrics 文件零 diff：git diff 17e2db84..HEAD -- web/src/modules/metrics
+  为空）；写域外禁修，如实点名不豁免。
+$ 三档 1440/1280/375 vw==bodySW==docSW 全等（用毕即杀）
+零破：kn3*/kn6–kn9/knB/knD/knE-page-*/knF/knG/knI/knL*/kn-row-copy*/kn-row-copy-space*/
+kn-doc-copy*/kn7-preview*/kn3-page-cap/kn-type*/kn-sort*/kn-gates/导出 absent + 既有
+56 套全绿。两例一次全过、零自纠轮，产品零触碰。
+```
+未测如实：带登录会话真屏；窗内改 q/名筛清错同族（与排序共用归位效应，抽一代表即止）；
+窗内切桶清错（R229③ 名筛版同族）；metrics 跨日红未修未深挖（域外）。
+
+# KNW5 追加 R242：空间详情×全局列表 分页态跨面同源组合帧（纯测试单·本体交付）（2026-11-21 BJT）
+
+安全门：porcelain 空起做、显式 refspec fetch 后 merge 实测 tip 即基线确认值
+`007b6841`（未再前进）、基线先跑 57/251 全绿 Errors 0、目标文件确认缺席再动笔。
+零产品文件改动。新增 knowledge.space.paging.parity.test.tsx 三例（本体）。
+
+## 名实换算与查重（引用不重写）
+
+```text
+无 ?source= 控件（未造）；检索面无类型桶/无排序/**无分页**/无 cap（knE-page-* 缺席
+引 R164 收尾例、kn-space-page-cap 缺席引 R187）→ 派工腿②「两侧各翻页」不可兑现：
+按产品只详情面翻页，检索面断言「他面翻页前后行集/data-len/**钮序**逐字不变」；
+无真 CSV→本单不设导出腿；两面包同 51 集合但检索面一次全给——制造「详情 50→51、
+检索恒 51」的**计数非对称**取证互不冒充；cursor 从请求 URL 断言（增量恰 [P2URL]）；
+cap 50/M 位引 R108；clip 桩 Promise+unstub。
+引用：R213②:135/③:156（非分页态跨面钮串逐字）/④:176（翻页牵动 rows/data-len）、
+R204①（跨面五字段非分页态）、R223/R229①②、R237①（51 链只对本面）、R228/R238/R239/
+R240/R241、R164①:122（q 不进详情表——本例补钮数/cap 位反向帧）、R176②⑤、R132/R169/
+R200②/R226①/R190①/R216/R131/R138/R142/R152/R157/R167/R172。
+新增维（点名）：A 第 2 页态跨面五字段逐字——含**追加行「卷 51」跨面入链**（四格
+  toEqual + 计数非对称 50/51→51/51 同帧各书其身 + cap 单具）；
+  B 他面 append 后检索面**钮序 [0..50] 逐字不动** + urls 增量恰 [P2URL]（R213④ 未查
+  序位与请求增量）；
+  C 检索面 q 动作**反向**不牵动详情面（行名/钮序/cap 整句逐字、零请求——R176 系正向
+  churn 位、页 2 态反向未锁）+ 追加行两族钮串 toBe 同串 + 裸全 id/undefined 负扫；
+  ③ 三串同帧互等（详情钮==检索钮==knF 行，卷 07 分页态帧——R223 链的跨面合帧位）。
+```
+
+## 三例读数与验证尾行（R242）
+
+```text
+① 窗前 [kn3 50, kn6 51, cap50]、检索钮 [0..50]；append 后 urls+1 且末条=P2URL、
+  [51,51]、钮序不变；卷02/卷51 四格跨面 toEqual（PDF/人话大小尾 B）。② 卷 51 两族
+  钮串 toBe、串内无 p2_51/undefined/null；q=卷 3 提交后详情行名/钮序/cap 逐字、
+  urls 不变、检索面自书收窄（>0 且 <51 全含「卷 3」）。③ btnH==btnD==fLine、5 列。
+$ npx vitest run src/modules/knowledge → 58 files / 254 tests passed（251+3），
+  grep unhandled = 0
+$ eslint → 0 errors（1 既有 warning）；模块 tsc → 0；build /tmp/knw-r242-dist exit 0
+$ 全仓 → 391 files：390 passed + 2 failed——**均为派工点名的域外既有红**
+  （MetricsModulePage.test.tsx 7d/30d 与 sparkline 两条，Date.now() 跨 UTC 日界，
+  本域零 diff 不修不豁免）
+$ 三档 1440/1280/375 vw==bodySW==docSW 全等（用毕即杀）
+零破：kn3*/kn6–kn9/knB/knD/knE-page-*/knF/knG/knI/knL*/kn-row-copy*/kn-row-copy-space*/
+kn-doc-copy*/kn7-preview*/kn3-page-cap/kn-type*/kn-sort*/kn-gates/导出 absent 标记 +
+既有 57 套全绿。过程自纠一处（重复钮序合成器触发 eslint/tsc 双红→归一），产品零触碰。
+```
+未测如实：带登录会话真屏；检索面对外「所属空间」列的跨面对账（knG 6 列 vs 详情 5 列
+差异口径引 R71/R213②，本单不扩）；详情面切 ktype 时检索面钮序帧（R228 查行集/钮数，
+序位未查——与 B 同族，抽代表即止）。

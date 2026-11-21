@@ -153,7 +153,7 @@
     {
       "route": "#/capabilities?tab=models",
       "viewport": "1440",
-      "chars": 178,
+      "chars": 580,
       "hasMainEl": true
     },
     {
@@ -631,9 +631,10 @@
       "hasMainEl": true
     }
   ],
-  "consoleErrorsObservedByShots": 1,
+  "consoleErrorsObservedByShots": 2,
   "consoleErrorRoutesObservedByShots": [
-    "#/identity?tab=roles"
+    "#/approvals?tab=pending&view=mine",
+    "#/capabilities?tab=models"
   ],
   "ceAuthority": "login-state",
   "routesWithEnvOnlyConsoleErrors": 51,
@@ -644,7 +645,7 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "15f58a4d",
+  "headHash": "007b6841",
   "exitCode": 0,
   "entry": "assets/index-6g0IMx1G.js",
   "entryBytes": 172175,
@@ -652,7 +653,8 @@
   "servedEntryBefore": "index-6g0IMx1G.js",
   "servedEntryAfter": "index-6g0IMx1G.js",
   "routesWithConsoleErrors": [
-    "#/identity?tab=roles"
+    "#/approvals?tab=pending&view=mine",
+    "#/capabilities?tab=models"
   ],
   "auxiliary": true
 }
