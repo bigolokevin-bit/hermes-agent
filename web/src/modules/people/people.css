@@ -89,3 +89,28 @@
     content: attr(data-label);
   }
 }
+
+/* UI-A table density (docs/design/UI-RUBRIC.md). /identity people roster is a
+ * grid row shell, not an HTML table, so the 40/36 contract maps to row
+ * min-height (precedent: audit/approvals/employees). No sub-surface exists,
+ * so the 36 tier is not applicable. Zebra stripes: divide-y separators only,
+ * no stripe source. 375 stays safe: all columns are minmax fr ratios and the
+ * page already carries overflow-x clip plus the <=760px card fallback. */
+.ppl5-thead {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-1);
+  font-weight: var(--font-weight-medium);
+}
+.ppl5-row {
+  min-height: var(--table-row-h);
+}
+@media (min-width: 761px) {
+  /* Time column: right align plus tabular figures, header included. */
+  .ppl5-thead > span:last-child,
+  .ppl5-row > [data-label="最后活跃"] {
+    text-align: right;
+  }
+  .ppl5-row > [data-label="最后活跃"] {
+    font-variant-numeric: tabular-nums;
+  }
+}

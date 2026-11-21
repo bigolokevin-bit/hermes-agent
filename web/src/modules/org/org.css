@@ -262,3 +262,34 @@
     width: 100%;
   }
 }
+/* UI-A table density (docs/design/UI-RUBRIC.md). /identity org tree is an li
+ * grid row shell, not an HTML table: 40 maps to min-height so wrapped tree
+ * rows still grow. No sub-surface, so the 36 tier is not applicable. Zebra
+ * stripes: per-row border separators only, no stripe source. Horizontal-scroll
+ * shell added on the list card; <=720px already collapses to the labelled
+ * card form, so 375 never busts the viewport. */
+.org5-card-content {
+  max-width: 100%;
+  overflow-x: auto;
+}
+.org5-node {
+  min-height: var(--table-row-h);
+}
+.org5-table-head {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-1);
+  font-weight: var(--font-weight-medium);
+}
+@media (min-width: 721px) {
+  /* Count and updated-time columns: right align plus tabular figures. */
+  .org5-table-head > span:nth-child(3),
+  .org5-table-head > span:nth-child(5),
+  .org5-node > [data-label="人数"],
+  .org5-node > [data-label="更新时间"] {
+    text-align: right;
+  }
+  .org5-node > [data-label="人数"],
+  .org5-node > [data-label="更新时间"] {
+    font-variant-numeric: tabular-nums;
+  }
+}
