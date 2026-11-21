@@ -678,19 +678,27 @@ export function TasksBoardModulePage() {
 
       {!panelActive && board.phase === "loading" ? <BoardSkeleton /> : null}
 
+      {/* UI-B 空态组合：留白按令牌（p-10=40px 不在清单，收进 space-6/8）；
+        * 单一主操作=「新建任务」——空态没有可清的筛选维度，根因出口就是创建
+        * 第一条任务，所以主操作落进卡内（标题行按钮保持次级，屏上唯一实心）。 */}
       {!panelActive && board.phase === "empty" ? (
         <Card data-testid="tsk4-empty">
-          <CardContent className="flex flex-col items-center gap-3 p-10 text-center">
+          <CardContent className="flex flex-col items-center gap-[var(--space-3)] px-[var(--space-6)] py-[var(--space-8)] text-center">
             <Inbox className="h-8 w-8 text-muted-foreground" />
             <h2 className="text-lg font-semibold">还没有任务</h2>
-            <p className="text-sm text-muted-foreground">任务进入看板后会按状态出现在这里。</p>
+            <p className="max-w-prose text-sm text-muted-foreground">任务进入看板后会按状态出现在这里。</p>
+            <div className="flex flex-wrap items-center justify-center gap-[var(--space-2)] pt-[var(--space-2)]">
+              <Button size="sm" onClick={() => setCreateOpen(true)} data-testid="tsk4-empty-create">
+                新建任务
+              </Button>
+            </div>
           </CardContent>
         </Card>
       ) : null}
 
       {!panelActive && (board.phase === "error" || board.phase === "denied") ? (
         <Card data-testid={`tsk4-${board.phase}`}>
-          <CardContent className="flex flex-col items-start gap-3 p-5">
+          <CardContent className="flex min-w-0 flex-col items-start gap-[var(--space-3)] px-[var(--space-4)] py-[var(--space-6)]">
             {board.phase === "denied" ? (
               <ShieldAlert className="h-5 w-5 text-amber-400" />
             ) : (
@@ -708,22 +716,25 @@ export function TasksBoardModulePage() {
                 />
               </p>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Button size="sm" outlined onClick={retry} data-testid="tsk4-retry" prefix={<RefreshCw className="h-4 w-4" />}>
+            {/* UI-B 错误态组合：与空态锚互斥由 phase 单值枚举保证（既有测试锁）；
+              * rid 复制入口与技术口径折叠（tasks-summary-caveat-detail）均既有达标，
+              * 本笔实测复核；重试升为唯一实心主操作，其余出口降次级样式。 */}
+            <div className="flex flex-wrap items-center gap-[var(--space-2)]">
+              <Button size="sm" onClick={retry} data-testid="tsk4-retry" prefix={<RefreshCw className="h-4 w-4" />}>
                 重试
               </Button>
               {/* QA V4-R4 条目2: 真出口 — hash 壳内 react-router 路由可达。 */}
               <Link
                 to="/overview"
                 data-testid="tsk4-back"
-                className="inline-flex h-8 items-center rounded-md border border-border px-3 text-sm hover:bg-muted/40"
+                className="inline-flex h-8 items-center rounded-md px-3 text-sm text-muted-foreground hover:bg-muted/40 hover:text-foreground"
               >
                 返回控制台
               </Link>
               <a
                 href={CONTACT_ADMIN_HREF}
                 data-testid="tsk4-contact"
-                className="inline-flex h-8 items-center rounded-md border border-border px-3 text-sm hover:bg-muted/40"
+                className="inline-flex h-8 items-center rounded-md px-3 text-sm text-muted-foreground hover:bg-muted/40 hover:text-foreground"
               >
                 联系管理员
               </a>
