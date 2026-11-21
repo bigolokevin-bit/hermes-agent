@@ -11,8 +11,10 @@ import type { ModuleManifest } from '../../shell/registry';
  * legacy evidence tab (and `sources` to a planned pane), so a cold deep link
  * never reaches this module's panels. The shell files are outside this lane's
  * write domain, so the knowledge deep-link query is normalised here instead,
- * before the App renders: keep the shell's known `tab=spaces` and carry the
- * requested panel in `panel=`, which the module treats as its source of truth.
+ * before the App renders: the rewrite pins the outer tab that owns the requested
+ * panel (`tab=` for the highlight, `panel=` for the face), which the module treats
+ * as its source of truth. `?tab=evidence` is deliberately NOT touched — that
+ * address belongs to the shell's 审计证据 tab in another module.
  *
  * Two spellings arrive: the path form `/knowledge?tab=…` and the hash form
  * `#/knowledge?tab=…` (what the crawl and the console rail use). The hash form is
@@ -31,6 +33,25 @@ const KNOWLEDGE_PANELS: Record<string, KnowledgePanel> = {
 };
 
 type KnowledgePanel = 'spaces' | 'ingest' | 'retrieval' | 'evidence';
+
+/** The outer knowledge tabs this module's panels are allowed to pin. */
+type KnowledgeTabId = 'spaces' | 'sources';
+
+/**
+ * UX r7 判词①：外层高亮只读 `?tab=`（shell/console.tsx 取 `sp.get('tab')`），所以归一
+ * 结果不能把四个面板一律压成 `tab=spaces` —— 那会让高亮落在「知识空间」而内容开在另一面。
+ * 每个面板因此钉住它自己的外层 Tab，与壳侧 compat 条目同配（routes.ts：`ingest` → `sources`，
+ * `retrieval`/`citations` → `spaces`）。
+ */
+const KNOWLEDGE_PANEL_TO_TAB: Record<KnowledgePanel, KnowledgeTabId> = {
+  spaces: 'spaces',
+  ingest: 'sources',
+  retrieval: 'spaces',
+  evidence: 'spaces',
+};
+
+/** `?tab=evidence`（审计证据）是壳侧另一个模块的地址，没有显式 panel 时不归本模块改写。 */
+const FOREIGN_TAB = 'evidence';
 
 /**
  * rewrite the address without ever risking the boot. A document that is still
@@ -52,6 +73,22 @@ function panelOf(current: string | null, raw: string | null): KnowledgePanel | n
   return KNOWLEDGE_PANELS[(raw ?? '').toLowerCase()] ?? null;
 }
 
+/**
+ * 把一次归一算到底：返回 true 表示地址需要改写。已对齐（外层 Tab 就是该面板的归属 Tab，
+ * 且 panel 已写明）时返回 false，避免 replaceState 抖动。
+ */
+function applyKnowledgeDeepLink(params: URLSearchParams): boolean {
+  const rawTab = (params.get('tab') ?? '').toLowerCase();
+  const panel = panelOf(params.get('panel'), params.get('tab'));
+  if (panel === null) return false;
+  if (rawTab === FOREIGN_TAB && !params.has('panel')) return false;
+  const owningTab = KNOWLEDGE_PANEL_TO_TAB[panel];
+  if (rawTab === owningTab && params.get('panel') === panel) return false;
+  params.set('tab', owningTab);
+  params.set('panel', panel);
+  return true;
+}
+
 function normaliseKnowledgeDeepLink(): void {
   if (typeof window === 'undefined') return;
   const hash = window.location.hash ?? '';
@@ -61,11 +98,7 @@ function normaliseKnowledgeDeepLink(): void {
 
   if (pathMatch) {
     const params = new URLSearchParams(window.location.search);
-    const panel = panelOf(params.get('panel'), params.get('tab'));
-    if (panel === null) return;
-    if (params.get('tab') === 'spaces' && panel === 'spaces' && !params.has('panel')) return;
-    params.set('tab', 'spaces');
-    params.set('panel', panel);
+    if (!applyKnowledgeDeepLink(params)) return;
     replaceKnowledgeUrl(`${window.location.pathname}?${params.toString()}${hash}`);
     return;
   }
@@ -73,11 +106,7 @@ function normaliseKnowledgeDeepLink(): void {
   const queryStart = hash.indexOf('?');
   const path = queryStart === -1 ? hash : hash.slice(0, queryStart);
   const params = new URLSearchParams(queryStart === -1 ? '' : hash.slice(queryStart + 1));
-  const panel = panelOf(params.get('panel'), params.get('tab'));
-  if (panel === null) return;
-  if (params.get('tab') === 'spaces' && panel === 'spaces' && !params.has('panel')) return;
-  params.set('tab', 'spaces');
-  params.set('panel', panel);
+  if (!applyKnowledgeDeepLink(params)) return;
   replaceKnowledgeUrl(`${window.location.pathname}${window.location.search}${path}?${params.toString()}`);
 }
 
