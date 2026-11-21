@@ -9,8 +9,8 @@
   "failures": [],
   "oversize": [],
   "rootBaseline": {
-    "textLen": 1109,
-    "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 采集时刻 —（北京时间） 近 24 小时 近 7 天 近 14 天 近 30 天 刷",
+    "textLen": 1108,
+    "head": "运营 · 控制台 运营总览 值班台用量与成本 值班台 运营总览 · 只读 采集时刻 —（北京时间） 近 24 小时 近 7 天 近 14 天 近 30 天 刷新",
     "hasMainEl": true,
     "ok": true
   },
@@ -585,7 +585,7 @@
     {
       "route": "#/work",
       "viewport": "1440",
-      "chars": 261,
+      "chars": 281,
       "hasMainEl": true
     },
     {
@@ -631,11 +631,8 @@
       "hasMainEl": true
     }
   ],
-  "consoleErrorsObservedByShots": 2,
-  "consoleErrorRoutesObservedByShots": [
-    "#/access",
-    "#/work"
-  ],
+  "consoleErrorsObservedByShots": 0,
+  "consoleErrorRoutesObservedByShots": [],
   "ceAuthority": "login-state",
   "routesWithEnvOnlyConsoleErrors": 51,
   "envAttribution": "401/404 Failed-to-load-resource = env (no login session at proxy); see crawl-routes env=auth-required-401 同口径",
@@ -645,16 +642,13 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "de847835",
+  "headHash": "dabefc7a",
   "exitCode": 0,
-  "entry": "assets/index-BeCxh3sC.js",
-  "entrySha256": "39311c09c21a77c82acc58f6a4cb04683e461865026fafc323d53188eec659b3",
+  "entry": "assets/index-CUhV51_R.js",
+  "entrySha256": "90b855919855bbea84bf7c34aed3197c20d75269f2525cf4bfc0a94fdd9c450e",
   "entryBytes": 172175,
-  "servedEntryBefore": "index-BeCxh3sC.js",
-  "servedEntryAfter": "index-BeCxh3sC.js",
-  "routesWithConsoleErrors": [
-    "#/access",
-    "#/work"
-  ],
+  "servedEntryBefore": "index-CUhV51_R.js",
+  "servedEntryAfter": "index-CUhV51_R.js",
+  "routesWithConsoleErrors": [],
   "auxiliary": true
 }
