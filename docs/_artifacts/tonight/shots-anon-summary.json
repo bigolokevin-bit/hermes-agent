@@ -45,13 +45,13 @@
     {
       "route": "#/approvals?tab=history",
       "viewport": "1440",
-      "chars": 753,
+      "chars": 530,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=history",
       "viewport": "375",
-      "chars": 753,
+      "chars": 530,
       "hasMainEl": true
     },
     {
@@ -609,7 +609,7 @@
     {
       "route": "#/work?tab=cron",
       "viewport": "1440",
-      "chars": 261,
+      "chars": 281,
       "hasMainEl": true
     },
     {
@@ -631,10 +631,8 @@
       "hasMainEl": true
     }
   ],
-  "consoleErrorsObservedByShots": 1,
-  "consoleErrorRoutesObservedByShots": [
-    "#/work?tab=cron"
-  ],
+  "consoleErrorsObservedByShots": 0,
+  "consoleErrorRoutesObservedByShots": [],
   "ceAuthority": "login-state",
   "routesWithEnvOnlyConsoleErrors": 51,
   "envAttribution": "401/404 Failed-to-load-resource = env (no login session at proxy); see crawl-routes env=auth-required-401 同口径",
@@ -644,18 +642,17 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "6c626741",
-  "exitCode": 0,
-  "entry": "assets/index-DpeCEJrd.js",
-  "entrySha256": "15882c476c680dbc698b51527cdbb6fa45a88cd096c8dc5e9280a5b49f96eea8",
+  "headHash": "5c32411b",
+  "entry": "assets/index-GXGeT7Wz.js",
+  "entrySha256": "416f29ff124bb05b67e688421d562ee49046895fdd5d56f3c2fedd645998e5e4",
   "entryBytes": 172175,
+  "servedEntryBefore": "index-GXGeT7Wz.js",
+  "servedEntryAfter": "index-GXGeT7Wz.js",
   "css": "assets/index-D9t_vdve.css",
   "cssSha256": "dfdc086ddda2dcb5f263a3d14c28251154263c4dfe160e24c177c40cdde3863f",
   "cssBytes": 146460,
-  "servedEntryBefore": "index-DpeCEJrd.js",
-  "servedEntryAfter": "index-DpeCEJrd.js",
-  "routesWithConsoleErrors": [
-    "#/work?tab=cron"
-  ],
-  "auxiliary": true
+  "criteriaNote": "375 无溢出=旧判据(document.scrollWidth<=375)假绿，按 L0 纠偏待 lane/D-375-criteria 新判据重跑两腿；本拍入章仅记证据",
+  "exitCode": 0,
+  "authStateExpired": null,
+  "authStateNote": "anon 腿门壳模式，102/102 收口；375 判据见 criteriaNote"
 }
