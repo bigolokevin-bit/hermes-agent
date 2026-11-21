@@ -85,9 +85,9 @@
   "violations": [],
   "count": 0,
   "ok": true,
-  "headHash": "007b6841",
+  "headHash": "6632f340",
   "exitCode": 0,
-  "carriedFrom": "15f58a4d",
+  "carriedFrom": "dabefc7a",
   "carried": true,
-  "stampNote": "wave-83 三笔全纯测试，entry sha 与 CSS 逐字节未变"
+  "stampNote": "wave-88 七笔全纯测试，entry sha 与 CSS 逐字节未变（CUhV51_R/p9FlH27O 同 w87）；本件未重跑，证据沿用 dabefc7a 代"
 }

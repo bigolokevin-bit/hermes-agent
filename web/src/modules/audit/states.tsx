@@ -650,6 +650,7 @@ export function EmptyPanel({
   onRefresh,
   testId = "audit-empty",
   slot,
+  clear,
 }: {
   reason: string;
   nextStep: string;
@@ -662,17 +663,42 @@ export function EmptyPanel({
    * body), because zero records and no route are not the same statement.
    */
   slot?: StateSlot;
+  /**
+   * Empty-state composition (UI-B): when a filter produced this empty answer,
+   * its way out IS the single primary action of the card — 清筛选. The caller
+   * wires it to an EXISTING single-dimension handler (no new composite clear).
+   * With no filter to clear, 刷新 becomes that sole primary instead. The named
+   * underline exits below the card (audB/audD) keep their exact anchors.
+   */
+  clear?: { label: string; onClear: () => void };
 }): ReactNode {
   return (
     <Card className="border-border bg-card" data-testid={testId}>
-      <CardContent className="flex min-w-0 flex-col items-center gap-2 px-4 py-10 text-center">
+      {/* 留白令牌化：py-10(40px) 不在间距阶梯，收到 space-8(32)；标题走 15px
+          字号台阶（Mondwest 只有 400 face，字重是死杠杆）。 */}
+      <CardContent className="flex min-w-0 flex-col items-center gap-[var(--space-2)] px-[var(--space-4)] py-[var(--space-8)] text-center">
         {slot ? <StateMark slot={slot} phase="empty" /> : null}
         <Inbox className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
-        <p className={`min-w-0 break-words text-sm ${themedBody}`}>{reason}</p>
+        <p className={`min-w-0 break-words text-base ${themedBody}`}>{reason}</p>
         <p className="max-w-prose break-words text-xs text-muted-foreground">{nextStep}</p>
-        <Button size="sm" outlined onClick={onRefresh} prefix={<RefreshCw className="h-3.5 w-3.5" />}>
-          刷新
-        </Button>
+        <div
+          className="flex min-w-0 flex-wrap items-center justify-center gap-[var(--space-2)]"
+          data-testid={`${testId}-actions`}
+        >
+          {clear ? (
+            <Button size="sm" onClick={clear.onClear} data-testid={`${testId}-clear`}>
+              {clear.label}
+            </Button>
+          ) : null}
+          <Button
+            size="sm"
+            outlined={clear ? true : undefined}
+            onClick={onRefresh}
+            prefix={<RefreshCw className="h-3.5 w-3.5" />}
+          >
+            刷新
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );
@@ -699,9 +725,12 @@ export function ErrorPanel({
       className="border-destructive/40 bg-destructive/5"
       data-testid={testId}
     >
-      <CardContent className="flex min-w-0 flex-col items-start gap-2 px-4 py-6">
+        <CardContent className="flex min-w-0 flex-col items-start gap-[var(--space-2)] px-[var(--space-4)] py-[var(--space-6)]">
+        {/* 组合口径（UI-B）：与空态锚互斥由 list.phase 单值枚举锁死（R226 护栏）；
+            rid 复制行与技术折叠为既有能力；rid 展示经 CopyValue min-w-0 break-all，
+            375 不横溢。标题走 15px 字号台阶；重试是卡内唯一实心主操作。 */}
         {slot ? <StateMark slot={slot} phase="error" sentence={failure.sentence} /> : null}
-        <div className="flex min-w-0 items-center gap-2 text-sm text-destructive">
+        <div className="flex min-w-0 items-center gap-[var(--space-2)] text-base text-destructive">
           <TriangleAlert className="h-4 w-4 shrink-0" aria-hidden="true" />
           <span className="min-w-0 break-words">{title}</span>
         </div>
@@ -710,7 +739,7 @@ export function ErrorPanel({
         </p>
         <RequestIdLine requestId={failure.requestId} testId={`${testId}-request-id`} />
         {failure.technical ? <TechnicalDisclosure lines={[failure.technical]} testId={`${testId}-details`} /> : null}
-        <Button size="sm" outlined onClick={onRetry} prefix={<RefreshCw className="h-3.5 w-3.5" />}>
+        <Button size="sm" onClick={onRetry} prefix={<RefreshCw className="h-3.5 w-3.5" />}>
           重试
         </Button>
       </CardContent>

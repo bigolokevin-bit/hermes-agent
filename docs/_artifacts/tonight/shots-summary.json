@@ -9,18 +9,14 @@
   "failures": [],
   "oversize": [],
   "rootBaseline": {
-    "textLen": 1109,
+    "textLen": 983,
     "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 采集时刻 —（北京时间） 近 24 小时 近 7 天 近 14 天 近 30 天 刷",
     "hasMainEl": true,
     "ok": true
   },
   "distinctMainHeads": 25,
-  "routesWithEmptyMain": [
-    "#/sessions"
-  ],
-  "routesWithoutMainEl": [
-    "#/sessions"
-  ],
+  "routesWithEmptyMain": [],
+  "routesWithoutMainEl": [],
   "mainCharsByRoute": [
     {
       "route": "#/access",
@@ -235,34 +231,34 @@
     {
       "route": "#/employees/:employeeId?zone=evidence",
       "viewport": "375",
-      "chars": 42,
-      "hasMainEl": true
-    },
-    {
-      "route": "#/employees/:employeeId?zone=runs",
-      "viewport": "1440",
-      "chars": 42,
-      "hasMainEl": true
-    },
-    {
-      "route": "#/employees/:employeeId?zone=runs",
-      "viewport": "375",
-      "chars": 42,
-      "hasMainEl": true
-    },
-    {
-      "route": "#/employees/:employeeId?zone=tasks",
-      "viewport": "1440",
-      "chars": 42,
-      "hasMainEl": true
-    },
-    {
-      "route": "#/employees/:employeeId?zone=tasks",
-      "viewport": "375",
       "chars": 146,
       "hasMainEl": true
     },
     {
+      "route": "#/employees/:employeeId?zone=runs",
+      "viewport": "1440",
+      "chars": 42,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/employees/:employeeId?zone=runs",
+      "viewport": "375",
+      "chars": 66,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/employees/:employeeId?zone=tasks",
+      "viewport": "1440",
+      "chars": 42,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/employees/:employeeId?zone=tasks",
+      "viewport": "375",
+      "chars": 42,
+      "hasMainEl": true
+    },
+    {
       "route": "#/identity",
       "viewport": "1440",
       "chars": 151,
@@ -493,14 +489,14 @@
     {
       "route": "#/sessions",
       "viewport": "1440",
+      "chars": 10,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/sessions",
+      "viewport": "375",
       "chars": 1,
       "hasMainEl": true
-    },
-    {
-      "route": "#/sessions",
-      "viewport": "375",
-      "chars": 0,
-      "hasMainEl": false
     },
     {
       "route": "#/system",
@@ -635,8 +631,11 @@
       "hasMainEl": true
     }
   ],
-  "consoleErrorsObservedByShots": 0,
-  "consoleErrorRoutesObservedByShots": [],
+  "consoleErrorsObservedByShots": 2,
+  "consoleErrorRoutesObservedByShots": [
+    "#/access",
+    "#/capabilities?tab=channels"
+  ],
   "ceAuthority": "login-state",
   "routesWithEnvOnlyConsoleErrors": 51,
   "envAttribution": "401/404 Failed-to-load-resource = env (no login session at proxy); see crawl-routes env=auth-required-401 同口径",
@@ -646,12 +645,15 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "007b6841",
+  "headHash": "6632f340",
   "exitCode": 0,
-  "entry": "assets/index-6g0IMx1G.js",
+  "entry": "assets/index-CUhV51_R.js",
+  "entrySha256": "90b855919855bbea84bf7c34aed3197c20d75269f2525cf4bfc0a94fdd9c450e",
   "entryBytes": 172175,
-  "entrySha256": "4407188fca95d1468ac3d2344108398303ac5d824c4c1f9c620f57fdc11d686b",
-  "servedEntryBefore": "index-6g0IMx1G.js",
-  "servedEntryAfter": "index-6g0IMx1G.js",
-  "routesWithConsoleErrors": []
+  "servedEntryBefore": "index-CUhV51_R.js",
+  "servedEntryAfter": "index-CUhV51_R.js",
+  "routesWithConsoleErrors": [
+    "#/access",
+    "#/capabilities?tab=channels"
+  ]
 }
