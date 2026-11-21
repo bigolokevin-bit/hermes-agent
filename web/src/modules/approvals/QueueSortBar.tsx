@@ -11,6 +11,45 @@ import type { ApprovalSortDir, ApprovalSortKey } from "./model";
 
 type Phase = "loading" | "empty" | "ready" | "error" | "denied";
 
+/**
+ * P1-A1 — 三行元说明从排序条本体拆成共享组件：待处理页把它们移进筛选折叠
+ * 面板（首屏控制带瘦身），历史页仍原位随排序条渲染。三个 testid
+ * （apv-gates-note / apv-nav-note / apv-sort-scope-note）与文案逐字不变，
+ * 只是挂载位置可变；scope-note 的 blocked 门与排序钮共用同一
+ * actionGates(phase, loadedCount) 派生，语义与原实现同源。
+ */
+export function QueueMetaNotes({ phase, loadedCount }: { phase: Phase; loadedCount: number }) {
+  const blocked = !actionGates(phase, loadedCount).sort.enabled;
+  return (
+    <>
+      <p
+        className="min-w-0 break-words text-[11px] text-muted-foreground/70"
+        data-testid="apv-gates-note"
+        title="六个入口＝导出 CSV、行内展开、打开详情、列排序、汇总桶点选、重试/刷新；enabled/disabled 与提示文案全部由 actionGates(phase, 行数) 一处派生，原因句只有 gateReason 一套措辞。"
+      >
+        动作可用性矩阵：导出 / 展开 / 详情 / 排序 / 汇总 / 重试同源判定（状态 + 行数），禁用时写明原因。
+      </p>
+      <p
+        className="min-w-0 break-words text-xs text-muted-foreground"
+        data-testid="apv-nav-note"
+        title="键盘导航只读屏上已加载的行：不产生请求、不改写 URL 参数。"
+      >
+        键盘：↑/↓ 行间移焦，Home/End 首末行，Enter 展开/收起该行预览，空格打开详情，Esc 收起并回到该行。
+      </p>
+      {blocked ? null : (
+        <p
+          className="min-w-0 break-words text-xs text-muted-foreground"
+          data-testid="apv-sort-scope-note"
+          data-apv-sort-scope-note="local-sort"
+          title="实测：本页读口带 sort/order 或 orderBy/dir 任一组合都与不带时返回同一合同一顺序（即本页已加载行的原序）；后台不做服务端排序，所以这里只重排已加载行。"
+        >
+          仅在当前已加载 {loadedCount} 条内排序；不是服务端排序（读口忽略排序参数，实测同序同集合），缺值的行恒排末。
+        </p>
+      )}
+    </>
+  );
+}
+
 const COLUMNS: readonly { key: ApprovalSortKey; label: string; tip: string }[] = [
   { key: "title", label: "标题", tip: "按标题字母序（中文按拼音 locale 比较）" },
   { key: "status", label: "状态", tip: "按状态原始值字母序；缺原始值的行排末" },
@@ -24,12 +63,15 @@ export function QueueSortBar({
   dir,
   loadedCount,
   onCycle,
+  hideNotes = false,
 }: {
   phase: Phase;
   sort: ApprovalSortKey | null;
   dir: ApprovalSortDir;
   loadedCount: number;
   onCycle: (key: ApprovalSortKey) => void;
+  // P1-A1: 待处理页把三行元说明让位给筛选折叠面板；默认 false=历史页零变化。
+  hideNotes?: boolean;
 }) {
   // R72: 与导出/汇总同一 gates 派生；真实空集下排序保持可用。
   const gate = actionGates(phase, loadedCount).sort;
@@ -77,30 +119,8 @@ export function QueueSortBar({
           );
         })}
       </div>
-      <p
-        className="min-w-0 break-words text-[11px] text-muted-foreground/70"
-        data-testid="apv-gates-note"
-        title="六个入口＝导出 CSV、行内展开、打开详情、列排序、汇总桶点选、重试/刷新；enabled/disabled 与提示文案全部由 actionGates(phase, 行数) 一处派生，原因句只有 gateReason 一套措辞。"
-      >
-        动作可用性矩阵：导出 / 展开 / 详情 / 排序 / 汇总 / 重试同源判定（状态 + 行数），禁用时写明原因。
-      </p>
-        <p
-          className="min-w-0 break-words text-xs text-muted-foreground"
-          data-testid="apv-nav-note"
-          title="键盘导航只读屏上已加载的行：不产生请求、不改写 URL 参数。"
-        >
-          键盘：↑/↓ 行间移焦，Home/End 首末行，Enter 展开/收起该行预览，空格打开详情，Esc 收起并回到该行。
-        </p>
-      {blocked ? null : (
-        <p
-          className="min-w-0 break-words text-xs text-muted-foreground"
-          data-testid="apv-sort-scope-note"
-        data-apv-sort-scope-note="local-sort"
-          title="实测：本页读口带 sort/order 或 orderBy/dir 任一组合都与不带时返回同一合同一顺序（即本页已加载行的原序）；后台不做服务端排序，所以这里只重排已加载行。"
-        >
-          仅在当前已加载 {loadedCount} 条内排序；不是服务端排序（读口忽略排序参数，实测同序同集合），缺值的行恒排末。
-        </p>
-      )}
+      {/* P1-A1: notes 拆成 QueueMetaNotes；hideNotes 时由调用方在别处挂载。 */}
+      {hideNotes ? null : <QueueMetaNotes phase={phase} loadedCount={loadedCount} />}
     </div>
   );
 }

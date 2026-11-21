@@ -639,6 +639,8 @@ describe("R71 pending column sorting", () => {
     await act(async () => {});
     expect(btn.getAttribute("aria-sort")).toBe("ascending");
     expect(api.fetchJSON.mock.calls.length, "sorting never fetches").toBe(before);
+    // P1-A1: 元说明三行已移入筛选折叠面板——先展开再断言（口径断言原样保留）。
+    await openFilters();
     expect(document.querySelector('[data-testid="apv-sort-scope-note"]')?.textContent).toContain("条内排序");
   });
 });
@@ -664,6 +666,9 @@ describe("R73 pending keyboard navigation (apv-nav-*)", () => {
     expect(qa("apv9-preview-ap_9F3A1111"), "Esc closes").toBeNull();
     expect(document.activeElement).toBe(row);
     expect(api.fetchJSON.mock.calls.length, "no keyboard-triggered requests").toBe(before);
+    // P1-A1: nav note 现居筛选折叠面板内——展开后再断其在场；键盘断言不受影响
+    // （本行钮点开面板不产生任何请求，above 已证零增量取数）。
+    await openFilters();
     expect(qa("apv-nav-note"), "nav note present").toBeTruthy();
   });
 });

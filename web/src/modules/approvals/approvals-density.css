@@ -89,3 +89,22 @@
     overflow-wrap: anywhere;
   }
 }
+
+/* P1-A1（wave-128）：待处理页把「汇总条 + 生效筛选 chips」合并为一行
+ * （apv-summary-row），并把三行元说明收进筛选折叠面板（apv-filter-panel）。
+ * 两容器沿用 b7ad5f01 同款窄档纪律：直接子级 min-width:0、长 token
+ * （桶名、关键字回显、口径句）anywhere 折行，保证 375 视口不横溢。 */
+@media (max-width: 1023.98px) {
+  [data-testid="apv-summary-row"] > * {
+    min-width: 0;
+  }
+  [data-testid="apv-summary-row"] :is(span, b) {
+    overflow-wrap: anywhere;
+  }
+  [data-testid="apv-filter-panel"] > * {
+    min-width: 0;
+  }
+  [data-testid="apv-filter-panel"] :is(span, b) {
+    overflow-wrap: anywhere;
+  }
+}

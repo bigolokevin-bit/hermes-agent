@@ -44,7 +44,7 @@ import { PermalinkCopy } from "./PermalinkCopy";
 import { dropCorrelationReturn, peekCorrelationReturn } from "./correlationReturn";
 import { BackToList, restoreListScroll, saveListScroll } from "./BackToList";
 import { QueueCsvExport } from "./QueueCsvExport";
-import { QueueSortBar } from "./QueueSortBar";
+import { QueueMetaNotes, QueueSortBar } from "./QueueSortBar";
 import { ActorBuckets } from "./ActorBuckets";
 import "./approvals-density.css";
 import { RowDetailCopy } from "./RowDetailCopy";
@@ -498,27 +498,32 @@ export function ApprovalsPendingModulePage(): ReactNode {
           筛选条件（{filterState.count > 0 ? filterState.count : "无"}）
         </button>
       </div>
-      <QueueSummaryBar phase={list.phase} rows={visibleRows} scope="queue" detail={summaryLine} />
-      <div className="flex min-w-0 flex-wrap items-center gap-2" data-testid="apv-reset-row">
-        <button
-          type="button"
-          data-testid="apv-reset-filters"
-          disabled={!filterState.active}
-          title={resetTitle(filterState.count)}
-          onClick={clearFilters}
-          className="h-6 rounded-md border border-white/15 px-2 text-xs text-muted-foreground hover:bg-white/5 focus-visible:outline focus-visible:outline-1 focus-visible:outline-white/60 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          重置筛选{filterState.active ? `（${filterState.count}）` : ""}
-        </button>
-        <FilterSummary
-          params={params}
-          onRemove={removeFilterKeys}
-          phase={list.phase}
-          disclosure={{
-            expanded: filtersOpen,
-            onToggle: () => setFiltersOpen((value) => !value),
-          }}
-        />
+      {/* P1-A1（wave-128）：375 首屏控制带瘦身——汇总条与重置/chips 收拢成一行
+          （内部结构与 testid 原样，只是外面并带；窄档 flex 自动换行不溢出）。
+          元说明三行移入下方折叠面板（QueueSortBar hideNotes，History 零变化）。 */}
+      <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1" data-testid="apv-summary-row">
+        <QueueSummaryBar phase={list.phase} rows={visibleRows} scope="queue" detail={summaryLine} />
+        <div className="flex min-w-0 flex-wrap items-center gap-2" data-testid="apv-reset-row">
+          <button
+            type="button"
+            data-testid="apv-reset-filters"
+            disabled={!filterState.active}
+            title={resetTitle(filterState.count)}
+            onClick={clearFilters}
+            className="h-6 rounded-md border border-white/15 px-2 text-xs text-muted-foreground hover:bg-white/5 focus-visible:outline focus-visible:outline-1 focus-visible:outline-white/60 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            重置筛选{filterState.active ? `（${filterState.count}）` : ""}
+          </button>
+          <FilterSummary
+            params={params}
+            onRemove={removeFilterKeys}
+            phase={list.phase}
+            disclosure={{
+              expanded: filtersOpen,
+              onToggle: () => setFiltersOpen((value) => !value),
+            }}
+          />
+        </div>
       </div>
       {/* 结果集动作（导出/排序/行内预览复制）不进面板：它们作用于当前读数，
           与筛选控件不同归属，收起时同样可用（工单第 5 条）。 */}
@@ -558,11 +563,14 @@ export function ApprovalsPendingModulePage(): ReactNode {
           <ActorBuckets rows={riskBaseRows} phase={list.phase} actor={actor} onPick={pickActor} />
           <SinceQuickFilter phase={list.phase} since={since} loadedCount={list.rows.length} onPick={pickSince} />
           <RiskQuickFilter rows={actorBaseRows} phase={list.phase} risk={risk} onPick={pickRisk} />
+          {/* P1-A1: 三行元说明（动作矩阵/键盘导航/本地排序口径）收进面板尾——
+              testid 与文案逐字不变，收起时随面板卸载，展开即见。 */}
+          <QueueMetaNotes phase={list.phase} loadedCount={list.rows.length} />
         </div>
       ) : null}
 
       <QueueCsvExport rows={visibleRows} tab="pending" status="pending" phase={list.phase} sort={asort} dir={asort ? adir : null} />
-      <QueueSortBar phase={list.phase} sort={asort} dir={adir} loadedCount={list.rows.length} onCycle={cycleSort} />
+      <QueueSortBar phase={list.phase} sort={asort} dir={adir} loadedCount={list.rows.length} onCycle={cycleSort} hideNotes />
       <RowDetailCopy row={visibleRows.find((r) => r.key === previewKey) ?? null} />
 
       <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
