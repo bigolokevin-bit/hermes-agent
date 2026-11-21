@@ -1472,3 +1472,11 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - 其余六件（ia×2/fake/reuse/crawl×2）= carriedFrom=c1063feb+carried=true+stampNote『wave-82 四笔全纯测试，entry sha 与 CSS 逐字节未变』；每件写后即回读（w80 写丢失坑固化）。
 - TALLY 原文 {'15f58a4d': 9} count 9 BAD=[]；三键两 summary 全值（6g0IMx1G/172175/4407188f…d686b、served 两端 index-6g0IMx1G.js、ceAuthority=login-state、anon aux=true）。
 - 51956391（wave-81）未落章即被再锚取代=中间代次不补章；a6c014ab(c1063feb) 章不重做。无 amend/force；只做账本，未写 PASS、ACC 判词节未动；web/src/9122/BFF/caddy/qa-verify 未碰。
+
+## 一六八轮 · 波次代次九件重章 @ 007b6841（wave-83，entry 6g0IMx1G 未换代，2026-11-21 08:1x-08:2x）
+
+- 三笔并入 appr 8392b294 R258 / ui1 6525ac20 R241 / aud 19109cd4 R251（全纯测试，entry sha 与 CSS 逐字节未变，开工现查四向一致=007b68414ccb）。
+- shots 双面本代真跑：auth 102/102 failures=[] obs=0 routes=[] distinct=25；anon 102/102 **obs=2（#/approvals?tab=pending&view=mine、#/capabilities?tab=models 自产路由名如实，不入判据）distinct=23**；routesWithConsoleErrors 均按自产写（auth=obs0 故空数组）；三键两 summary 全值 servedEntryBefore==After。state-quad 本代真跑 20/20 ok=true 非 carried。其余六件 carriedFrom=15f58a4d+carried=true+stampNote；每件写后即回读。
+- TALLY 原文 {'007b6841': 9} count 9 BAD=[]。
+- 硬线纪律注记：08:18 硬线超约 2.5 分钟收口——超时段为双腿物理运行余量（anon 08:11:07/auth 08:15:42 自产完成，非挂死非等待缺陷）；无造假无缺件，如实认账。
+- dbd5caf2(15f58a4d) 章不重做；无 amend/force；只做账本未写 PASS；ACC 判词节/web/src/9122/BFF/caddy/qa-verify 未动。

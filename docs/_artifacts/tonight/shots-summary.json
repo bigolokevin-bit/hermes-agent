@@ -14,9 +14,13 @@
     "hasMainEl": true,
     "ok": true
   },
-  "distinctMainHeads": 24,
-  "routesWithEmptyMain": [],
-  "routesWithoutMainEl": [],
+  "distinctMainHeads": 25,
+  "routesWithEmptyMain": [
+    "#/sessions"
+  ],
+  "routesWithoutMainEl": [
+    "#/sessions"
+  ],
   "mainCharsByRoute": [
     {
       "route": "#/access",
@@ -495,8 +499,8 @@
     {
       "route": "#/sessions",
       "viewport": "375",
-      "chars": 1,
-      "hasMainEl": true
+      "chars": 0,
+      "hasMainEl": false
     },
     {
       "route": "#/system",
@@ -642,15 +646,12 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "15f58a4d",
+  "headHash": "007b6841",
   "exitCode": 0,
   "entry": "assets/index-6g0IMx1G.js",
   "entryBytes": 172175,
   "entrySha256": "4407188fca95d1468ac3d2344108398303ac5d824c4c1f9c620f57fdc11d686b",
   "servedEntryBefore": "index-6g0IMx1G.js",
   "servedEntryAfter": "index-6g0IMx1G.js",
-  "routesWithConsoleErrors": [],
-  "carriedFrom": "c1063feb",
-  "carried": true,
-  "stampNote": "wave-82 硬线内 auth 面真跑腿挂死（png 07:59:15 后停更 9 分钟，kill 弃），本件沿用 c1063feb 代证据未刷新；anon 面为本代真跑"
+  "routesWithConsoleErrors": []
 }
