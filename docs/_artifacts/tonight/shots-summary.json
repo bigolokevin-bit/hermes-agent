@@ -9,12 +9,12 @@
   "failures": [],
   "oversize": [],
   "rootBaseline": {
-    "textLen": 1061,
-    "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 采集时刻 —（北京时间） 近 24 小时 近 7 天 近 14 天 近 30 天 刷",
+    "textLen": 975,
+    "head": "运营 · 控制台 运营总览 值班台用量与成本 值班台 运营总览 · 只读 采集时刻 —（北京时间） 近 24 小时 近 7 天 近 14 天 近 30 天 刷新",
     "hasMainEl": true,
     "ok": true
   },
-  "distinctMainHeads": 25,
+  "distinctMainHeads": 24,
   "routesWithEmptyMain": [],
   "routesWithoutMainEl": [],
   "mainCharsByRoute": [
@@ -51,7 +51,7 @@
     {
       "route": "#/approvals?tab=history",
       "viewport": "375",
-      "chars": 718,
+      "chars": 753,
       "hasMainEl": true
     },
     {
@@ -207,7 +207,7 @@
     {
       "route": "#/employees/:employeeId",
       "viewport": "375",
-      "chars": 66,
+      "chars": 42,
       "hasMainEl": true
     },
     {
@@ -255,7 +255,7 @@
     {
       "route": "#/employees/:employeeId?zone=tasks",
       "viewport": "375",
-      "chars": 66,
+      "chars": 42,
       "hasMainEl": true
     },
     {
@@ -345,7 +345,7 @@
     {
       "route": "#/identity?tab=tenant",
       "viewport": "1440",
-      "chars": 151,
+      "chars": 149,
       "hasMainEl": true
     },
     {
@@ -631,10 +631,9 @@
       "hasMainEl": true
     }
   ],
-  "consoleErrorsObservedByShots": 2,
+  "consoleErrorsObservedByShots": 1,
   "consoleErrorRoutesObservedByShots": [
-    "#/approvals?tab=history",
-    "#/capabilities?tab=channels"
+    "#/identity?tab=tenant"
   ],
   "ceAuthority": "login-state",
   "routesWithEnvOnlyConsoleErrors": 51,
@@ -645,15 +644,16 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "c621295b",
+  "headHash": "1af5c41f",
   "exitCode": 0,
-  "entry": "assets/index-OCLu6KCF.js",
-  "entrySha256": "cdf9958a3085c280e6933498d56c6d30a435ef6bef2035633206356af61e3567",
+  "entry": "assets/index-CE4DkLMF.js",
   "entryBytes": 172175,
-  "servedEntryBefore": "index-OCLu6KCF.js",
-  "servedEntryAfter": "index-OCLu6KCF.js",
+  "entrySha256": "af5f2e640ff455366f0cda19e43977fda9610e12fd7d50545b4409671ce8ee9e",
+  "servedEntryBefore": "index-CE4DkLMF.js",
+  "servedEntryAfter": "index-CE4DkLMF.js",
+  "auxiliary": false,
+  "carriedFrom": null,
   "routesWithConsoleErrors": [
-    "#/approvals?tab=history",
-    "#/capabilities?tab=channels"
+    "#/identity?tab=tenant"
   ]
 }
