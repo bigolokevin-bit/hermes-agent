@@ -6878,3 +6878,49 @@ kn-doc-copy*/kn7-preview*/kn3-page-cap/kn-type*/kn-sort*/kn-gates/导出 absent 
 ```
 未测如实：带登录会话真屏；A 帧切回「全部」后钮序回 [0..2] 的并链（两向各半已锁，
 往返合一未测）；B 重开第五帧（R236① 三帧地盘）；腿②纯引用未复测。
+
+# KNW5 追加 R263：抽屉 500 窗五量同帧（腿②真缺口单例；腿①③全锁判定引用）（2026-11-21 BJT）
+
+安全门：porcelain 空起做、`merge-base --is-ancestor` 为是 → **`git merge --ff-only`**
+无损快进至实测 `33437932`（与派工一致）、knowledge delta 零（**未用 `-B`**）；基线先跑
+74/289 全绿 Errors 0、目标文件确认缺席再动笔。零产品文件改动。新增
+knowledge.detail.export.filter.matrix.test.tsx 一例（本体；①③为头注裁决位）。
+
+## 三腿裁决（file:line）
+
+```text
+①＝**全锁引用**：R262 A(export.detail.filter.isolation:~120-150 三合一帧：链==屏上∧
+  钮自 0 重建∧全量 urls join 逐字∧详情读恒 1∧doc/ktype 同址∧出局 dd 第三式)+R224①
+  (preview.filter.transition:125-140)+R239②。换算照落：无 ?source=、?preview= 不存在
+  （行内=本地 previewKey——R206③）、「列表只重取 1 次」驳回为 0。
+③＝**全锁引用**：R262 B（四帧回环：前==开==关 toBe ∧ 钮序 前==关 ∧ cap 三帧逐字 ∧
+  关 +0）+R236①(open.detail:132-158)+R233②+R196④。
+②＝三量分锁、**同帧未锁**：R232①(detail.error.export:152-176 三值+toBe 跨渲染——无
+  rid 投递/重试)、R183③(detail.error:135-158 重试 +1+锚灭+就位——无导出/三值)、
+  R237③/R239③（列表窗 rid/重试——非抽屉窗）→ 本笔唯一例：**五量同帧**——抽屉 500 窗
+  「导出 toBe 干净帧快照 ∧ 三值 [3,3,3] ∧ rid writeText 逐字（rid-r263-500）∧ 重试
+  恰 +1 且末条==DETAIL_A ∧ 重试后再导出仍 toBe 同快照」；错误句/锚名引 R183①②、
+  列表不卸载引 R232① 语义位。
+名实收口：无真 CSV→导出=knF 5 列、kn-list-copy 不存在、blob spy 全程 0 断言在例；
+错误态列表在场；cap null 族不涉（本帧列表健康）；clip 桩 Promise+unstub；重试契约
+计数并入同帧非复写。
+```
+
+## 验证尾行（R263）
+
+```text
+干净帧 3 行基线；故障帧 kn7-preview-error+「这次没能读到这份文档的详情」、knF 全文
+  toBe 基线、[3,3,3]、rid 投递逐字、重试 +1 末条==DETAIL_A、锚灭、再导出仍 toBe 基线、
+  spy 0。
+$ npx vitest run src/modules/knowledge → 75 files / 290 tests passed（289+1 ≥290），
+  grep unhandled = 0
+$ eslint → 0 errors（1 既有 warning）；模块 tsc → 0
+$ build /tmp/knw-r263-dist → exit 0；全仓 → 453 files / 3420 passed **零红**
+  （metrics 跨日两条本轮未复现，不视为已修复）
+$ 三档 1440/1280/375 vw==bodySW==docSW 全等（用毕即杀）
+零破：kn3*/kn6–kn9/knB/knD/knE-page-*/knF/knG/knI/knL*/kn-row-copy*/kn-row-copy-space*/
+kn-doc-copy*/kn7-preview*/kn3-page-cap/kn-type*/kn-sort*/kn-gates/导出 absent + 既有
+74 套全绿。一例一次全过、零自纠轮，产品零触碰。
+```
+未测如实：带登录会话真屏；五量同帧的 404(unwired) 镜像（unwired 无 rid 复制语义，
+R232② 地盘）；重试后再切桶的账本（R245α 地盘）；①③纯引用未复测。
