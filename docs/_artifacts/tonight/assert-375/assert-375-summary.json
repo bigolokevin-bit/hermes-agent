@@ -1360,7 +1360,8 @@
     }
   ],
   "rerollNote": "channels 单路点名重跑合入（同面同脚本，字体等待旁路腿）：全腿首轮真实内容面 main=113、125 元素 0 违规、37673B 截图成功，但 grow evaluate 瞬败致 fit 未记被判 NM；重跑经旁路腿 contentFit=true PASS（0 违规），首轮读数存于该行 firstRunRow 字段。",
-  "headHash": "6586df6b",
+  "headHash": "d2cc49fe",
+  "measuredBase": "6586df6b",
   "entry": "assets/index-BuZxlyEv.js",
   "entrySha256": "22c17ec34b4f6859adf0955c8f745e0f63f790c9ef8d607030338a2aa28c2a9d",
   "entryBytes": 172175,
@@ -1370,6 +1371,11 @@
   "servedEntryAfter": "index-BuZxlyEv.js",
   "servedCssAfter": "index-DLpXaUuB.css",
   "criteriaNote": "旧 document 级 375 全绿作废不入账（L0③）；本代 375 承者=assert-375 逐元素判据+视口加高取图腿+字体等待旁路复测；channels=点名重跑合入 PASS（首轮读数存 firstRunRow）；sessions=真 NOT MEASURED：45s 旁路仍 screenshot 超时，逐条 navError 入账",
-  "stampNote": "wave-129 6586df6b 本代新跑（非沿用）",
-  "exitCode": 1
+  "stampNote": "wave-131 @d2cc49fe 账本位（D2 组装）：rows/pngs=6586df6b RAW 本体一字未改；d2cc49fe 本代面（P1-B4 runs 卡片 label、知识页第四改）pending=D1 位未回新测，勿等勿催",
+  "exitCode": 1,
+  "pendingGaps": [
+    "d2cc49fe 本代 bundle 面未测（entry/css 承 6586df6b RAW BuZxlyEv/DLpXaUuB）",
+    "shots 旧面待 D1 新图后补",
+    "runs/knowledge 新面 375 图未重跑"
+  ]
 }
