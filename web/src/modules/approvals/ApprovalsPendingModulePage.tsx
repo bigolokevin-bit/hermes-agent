@@ -54,6 +54,18 @@ import { ApprovalDetailBody, ApprovalRowCard } from "./views";
 
 const VERDICT_LABEL: Record<Verdict, string> = { approve: "批准", reject: "驳回" };
 
+// P0-1r（wave-126）：控制台写通道在 BFF 层整体关闭，与单据状态无关。L0 于 2026-11-21
+// 用终态单 ap_AEEC078E0C824E749513AFEC9A 一次性实测：POST /agent-api/api/approval/decision?id=
+// → HTTP 405（服务端只允许 GET/HEAD）。批准/驳回若呈现可点，是「必然失败却不提示」的误导。
+// 这里取 runs 页 run5-retry-new 的同源口径：一个对象同时驱动 disabled / aria-disabled /
+// 人话原因，首帧即禁用，不拿用户的点击去撞 405（原因句不裸显服务端 code）。
+// send()、确认弹窗与 405 兜底路径原样保留，供写通道开闸的后代直接复用。
+const DECISION_GATE = {
+  disabled: true,
+  title:
+    "这个环境的控制台只读：实测决定提交一律被拒（服务端当前只允许读请求，写请求没有入口）。所以批准、驳回在这里以禁用态出现，点它不会发起任何请求；要处理这张单，请走它原本产生决定的渠道。",
+} as const;
+
 const FORCED_STATES: readonly string[] = ["loading", "empty", "error", "denied"];
 
 function forcedStateOf(raw: string | null): ForcedState {
@@ -415,17 +427,34 @@ export function ApprovalsPendingModulePage(): ReactNode {
             id="apr5-comment"
             value={comment}
             placeholder="写一句理由"
-            disabled={inFlight}
+            disabled={inFlight || DECISION_GATE.disabled}
+            title={DECISION_GATE.title}
             onChange={(event) => setComment(event.target.value)}
           />
         </label>
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           {/* P1-375-1: 同屏主按钮唯一——批准是这张单的最主操作，保持实心；
-              驳回降为次级（既有 outlined×destructive 组合样式），文案与 testid 不动。 */}
-          <Button size="sm" onClick={() => setConfirming("approve")} disabled={inFlight}>
+              驳回降为次级（既有 outlined×destructive 组合样式），文案与 testid 不动。
+              P0-1r: 三属性同源于 DECISION_GATE（runs 的 run5-retry-new 口径），
+              onClick 保留——开闸后代去掉 gate 常量即可恢复整条确认流。 */}
+          <Button
+            size="sm"
+            onClick={() => setConfirming("approve")}
+            disabled={inFlight || DECISION_GATE.disabled}
+            aria-disabled={DECISION_GATE.disabled}
+            title={DECISION_GATE.title}
+          >
             批准
           </Button>
-          <Button size="sm" destructive outlined onClick={() => setConfirming("reject")} disabled={inFlight}>
+          <Button
+            size="sm"
+            destructive
+            outlined
+            onClick={() => setConfirming("reject")}
+            disabled={inFlight || DECISION_GATE.disabled}
+            aria-disabled={DECISION_GATE.disabled}
+            title={DECISION_GATE.title}
+          >
             驳回
           </Button>
           {inFlight ? (
@@ -435,6 +464,9 @@ export function ApprovalsPendingModulePage(): ReactNode {
             </span>
           ) : null}
         </div>
+        <p className="max-w-prose min-w-0 break-words text-xs text-muted-foreground" data-testid="apr5-actions-readonly-note">
+          当前环境的控制台是只读的：批准、驳回在这里点了也不会生效，所以两个按钮先禁用了。要处理这张单，请走它原本产生决定的渠道。
+        </p>
       </div>
     ) : (
       <p className="min-w-0 break-words border-t border-border pt-3 text-xs text-muted-foreground">
