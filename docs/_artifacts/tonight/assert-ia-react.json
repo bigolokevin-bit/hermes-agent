@@ -64,9 +64,9 @@
     }
   ],
   "ok": true,
-  "headHash": "c1063feb",
+  "headHash": "15f58a4d",
   "exitCode": 0,
-  "carriedFrom": "ec12d3e7",
+  "carriedFrom": "c1063feb",
   "carried": true,
-  "stampNote": "wave-80 两笔纯测试，entry sha 与 CSS 逐字节未变；本件未重跑，证据沿用 ec12d3e7 代"
+  "stampNote": "wave-82 四笔全纯测试，entry sha 与 CSS 逐字节未变"
 }
