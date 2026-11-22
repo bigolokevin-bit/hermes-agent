@@ -171,8 +171,20 @@ export function MatrixModulePage() {
     return { granted, denied, unknown };
   }, [data.rows]);
 
+  // 换真门三判据写成面上可读的标记，取证不必再从文案倒推：
+  //   data-door         这张表是哪条路来的（fixture-preview / live / no-payload）；
+  //   data-state        面上是哪一态（loading / ready / empty / error / denied）；
+  //   data-badge-source 角标凭什么出现，只有 payload.origin 这一个来源。
+  // 三个值全部由 payload / phase 派生，没有一处写死；真数据到达时它们自己翻回去。
   return (
-    <section className="space-y-4" data-testid="mtx5-module" data-fixture={origin === "fixture" ? "1" : undefined}>
+    <section
+      className="space-y-4"
+      data-testid="mtx5-module"
+      data-fixture={origin === "fixture" ? "1" : undefined}
+      data-door={payload?.origin === "fixture" ? "fixture-preview" : payload ? "live" : "no-payload"}
+      data-state={phase}
+      data-badge-source={origin === "fixture" ? "payload.origin" : undefined}
+    >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="font-mondwest text-xl">能力与权限矩阵</h1>

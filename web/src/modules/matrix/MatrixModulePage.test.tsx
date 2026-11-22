@@ -278,3 +278,117 @@ describe("MatrixModulePage (P0 n3 — PRD §12 fixture door: sample data is revi
     ).not.toBeNull();
   });
 });
+
+// P0 n3 收口：换真门的三条判据必须可点验，不该靠读文案推断。根节点因此
+// 带三个由 payload/phase 派生的标记（data-door / data-state /
+// data-badge-source），每一条都在下面单独一次挂载里读，互不串状态。
+describe("MatrixModulePage (P0 n3 — the three real-gate criteria are readable off the root node)", () => {
+  async function renderAt(entry: string): Promise<void> {
+    // A fresh root per read: re-rendering the same root reconciles instead of
+    // mounting, so the load effect would not re-run and the marks read stale.
+    await act(async () => {
+      root.unmount();
+    });
+    container.replaceChildren();
+    root = createRoot(container);
+    await act(async () => {
+      root.render(
+        <MemoryRouter initialEntries={[entry]}>
+          <MatrixModulePage />
+        </MemoryRouter>,
+      );
+    });
+    for (let step = 0; step < 8; step += 1) {
+      await act(async () => {
+        await Promise.resolve();
+      });
+    }
+  }
+
+  function marks(): Record<string, string | null> {
+    const node = container.querySelector('[data-testid="mtx5-module"]');
+    return {
+      fixture: node?.getAttribute("data-fixture") ?? null,
+      door: node?.getAttribute("data-door") ?? null,
+      state: node?.getAttribute("data-state") ?? null,
+      badgeSource: node?.getAttribute("data-badge-source") ?? null,
+    };
+  }
+
+  it("判据一：读端点没接上才进样例门，标记直接点名那条路", async () => {
+    fetchJSON.mockRejectedValue(missing("req-77"));
+    await renderAt("/matrix");
+    expect(MATRIX_FIXTURE.origin).toBe("fixture");
+    expect(marks()).toEqual({
+      fixture: "1",
+      door: "fixture-preview",
+      state: "ready",
+      badgeSource: "payload.origin",
+    });
+    // 门里真的摆了表，不是因为什么也没渲才没角标。
+    expect(
+      container.querySelectorAll('[data-testid^="mtx5-row-emp_fixture"]'),
+    ).toHaveLength(MATRIX_FIXTURE.employees.length);
+    expect(container.textContent).toContain("示例数据");
+  });
+
+  it("判据一另一半：真数据到达时同一组标记自己翻回去，不带样例痕迹", async () => {
+    fetchJSON.mockImplementation((url: unknown) =>
+      String(url).endsWith("/api/matrix")
+        ? Promise.resolve({
+            employees: [{ employeeId: "emp_live0000aaaa", name: "小鲤" }],
+            capabilities: [{ capabilityId: "cap_live0000bbbb", label: "查看运行" }],
+          })
+        : Promise.resolve({ items: [] }),
+    );
+    await renderAt("/matrix");
+    expect(marks()).toEqual({
+      fixture: null,
+      door: "live",
+      state: "ready",
+      badgeSource: null,
+    });
+    expect(container.querySelector('[data-testid="mtx5-row-emp_live0000aaaa"]')).not.toBeNull();
+    expect(container.textContent).not.toContain("示例数据");
+    expect(readMatrixPayload({ employees: [], capabilities: [] }).origin).toBe("matrix");
+  });
+
+  it("判据二：角标只有一个来源，403 权限态绝不借这扇门", async () => {
+    fetchJSON.mockRejectedValue(forbidden("req-403"));
+    await renderAt("/matrix");
+    expect(marks()).toEqual({
+      fixture: null,
+      door: "no-payload",
+      state: "denied",
+      badgeSource: null,
+    });
+    expect(container.querySelector('[data-testid="mtx5-denied"]')).not.toBeNull();
+    expect(container.textContent).not.toContain("示例数据");
+    // 连不上（status 0）与 404 同形：同一扇门、同一组标记，不另立口径。
+    fetchJSON.mockReset();
+    fetchJSON.mockRejectedValue(new Error("ECONNREFUSED"));
+    await renderAt("/matrix");
+    expect(marks().door).toBe("fixture-preview");
+    expect(marks().badgeSource).toBe("payload.origin");
+    expect(container.textContent).toContain("网络或网关没有应答");
+  });
+
+  it("判据三：四态各有句柄与面，无后端也能逐态复核", async () => {
+    const handles = [
+      { state: "loading", face: "mtx5-loading" },
+      { state: "empty", face: "mtx5-empty" },
+      { state: "error", face: "mtx5-error" },
+      { state: "denied", face: "mtx5-denied" },
+    ] as const;
+    for (const handle of handles) {
+      fetchJSON.mockReset();
+      fetchJSON.mockResolvedValue({ employees: [], capabilities: [] });
+      await renderAt("/matrix?state=" + handle.state);
+      expect(marks().state).toBe(handle.state);
+      expect(container.querySelector('[data-testid="' + handle.face + '"]')).not.toBeNull();
+      // 预览句柄只摆出那一态，不冒充样例门。
+      expect(marks().door).toBe("no-payload");
+      expect(marks().badgeSource).toBeNull();
+    }
+  });
+});
