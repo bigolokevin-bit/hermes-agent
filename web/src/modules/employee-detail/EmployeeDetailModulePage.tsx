@@ -43,6 +43,7 @@ import {
 import { departmentView, FIELD_MISSING, FIELD_MISSING_TITLE, fieldMissing, lifecycleLabel as rosterLifecycleLabel } from "@/modules/employees/EmployeesModulePage";
 import { fetchJSON } from "@/lib/api";
 import { API_UNREACHABLE_MESSAGE, ApiError, humanizeStatus } from "@/lib/api-error";
+import "./employee-detail.css";
 
 /* ------------------------------------------------------------------ *
  * types & small readers
@@ -1110,8 +1111,7 @@ export default function EmployeeDetailModulePage({ employeeId }: { employeeId?: 
                 aria-selected={false}
                 data-testid={`edz-nav-${n.id}`}
                 title="该分区在本版本尚未接线，不提供假入口。"
-                className="cursor-not-allowed rounded px-3 py-1.5 text-sm"
-                style={{ color: "var(--fg-3)" }}
+                className="cursor-not-allowed rounded px-3 py-1.5 text-sm edw-muted"
               >
                 {n.label}
               </span>
@@ -1124,11 +1124,7 @@ export default function EmployeeDetailModulePage({ employeeId }: { employeeId?: 
               role="tab"
               aria-selected={active}
               data-testid={`edz-nav-${n.id}`}
-              className="rounded px-3 py-1.5 text-sm no-underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
-              style={{
-                background: active ? "var(--panel-2)" : "transparent",
-                color: active ? "var(--fg)" : "var(--fg-3)",
-              }}
+              className={`rounded px-3 py-1.5 text-sm no-underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${active ? "edz-active" : "edz-idle"}`}
             >
               {n.label}
             </Link>
@@ -1139,8 +1135,7 @@ export default function EmployeeDetailModulePage({ employeeId }: { employeeId?: 
       <div
         role="tablist"
         aria-label="详情分区"
-        className="flex min-w-0 flex-wrap gap-1 border-b pb-1"
-        style={{ borderColor: "var(--line-2)" }}
+        className="flex min-w-0 flex-wrap gap-1 border-b pb-1 edz-tablist"
         data-testid="ed5-tabs"
       >
         {ZONES.map((z) => {
@@ -1153,11 +1148,7 @@ export default function EmployeeDetailModulePage({ employeeId }: { employeeId?: 
               role="tab"
               aria-selected={active}
               data-zone={z.id}
-              className="rounded-t-[var(--r-sm)] border border-b-0 px-3 py-1.5 text-sm no-underline"
-              style={{
-                background: active ? "var(--panel-2)" : "transparent",
-                color: active ? "var(--fg)" : "var(--fg-3)",
-              }}
+              className={`rounded-t-[var(--r-sm)] border border-b-0 px-3 py-1.5 text-sm no-underline ${active ? "edz-active" : "edz-idle"}`}
             >
               {z.label}
             </Link>

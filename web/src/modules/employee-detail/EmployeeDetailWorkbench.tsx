@@ -20,6 +20,7 @@
  */
 
 import { useState, type ReactNode } from "react";
+import "./employee-detail.css";
 
 export interface EmployeeDetailWorkbenchProps {
   employeeId: string;
@@ -83,20 +84,15 @@ export default function EmployeeDetailWorkbench({
       <div
         role="status"
         aria-live="polite"
-        className="flex min-h-[16rem] flex-1 flex-col items-start justify-center gap-2 rounded-[var(--r)] border p-5 text-sm"
-        style={{
-          background: "var(--panel)",
-          borderColor: "var(--line)",
-          color: "var(--fg-2)",
-        }}
+        className="flex min-h-[16rem] flex-1 flex-col items-start justify-center gap-2 rounded-[var(--r)] border p-5 text-sm edw-panel"
       >
-        <span style={{ color: "var(--fg)" }}>Hermes 对话</span>
+        <span className="edw-title">Hermes 对话</span>
         <span>
           {employeeId === ""
             ? "缺少员工编号，无法确定对话对象。"
             : "接入后，这里会打开与该员工的对话；本页不自行绘制消息流。"}
         </span>
-        <span className="font-mono text-xs" style={{ color: "var(--fg-3)" }}>
+        <span className="font-mono text-xs edw-muted">
           对话服务尚未接入
         </span>
       </div>
@@ -112,22 +108,16 @@ export default function EmployeeDetailWorkbench({
         {RAIL_GROUPS.map((group) => (
           <div
             key={group.key}
-            className="rounded-[var(--r)] border"
-            style={{
-              background: "var(--panel)",
-              borderColor: "var(--line)",
-              color: "var(--fg-2)",
-            }}
+            className="rounded-[var(--r)] border edw-panel"
           >
             <button
               type="button"
               onClick={() => toggle(group.key)}
               aria-expanded={open[group.key]}
-              className="flex w-full items-center justify-between px-4 py-2 text-sm"
-              style={{ color: "var(--fg)", background: "transparent" }}
+              className="flex w-full items-center justify-between px-4 py-2 text-sm edw-toggle"
             >
               <span>{group.label}</span>
-              <i aria-hidden style={{ color: "var(--fg-3)" }}>
+              <i aria-hidden className="edw-muted">
                 {open[group.key] ? "▾" : "▸"}
               </i>
             </button>
@@ -136,7 +126,7 @@ export default function EmployeeDetailWorkbench({
                 {group.lines.map((line) => (
                   <li
                     key={line}
-                    style={{ color: "var(--fg-3)" }}
+                    className="edw-muted"
                     {...(line.includes("待核实")
                       ? { "data-planned": "规划中：上游数据源未落地" }
                       : {})}
