@@ -302,6 +302,13 @@ const GATED_FLAG_INIT = () => {
 // criteriaMissing 必须把该行判 NOT_MEASURED（禁静默 PASS）——证明缺失字段兜底真实生效。
 const TEETH = process.env.ASSERT375_TEETH === '1';
 const BREAK_FIELD = process.env.ASSERT375_BREAK_FIELD === '1';
+// L0 令 153 加硬（拒收 51/51：main=10 骨架级不签 PASS + 同窗两段计数线性增长不签 PASS）：
+// SKELETON_MIN_MAIN＝页面真渲染最小 main 文本长度。依据：骨架/门控壳面读数 main=10 与 main=1，
+// 历史真渲染最小读数为 main=42（模板代入前）/55（loading 共存态），阈值取 30 居中留余量。
+// STORM_NM＝同窗口两段计数线性增长的路由清单（由风暴计数探针供给，env ASSERT375_STORM_NM 逗号分隔）——
+// 命中即 NOT_MEASURED 禁签 PASS。两条都是只加严不放宽。
+const SKELETON_MIN_MAIN = 30;
+const STORM_NM = (process.env.ASSERT375_STORM_NM || '').split(',').map((s) => s.trim()).filter(Boolean);
 const TEETH_INIT = () => {
   const put = () => {
     if (document.querySelector('[data-selftest="teeth-600"]')) return;
@@ -451,6 +458,16 @@ for (const row of target) {
       verdict = 'NOT_MEASURED';
       notMeasured += 1;
       navError = navError || 'criteria-field-missing: violOutsideShell not numeric';
+    } else if (mainLen < SKELETON_MIN_MAIN) {
+      // L0 令 153：骨架级空页（main 文本低于真渲染最小读数）禁签 PASS——页面未真渲染＝NOT_MEASURED
+      verdict = 'NOT_MEASURED';
+      notMeasured += 1;
+      navError = navError || `skeleton-below-threshold: mainTextLen=${mainLen}<${SKELETON_MIN_MAIN} 页面未真渲染（153 加硬）`;
+    } else if (STORM_NM.includes(row.hash)) {
+      // L0 令 153：同窗两段计数线性增长的路由（风暴探针供给清单）一律 NOT_MEASURED 禁签 PASS
+      verdict = 'NOT_MEASURED';
+      notMeasured += 1;
+      navError = navError || 'storm-linear-growth: 同窗两段计数线性增长（153 加硬，清单由风暴计数探针供给）';
     } else if (!probe || !dims) {
       verdict = 'NOT_MEASURED';
       notMeasured += 1;
@@ -578,6 +595,16 @@ for (const row of target) {
       verdict = 'NOT_MEASURED';
       notMeasured += 1;
       navError = navError || 'criteria-field-missing: violOutsideShell not numeric';
+    } else if (mainLen < SKELETON_MIN_MAIN) {
+      // L0 令 153：骨架级空页禁签 PASS（旁路重判腿同口径）
+      verdict = 'NOT_MEASURED';
+      notMeasured += 1;
+      navError = navError || `skeleton-below-threshold: mainTextLen=${mainLen}<${SKELETON_MIN_MAIN} 页面未真渲染（153 加硬）`;
+    } else if (STORM_NM.includes(row.hash)) {
+      // L0 令 153：风暴清单命中禁签 PASS（旁路重判腿同口径）
+      verdict = 'NOT_MEASURED';
+      notMeasured += 1;
+      navError = navError || 'storm-linear-growth: 同窗两段计数线性增长（153 加硬，清单由风暴计数探针供给）';
     } else if (!probe || !dims) {
       verdict = 'NOT_MEASURED';
       notMeasured += 1;
@@ -640,6 +667,8 @@ const summary = {
     perElement: 'right<=376 && left>=-1 for every visible element; inside a genuinely scrollable overflow-x shell recorded as violInsideScrollableShell, only violOutsideShell FAILs (wave-150); violOutsideShell 非数字判 NOT_MEASURED 禁静默 PASS（151）',
     scrollContainers: 'scrollWidth<=clientWidth for overflow-x:auto|scroll, reported separately — compliant shell-scroll evidence, does not FAIL; 退出判红依据＝UI-RUBRIC「表格除外且须有容器内滚动」（wave-150/151）',
     teethSelftest: TEETH ? 'ASSERT375_TEETH=1：body 级注入 width:600px 元素（data-selftest=teeth-600，无可滚壳祖先），同一梯子必须判壳外违规' : null,
+    skeletonGate: `mainTextLen<${SKELETON_MIN_MAIN} 判 NOT_MEASURED 禁签 PASS（153 加硬：骨架级空页非真渲染；依据：骨架面 main=10/1，真渲染最小 42/55，取 30 留余量）`,
+    stormGate: STORM_NM.length ? `STORM_NM 清单命中判 NOT_MEASURED 禁签 PASS（153 加硬）：${STORM_NM.join(' , ')}` : 'STORM_NM 未设（本跑不启用风暴清单闸）',
     domScrollWidth: 'auxiliary only (domOverflowPx column), never greens a page',
     shot: 'fullPage:true && pngH>812 else NOT_MEASURED',
     matrix: fullScope ? 'required png, nonzero' : 'skipped-scope',
