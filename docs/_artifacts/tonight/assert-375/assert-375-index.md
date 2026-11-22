@@ -252,3 +252,10 @@ matrix(#/employees?tab=matrix) present=true ok=true
 - counts 维持 51/51/0/NM0 exitCode0（本波未重扫）；375 总 PASS 放行权在 UX 总审，不自签；vitest 基线 482/3563 已记。
 
 - 补账 160（L0 @1344@ 唯一残留）：summary 顶层新增 whoami160=200@21:54:30+0800（源 w159-kn375-readings.json；覆盖 158 重扫同会话，158 当时未单码如实）+ 51 行各带 whoami160 引用——单文件自证成立；后续每轮起跑先码先入账。
+
+## wave-160 重建核验 @7a47010b35（端口9122/entry index-D4QqzZ8Z.js 产物未换代 + 触点族复跑）
+
+- 脸 7a47010b35（22:10:06，ui-f 四笔：Textarea 导出面/档位类/机检门双向核对/指南）→ vite VITE=0 重建 22:14：**entry/css 同名同 sha 未换代**（D4QqzZ8Z 7dbba1c5…/172800B；DVxC9bvL 286694e4…/148329B；mtime 22:14）——改动不入产物字节，不冒充新代次；内容级脸证据=ls-tree ui/ 含 Textarea.tsx+token-source.test.ts、ui/index.ts grep Textarea=1；三比 /agent-v2/ 引用同值 + /assets/ bit 双 True。
+- 触点族复跑（whoami==200 显式码+时刻前置，本轮现验 200 @ 2026-11-22 22:14:53 +0800）：seg_btn count=4/under44=0、44.0×169.8px minBlockSize=44px（knw5-tab-spaces），与车道自报一致（L0「4 个触点应仍 under44=0」✔）；drill/copy/-clear 三族 count=0 同 159 处置（css 同块纸面+机检门为凭）。
+- whoami160 顶层已刷新为本轮现验码+时刻，51 行逐行带 refresh160 注——任一单文件自证闭环（L0 @1344@ 残留要求：159 补账 a713871561 + 160 刷新双在）。
+- 台账 headHash=7a47010b35 carriedFrom=facff767e0；counts 51/51/0/NM0 exitCode0 维持（本波未重扫 51 路，触点族检查已按令纳入）；总 PASS 归 UX 总审不自签；基线 482/3564。
