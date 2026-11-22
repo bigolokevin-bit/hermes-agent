@@ -309,17 +309,25 @@ async function fetchJSONUncached<T>(
     }
   }
   if (res.ok) {
-    // Clear the stale-token reload guard: a successful 2xx proves the
-    // current ``window.__HERMES_SESSION_TOKEN__`` is valid, so the next
-    // 401 — if any — should be allowed to trigger its own reload cycle.
-    clearDashboardTokenReloadAttempt();
-    // 风暴闸复位：2xx 是会话活着的证明，跳转闩与冷却同时放行下一个世代。
-    clearLoginRedirectAttempt();
-    clearAuthBackoff(target);
-    // Design lane ①: the same proof closes the expiry episode — a 2xx means the
-    // session is live, so the banner must not sit there any longer, and the next
-    // real expiry is a NEW episode that surfaces again after a dismissal.
-    clearSessionExpired();
+    // 9122 现网复跑（wave-154）实锤的反例：反代没转发的 ``/api/*`` 会走 SPA
+    // 兜底，返回 200 + index.html。这不是会话证明，而是假 200 —— 它曾把下面
+    // 三个复位全部重新武装，驱动 43 次/秒的整页 reload 风暴（15s→30s 窗口
+    // 计数翻倍）。HTML 正文的 2xx 一律不得销案，后面的 res.json() 会照常
+    // 报错，调用方看到失败即可。
+    const contentType = res.headers?.get("content-type") ?? "";
+    if (!contentType.includes("text/html")) {
+      // Clear the stale-token reload guard: a successful 2xx proves the
+      // current ``window.__HERMES_SESSION_TOKEN__`` is valid, so the next
+      // 401 — if any — should be allowed to trigger its own reload cycle.
+      clearDashboardTokenReloadAttempt();
+      // 风暴闸复位：真实 2xx 是会话活着的证明，跳转闩与冷却同时放行下一个世代。
+      clearLoginRedirectAttempt();
+      clearAuthBackoff(target);
+      // Design lane ①: the same proof closes the expiry episode — a 2xx means the
+      // session is live, so the banner must not sit there any longer, and the next
+      // real expiry is a NEW episode that surfaces again after a dismissal.
+      clearSessionExpired();
+    }
   }
   if (!res.ok) {
     const text = await res.text().catch(() => res.statusText);
