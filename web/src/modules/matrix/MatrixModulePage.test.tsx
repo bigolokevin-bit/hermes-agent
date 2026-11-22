@@ -392,3 +392,29 @@ describe("MatrixModulePage (P0 n3 — the three real-gate criteria are readable 
     }
   });
 });
+
+describe("MatrixModulePage (R272 — the 375 layout pins the identity column inside the scroll shell)", () => {
+  it("freezes the header and every row's first cell so sideways scroll keeps a row readable", async () => {
+    fetchJSON.mockRejectedValue(missing("req-77"));
+    await renderPage();
+
+    const shell = container.querySelector('[data-testid="mtx5-scroll"]');
+    expect(shell).not.toBeNull();
+
+    // The header row is the second sticky axis; its own identity cell is where the
+    // two axes cross, so it must carry the pin too.
+    const head = container.querySelector('[data-testid="mtx5-head"]');
+    expect(head).not.toBeNull();
+    expect(head?.classList.contains("mtx5-head")).toBe(true);
+    expect(head?.firstElementChild?.classList.contains("mtx5-pin")).toBe(true);
+
+    const rows = [...container.querySelectorAll('[data-testid^="mtx5-row-"]')];
+    expect(rows.length).toBe(MATRIX_FIXTURE.employees.length);
+    for (const row of rows) {
+      // The pin only means something inside the shell: outside it, the cell would
+      // stick to the page and the page would be the thing that scrolls.
+      expect(shell?.contains(row)).toBe(true);
+      expect(row.firstElementChild?.classList.contains("mtx5-pin")).toBe(true);
+    }
+  });
+});

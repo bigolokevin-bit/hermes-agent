@@ -17,6 +17,8 @@ import {
   type MatrixView,
 } from "./matrix";
 
+import "./matrix.css";
+
 type Phase = "loading" | "ready" | "empty" | "error" | "denied";
 
 const FORCED = new Set(["loading", "empty", "error", "denied"]);
@@ -359,10 +361,11 @@ export function MatrixModulePage() {
             <div className="overflow-x-auto" data-testid="mtx5-scroll">
               <div className="min-w-[720px]">
                 <div
-                  className="grid items-center gap-2 border-b border-white/10 pb-2 text-[11px] text-white/40"
+                  className="mtx5-head grid items-center gap-2 border-b border-white/10 pb-2 text-[11px] text-white/40"
+                  data-testid="mtx5-head"
                   style={{ gridTemplateColumns: `minmax(180px, 1.4fr) repeat(${data.columns.length}, minmax(96px, 1fr))` }}
                 >
-                  <span>{view === "people" ? "员工" : "能力"}</span>
+                  <span className="mtx5-pin">{view === "people" ? "员工" : "能力"}</span>
                   {data.columns.map((column) => (
                     <span key={column.key} className="truncate" title={column.rawTitle ?? undefined} data-testid={`mtx5-col-${column.key}`}>
                       {column.label}
@@ -378,7 +381,7 @@ export function MatrixModulePage() {
                       style={{ gridTemplateColumns: `minmax(180px, 1.4fr) repeat(${data.columns.length}, minmax(96px, 1fr))` }}
                       data-testid={`mtx5-row-${row.key}`}
                     >
-                      <span className="min-w-0">
+                      <span className="min-w-0 mtx5-pin">
                         <span className="block truncate text-sm text-white/85" title={row.rawTitle ?? undefined}>
                           {row.label}
                         </span>
