@@ -1,0 +1,436 @@
+[
+ {
+  "leg": "legacy-citations",
+  "requestUrl": "http://127.0.0.1:9122/#/knowledge?tab=citations",
+  "nav": {
+   "url": "http://127.0.0.1:9122/knowledge?panel=evidence",
+   "entry": "/assets/index-Dm2Mt71f.js",
+   "outer": [
+    {
+     "tabId": "spaces",
+     "label": "知识空间",
+     "selected": true
+    },
+    {
+     "tabId": "sources",
+     "label": "数据源",
+     "selected": false
+    },
+    {
+     "tabId": "evidence",
+     "label": "审计证据",
+     "selected": false
+    }
+   ],
+   "outerSelected": {
+    "tabId": "spaces",
+    "label": "知识空间",
+    "selected": true
+   },
+   "inner": [
+    {
+     "testid": "knw5-tab-spaces",
+     "label": "空间台账",
+     "selected": false
+    },
+    {
+     "testid": "knw5-tab-ingest",
+     "label": "数据接入",
+     "selected": false
+    },
+    {
+     "testid": "knw5-tab-retrieval",
+     "label": "检索",
+     "selected": false
+    },
+    {
+     "testid": "knw5-tab-evidence",
+     "label": "运行事件引用",
+     "selected": true
+    }
+   ],
+   "innerSelected": {
+    "testid": "knw5-tab-evidence",
+    "label": "运行事件引用",
+    "selected": true
+   },
+   "panelDataTab": "evidence",
+   "faces": [
+    "文档命中",
+    "引用台账",
+    "会话引用"
+   ],
+   "collision": [],
+   "textLen": 792
+  },
+  "pageErrors": 0
+ },
+ {
+  "leg": "legacy-retrieval",
+  "requestUrl": "http://127.0.0.1:9122/#/knowledge?tab=retrieval",
+  "nav": {
+   "url": "http://127.0.0.1:9122/knowledge?panel=retrieval",
+   "entry": "/assets/index-Dm2Mt71f.js",
+   "outer": [
+    {
+     "tabId": "spaces",
+     "label": "知识空间",
+     "selected": true
+    },
+    {
+     "tabId": "sources",
+     "label": "数据源",
+     "selected": false
+    },
+    {
+     "tabId": "evidence",
+     "label": "审计证据",
+     "selected": false
+    }
+   ],
+   "outerSelected": {
+    "tabId": "spaces",
+    "label": "知识空间",
+    "selected": true
+   },
+   "inner": [
+    {
+     "testid": "knw5-tab-spaces",
+     "label": "空间台账",
+     "selected": false
+    },
+    {
+     "testid": "knw5-tab-ingest",
+     "label": "数据接入",
+     "selected": false
+    },
+    {
+     "testid": "knw5-tab-retrieval",
+     "label": "检索",
+     "selected": true
+    },
+    {
+     "testid": "knw5-tab-evidence",
+     "label": "运行事件引用",
+     "selected": false
+    }
+   ],
+   "innerSelected": {
+    "testid": "knw5-tab-retrieval",
+    "label": "检索",
+    "selected": true
+   },
+   "panelDataTab": "retrieval",
+   "faces": [
+    "文档命中",
+    "检索命中",
+    "读取记录"
+   ],
+   "collision": [],
+   "textLen": 865
+  },
+  "pageErrors": 0
+ },
+ {
+  "leg": "legacy-scope",
+  "requestUrl": "http://127.0.0.1:9122/#/knowledge?tab=scope",
+  "nav": {
+   "url": "http://127.0.0.1:9122/knowledge?panel=spaces",
+   "entry": "/assets/index-Dm2Mt71f.js",
+   "outer": [
+    {
+     "tabId": "spaces",
+     "label": "知识空间",
+     "selected": true
+    },
+    {
+     "tabId": "sources",
+     "label": "数据源",
+     "selected": false
+    },
+    {
+     "tabId": "evidence",
+     "label": "审计证据",
+     "selected": false
+    }
+   ],
+   "outerSelected": {
+    "tabId": "spaces",
+    "label": "知识空间",
+    "selected": true
+   },
+   "inner": [
+    {
+     "testid": "knw5-tab-spaces",
+     "label": "空间台账",
+     "selected": true
+    },
+    {
+     "testid": "knw5-tab-ingest",
+     "label": "数据接入",
+     "selected": false
+    },
+    {
+     "testid": "knw5-tab-retrieval",
+     "label": "检索",
+     "selected": false
+    },
+    {
+     "testid": "knw5-tab-evidence",
+     "label": "运行事件引用",
+     "selected": false
+    }
+   ],
+   "innerSelected": {
+    "testid": "knw5-tab-spaces",
+    "label": "空间台账",
+    "selected": true
+   },
+   "panelDataTab": "spaces",
+   "faces": [
+    "文档命中",
+    "空间台账"
+   ],
+   "collision": [],
+   "textLen": 905
+  },
+  "pageErrors": 0
+ },
+ {
+  "leg": "legacy-ingest",
+  "requestUrl": "http://127.0.0.1:9122/#/knowledge?tab=ingest",
+  "nav": {
+   "url": "http://127.0.0.1:9122/knowledge?tab=sources&panel=ingest",
+   "entry": "/assets/index-Dm2Mt71f.js",
+   "outer": [
+    {
+     "tabId": "spaces",
+     "label": "知识空间",
+     "selected": false
+    },
+    {
+     "tabId": "sources",
+     "label": "数据源",
+     "selected": true
+    },
+    {
+     "tabId": "evidence",
+     "label": "审计证据",
+     "selected": false
+    }
+   ],
+   "outerSelected": {
+    "tabId": "sources",
+    "label": "数据源",
+    "selected": true
+   },
+   "inner": [
+    {
+     "testid": "knw5-tab-spaces",
+     "label": "空间台账",
+     "selected": false
+    },
+    {
+     "testid": "knw5-tab-ingest",
+     "label": "数据接入",
+     "selected": true
+    },
+    {
+     "testid": "knw5-tab-retrieval",
+     "label": "检索",
+     "selected": false
+    },
+    {
+     "testid": "knw5-tab-evidence",
+     "label": "运行事件引用",
+     "selected": false
+    }
+   ],
+   "innerSelected": {
+    "testid": "knw5-tab-ingest",
+    "label": "数据接入",
+    "selected": true
+   },
+   "panelDataTab": "ingest",
+   "faces": [
+    "文档命中",
+    "接入健康",
+    "接入任务",
+    "接入对象"
+   ],
+   "collision": [],
+   "textLen": 1058
+  },
+  "pageErrors": 0
+ },
+ {
+  "leg": "outer-sources",
+  "requestUrl": "http://127.0.0.1:9122/#/knowledge?tab=sources",
+  "nav": {
+   "url": "http://127.0.0.1:9122/knowledge?tab=sources&panel=ingest",
+   "entry": "/assets/index-Dm2Mt71f.js",
+   "outer": [
+    {
+     "tabId": "spaces",
+     "label": "知识空间",
+     "selected": false
+    },
+    {
+     "tabId": "sources",
+     "label": "数据源",
+     "selected": true
+    },
+    {
+     "tabId": "evidence",
+     "label": "审计证据",
+     "selected": false
+    }
+   ],
+   "outerSelected": {
+    "tabId": "sources",
+    "label": "数据源",
+    "selected": true
+   },
+   "inner": [
+    {
+     "testid": "knw5-tab-spaces",
+     "label": "空间台账",
+     "selected": false
+    },
+    {
+     "testid": "knw5-tab-ingest",
+     "label": "数据接入",
+     "selected": true
+    },
+    {
+     "testid": "knw5-tab-retrieval",
+     "label": "检索",
+     "selected": false
+    },
+    {
+     "testid": "knw5-tab-evidence",
+     "label": "运行事件引用",
+     "selected": false
+    }
+   ],
+   "innerSelected": {
+    "testid": "knw5-tab-ingest",
+    "label": "数据接入",
+    "selected": true
+   },
+   "panelDataTab": "ingest",
+   "faces": [
+    "文档命中",
+    "接入健康",
+    "接入任务",
+    "接入对象"
+   ],
+   "collision": [],
+   "textLen": 1058
+  },
+  "pageErrors": 0
+ },
+ {
+  "leg": "outer-evidence",
+  "requestUrl": "http://127.0.0.1:9122/#/knowledge?tab=evidence",
+  "nav": {
+   "url": "http://127.0.0.1:9122/knowledge?tab=evidence",
+   "entry": "/assets/index-Dm2Mt71f.js",
+   "outer": [
+    {
+     "tabId": "spaces",
+     "label": "知识空间",
+     "selected": false
+    },
+    {
+     "tabId": "sources",
+     "label": "数据源",
+     "selected": false
+    },
+    {
+     "tabId": "evidence",
+     "label": "审计证据",
+     "selected": true
+    }
+   ],
+   "outerSelected": {
+    "tabId": "evidence",
+    "label": "审计证据",
+    "selected": true
+   },
+   "inner": [],
+   "innerSelected": null,
+   "panelDataTab": null,
+   "faces": [],
+   "collision": [],
+   "textLen": 4766
+  },
+  "pageErrors": 0
+ },
+ {
+  "leg": "panel-evidence",
+  "requestUrl": "http://127.0.0.1:9122/#/knowledge?panel=evidence",
+  "nav": {
+   "url": "http://127.0.0.1:9122/knowledge?panel=evidence",
+   "entry": "/assets/index-Dm2Mt71f.js",
+   "outer": [
+    {
+     "tabId": "spaces",
+     "label": "知识空间",
+     "selected": true
+    },
+    {
+     "tabId": "sources",
+     "label": "数据源",
+     "selected": false
+    },
+    {
+     "tabId": "evidence",
+     "label": "审计证据",
+     "selected": false
+    }
+   ],
+   "outerSelected": {
+    "tabId": "spaces",
+    "label": "知识空间",
+    "selected": true
+   },
+   "inner": [
+    {
+     "testid": "knw5-tab-spaces",
+     "label": "空间台账",
+     "selected": false
+    },
+    {
+     "testid": "knw5-tab-ingest",
+     "label": "数据接入",
+     "selected": false
+    },
+    {
+     "testid": "knw5-tab-retrieval",
+     "label": "检索",
+     "selected": false
+    },
+    {
+     "testid": "knw5-tab-evidence",
+     "label": "运行事件引用",
+     "selected": true
+    }
+   ],
+   "innerSelected": {
+    "testid": "knw5-tab-evidence",
+    "label": "运行事件引用",
+    "selected": true
+   },
+   "panelDataTab": "evidence",
+   "faces": [
+    "文档命中",
+    "引用台账",
+    "会话引用"
+   ],
+   "collision": [],
+   "textLen": 792
+  },
+  "pageErrors": 0
+ }
+]

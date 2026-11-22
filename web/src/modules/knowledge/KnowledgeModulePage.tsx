@@ -2610,14 +2610,37 @@ function SpaceDetailSurface({
         onRetry={surface.retry}
         unwiredHead={SPACE_DOC_UNWIRED_HEAD}
         unwiredHuman={SPACE_DOC_UNWIRED_HUMAN}
-        empty={() =>
-          typeKey !== "" ? (
+        empty={() => {
+          // 裸 0 不上屏（本模块硬护栏）：份数只在真大于 0 时点名，否则说「这份列表本身还是空的」。
+          const docsCountClause =
+            combined.length > 0 ? `已加载的 ${combined.length} 份文档里` : "这份已加载的列表本身还是空的，";
+          return typeKey !== "" ? (
             <p data-testid="kn-type-empty">
-              该类型下没有文档：当前已加载 {combined.length} 条里没有「{typeKey}」类型的文档。
-              这是类型筛选的结果，不代表空间没有文档。
-              <button type="button" className="knw5-drill" data-testid="kn-type-clear" onClick={() => onCommitType("")}>
-                清除类型筛选
-              </button>
+              {filterKey === ""
+                ? `该类型下没有文档：${docsCountClause}${combined.length > 0 ? `没有「${typeKey}」类型。` : ""}`
+                : `这两个筛选叠起来没有留下文档：${docsCountClause}${
+                    combined.length > 0
+                      ? `「${typeKey}」类型且名字含「${filter.trim()}」的一份都没有。`
+                      : ""
+                  }`}
+              这是筛选的结果，不代表空间没有文档。
+              {filterKey === "" ? (
+                <button type="button" className="knw5-drill" data-testid="kn-type-clear" onClick={() => onCommitType("")}>
+                  清除类型筛选
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="knw5-drill"
+                  data-testid="kn-type-clear-all"
+                  onClick={() => {
+                    onCommitType("");
+                    setFilter("");
+                  }}
+                >
+                  清除全部筛选
+                </button>
+              )}
             </p>
           ) : filterKey === "" ? (
             <EmptyNote testid="knN-empty-text-space-docs" knn="empty">
@@ -2630,14 +2653,14 @@ function SpaceDetailSurface({
             </EmptyNote>
           ) : (
             <EmptyNote testid="knN-empty-text-space-docs" knn="no-match">
-              本地筛选没有匹配：这份列表里有 {loaded} 份文档，按「{filter.trim()}」一条都没留下。
+              本地筛选没有匹配：这份列表里有 {loaded} 份文档，按「{filter.trim()}」一份都没留下。
               这是筛完的结果，不是空间没有文档。
               <button type="button" className="knw5-drill" data-testid="kn3-docs-empty-clear" onClick={() => setFilter("")}>
                 清空筛选
               </button>
             </EmptyNote>
-          )
-        }
+          );
+        }}
         render={() => (
           <>
             <DocTable

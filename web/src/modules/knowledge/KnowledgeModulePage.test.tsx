@@ -4560,7 +4560,7 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     await act(async () => {});
     const gap = byTestid("kn-type-empty")?.textContent ?? "";
     expect(gap).toContain("该类型下没有文档");
-    expect(gap).toContain("当前已加载 2 条里没有「压缩包」");
+    expect(gap).toContain("已加载的 2 份文档里没有「压缩包」类型"); // 队列#2：量词与裸 0 口径（原「当前已加载 2 条里没有」）
     expect(gap).not.toContain("该空间暂无文档");
   });
 
@@ -4659,6 +4659,22 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     expect(byTestid("kn-type-clear")).toBeTruthy();
     await click("kn-type-clear");
     expect(loc()).not.toContain("type=");
+    expect(container.querySelectorAll('[data-testid="kn3-docs-row"]')).toHaveLength(2);
+
+    // ---------- 类型 + 名字两层筛选叠空：必须一钮回全量，且无裸 0 ----------
+    await render("/knowledge?tab=spaces&space=sp_hr&type=%E5%8E%8B%E7%BC%A9%E5%8C%85"); // 压缩包
+    await act(async () => {});
+    await type("kn3-docs-filter-input", "周报");
+    await act(async () => {});
+    const stacked = byTestid("kn-type-empty")?.textContent ?? "";
+    expect(stacked).toContain("这两个筛选叠起来没有留下文档");
+    expect(stacked).not.toMatch(/(^|[^0-9.])0\s*(条|篇|个)/); // 裸 0 不上屏
+    expect(byTestid("kn-type-clear")).toBeFalsy(); // 单清类型会留名字筛选，故此处不给半截出口
+    const clearAll = byTestid("kn-type-clear-all") as HTMLElement;
+    expect(clearAll).toBeTruthy();
+    await click("kn-type-clear-all");
+    expect(loc()).not.toContain("type=");
+    expect((container.querySelector("#kn3-input") as HTMLInputElement | null)?.value ?? "").toBe("");
     expect(container.querySelectorAll('[data-testid="kn3-docs-row"]')).toHaveLength(2);
 
     // ---------- 非 ready：整排 disabled + 原因句（读自 copyGates 同表）+ 计数不显示数字 ----------
