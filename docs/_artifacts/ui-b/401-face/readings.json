@@ -1,0 +1,27 @@
+{
+  "face": "4a3363a951",
+  "faceOf": "00673d10fd (web/src/lib byte-identical, git diff empty)",
+  "builtEntry": "assets/index-CCLAG-mZ.js",
+  "harness": { "kind": "local-stub", "port": 9124, "liveNetworkUsed": false, "driver": "playwright(chromium-headless)" },
+  "baseline": { "framenavigated": 2488, "api401_sessions": 1308, "whoamiAborted": 2484, "requests15s": 79453, "ratePerSec": 5300 },
+  "after": [
+    { "route": "#/sessions", "windowS": 15.1, "navs": 5, "http401": 29, "respTotal": 56, "requestFailed": 5, "finalUrl": "/sessions", "linearGrowth": false },
+    { "route": "#/capabilities?tab=channels", "windowS": 15.0, "navs": 5, "http401": 28, "respTotal": 53, "requestFailed": 3, "finalUrl": "/capabilities?tab=channels", "linearGrowth": false }
+  ],
+  "read375": [
+    {
+      "route": "#/sessions", "viewport": "375x3200", "counted": 23,
+      "rightEdgeViolations": 0,
+      "flaggedClass": "shell off-canvas drawer (left -240..-16, right <= -1; nav links/auth5-goto-login/theme/lang/Nous Research) — shell/** hidden-drawer class documented since wave-125, outside write domain, not content clipping",
+      "shot": "ui-b-401-sessions-375.png", "shotBytesKB": 36
+    },
+    {
+      "route": "#/capabilities?tab=channels", "viewport": "375x3200", "counted": 25,
+      "rightEdgeViolations": 0,
+      "flaggedClass": "same shell off-canvas drawer class as #/sessions",
+      "shot": "ui-b-401-capabilitiestabchannels-375.png", "shotBytesKB": 56
+    }
+  ],
+  "shotsExtra": [ { "name": "ui-b-401-sessions-1440.png", "size": "1440x900", "bytesKB": 52 } ],
+  "criteria": { "rectRule": "right<=376 && left>=-1 per element (a[href],button,[role=button])", "latchPreseed": "sessionStorage hermes.loginRedirectAttempted=1 for read phase (production post-redirect state)" }
+}
