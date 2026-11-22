@@ -147,3 +147,5 @@ matrix(#/employees?tab=matrix) present=true ok=true
 - matrix 行深链到属主：bounds PASS viol=0 elems141 main228 fit；fixture-preview 门（产品自述设计，门=404/unreachable 示例表+data-fixture 标注，非探针伪造）出 3 枚 mtx5-owner 锚，SPA 点击落 /employees/emp_fixture04a1b2c3（idInUrl=true）；cellLinks=0 只读仍真、pin=4 保持；粗扫 viol=38 为 .mtx5-scroll 720px 横向壳设计内滚动区，判据以 assert-375 为准不放宽。
 - audit 深链护栏：#/audit 归口 /system?tab=events 现状如实；375 渲染 viol=0（elements=254）；现窗 rows=0 无出口锚（无行可出，非缺陷）；闭集+员工形制归 3d5e8cf569 单元护栏（19/19 + L0 全量 480/3546 绿）；/employees/:id 形制经 matrix 点击腿实证可达。
 - 纪律：51 路未重扫、49 首轮保留、sessions/channels 真 NM 维持未改判、375 总 PASS 未宣称、判据不变、e1Contract 自足化（SKIPPED-NOT-DEPLOYED）已知悉、自取交付 ≤10min ping 新规执行。
+
+- 代次补记（L0 令 2026-11-22）：ca36e06cc3（wave-149 #1 ← lane/ui-b-employees-csv@e1355e9d）现查纯测试件（web/src 仅 EmployeeDetailModulePage.test.tsx +49，0 生产码）⇒ 无源码变更、不必重建、证据沿用 carried=true。当代脸现读=端口9122 entry assets/index-B7MjhP14.js 172800B sha256 2b8081ea…afd45a mtime 16:40:43 served==disk 双 MATCH，主 css DLpXaUuB 未换代；来文 index-CQZqo9UW.js 与现读不符（dist 零命中），按现读入账。3017590322 幻象标识符未据此建行改脸；三证新规矩收悉，本行自带四证。

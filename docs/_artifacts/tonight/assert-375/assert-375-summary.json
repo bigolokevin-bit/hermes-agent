@@ -3157,5 +3157,6 @@
       "matrix-owner-audit-deeplink-probe2-eb697ca5d2.json"
     ]
   },
-  "waveNote148": "wave-148 同波次续章：只点名 audit 深链+matrix 行深链两路，51 路未重扫；49 路首轮读数保留；sessions/channels 两路真 NM 维持未改判；375 总 PASS 未宣称；判据不变（376/-1/812/FAIL优先/matrix必产图）；全量 vitest 480/3546 L0 亲验免重跑。"
+  "waveNote148": "wave-148 同波次续章：只点名 audit 深链+matrix 行深链两路，51 路未重扫；49 路首轮读数保留；sessions/channels 两路真 NM 维持未改判；375 总 PASS 未宣称；判据不变（376/-1/812/FAIL优先/matrix必产图）；全量 vitest 480/3546 L0 亲验免重跑。",
+  "faceNote149": "ca36e06cc3（wave-149 #1 ← e1355e9d 队列#8）现查为纯测试件：diff eb697ca5d2..ca36e06cc3 于 web/src 仅 EmployeeDetailModulePage.test.tsx +49，0 生产码 ⇒ 产物不变未重建；headHash=ca36e06cc3，carriedFrom=eb697ca5d2，carried=true（entry sha 逐字节未变证据沿用）。现读当代脸=assets/index-B7MjhP14.js 172800B sha256 2b8081ea9f55b58ed30c29518afae87054f3cefecfb7bded8da8059309afd45a mtime 2026-11-22 16:40:43，served==disk 双 MATCH（端口9122），主 css index-DLpXaUuB.css 146491B 未换代。来文所称 index-CQZqo9UW.js 与现读不符：dist assets 零命中、9122 served 现读 B7MjhP14，按现读入账不造数值。3017590322 幻象标识符未建账本行未改脸（L0 自纠三证令收悉，本行即四证：cat-file+reflog+ls-remote+dist 现读）。"
 }
