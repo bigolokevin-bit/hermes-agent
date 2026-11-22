@@ -1,0 +1,785 @@
+{
+ "base": "http://127.0.0.1:9122",
+ "entry": "index-CCLAG-mZ.js",
+ "at": "2026-11-22T12:21:23.824Z",
+ "results": [
+  {
+   "mainTextLen": 2040,
+   "mainTextHead": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 采集时刻 北京时间 20",
+   "nativeSelects": 0,
+   "clipViolations": [],
+   "clipCount": 0,
+   "offcanvasCount": 0,
+   "shot": "shots/overview@1440.png",
+   "consoleErrors": 0,
+   "consoleErrorSamples": [],
+   "badHttp": [],
+   "route": "overview",
+   "vw": 1440
+  },
+  {
+   "mainTextLen": 2040,
+   "mainTextHead": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 采集时刻 北京时间 20",
+   "nativeSelects": 0,
+   "clipViolations": [],
+   "clipCount": 0,
+   "offcanvasCount": 14,
+   "shot": "shots/overview@375.png",
+   "consoleErrors": 0,
+   "consoleErrorSamples": [],
+   "badHttp": [],
+   "route": "overview",
+   "vw": 375
+  },
+  {
+   "mainTextLen": 2040,
+   "mainTextHead": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 采集时刻 北京时间 20",
+   "nativeSelects": 0,
+   "clipViolations": [],
+   "clipCount": 0,
+   "offcanvasCount": 0,
+   "shot": "shots/overview-tab-duty@1440.png",
+   "consoleErrors": 0,
+   "consoleErrorSamples": [],
+   "badHttp": [],
+   "route": "overview?tab=duty",
+   "vw": 1440
+  },
+  {
+   "mainTextLen": 2040,
+   "mainTextHead": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 采集时刻 北京时间 20",
+   "nativeSelects": 0,
+   "clipViolations": [],
+   "clipCount": 0,
+   "offcanvasCount": 14,
+   "shot": "shots/overview-tab-duty@375.png",
+   "consoleErrors": 0,
+   "consoleErrorSamples": [],
+   "badHttp": [],
+   "route": "overview?tab=duty",
+   "vw": 375
+  },
+  {
+   "mainTextLen": 338,
+   "mainTextHead": "运营 · 控制台 运营总览 值班台 用量与成本 用量与成本 统计窗口 最近 30 天 重新读取 统计",
+   "nativeSelects": 0,
+   "clipViolations": [],
+   "clipCount": 0,
+   "offcanvasCount": 0,
+   "shot": "shots/overview-tab-usage@1440.png",
+   "consoleErrors": 0,
+   "consoleErrorSamples": [],
+   "badHttp": [],
+   "route": "overview?tab=usage",
+   "vw": 1440
+  },
+  {
+   "mainTextLen": 338,
+   "mainTextHead": "运营 · 控制台 运营总览 值班台 用量与成本 用量与成本 统计窗口 最近 30 天 重新读取 统计",
+   "nativeSelects": 0,
+   "clipViolations": [],
+   "clipCount": 0,
+   "offcanvasCount": 14,
+   "shot": "shots/overview-tab-usage@375.png",
+   "consoleErrors": 0,
+   "consoleErrorSamples": [],
+   "badHttp": [],
+   "route": "overview?tab=usage",
+   "vw": 375
+  },
+  {
+   "mainTextLen": 546,
+   "mainTextHead": "运营 · 控制台 数字员工 列表 能力与权限 数字员工 3 复制列表 导出 CSV 共 3 行 刷新",
+   "nativeSelects": 0,
+   "clipViolations": [],
+   "clipCount": 0,
+   "offcanvasCount": 0,
+   "shot": "shots/employees@1440.png",
+   "consoleErrors": 0,
+   "consoleErrorSamples": [],
+   "badHttp": [],
+   "route": "employees",
+   "vw": 1440
+  },
+  {
+   "mainTextLen": 542,
+   "mainTextHead": "运营 · 控制台 数字员工 列表 能力与权限 数字员工 3 复制列表 导出 CSV 共 3 行 刷新",
+   "nativeSelects": 0,
+   "clipViolations": [],
+   "clipCount": 0,
+   "offcanvasCount": 14,
+   "shot": "shots/employees@375.png",
+   "consoleErrors": 0,
+   "consoleErrorSamples": [],
+   "badHttp": [],
+   "route": "employees",
+   "vw": 375
+  },
+  {
+   "mainTextLen": 815,
+   "mainTextHead": "运营 · 控制台 审批与发布门 待处理 历史决策 筛选条件（无） 汇总（与列表同源）： 待办 4 已",
+   "nativeSelects": 0,
+   "clipViolations": [],
+   "clipCount": 0,
+   "offcanvasCount": 0,
+   "shot": "shots/approvals@1440.png",
+   "consoleErrors": 0,
+   "consoleErrorSamples": [],
+   "badHttp": [],
+   "route": "approvals",
+   "vw": 1440
+  },
+  {
+   "mainTextLen": 815,
+   "mainTextHead": "运营 · 控制台 审批与发布门 待处理 历史决策 筛选条件（无） 汇总（与列表同源）： 待办 4 已",
+   "nativeSelects": 0,
+   "clipViolations": [],
+   "clipCount": 0,
+   "offcanvasCount": 14,
+   "shot": "shots/approvals@375.png",
+   "consoleErrors": 0,
+   "consoleErrorSamples": [],
+   "badHttp": [],
+   "route": "approvals",
+   "vw": 375
+  },
+  {
+   "mainTextLen": 6301,
+   "mainTextHead": "已显示 50 条审计事件（最近 7 天），下面还有更多 时间为北京时间 导出 CSV 完整性校验 刷",
+   "nativeSelects": 0,
+   "clipViolations": [],
+   "clipCount": 0,
+   "offcanvasCount": 0,
+   "shot": "shots/audit@1440.png",
+   "consoleErrors": 0,
+   "consoleErrorSamples": [],
+   "badHttp": [],
+   "route": "audit",
+   "vw": 1440
+  },
+  {
+   "mainTextLen": 6301,
+   "mainTextHead": "已显示 50 条审计事件（最近 7 天），下面还有更多 时间为北京时间 导出 CSV 完整性校验 刷",
+   "nativeSelects": 0,
+   "clipViolations": [],
+   "clipCount": 0,
+   "offcanvasCount": 14,
+   "shot": "shots/audit@375.png",
+   "consoleErrors": 0,
+   "consoleErrorSamples": [],
+   "badHttp": [],
+   "route": "audit",
+   "vw": 375
+  },
+  {
+   "mainTextLen": 3033,
+   "mainTextHead": "刷新 控制台 · 运行 运行 按时间看运行记录。这一面只读：不取消运行；重试的含义是新建一次运行。 ",
+   "nativeSelects": 0,
+   "clipViolations": [],
+   "clipCount": 0,
+   "offcanvasCount": 0,
+   "shot": "shots/runs@1440.png",
+   "consoleErrors": 0,
+   "consoleErrorSamples": [],
+   "badHttp": [],
+   "route": "runs",
+   "vw": 1440
+  },
+  {
+   "mainTextLen": 3725,
+   "mainTextHead": "刷新 控制台 · 运行 运行 按时间看运行记录。这一面只读：不取消运行；重试的含义是新建一次运行。 ",
+   "nativeSelects": 0,
+   "clipViolations": [],
+   "clipCount": 0,
+   "offcanvasCount": 14,
+   "shot": "shots/runs@375.png",
+   "consoleErrors": 0,
+   "consoleErrorSamples": [],
+   "badHttp": [],
+   "route": "runs",
+   "vw": 375
+  },
+  {
+   "mainTextLen": 761,
+   "mainTextHead": "治理 · 控制台 知识与数据 知识空间 数据源 审计证据 知识空间 空间、文档、检索与引用 · 只读",
+   "nativeSelects": 0,
+   "clipViolations": [],
+   "clipCount": 0,
+   "offcanvasCount": 0,
+   "shot": "shots/knowledge@1440.png",
+   "consoleErrors": 1,
+   "consoleErrorSamples": [
+    "Failed to load resource: the server responded with a status of 404 (Not Found)"
+   ],
+   "badHttp": [
+    [
+     "404 /agent-api/api/documents",
+     1
+    ],
+    [
+     "404 /agent-api/api/knowledge/spaces",
+     1
+    ]
+   ],
+   "route": "knowledge",
+   "vw": 1440
+  },
+  {
+   "mainTextLen": 761,
+   "mainTextHead": "治理 · 控制台 知识与数据 知识空间 数据源 审计证据 知识空间 空间、文档、检索与引用 · 只读",
+   "nativeSelects": 0,
+   "clipViolations": [],
+   "clipCount": 0,
+   "offcanvasCount": 14,
+   "shot": "shots/knowledge@375.png",
+   "consoleErrors": 1,
+   "consoleErrorSamples": [
+    "Failed to load resource: the server responded with a status of 404 (Not Found)"
+   ],
+   "badHttp": [
+    [
+     "404 /agent-api/api/documents",
+     1
+    ],
+    [
+     "404 /agent-api/api/knowledge/spaces",
+     1
+    ]
+   ],
+   "route": "knowledge",
+   "vw": 375
+  },
+  {
+   "mainTextLen": 203,
+   "mainTextHead": "运营 · 控制台 数字员工 列表 能力与权限 能力与权限矩阵 谁被授了什么、谁还没有，放在同一张表里",
+   "nativeSelects": 0,
+   "clipViolations": [],
+   "clipCount": 0,
+   "offcanvasCount": 0,
+   "shot": "shots/matrix@1440.png",
+   "consoleErrors": 0,
+   "consoleErrorSamples": [],
+   "badHttp": [],
+   "route": "matrix",
+   "vw": 1440
+  },
+  {
+   "mainTextLen": 203,
+   "mainTextHead": "运营 · 控制台 数字员工 列表 能力与权限 能力与权限矩阵 谁被授了什么、谁还没有，放在同一张表里",
+   "nativeSelects": 0,
+   "clipViolations": [],
+   "clipCount": 0,
+   "offcanvasCount": 14,
+   "shot": "shots/matrix@375.png",
+   "consoleErrors": 0,
+   "consoleErrorSamples": [],
+   "badHttp": [],
+   "route": "matrix",
+   "vw": 375
+  },
+  {
+   "mainTextLen": 337,
+   "mainTextHead": "平台 · 控制台 能力与接入 技能 工具与 MCP 模型与单价 平台接入 技能 0 有源（空） 工具",
+   "nativeSelects": 0,
+   "clipViolations": [],
+   "clipCount": 0,
+   "offcanvasCount": 0,
+   "shot": "shots/capabilities-tab-skills@1440.png",
+   "consoleErrors": 0,
+   "consoleErrorSamples": [],
+   "badHttp": [],
+   "route": "capabilities?tab=skills",
+   "vw": 1440
+  },
+  {
+   "mainTextLen": 337,
+   "mainTextHead": "平台 · 控制台 能力与接入 技能 工具与 MCP 模型与单价 平台接入 技能 0 有源（空） 工具",
+   "nativeSelects": 0,
+   "clipViolations": [],
+   "clipCount": 0,
+   "offcanvasCount": 14,
+   "shot": "shots/capabilities-tab-skills@375.png",
+   "consoleErrors": 0,
+   "consoleErrorSamples": [],
+   "badHttp": [],
+   "route": "capabilities?tab=skills",
+   "vw": 375
+  },
+  {
+   "mainTextLen": 969,
+   "mainTextHead": "平台 · 控制台 能力与接入 技能 工具与 MCP 模型与单价 平台接入 平台接入与数据源 这里只读",
+   "nativeSelects": 0,
+   "clipViolations": [],
+   "clipCount": 0,
+   "offcanvasCount": 0,
+   "shot": "shots/capabilities-tab-channels@1440.png",
+   "consoleErrors": 1,
+   "consoleErrorSamples": [
+    "Failed to load resource: the server responded with a status of 404 (Not Found)"
+   ],
+   "badHttp": [
+    [
+     "404 /agent-api/api/mcp/servers",
+     1
+    ],
+    [
+     "404 /agent-api/api/gateway-connections",
+     1
+    ],
+    [
+     "404 /agent-api/api/datasources",
+     1
+    ],
+    [
+     "404 /agent-api/api/connectors",
+     1
+    ]
+   ],
+   "route": "capabilities?tab=channels",
+   "vw": 1440
+  },
+  {
+   "mainTextLen": 969,
+   "mainTextHead": "平台 · 控制台 能力与接入 技能 工具与 MCP 模型与单价 平台接入 平台接入与数据源 这里只读",
+   "nativeSelects": 0,
+   "clipViolations": [],
+   "clipCount": 0,
+   "offcanvasCount": 14,
+   "shot": "shots/capabilities-tab-channels@375.png",
+   "consoleErrors": 1,
+   "consoleErrorSamples": [
+    "Failed to load resource: the server responded with a status of 404 (Not Found)"
+   ],
+   "badHttp": [
+    [
+     "404 /agent-api/api/gateway-connections",
+     1
+    ],
+    [
+     "404 /agent-api/api/mcp/servers",
+     1
+    ],
+    [
+     "404 /agent-api/api/connectors",
+     1
+    ],
+    [
+     "404 /agent-api/api/datasources",
+     1
+    ]
+   ],
+   "route": "capabilities?tab=channels",
+   "vw": 375
+  },
+  {
+   "mainTextLen": 1145,
+   "mainTextHead": "系统 · 控制台 系统设置 系统健康 默认设置 版本 审计事件 系统健康 实例活着吗 正常 3 异常",
+   "nativeSelects": 0,
+   "clipViolations": [],
+   "clipCount": 0,
+   "offcanvasCount": 0,
+   "shot": "shots/system@1440.png",
+   "consoleErrors": 0,
+   "consoleErrorSamples": [],
+   "badHttp": [],
+   "route": "system",
+   "vw": 1440
+  },
+  {
+   "mainTextLen": 1155,
+   "mainTextHead": "系统 · 控制台 系统设置 系统健康 默认设置 版本 审计事件 系统健康 实例活着吗 正常 3 异常",
+   "nativeSelects": 0,
+   "clipViolations": [
+    {
+     "id": "sys-row-copy-0",
+     "right": 683,
+     "left": 624
+    },
+    {
+     "id": "sys-row-copy-1",
+     "right": 683,
+     "left": 624
+    },
+    {
+     "id": "sys-row-copy-2",
+     "right": 683,
+     "left": 624
+    }
+   ],
+   "clipCount": 3,
+   "offcanvasCount": 14,
+   "shot": "shots/system@375.png",
+   "consoleErrors": 0,
+   "consoleErrorSamples": [],
+   "badHttp": [],
+   "route": "system",
+   "vw": 375
+  },
+  {
+   "mainTextLen": 632,
+   "mainTextHead": "系统 · 控制台 系统设置 系统健康 默认设置 版本 审计事件 版本 构建与依赖信息 刷新 下载诊断",
+   "nativeSelects": 0,
+   "clipViolations": [],
+   "clipCount": 0,
+   "offcanvasCount": 0,
+   "shot": "shots/system-tab-version@1440.png",
+   "consoleErrors": 1,
+   "consoleErrorSamples": [
+    "Failed to load resource: the server responded with a status of 404 (Not Found)"
+   ],
+   "badHttp": [
+    [
+     "404 /agent-api/api/models/pricing",
+     1
+    ]
+   ],
+   "route": "system?tab=version",
+   "vw": 1440
+  },
+  {
+   "mainTextLen": 632,
+   "mainTextHead": "系统 · 控制台 系统设置 系统健康 默认设置 版本 审计事件 版本 构建与依赖信息 刷新 下载诊断",
+   "nativeSelects": 0,
+   "clipViolations": [],
+   "clipCount": 0,
+   "offcanvasCount": 14,
+   "shot": "shots/system-tab-version@375.png",
+   "consoleErrors": 1,
+   "consoleErrorSamples": [
+    "Failed to load resource: the server responded with a status of 404 (Not Found)"
+   ],
+   "badHttp": [
+    [
+     "404 /agent-api/api/models/pricing",
+     1
+    ]
+   ],
+   "route": "system?tab=version",
+   "vw": 375
+  },
+  {
+   "mainTextLen": 116,
+   "mainTextHead": "Chats Automation All Any chat source Overview Hist",
+   "nativeSelects": 0,
+   "clipViolations": [],
+   "clipCount": 0,
+   "offcanvasCount": 0,
+   "shot": "shots/sessions@1440.png",
+   "consoleErrors": 0,
+   "consoleErrorSamples": [],
+   "badHttp": [],
+   "route": "sessions",
+   "vw": 1440
+  },
+  {
+   "mainTextLen": 116,
+   "mainTextHead": "Chats Automation All Any chat source Overview Hist",
+   "nativeSelects": 0,
+   "clipViolations": [],
+   "clipCount": 0,
+   "offcanvasCount": 14,
+   "shot": "shots/sessions@375.png",
+   "consoleErrors": 0,
+   "consoleErrorSamples": [],
+   "badHttp": [],
+   "route": "sessions",
+   "vw": 375
+  },
+  {
+   "mainTextLen": 4335,
+   "mainTextHead": "跳到主要内容 运行活动热力。/api/run-activity。计算范围：按整周汇总，周数由热力窗口",
+   "nativeSelects": 0,
+   "clipViolations": [],
+   "clipCount": 0,
+   "offcanvasCount": 0,
+   "shot": "shots/metrics@1440.png",
+   "consoleErrors": 1,
+   "consoleErrorSamples": [
+    "Failed to load resource: the server responded with a status of 404 (Not Found)"
+   ],
+   "badHttp": [
+    [
+     "404 /agent-api/api/models/pricing",
+     1
+    ]
+   ],
+   "route": "metrics",
+   "vw": 1440
+  },
+  {
+   "mainTextLen": 4364,
+   "mainTextHead": "跳到主要内容 运行活动热力。/api/run-activity。计算范围：按整周汇总，周数由热力窗口",
+   "nativeSelects": 0,
+   "clipViolations": [
+    {
+     "id": "met-row-copy-0",
+     "right": 543,
+     "left": 495
+    },
+    {
+     "id": "met6-heat-cell-1-13",
+     "right": 393,
+     "left": 372
+    },
+    {
+     "id": "met6-heat-cell-1-14",
+     "right": 417,
+     "left": 396
+    },
+    {
+     "id": "met6-heat-cell-1-15",
+     "right": 441,
+     "left": 420
+    },
+    {
+     "id": "met6-heat-cell-1-16",
+     "right": 465,
+     "left": 444
+    },
+    {
+     "id": "met6-heat-cell-1-17",
+     "right": 489,
+     "left": 468
+    },
+    {
+     "id": "met6-heat-cell-1-18",
+     "right": 513,
+     "left": 492
+    },
+    {
+     "id": "met6-heat-cell-1-19",
+     "right": 537,
+     "left": 516
+    },
+    {
+     "id": "met6-heat-cell-1-20",
+     "right": 561,
+     "left": 540
+    },
+    {
+     "id": "met6-heat-cell-1-21",
+     "right": 585,
+     "left": 564
+    },
+    {
+     "id": "met6-heat-cell-1-22",
+     "right": 609,
+     "left": 588
+    },
+    {
+     "id": "met6-heat-cell-1-23",
+     "right": 633,
+     "left": 612
+    },
+    {
+     "id": "met6-heat-cell-2-13",
+     "right": 393,
+     "left": 372
+    },
+    {
+     "id": "met6-heat-cell-2-14",
+     "right": 417,
+     "left": 396
+    },
+    {
+     "id": "met6-heat-cell-2-15",
+     "right": 441,
+     "left": 420
+    },
+    {
+     "id": "met6-heat-cell-2-16",
+     "right": 465,
+     "left": 444
+    },
+    {
+     "id": "met6-heat-cell-2-17",
+     "right": 489,
+     "left": 468
+    },
+    {
+     "id": "met6-heat-cell-2-18",
+     "right": 513,
+     "left": 492
+    },
+    {
+     "id": "met6-heat-cell-2-19",
+     "right": 537,
+     "left": 516
+    },
+    {
+     "id": "met6-heat-cell-2-20",
+     "right": 561,
+     "left": 540
+    },
+    {
+     "id": "met6-heat-cell-2-21",
+     "right": 585,
+     "left": 564
+    },
+    {
+     "id": "met6-heat-cell-2-22",
+     "right": 609,
+     "left": 588
+    },
+    {
+     "id": "met6-heat-cell-2-23",
+     "right": 633,
+     "left": 612
+    },
+    {
+     "id": "met6-heat-cell-3-13",
+     "right": 393,
+     "left": 372
+    },
+    {
+     "id": "met6-heat-cell-3-14",
+     "right": 417,
+     "left": 396
+    }
+   ],
+   "clipCount": 162,
+   "offcanvasCount": 14,
+   "shot": "shots/metrics@375.png",
+   "consoleErrors": 1,
+   "consoleErrorSamples": [
+    "Failed to load resource: the server responded with a status of 404 (Not Found)"
+   ],
+   "badHttp": [
+    [
+     "404 /agent-api/api/models/pricing",
+     1
+    ]
+   ],
+   "route": "metrics",
+   "vw": 375
+  },
+  {
+   "mainTextLen": 385,
+   "mainTextHead": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 人员目录 在册人员名录 · 姓名 /",
+   "nativeSelects": 0,
+   "clipViolations": [],
+   "clipCount": 0,
+   "offcanvasCount": 0,
+   "shot": "shots/identity@1440.png",
+   "consoleErrors": 1,
+   "consoleErrorSamples": [
+    "Failed to load resource: the server responded with a status of 404 (Not Found)"
+   ],
+   "badHttp": [
+    [
+     "404 /agent-api/api/v1/user/list",
+     1
+    ],
+    [
+     "404 /agent-api/api/v1/user/all",
+     1
+    ]
+   ],
+   "route": "identity",
+   "vw": 1440
+  },
+  {
+   "mainTextLen": 368,
+   "mainTextHead": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 人员目录 在册人员名录 · 姓名 /",
+   "nativeSelects": 0,
+   "clipViolations": [],
+   "clipCount": 0,
+   "offcanvasCount": 14,
+   "shot": "shots/identity@375.png",
+   "consoleErrors": 1,
+   "consoleErrorSamples": [
+    "Failed to load resource: the server responded with a status of 404 (Not Found)"
+   ],
+   "badHttp": [
+    [
+     "404 /agent-api/api/v1/user/list",
+     1
+    ],
+    [
+     "404 /agent-api/api/v1/user/all",
+     1
+    ]
+   ],
+   "route": "identity",
+   "vw": 375
+  },
+  {
+   "mainTextLen": 1740,
+   "mainTextHead": "运营 · 控制台 任务与运行 任务 运行 任务看板 按后端状态看任务；拖动排序未启用，状态不会被前端",
+   "nativeSelects": 0,
+   "clipViolations": [],
+   "clipCount": 0,
+   "offcanvasCount": 0,
+   "shot": "shots/work@1440.png",
+   "consoleErrors": 0,
+   "consoleErrorSamples": [],
+   "badHttp": [],
+   "route": "work",
+   "vw": 1440
+  },
+  {
+   "mainTextLen": 1740,
+   "mainTextHead": "运营 · 控制台 任务与运行 任务 运行 任务看板 按后端状态看任务；拖动排序未启用，状态不会被前端",
+   "nativeSelects": 0,
+   "clipViolations": [],
+   "clipCount": 0,
+   "offcanvasCount": 14,
+   "shot": "shots/work@375.png",
+   "consoleErrors": 0,
+   "consoleErrorSamples": [],
+   "badHttp": [],
+   "route": "work",
+   "vw": 375
+  },
+  {
+   "mainTextLen": 493,
+   "mainTextHead": "平台 · 控制台 能力与接入 技能 工具与 MCP 模型与单价 平台接入 模型与单价 模型目录、价目",
+   "nativeSelects": 0,
+   "clipViolations": [],
+   "clipCount": 0,
+   "offcanvasCount": 0,
+   "shot": "shots/models@1440.png",
+   "consoleErrors": 1,
+   "consoleErrorSamples": [
+    "Failed to load resource: the server responded with a status of 404 (Not Found)"
+   ],
+   "badHttp": [
+    [
+     "404 /agent-api/api/models",
+     1
+    ],
+    [
+     "404 /agent-api/api/models/pricing",
+     1
+    ]
+   ],
+   "route": "models",
+   "vw": 1440
+  },
+  {
+   "mainTextLen": 493,
+   "mainTextHead": "平台 · 控制台 能力与接入 技能 工具与 MCP 模型与单价 平台接入 模型与单价 模型目录、价目",
+   "nativeSelects": 0,
+   "clipViolations": [],
+   "clipCount": 0,
+   "offcanvasCount": 14,
+   "shot": "shots/models@375.png",
+   "consoleErrors": 1,
+   "consoleErrorSamples": [
+    "Failed to load resource: the server responded with a status of 404 (Not Found)"
+   ],
+   "badHttp": [
+    [
+     "404 /agent-api/api/models",
+     1
+    ],
+    [
+     "404 /agent-api/api/models/pricing",
+     1
+    ]
+   ],
+   "route": "models",
+   "vw": 375
+  }
+ ]
+}
