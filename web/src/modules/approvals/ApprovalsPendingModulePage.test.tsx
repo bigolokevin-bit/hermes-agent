@@ -828,6 +828,26 @@ describe("P0-③ filter disclosure (apv-filter-toggle)", () => {
     expect(qa("apv-filter-toggle")?.getAttribute("aria-expanded"), "collapsed by default").toBe("false");
     expect(qa("apv-filter-summary")?.textContent, "折叠态的生效条件读数").toContain("风险：高风险");
   });
+
+  it("keeps the empty face and the reset door visible while the panel stays collapsed", async () => {
+    await mount(queue(), "/approvals?tab=pending&q=nomatch-xyz");
+    expect(qa("apv-filter-toggle")?.getAttribute("aria-expanded"), "collapsed by default").toBe("false");
+    expect(qa("apv-filter-panel"), "panel unmounted while collapsed").toBeNull();
+    expect(qa("apv-summary-row"), "汇总条常显").toBeTruthy();
+    const btn = qa("apv-reset-filters") as HTMLButtonElement | null;
+    expect(btn, "清空/重置入口在折叠态可见").toBeTruthy();
+    expect(btn!.disabled, "一个生效筛选").toBe(false);
+    expect(qa("apv-filter-summary")?.textContent).toContain("搜索：nomatch-xyz");
+    await waitFor(() => !!qa("apv8-search-empty"), "折叠态的关键字空态可见");
+    expect(qa("apv8-search-empty")?.textContent).toContain("没有匹配的审批");
+  });
+
+  it("shows the risk-band empty sentence without opening the panel", async () => {
+    await mount(queue(), "/approvals?tab=pending&risk=high");
+    expect(qa("apv-filter-panel"), "panel unmounted while collapsed").toBeNull();
+    await waitFor(() => !!qa("apv-risk-empty"), "折叠态的风险档空态可见");
+    expect(qa("apv-risk-empty")?.textContent).toContain("该风险档下没有审批。");
+  });
 });
 
 describe("R94 pending correlation return", () => {
