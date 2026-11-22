@@ -1,0 +1,36 @@
+/*
+ * Matrix 375 density contract (READY-BACKLOG: 能力矩阵 375 版式 —— 列头冻结 +
+ * 横向滚动容器，不用整页横滚).
+ *
+ * The grid is wider than a phone on purpose: each capability cell needs room to
+ * read. So the page itself must never slide sideways — the shell `.mtx5-scroll`
+ * owns the horizontal movement, and the identity track `.mtx5-pin` stays glued to
+ * its left edge so a row is still recognisable at the far right of the scroll.
+ *
+ * matrix.css.test.ts pins these declarations: restyling is fine, dropping the pin
+ * or moving the scroll onto the page is not.
+ */
+
+/* Only the shell scrolls sideways; the document stays viewport-wide. */
+.mtx5-scroll {
+  overflow-x: auto;
+}
+
+/*
+ * The identity column stays put while the cells slide under it. The opaque
+ * background is what keeps the moving cells from showing through, and it is the
+ * same theme token the metrics table uses (.metW-table), so both tables move
+ * together when the theme changes.
+ */
+.mtx5-pin {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--color-card);
+}
+
+/* Where the sticky header row crosses the sticky identity track, that cell sits
+   above both axes so neither one cuts into it. */
+.mtx5-head .mtx5-pin {
+  z-index: 2;
+}
