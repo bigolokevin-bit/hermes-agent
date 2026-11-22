@@ -1,0 +1,13 @@
+{
+  "version": {
+    "tables": [],
+    "main": 588
+  },
+  "matrixDoor": {
+    "insideShell": 38,
+    "outside": 0,
+    "docOverflowPx": 0,
+    "samples": [],
+    "door": "fixture-preview"
+  }
+}

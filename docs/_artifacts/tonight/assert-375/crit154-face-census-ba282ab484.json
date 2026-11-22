@@ -1,0 +1,28 @@
+{
+  "#/overview?tab=usage": {
+    "url": "/overview?tab=usage",
+    "main": 133,
+    "tables": [],
+    "worstRight": 375,
+    "docOverflowPx": 0
+  },
+  "#/system": {
+    "url": "/system",
+    "main": 918,
+    "tables": [
+      {
+        "cls": "sys6-table",
+        "minW": "760px",
+        "left": 0,
+        "right": 0,
+        "shellCls": "sys6-scroll",
+        "shellClientW": 0,
+        "shellScrollW": 0,
+        "shellScrollLeft": 0,
+        "shellRight": 0
+      }
+    ],
+    "worstRight": 375,
+    "docOverflowPx": 0
+  }
+}

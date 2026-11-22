@@ -167,3 +167,11 @@ matrix(#/employees?tab=matrix) present=true ok=true
 
 - 构建脸=eb697ca5d2（16:40:43 重建触发）+ 实际已含 ca36e06cc3（纯测试不改产物）⇒ 现役 entry B7MjhP14 同覆盖两脸，无需重建；headHash=ca36e06cc3（carriedFrom=eb697ca5d2）与 triggerCommit 各司其职，勿误读。
 - L0 撤回「部署根读错树」「9bf49c08f0 为本道幻象」两条误判；H2 判闭环。served==disk 三方现算逐位吻合（2b8081ea…/172800B/16:40:43，端口9122）。
+
+## 判据修复 150（viol 拆壳内外 @ba282ab484，端口9122/entry index-B7MjhP14.js）
+
+- 改法：viol 拆 violInsideScrollableShell/violOutsideShell，**只判壳外 FAIL**；真滚壳=overflowX auto|scroll 且 scrollWidth>clientWidth+1，禁恒真；文档级 domOverflowPx 仍报；阈值 376/-1/VH812/FAIL优先/matrix必产图不变。
+- 三条路由复算（8 行全含）：out=0 in=0 docOvf=0 ⇒ 8/8 PASS。本脸 usage/version tab 无表体、system tab 表在 sys6-scroll 壳内尺寸 0——UI-KD 原 14/29/18 壳内读数在本脸不存在，如实入账不造数值。
+- 拆分生效实证：matrix fixture-preview 门（404 兜底、产品示例数据标注）渲染 720px 真壳，同 DOM insideShell=38 / outside=0 / docOvf=0 ⇒ 旧判据 FAIL(38)、新判据 PASS。RAW=assert375/matrix-door-split-demo-ba282ab484.png。
+- e1Contract 门：pnpm exec vitest run src/shell/e1Contract.test.ts ⇒ 1 file / 7 tests passed（exit 0）。
+- 纪律：51 路未重扫（8 行点名）、counts 49/0/2 matrixOk=true 维持、sessions/channels 真NM 未改判、375 总 PASS 未宣称、无 add -A/force/--no-verify。

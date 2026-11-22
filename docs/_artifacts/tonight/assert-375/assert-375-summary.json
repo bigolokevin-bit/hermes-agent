@@ -1911,7 +1911,7 @@
       "contentFit": true,
       "targetHeight": 812,
       "violCount": 0,
-      "viol": [],
+      "viol": 0,
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
@@ -1946,7 +1946,20 @@
           "fontBypass": false
         }
       },
-      "rerollFace": "6edcba4d"
+      "rerollFace": "ba282ab484",
+      "prevFaceSnapshots": [
+        {
+          "at": "criteriaFix154",
+          "prev": {
+            "face": "6edcba4d",
+            "verdict": "PASS",
+            "violCount": 0
+          }
+        }
+      ],
+      "rerunAt": "2026-11-22T18:27+08:00",
+      "violInsideScrollableShell": 0,
+      "violOutsideShell": 0
     },
     {
       "hash": "#/sessions",
@@ -2045,12 +2058,26 @@
       "contentFit": true,
       "targetHeight": 812,
       "violCount": 0,
-      "viol": [],
+      "viol": 0,
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
       "fontBypass": false,
-      "consoleErrorsProduct": 0
+      "consoleErrorsProduct": 0,
+      "prevFaceSnapshots": [
+        {
+          "at": "criteriaFix154",
+          "prev": {
+            "face": null,
+            "verdict": "PASS",
+            "violCount": 0
+          }
+        }
+      ],
+      "rerollFace": "ba282ab484",
+      "rerunAt": "2026-11-22T18:27+08:00",
+      "violInsideScrollableShell": 0,
+      "violOutsideShell": 0
     },
     {
       "hash": "#/system?tab=defaults",
@@ -2071,12 +2098,26 @@
       "contentFit": true,
       "targetHeight": 812,
       "violCount": 0,
-      "viol": [],
+      "viol": 0,
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
       "fontBypass": false,
-      "consoleErrorsProduct": 0
+      "consoleErrorsProduct": 0,
+      "prevFaceSnapshots": [
+        {
+          "at": "criteriaFix154",
+          "prev": {
+            "face": null,
+            "verdict": "PASS",
+            "violCount": 0
+          }
+        }
+      ],
+      "rerollFace": "ba282ab484",
+      "rerunAt": "2026-11-22T18:27+08:00",
+      "violInsideScrollableShell": 0,
+      "violOutsideShell": 0
     },
     {
       "hash": "#/system?tab=events",
@@ -2097,12 +2138,26 @@
       "contentFit": true,
       "targetHeight": 812,
       "violCount": 0,
-      "viol": [],
+      "viol": 0,
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
       "fontBypass": false,
-      "consoleErrorsProduct": 0
+      "consoleErrorsProduct": 0,
+      "prevFaceSnapshots": [
+        {
+          "at": "criteriaFix154",
+          "prev": {
+            "face": null,
+            "verdict": "PASS",
+            "violCount": 0
+          }
+        }
+      ],
+      "rerollFace": "ba282ab484",
+      "rerunAt": "2026-11-22T18:27+08:00",
+      "violInsideScrollableShell": 0,
+      "violOutsideShell": 0
     },
     {
       "hash": "#/system?tab=events&view=anomaly",
@@ -2123,12 +2178,26 @@
       "contentFit": true,
       "targetHeight": 812,
       "violCount": 0,
-      "viol": [],
+      "viol": 0,
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
       "fontBypass": false,
-      "consoleErrorsProduct": 0
+      "consoleErrorsProduct": 0,
+      "prevFaceSnapshots": [
+        {
+          "at": "criteriaFix154",
+          "prev": {
+            "face": null,
+            "verdict": "PASS",
+            "violCount": 0
+          }
+        }
+      ],
+      "rerollFace": "ba282ab484",
+      "rerunAt": "2026-11-22T18:27+08:00",
+      "violInsideScrollableShell": 0,
+      "violOutsideShell": 0
     },
     {
       "hash": "#/system?tab=retention",
@@ -2149,12 +2218,26 @@
       "contentFit": true,
       "targetHeight": 812,
       "violCount": 0,
-      "viol": [],
+      "viol": 0,
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
       "fontBypass": false,
-      "consoleErrorsProduct": 0
+      "consoleErrorsProduct": 0,
+      "prevFaceSnapshots": [
+        {
+          "at": "criteriaFix154",
+          "prev": {
+            "face": null,
+            "verdict": "PASS",
+            "violCount": 0
+          }
+        }
+      ],
+      "rerollFace": "ba282ab484",
+      "rerunAt": "2026-11-22T18:27+08:00",
+      "violInsideScrollableShell": 0,
+      "violOutsideShell": 0
     },
     {
       "hash": "#/system?tab=security",
@@ -2175,12 +2258,26 @@
       "contentFit": true,
       "targetHeight": 812,
       "violCount": 0,
-      "viol": [],
+      "viol": 0,
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
       "fontBypass": false,
-      "consoleErrorsProduct": 0
+      "consoleErrorsProduct": 0,
+      "prevFaceSnapshots": [
+        {
+          "at": "criteriaFix154",
+          "prev": {
+            "face": null,
+            "verdict": "PASS",
+            "violCount": 0
+          }
+        }
+      ],
+      "rerollFace": "ba282ab484",
+      "rerunAt": "2026-11-22T18:27+08:00",
+      "violInsideScrollableShell": 0,
+      "violOutsideShell": 0
     },
     {
       "hash": "#/system?tab=version",
@@ -2201,12 +2298,26 @@
       "contentFit": true,
       "targetHeight": 812,
       "violCount": 0,
-      "viol": [],
+      "viol": 0,
       "scrollOverflowCount": 0,
       "scrollOverflow": [],
       "domOverflowPx": 0,
       "fontBypass": false,
-      "consoleErrorsProduct": 0
+      "consoleErrorsProduct": 0,
+      "prevFaceSnapshots": [
+        {
+          "at": "criteriaFix154",
+          "prev": {
+            "face": null,
+            "verdict": "PASS",
+            "violCount": 0
+          }
+        }
+      ],
+      "rerollFace": "ba282ab484",
+      "rerunAt": "2026-11-22T18:27+08:00",
+      "violInsideScrollableShell": 0,
+      "violOutsideShell": 0
     },
     {
       "hash": "#/work",
@@ -2434,7 +2545,7 @@
     }
   ],
   "rerollNote": "点名重跑 sessions/channels/models @d2cc49fe 面（L0②）：sessions 转 PASS（fb+fit，PNG 入账）、models PASS；channels 新面反成失分页（45s 旁路超时、main=10、viol 数据不可得）记 NOT_MEASURED 逐条 navError 入账，首轮 6586df6b 读数存 firstRunRow（L0①其余 48 路保留首轮）",
-  "headHash": "eb697ca5d2",
+  "headHash": "ba282ab484",
   "entry": "assets/index-B7MjhP14.js",
   "entrySha256": "2b8081ea9f55b58ed30c29518afae87054f3cefecfb7bded8da8059309afd45a",
   "entryBytes": 172800,
@@ -3233,5 +3344,70 @@
       "withdrawal": "L0 撤回「部署根读错树」与「9bf49c08f0 为本道幻象」两条误判；H2 判闭环。",
       "guard": "请下一任总控按本行读：勿以 buildFace=eb697ca5d2 误判缺 ca36e06cc3。"
     }
+  },
+  "carriedFrom": "eb697ca5d2",
+  "faceNote150": "判据修复 wave-150：assert-375 viol 拆壳内外（只判 violOutsideShell FAIL，真滚壳=overflowX auto|scroll 且 scrollWidth>clientWidth+1 记录不判红），阈值 376/-1/VH812/FAIL优先/matrix必产图不变；脸 ba282ab484=撤回件纯 docs，构建脸仍 eb697ca5d2 entry index-B7MjhP14.js 未重建（served==disk 实测沿用）。",
+  "criteriaFix154": {
+    "改法": "viol 拆 violInsideScrollableShell / violOutsideShell，只判后者 FAIL；壳必须真能滚（scrollWidth>clientWidth+1）禁恒真；文档级 domOverflowPx 仍报。",
+    "beforeReadings": {
+      "source": "UI-KD 327283ecaa（已被 f8c9c229fb 撤回件更正）",
+      "vals": {
+        "#/overview?tab=usage": 14,
+        "#/system": 29,
+        "#/system?tab=version": 18
+      },
+      "撤回结论": "该 14/29/18 全在自带 overflow-x 壳内，属合规表格滚动"
+    },
+    "rerun8routes": {
+      "out": 0,
+      "in": 0,
+      "docOvf": 0,
+      "verdicts": "8/8 PASS",
+      "note": "本脸现读三处表体未渲染（usage/version tab tables=[]；system tab sys6-table 在 sys6-scroll 壳内尺寸 0/隐藏）——原壳内违规元素在本脸不存在，14/29/18 不在此脸复现，按现读入账禁造数值"
+    },
+    "splitProofMatrixDoor": {
+      "method": "page.route 404 → 产品自带 fixture-preview 门（示例数据角标标注，非伪造）渲染 720px min-width 真实壳",
+      "insideShell": 38,
+      "outside": 0,
+      "docOverflowPx": 0,
+      "door": "fixture-preview",
+      "meaning": "同 DOM 旧判据=FAIL(38)，新判据 violOutsideShell=0 ⇒ PASS——拆壳内外在真壳内溢出页上生效"
+    },
+    "faceCensus": {
+      "usage": {
+        "url": "/overview?tab=usage",
+        "main": 133,
+        "tables": [],
+        "worstRight": 375,
+        "docOverflowPx": 0
+      },
+      "system": {
+        "url": "/system",
+        "main": 918,
+        "tables": [
+          {
+            "cls": "sys6-table",
+            "minW": "760px",
+            "left": 0,
+            "right": 0,
+            "shellCls": "sys6-scroll",
+            "shellClientW": 0,
+            "shellScrollW": 0,
+            "shellScrollLeft": 0,
+            "shellRight": 0
+          }
+        ],
+        "worstRight": 375,
+        "docOverflowPx": 0
+      }
+    },
+    "e1Contract": "pnpm exec vitest run src/shell/e1Contract.test.ts ⇒ Test Files 1 passed, Tests 7 passed (exit 0)",
+    "rawFiles": [
+      "crit154-recompute-ba282ab484.json",
+      "crit154-index-ba282ab484.md",
+      "crit154-split-demo-matrix-door-ba282ab484.json",
+      "crit154-face-census-ba282ab484.json",
+      "assert375/matrix-door-split-demo-ba282ab484.png"
+    ]
   }
 }
