@@ -250,3 +250,5 @@ matrix(#/employees?tab=matrix) present=true ok=true
 - **第二笔可见改动复现**：#/knowledge 375 活会话（whoami==200 显式码前置），`.knw5-seg button` **count=4 / under44=0 / 每枚 h=44.0px w=169.8px minBlockSize=44px**——车道自报「4/0、29.7→44px、宽 169.8 不变」逐项一致；--touch-target-ls :root 未定义=走 44px 兜底（如实）。drill/copy/-clear 三族现役脸未现身（数据面），规则以 css 同块纸面+机检门为凭，不造读数。before=纸面证据 7caa5fd94a^ grep touch-target-ls=0；旧 dist 已覆盖不可重测如实。RAW=w159-kn375-readings.json+1帧。
 - 下次重扫纳入 #/knowledge（读数已变）+whoami==200 显式码进逐行表；机检门 81a30df3f9 已由 L0 三约束验收（纯源码层）。
 - counts 维持 51/51/0/NM0 exitCode0（本波未重扫）；375 总 PASS 放行权在 UX 总审，不自签；vitest 基线 482/3563 已记。
+
+- 补账 160（L0 @1344@ 唯一残留）：summary 顶层新增 whoami160=200@21:54:30+0800（源 w159-kn375-readings.json；覆盖 158 重扫同会话，158 当时未单码如实）+ 51 行各带 whoami160 引用——单文件自证成立；后续每轮起跑先码先入账。

@@ -53,7 +53,8 @@
     }
    ],
    "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫"
+   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+   "whoami160": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
   },
   {
    "hash": "#/approvals",
@@ -121,7 +122,8 @@
     }
    },
    "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫"
+   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+   "whoami160": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
   },
   {
    "hash": "#/approvals?tab=history",
@@ -189,7 +191,8 @@
     }
    },
    "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫"
+   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+   "whoami160": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
   },
   {
    "hash": "#/approvals?tab=mine",
@@ -257,7 +260,8 @@
     }
    },
    "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫"
+   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+   "whoami160": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
   },
   {
    "hash": "#/approvals?tab=pending&view=mine",
@@ -325,7 +329,8 @@
     }
    },
    "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫"
+   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+   "whoami160": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
   },
   {
    "hash": "#/approvals?tab=pending&view=release",
@@ -393,7 +398,8 @@
     }
    },
    "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫"
+   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+   "whoami160": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
   },
   {
    "hash": "#/approvals?tab=policy",
@@ -461,7 +467,8 @@
     }
    },
    "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫"
+   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+   "whoami160": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
   },
   {
    "hash": "#/approvals?tab=release",
@@ -529,7 +536,8 @@
     }
    },
    "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫"
+   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+   "whoami160": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
   },
   {
    "hash": "#/audit",
@@ -567,7 +575,8 @@
     }
    ],
    "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫"
+   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+   "whoami160": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
   },
   {
    "hash": "#/capabilities",
@@ -605,7 +614,8 @@
     }
    ],
    "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫"
+   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+   "whoami160": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
   },
   {
    "hash": "#/capabilities?tab=channels",
@@ -716,7 +726,8 @@
     "verdict": "NOT_MEASURED"
    },
    "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫"
+   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+   "whoami160": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
   },
   {
    "hash": "#/capabilities?tab=models",
@@ -766,7 +777,8 @@
     "navError": null
    },
    "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫"
+   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+   "whoami160": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
   },
   {
    "hash": "#/capabilities?tab=tools",
@@ -804,7 +816,8 @@
     }
    ],
    "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫"
+   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+   "whoami160": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
   },
   {
    "hash": "#/employees",
@@ -872,7 +885,8 @@
     }
    },
    "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫"
+   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+   "whoami160": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
   },
   {
    "hash": "#/employees?tab=matrix",
@@ -911,7 +925,8 @@
     }
    ],
    "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫"
+   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+   "whoami160": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
   },
   {
    "hash": "#/employees/:employeeId",
@@ -949,7 +964,8 @@
     }
    ],
    "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫"
+   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+   "whoami160": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
   },
   {
    "hash": "#/employees/:employeeId?zone=config",
@@ -987,7 +1003,8 @@
     }
    ],
    "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫"
+   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+   "whoami160": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
   },
   {
    "hash": "#/employees/:employeeId?zone=evidence",
@@ -1025,7 +1042,8 @@
     }
    ],
    "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫"
+   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+   "whoami160": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
   },
   {
    "hash": "#/employees/:employeeId?zone=runs",
@@ -1078,7 +1096,8 @@
     "navError": null
    },
    "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫"
+   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+   "whoami160": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
   },
   {
    "hash": "#/employees/:employeeId?zone=tasks",
@@ -1116,7 +1135,8 @@
     }
    ],
    "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫"
+   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+   "whoami160": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
   },
   {
    "hash": "#/identity",
@@ -1154,7 +1174,8 @@
     }
    ],
    "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫"
+   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+   "whoami160": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
   },
   {
    "hash": "#/identity?tab=admins",
@@ -1192,7 +1213,8 @@
     }
    ],
    "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫"
+   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+   "whoami160": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
   },
   {
    "hash": "#/identity?tab=binding",
@@ -1230,7 +1252,8 @@
     }
    ],
    "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫"
+   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+   "whoami160": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
   },
   {
    "hash": "#/identity?tab=checks",
@@ -1268,7 +1291,8 @@
     }
    ],
    "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫"
+   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+   "whoami160": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
   },
   {
    "hash": "#/identity?tab=departments",
@@ -1306,7 +1330,8 @@
     }
    ],
    "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫"
+   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+   "whoami160": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
   },
   {
    "hash": "#/identity?tab=people&view=admins",
@@ -1344,7 +1369,8 @@
     }
    ],
    "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫"
+   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+   "whoami160": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
   },
   {
    "hash": "#/identity?tab=roles",
@@ -1382,7 +1408,8 @@
     }
    ],
    "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫"
+   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+   "whoami160": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
   },
   {
    "hash": "#/identity?tab=tenant",
@@ -1420,7 +1447,8 @@
     }
    ],
    "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫"
+   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+   "whoami160": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
   },
   {
    "hash": "#/knowledge",
@@ -1522,7 +1550,8 @@
     }
    },
    "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫"
+   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+   "whoami160": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
   },
   {
    "hash": "#/knowledge?tab=citations",
@@ -1624,7 +1653,8 @@
     }
    },
    "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫"
+   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+   "whoami160": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
   },
   {
    "hash": "#/knowledge?tab=evidence",
@@ -1726,7 +1756,8 @@
     }
    },
    "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫"
+   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+   "whoami160": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
   },
   {
    "hash": "#/knowledge?tab=ingest",
@@ -1828,7 +1859,8 @@
     }
    },
    "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫"
+   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+   "whoami160": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
   },
   {
    "hash": "#/knowledge?tab=retrieval",
@@ -1930,7 +1962,8 @@
     }
    },
    "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫"
+   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+   "whoami160": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
   },
   {
    "hash": "#/knowledge?tab=scope",
@@ -2032,7 +2065,8 @@
     }
    },
    "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫"
+   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+   "whoami160": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
   },
   {
    "hash": "#/knowledge?tab=sources",
@@ -2134,7 +2168,8 @@
     }
    },
    "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫"
+   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+   "whoami160": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
   },
   {
    "hash": "#/metrics",
@@ -2180,7 +2215,8 @@
     }
    ],
    "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫"
+   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+   "whoami160": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
   },
   {
    "hash": "#/org",
@@ -2248,7 +2284,8 @@
     }
    },
    "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫"
+   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+   "whoami160": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
   },
   {
    "hash": "#/overview",
@@ -2316,7 +2353,8 @@
     }
    },
    "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫"
+   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+   "whoami160": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
   },
   {
    "hash": "#/overview?tab=usage",
@@ -2393,7 +2431,8 @@
     }
    },
    "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫"
+   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+   "whoami160": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
   },
   {
    "hash": "#/sessions",
@@ -2508,7 +2547,8 @@
     }
    },
    "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫"
+   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+   "whoami160": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
   },
   {
    "hash": "#/system",
@@ -2556,7 +2596,8 @@
     }
    ],
    "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫"
+   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+   "whoami160": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
   },
   {
    "hash": "#/system?tab=defaults",
@@ -2604,7 +2645,8 @@
     }
    ],
    "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫"
+   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+   "whoami160": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
   },
   {
    "hash": "#/system?tab=events",
@@ -2652,7 +2694,8 @@
     }
    ],
    "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫"
+   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+   "whoami160": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
   },
   {
    "hash": "#/system?tab=events&view=anomaly",
@@ -2700,7 +2743,8 @@
     }
    ],
    "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫"
+   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+   "whoami160": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
   },
   {
    "hash": "#/system?tab=retention",
@@ -2748,7 +2792,8 @@
     }
    ],
    "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫"
+   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+   "whoami160": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
   },
   {
    "hash": "#/system?tab=security",
@@ -2796,7 +2841,8 @@
     }
    ],
    "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫"
+   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+   "whoami160": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
   },
   {
    "hash": "#/system?tab=version",
@@ -2844,7 +2890,8 @@
     }
    ],
    "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫"
+   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+   "whoami160": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
   },
   {
    "hash": "#/work",
@@ -2912,7 +2959,8 @@
     }
    },
    "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫"
+   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+   "whoami160": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
   },
   {
    "hash": "#/work?tab=board&view=cron",
@@ -2980,7 +3028,8 @@
     }
    },
    "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫"
+   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+   "whoami160": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
   },
   {
    "hash": "#/work?tab=cron",
@@ -3048,7 +3097,8 @@
     }
    },
    "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫"
+   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+   "whoami160": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
   },
   {
    "hash": "#/work?tab=runs",
@@ -3116,7 +3166,8 @@
     }
    },
    "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫"
+   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+   "whoami160": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
   }
  ],
  "rerollNote": "点名重跑 sessions/channels/models @d2cc49fe 面（L0②）：sessions 转 PASS（fb+fit，PNG 入账）、models PASS；channels 新面反成失分页（45s 旁路超时、main=10、viol 数据不可得）记 NOT_MEASURED 逐条 navError 入账，首轮 6586df6b 读数存 firstRunRow（L0①其余 48 路保留首轮）",
@@ -4298,5 +4349,14 @@
  },
  "nextScanNote159": "下次重扫须纳入 #/knowledge（该页 375 读数已变：seg_btn 44px）+ whoami==200 显式码带进逐行表（旗标 provided 不算读数）",
  "carriedFrom159": "0cc5818aba",
- "waveNote159": "wave-159：重建 H2 三比 + 第二笔可见改动（触点 44×169.8×4）复现入账；counts 维持 51/51/0/NM0 exitCode0（本波未重扫 51 路，L0 令下次连同 #/knowledge 变化重扫）；机检门 81a30df3f9 L0 按三约束验收通过（62行纯源码 web_dist|fetch(|createServer|child_process|execSync=0）记录在案；375 总 PASS 放行权在 UX 总审。"
+ "waveNote159": "wave-159：重建 H2 三比 + 第二笔可见改动（触点 44×169.8×4）复现入账；counts 维持 51/51/0/NM0 exitCode0（本波未重扫 51 路，L0 令下次连同 #/knowledge 变化重扫）；机检门 81a30df3f9 L0 按三约束验收通过（62行纯源码 web_dist|fetch(|createServer|child_process|execSync=0）记录在案；375 总 PASS 放行权在 UX 总审。",
+ "whoami160": {
+  "status": 200,
+  "at_local": "2026-11-22 21:54:30 +0800",
+  "port": 9122,
+  "entry": "assets/index-D4QqzZ8Z.js",
+  "source": "w159-kn375-readings.json (whoami.status=200, urllib GET /auth/whoami, cookie 由 ui-qa-auth-state 构造)",
+  "scope": "本码覆盖 158 全表重扫（21:09:44）与 159 kn375 探针所用同一活会话 cookie；158 跑时未单独落码=当时的缺口，本字段即补账（时间戳为 21:54:30 现验，非 21:09 当时码，如实）",
+  "discipline": "后续每轮重扫起跑前先写 whoami 显式码+时刻进 summary 顶层并落逐行 whoamiAt160 引用（CONSOLE-ACCEPTANCE §5 单文件自证）"
+ }
 }
