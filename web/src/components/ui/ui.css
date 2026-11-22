@@ -271,3 +271,15 @@
   justify-content: center;
   gap: var(--space-ls-2);
 }
+
+/* UiTabs：DS 的 TabsTrigger 自带 focus-visible:outline-none，焦点环必须由基元层用令牌补回。
+   选中态只改 aria-selected 与 tabIndex，不动焦点，所以 Tab 间方向键可以正常走焦。 */
+.ui-tabs-trigger:focus-visible {
+  outline: var(--focus-ring-ls);
+  outline-offset: var(--focus-ring-offset-ls);
+}
+
+.ui-tabs-panel:focus-visible {
+  outline: var(--focus-ring-ls);
+  outline-offset: var(--focus-ring-offset-ls);
+}
