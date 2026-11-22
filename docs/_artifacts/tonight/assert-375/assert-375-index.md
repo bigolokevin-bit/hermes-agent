@@ -1,5 +1,6 @@
 # assert-375 index（L0 P0 判据纠偏令 · 新判据）
 
+> 注：本表为拆壳内外（wave-150 前）旧单列 viol 读数，未拆 out/in——拆列后的行读数见 crit151/crit154 RAW 与各 wave 段。
 | route | verdict | viol | scrollOvf | domOvf(旧) | pngH | main |
 | --- | --- | ---: | ---: | ---: | ---: | ---: |
 | #/access | PASS | 0 | 0 | 0 | 812 | 201 |
@@ -175,3 +176,12 @@ matrix(#/employees?tab=matrix) present=true ok=true
 - 拆分生效实证：matrix fixture-preview 门（404 兜底、产品示例数据标注）渲染 720px 真壳，同 DOM insideShell=38 / outside=0 / docOvf=0 ⇒ 旧判据 FAIL(38)、新判据 PASS。RAW=assert375/matrix-door-split-demo-ba282ab484.png。
 - e1Contract 门：pnpm exec vitest run src/shell/e1Contract.test.ts ⇒ 1 file / 7 tests passed（exit 0）。
 - 纪律：51 路未重扫（8 行点名）、counts 49/0/2 matrixOk=true 维持、sessions/channels 真NM 未改判、375 总 PASS 未宣称、无 add -A/force/--no-verify。
+
+## 判据牙齿与对账 151（L0 三条必补，端口9122/entry index-B7MjhP14.js，脸 264332d7a2）
+
+- 牙齿证明：ASSERT375_TEETH=1 注入 body 级 600px 元素走同一梯子 ⇒ 7/7 行 FAIL、violOutsideShell=1、样本=注入 div（right=600 无可滚壳祖先）。区分「正确分流」与「探针丢维度」，RAW=crit151-teeth-selftest-summary.json。
+- 缺失即 NM 兜底：criteriaMissing(probe)（violOutsideShell 非数字）⇒ NOT_MEASURED + navError 记因，两处梯子均加；堵 null>0===false 静默放绿。
+- 回归：无 env 重跑 8 行 8 PASS，out/in 键值现查为数字 0/0（非 null）；其余 43 行为拆列前旧代次缺键，主表头下已加注记。
+- #/system 对账：UI-KD 221/29(sys3+sys6) vs 本道 255/0——sys3-table 现脸已不在 #/system 渲染路径（280620158d 密度重构；HealthPage 单测仍钉其选择器），sys6-scroll 默认折叠 display:none ⇒ 对象不在场而非分流吞判；在场地证=matrix 门 in38/out0 + 牙齿 out1/FAIL。RAW=system-census-151.json。
+- criteria 已写明 scrollOverflowCount 退出判红依据＝UI-RUBRIC「表格除外且须有容器内滚动」。
+- 纪律：375 判据项维持 claimed 不销账；375 总 PASS 禁（51/49/0/NM2，channels 新面反成 45s 旁路超时失分页 main=10 如实）；判据阈值未动。

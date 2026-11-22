@@ -3408,6 +3408,38 @@
       "crit154-split-demo-matrix-door-ba282ab484.json",
       "crit154-face-census-ba282ab484.json",
       "assert375/matrix-door-split-demo-ba282ab484.png"
-    ]
+    ],
+    "teethProof151": {
+      "cmd": "ASSERT375_TEETH=1 node web/scripts/assert-375.mjs --only-routes=#/knowledge（前缀匹配 7 变体）",
+      "result": "routes=7 pass=0 fail=7；每行 violOutsideShell=1 violInside=0，violation 样本=注入的 body 级 div width:600px（data-selftest=teeth-600）——同一 PROBE 同一梯子抓得到壳外，牙齿在",
+      "raw": "crit151-teeth-selftest-summary.json / -index.md"
+    },
+    "fieldGuard151": "violOutsideShell 非数字 ⇒ NOT_MEASURED + navError=criteria-field-missing（两处梯子均加，堵 null>0===false 静默放绿）",
+    "regression151": {
+      "cmd": "正常无 env 重跑 #/overview?tab=usage,#/system 族 8 行",
+      "result": "8 PASS，out/in 均为数字 0（键值 numeric 现查核毕）",
+      "raw": "crit151-regression8-summary.json"
+    },
+    "systemReconcile151": {
+      "uiKdReading": {
+        "checked": 221,
+        "viol": 29,
+        "inside": 29,
+        "outside": 0,
+        "worstRight": 707,
+        "tables": [
+          "sys3-table",
+          "sys6-table"
+        ]
+      },
+      "mine": {
+        "checked": 255,
+        "viol": 0,
+        "worstRight": 375
+      },
+      "cause": "现脸 #/system：sys3-table ABSENT（280620158d density refactor 后已不在该页渲染路径，HealthPage 单测仍钉 sys3 选择器）；sys6-scroll display:none（sources 区默认折叠，sys6-table offsetParent=null）⇒ 两表未渲染/隐藏，不进越界集合——不是分流吞了，是对象不在场。若在场：matrix 门实证 in=38/out=0、牙齿实证 out=1/FAIL，分流与壳外判定两向有牙",
+      "raw": "system-census-151.json"
+    },
+    "outInNullAudit151": "8 行 out/in 现查即数字 0/0（非 null）；其余 43 行系拆列前旧判代次，无该键（缺键≠null），主表头下方已加单列旧判据注记"
   }
 }
