@@ -242,3 +242,11 @@ matrix(#/employees?tab=matrix) present=true ok=true
 - 脸注记：0cc5818aba=wave-157 #2 纯 docs（UI-F 迁移指南 65 行），产品同 7ce5c5fdee，Cm_kToHo 现役未重建；逐行 prevFaceSnapshots 全链保留（含 155 活会话两路与更早 NM 史）。
 - token-source.test.ts 把关：截至本拍**尚未入脸**（web/src/components/ui/ 下无此文件）；已按 L0 形制硬约束盯——若落地版含读 web_dist/启服务/网络腿，当场点名，纯源码断言则放行。
 - 总 PASS 放行权在 UX 总审，本车道只固化读数不自签。
+
+## wave-159 重建 H2 + 第二笔可见改动 @facff767e0（端口9122/entry index-D4QqzZ8Z.js）
+
+- 脸 facff767e0（21:47:22，机检门首笔 81a30df3f9+零动效档+指南§4+knowledge 手机档触点）→ vite VITE=0 21:52:03（晚定脸 4'41" 无抢跑）。
+- H2 三比：entry index-D4QqzZ8Z.js 172800B sha256 7dbba1c57e40…6fd54b mtime 21:52:03；**css 换代 index-DVxC9bvL.css 148329B sha 286694e4…**（CFs-JKms 退役）；curl /agent-v2/ index 同值；assets 逐位 /assets/ js/css 双 match=True。
+- **第二笔可见改动复现**：#/knowledge 375 活会话（whoami==200 显式码前置），`.knw5-seg button` **count=4 / under44=0 / 每枚 h=44.0px w=169.8px minBlockSize=44px**——车道自报「4/0、29.7→44px、宽 169.8 不变」逐项一致；--touch-target-ls :root 未定义=走 44px 兜底（如实）。drill/copy/-clear 三族现役脸未现身（数据面），规则以 css 同块纸面+机检门为凭，不造读数。before=纸面证据 7caa5fd94a^ grep touch-target-ls=0；旧 dist 已覆盖不可重测如实。RAW=w159-kn375-readings.json+1帧。
+- 下次重扫纳入 #/knowledge（读数已变）+whoami==200 显式码进逐行表；机检门 81a30df3f9 已由 L0 三约束验收（纯源码层）。
+- counts 维持 51/51/0/NM0 exitCode0（本波未重扫）；375 总 PASS 放行权在 UX 总审，不自签；vitest 基线 482/3563 已记。

@@ -3120,15 +3120,15 @@
   }
  ],
  "rerollNote": "点名重跑 sessions/channels/models @d2cc49fe 面（L0②）：sessions 转 PASS（fb+fit，PNG 入账）、models PASS；channels 新面反成失分页（45s 旁路超时、main=10、viol 数据不可得）记 NOT_MEASURED 逐条 navError 入账，首轮 6586df6b 读数存 firstRunRow（L0①其余 48 路保留首轮）",
- "headHash": "0cc5818aba",
- "entry": "assets/index-Cm_kToHo.js",
- "entrySha256": "1d72f7023d701a3609a91e514868cf49001aacc97396e1acb46e36a57886d4f7",
+ "headHash": "facff767e0",
+ "entry": "assets/index-D4QqzZ8Z.js",
+ "entrySha256": "7dbba1c57e40501d5a121ad6cf098984b862d55b67231bb2471db4175e6fd54b",
  "entryBytes": 172800,
- "css": "assets/index-CFs-JKms.css",
- "cssSha256": "6f18d6b4d0f73952 (前16位全值见 index；sha256 完整=6f18d6b4d0f73952 起)",
- "cssBytes": 148285,
- "servedEntryAfter": "index-Cm_kToHo.js",
- "servedCssAfter": "index-CFs-JKms.css",
+ "css": "assets/index-DVxC9bvL.css",
+ "cssSha256": "286694e44b704533b7dbb6d37f69b0249707659bfd88aa6022a771f6c2f5f93a",
+ "cssBytes": 148329,
+ "servedEntryAfter": "index-D4QqzZ8Z.js",
+ "servedCssAfter": "index-DVxC9bvL.css",
  "criteriaNote": "旧 document 级 375 全绿作废不入账（L0③）；本代 375 承者=assert-375 逐元素判据+视口加高取图腿+字体等待旁路复测；channels=点名重跑合入 PASS（首轮读数存 firstRunRow）；sessions=真 NOT MEASURED：45s 旁路仍 screenshot 超时，逐条 navError 入账",
  "stampNote": "wave-129 6586df6b 本代新跑（非沿用）",
  "exitCode": 0,
@@ -3160,7 +3160,7 @@
   "raw": "coex-4a654bba.json",
   "priorFace": "coex-4705edea.json"
  },
- "entryMtime": "2026-11-22 21:02:26",
+ "entryMtime": "2026-11-22 21:52:03",
  "outerTabHighlightTriState": {
   "face": "4a654bba",
   "panelIngest": "pane+selected=sources，selected href 含 panel=ingest+state+rid，其余 tab href 无 panel=（viol0 main74）",
@@ -4274,5 +4274,29 @@
   "result": "routes 51 / pass 51 / fail 0 / notMeasured 0 / matrixOk true / exitCode 0（A375 跑于 21:09:44-21:1x，log /tmp/d-w158-scan.log）",
   "lowMainPass158": [],
   "raw": "w158-full-scan-summary.json + w158-full-scan-index.md + 51 帧（同名覆盖 assert375/）"
- }
+ },
+ "h2Rebuild159": {
+  "face": "facff767e0c469ac191f65912ff8ec2389d50ae6 (wave-159 #1 merge lane/console-design@4a485f0c11: 机检门首笔+零动效档令牌+指南§4+knowledge手机档触点最小高)",
+  "faceCommittedAt": "2026-11-22 21:47:22 +0800",
+  "builtAt": "2026-11-22 21:52:03",
+  "buildCmd": "cd web && node_modules/.bin/vite build VITE=0（捆绑门；web.mjs 类型红=他道既有，DELTA 规则不追）",
+  "noRush": "构建晚于定脸 4分41秒，无抢跑",
+  "entry": "assets/index-D4QqzZ8Z.js",
+  "entryBytes": 172800,
+  "entrySha256": "7dbba1c57e40501d5a121ad6cf098984b862d55b67231bb2471db4175e6fd54b",
+  "entryMtime": "2026-11-22 21:52:03",
+  "css": "index-DVxC9bvL.css 换代（CFs-JKms 退役）148329B sha256 286694e44b704533b7dbb6d37f69b0249707659bfd88aa6022a771f6c2f5f93a",
+  "tripleCheck": "ls -l bytes/mtime ✔；shasum -a 256 与盘一致 ✔；curl /agent-v2/ index 引用 D4QqzZ8Z+DVxC9bvL 同值 ✔；assets 逐位 /assets/ 路径 js match=True 172800B、css match=True 148329B ✔（/agent-v2/assets 是 SPA 回退页，三比必走 /assets/）"
+ },
+ "visibleChange159": {
+  "item": "第二笔可见改动=knowledge 手机档触点最小高（7caa5fd94a 入 css 面 + 4a485f0c11 折进命中区块）",
+  "method": "375×812 活会话，whoami==200 显式码 2026-11-22T22:0x +0800 时刻前置入 RAW）；#/knowledge 四族触点 rect 普查 + 钻取检索 tab 复测",
+  "after": "seg_btn count=4 under44=0，每枚 h=44.0px w=169.8px minBlockSize=44px（knw5-tab-spaces/ingest/search/evidence）——与车道自报「count 4 / under44 0、→44px、宽 169.8 不变」逐项一致；--touch-target-ls 在 :root 未定义=回落 44px 兜底（如实记，源真值经 var 兜底仍生效）",
+  "otherFamilies": "knw5-drill/knw5-copy/-clear 三族现役脸默认空间 tab 与点击检索 tab 后均未现身（数据面：需检索结果/引用行存在）——规则存在性以 css 纸面（knowledge.css :1403 四族同块 min-block-size）+机检门 81a30df3f9 为凭，不造读数",
+  "before": "纸面证据：git show 7caa5fd94a^:web/src/modules/knowledge/knowledge.css | grep -c touch-target-ls = 0（改前无此规则）；旧构建 dist 已被本拍重建覆盖不可独立重测——改前 29.7px 数值引 L0 转述车道自报，非本车道实测，如实标注",
+  "raw": "w159-kn375-readings.json + assert375/kn375-after-D4QqzZ8Z.png"
+ },
+ "nextScanNote159": "下次重扫须纳入 #/knowledge（该页 375 读数已变：seg_btn 44px）+ whoami==200 显式码带进逐行表（旗标 provided 不算读数）",
+ "carriedFrom159": "0cc5818aba",
+ "waveNote159": "wave-159：重建 H2 三比 + 第二笔可见改动（触点 44×169.8×4）复现入账；counts 维持 51/51/0/NM0 exitCode0（本波未重扫 51 路，L0 令下次连同 #/knowledge 变化重扫）；机检门 81a30df3f9 L0 按三约束验收通过（62行纯源码 web_dist|fetch(|createServer|child_process|execSync=0）记录在案；375 总 PASS 放行权在 UX 总审。"
 }
