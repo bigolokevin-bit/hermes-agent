@@ -1,0 +1,71 @@
+/**
+ * Console shell chrome — inline-style migration (UI-KD rubric, wave-161).
+ *
+ * Scope: the chrome pieces of shell/console.tsx only — state frames, the
+ * planned placeholder, both tab strips and the header eyebrow. Values come
+ * exclusively from the page contract in ../styles/tokens.css: no literals, no
+ * new token names, and nothing here reaches module pages or App. Imported by
+ * shell/console.tsx next to console-nav.css (that file stays navigation-only).
+ *
+ * Every rule is the computed equivalent of the inline style it replaces. The
+ * -ls alias and the UI-A semantic name it used to grab point at the same
+ * frozen skeleton var, so the face does not move:
+ *   --color-surface-ls / --color-surface            -> var(--panel)
+ *   --color-surface-raised-ls / -raised             -> var(--panel-2)
+ *   --color-text-ls / --color-text                  -> var(--fg)
+ *   --color-text-muted-ls / -muted                  -> var(--fg-2)
+ *   --color-border-ls / --color-border              -> var(--line-2)
+ *   --color-border-subtle-ls / -subtle              -> var(--line)
+ *   --color-danger-ls / --color-danger              -> var(--bad)
+ */
+
+/* 面 / 边 / 字三色，原 shellStyle 对象。带 border 的元素才吃 border-color，
+   无框的状态屏保持原样（原内联同样只写颜色）。 */
+.console-state-frame {
+  background: var(--color-surface-ls);
+  border-color: var(--color-border-subtle-ls);
+  color: var(--color-text-ls);
+}
+
+/* 规划中占位的不可用光标（R13 item 2 的真出口链接仍在，不是死路）。 */
+.console-state-frame.is-not-allowed {
+  cursor: not-allowed;
+}
+
+/* 次要说明文字：强制态注记、审计员说明、数据来源、gap 提示、请求号缺省话术。 */
+.console-note {
+  color: var(--color-text-muted-ls);
+}
+
+/* 说明文字里的真出口链接：原内联的 cursor 一并搬来。 */
+.console-note.is-link {
+  cursor: pointer;
+}
+
+/* 请求编号本体（可复制的那一段 <code>）。 */
+.console-rid {
+  color: var(--color-text-ls);
+}
+
+/* 失败屏的标题字。 */
+.console-state-error {
+  color: var(--color-danger-ls);
+}
+
+/* Tab 条底线。 */
+.console-tablist {
+  border-color: var(--color-border-ls);
+}
+
+/* 单个 Tab：非活动=透明底+次要字，活动=抬起底+正字。驱动量是 aria-selected，
+   与原内联三元式同源，故不必在 TSX 里再写 style。 */
+.console-tab {
+  background: transparent;
+  border-color: var(--color-border-subtle-ls);
+  color: var(--color-text-muted-ls);
+}
+
+.console-tab[aria-selected="true"] {
+  background: var(--color-surface-raised-ls);
+  color: var(--color-text-ls);
+}

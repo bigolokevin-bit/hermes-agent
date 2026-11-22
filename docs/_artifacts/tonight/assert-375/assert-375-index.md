@@ -242,3 +242,29 @@ matrix(#/employees?tab=matrix) present=true ok=true
 - 脸注记：0cc5818aba=wave-157 #2 纯 docs（UI-F 迁移指南 65 行），产品同 7ce5c5fdee，Cm_kToHo 现役未重建；逐行 prevFaceSnapshots 全链保留（含 155 活会话两路与更早 NM 史）。
 - token-source.test.ts 把关：截至本拍**尚未入脸**（web/src/components/ui/ 下无此文件）；已按 L0 形制硬约束盯——若落地版含读 web_dist/启服务/网络腿，当场点名，纯源码断言则放行。
 - 总 PASS 放行权在 UX 总审，本车道只固化读数不自签。
+
+## wave-159 重建 H2 + 第二笔可见改动 @facff767e0（端口9122/entry index-D4QqzZ8Z.js）
+
+- 脸 facff767e0（21:47:22，机检门首笔 81a30df3f9+零动效档+指南§4+knowledge 手机档触点）→ vite VITE=0 21:52:03（晚定脸 4'41" 无抢跑）。
+- H2 三比：entry index-D4QqzZ8Z.js 172800B sha256 7dbba1c57e40…6fd54b mtime 21:52:03；**css 换代 index-DVxC9bvL.css 148329B sha 286694e4…**（CFs-JKms 退役）；curl /agent-v2/ index 同值；assets 逐位 /assets/ js/css 双 match=True。
+- **第二笔可见改动复现**：#/knowledge 375 活会话（whoami==200 显式码前置），`.knw5-seg button` **count=4 / under44=0 / 每枚 h=44.0px w=169.8px minBlockSize=44px**——车道自报「4/0、29.7→44px、宽 169.8 不变」逐项一致；--touch-target-ls :root 未定义=走 44px 兜底（如实）。drill/copy/-clear 三族现役脸未现身（数据面），规则以 css 同块纸面+机检门为凭，不造读数。before=纸面证据 7caa5fd94a^ grep touch-target-ls=0；旧 dist 已覆盖不可重测如实。RAW=w159-kn375-readings.json+1帧。
+- 下次重扫纳入 #/knowledge（读数已变）+whoami==200 显式码进逐行表；机检门 81a30df3f9 已由 L0 三约束验收（纯源码层）。
+- counts 维持 51/51/0/NM0 exitCode0（本波未重扫）；375 总 PASS 放行权在 UX 总审，不自签；vitest 基线 482/3563 已记。
+
+- 补账 160（L0 @1344@ 唯一残留）：summary 顶层新增 whoami160=200@21:54:30+0800（源 w159-kn375-readings.json；覆盖 158 重扫同会话，158 当时未单码如实）+ 51 行各带 whoami160 引用——单文件自证成立；后续每轮起跑先码先入账。
+
+## wave-160 重建核验 @7a47010b35（端口9122/entry index-D4QqzZ8Z.js 产物未换代 + 触点族复跑）
+
+- 脸 7a47010b35（22:10:06，ui-f 四笔：Textarea 导出面/档位类/机检门双向核对/指南）→ vite VITE=0 重建 22:14：**entry/css 同名同 sha 未换代**（D4QqzZ8Z 7dbba1c5…/172800B；DVxC9bvL 286694e4…/148329B；mtime 22:14）——改动不入产物字节，不冒充新代次；内容级脸证据=ls-tree ui/ 含 Textarea.tsx+token-source.test.ts、ui/index.ts grep Textarea=1；三比 /agent-v2/ 引用同值 + /assets/ bit 双 True。
+- 触点族复跑（whoami==200 显式码+时刻前置，本轮现验 200 @ 2026-11-22 22:14:53 +0800）：seg_btn count=4/under44=0、44.0×169.8px minBlockSize=44px（knw5-tab-spaces），与车道自报一致（L0「4 个触点应仍 under44=0」✔）；drill/copy/-clear 三族 count=0 同 159 处置（css 同块纸面+机检门为凭）。
+- whoami160 顶层已刷新为本轮现验码+时刻，51 行逐行带 refresh160 注——任一单文件自证闭环（L0 @1344@ 残留要求：159 补账 a713871561 + 160 刷新双在）。
+- 台账 headHash=7a47010b35 carriedFrom=facff767e0；counts 51/51/0/NM0 exitCode0 维持（本波未重扫 51 路，触点族检查已按令纳入）；总 PASS 归 UX 总审不自签；基线 482/3564。
+
+## wave-161 全表复扫固化 + 重建 H2 + 触点复验 + P0-1 风暴复跑 @a9f802dbe9（端口9122/entry index-D4QqzZ8Z.js）
+
+- 脸现查 tip=a9f802dbe9（22:19:37 纯 docs；L0 所指 a713871561 在 lineage，其链源码 7a47010b35 已含；diff 7a47010b35..HEAD web/src=0）。重建 vite VITE=0 22:26:44：entry/css 同名同 sha 未换代（mtime 为本次重建时刻，不冒充新代次）；/agent-v2/ 同值 + /assets/ bit 双 match。
+- 全表 51 路复扫固化：routes51 pass51 fail0 NM0 matrixOk=true exitCode0，lowMainPass161=[]；逐行 rerollFace=a9f802dbe9 + whoami161=200 显式码+时刻（22:31:04 前置）。
+- 触点族复验：seg_btn count=4 / under44=0 / 每枚 44.0x169.8px minBlockSize=44px（knw5-tab-spaces）；drill/copy/-clear 三族 count=0 同 159/160 数据面处置。
+- P0-1 风暴复跑：sessions 401 7->8(+1) nav 5->5(0) main=106；channels 401 13->13(0) nav 5->5(0) main=200——窗口翻倍不翻倍、mainTextLen>=30 **达标**；残余 401=鉴权外端点恒定值。RAW=storm-counters-w161.json。
+- 让位记录：构建后共享树出现他人未推源码提交 df749fb259（refactor(shell) console-chrome token 化）——本章以 detached@a9f802dbe9 直落远端 tip，未代推未 rewind。
+- 375 总 PASS 放行权在 UX 总审，本车道只固化读数不自签；vitest 基线 482/3564（L0 亲验）。

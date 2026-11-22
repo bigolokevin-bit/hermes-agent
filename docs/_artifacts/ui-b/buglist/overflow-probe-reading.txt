@@ -1,0 +1,5 @@
+METRICS375 {"heat":{"sel":"[data-testid^='met6-heat-cell']","rect":[60,81],"shell":{"tag":"DIV","tid":null,"scrollW":620,"clientW":338,"canScroll":true},"docScroll":375,"pageHScrollable":false},"copy":{"sel":"[data-testid='sys-row-copy-0'], [id*='sys-row-copy']","missing":true},"rowsNote":true}
+SYSTEM375 [{"rect":[624,683],"shell":{"tid":null,"scrollW":680,"clientW":310},"pageHScrollable":false},{"rect":[624,683],"shell":{"tid":null,"scrollW":680,"clientW":310},"pageHScrollable":false},{"rect":[624,683],"shell":{"tid":null,"scrollW":680,"clientW":310},"pageHScrollable":false}]
+SESSIONS1440 {"hits":[{"text":"msgs · NaNd ago","tid":null,"visible":true,"rect":[259,226]}],"cardCount":0}
+METRICS1440VIS {"skip":{"display":"block","vis":"visible","clip":"rect(0px, 0px, 0px, 0px)","w":1,"h":1,"top":78},"srcNote":{"display":"block","vis":"visible","clip":"auto","w":1,"h":23,"top":78},"srcNoteTop":"direct"}
+PROBE-DONE
