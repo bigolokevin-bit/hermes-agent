@@ -221,3 +221,9 @@ matrix(#/employees?tab=matrix) present=true ok=true
 - 风暴计数附表（活 cookie，6s/12s 窗）：sessions 401 7→8（delta+1）nav 5→5（0）total 66→68；channels 401 13→13（0）nav 5→5（0）total 62→63 ⇒ 零线性增长（对照死 cookie wave-140 基线 sessions 401×1308/15s、wave-152 267→527）——cookie 早衰归因坐实。RAW=storm-counters-live-0379ae9f4e.json。
 - 牙齿注记：skeleton 闸（main<30 判 NM）独立价值保留——正是它当时拦住死 cookie 伪 PASS；判据项闭合，本波 web/scripts/** 未动（L0 令）。
 - 纪律：375 **总 PASS 宣称归 L0 销账**，本台账只记「NM 归零读数已入」；51 路未重扫（本轮两路点名复跑合入法，旧快照 prevFaceSnapshots 全链保留）；vitest 基线更新 481 files/3559 tests（L0 亲验免重跑）。
+
+## wave-156 补证两行（L0 @1291@：不阻塞销账、阻塞总 PASS 放行）
+
+- whoami 显式读数（①）：GET :9122/auth/whoami == **200**，取数时刻 2026-11-22 20:57:09 +0800（urllib，cookie 由 ui-qa-auth-state.json 构造；旗标不算登录态，此即显式码+时刻）。
+- 残余 401 来源（②）：sessions 7 / channels 13、whoamiAborted 各 1——URL 全落在 /auth/whoami 与 /agent-api/api/* 业务端点（sessions、hermes-summary、datasources、mcp/servers、gateway-connections、messaging/platforms），**非早衰 cookie 收尾（whoami 200 实证）、非未转发 /api***：反代已覆盖但域层凭据不止 console 会话可通=鉴权外接口面；量级有界恒定（每窗 ≤13、delta≤1、不随窗口翻倍），与已闭合的 401 风暴环（nav 线性增）无涉。域层缺哪层凭据归 ui-b/L4。RAW=w156-whoami-401-readings.json。
+- 375 总 PASS 放行权在 UX 总审（L0 已移交证据链），本车道持续不自我宣称。

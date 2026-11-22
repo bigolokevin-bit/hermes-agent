@@ -1,0 +1,48 @@
+{
+ "port": 9122,
+ "entry": "assets/index-DuhonhGE.js",
+ "face": "0379ae9f4e",
+ "routes": {
+  "#/sessions": {
+   "mainLen": 106,
+   "whoamiAborted": 1,
+   "count401": 7,
+   "urls401": [
+    "http://127.0.0.1:9122/auth/whoami",
+    "http://127.0.0.1:9122/agent-api/api/sessions?limit=50&offset=0&order=created&exclude_sources=cron%2Ctool%2Coneshot%2Capi_server%2Cacp%2Chermes_flow%2Cvulcan_delegate%2Cwebhook",
+    "http://127.0.0.1:9122/agent-api/api/sessions?limit=20&offset=0&order=created&exclude_sources=cron%2Ctool%2Coneshot%2Capi_server%2Cacp%2Chermes_flow%2Cvulcan_delegate%2Cwebhook",
+    "http://127.0.0.1:9122/auth/whoami",
+    "http://127.0.0.1:9122/agent-api/api/sessions?limit=50&offset=0&order=created&exclude_sources=cron%2Ctool%2Coneshot%2Capi_server%2Cacp%2Chermes_flow%2Cvulcan_delegate%2Cwebhook",
+    "http://127.0.0.1:9122/agent-api/api/sessions?limit=20&offset=0&order=created&exclude_sources=cron%2Ctool%2Coneshot%2Capi_server%2Cacp%2Chermes_flow%2Cvulcan_delegate%2Cwebhook",
+    "http://127.0.0.1:9122/agent-api/api/sessions?limit=50&offset=0&order=created&exclude_sources=cron%2Ctool%2Coneshot%2Capi_server%2Cacp%2Chermes_flow%2Cvulcan_delegate%2Cwebhook"
+   ],
+   "nonBaseFailed": []
+  },
+  "#/capabilities?tab=channels": {
+   "mainLen": 200,
+   "whoamiAborted": 1,
+   "count401": 13,
+   "urls401": [
+    "http://127.0.0.1:9122/auth/whoami",
+    "http://127.0.0.1:9122/agent-api/api/hermes-summary?limit=50",
+    "http://127.0.0.1:9122/agent-api/api/datasources?limit=50",
+    "http://127.0.0.1:9122/agent-api/api/mcp/servers?limit=50",
+    "http://127.0.0.1:9122/agent-api/api/gateway-connections?limit=50",
+    "http://127.0.0.1:9122/auth/whoami",
+    "http://127.0.0.1:9122/agent-api/api/gateway-connections?limit=50",
+    "http://127.0.0.1:9122/agent-api/api/hermes-summary?limit=50",
+    "http://127.0.0.1:9122/agent-api/api/mcp/servers?limit=50",
+    "http://127.0.0.1:9122/agent-api/api/datasources?limit=50",
+    "http://127.0.0.1:9122/agent-api/api/messaging/platforms?limit=50",
+    "http://127.0.0.1:9122/agent-api/api/connectors?limit=50",
+    "http://127.0.0.1:9122/agent-api/api/channels?limit=50"
+   ],
+   "nonBaseFailed": []
+  }
+ },
+ "whoami": {
+  "at": "2026-11-22T12:57:09.372Z",
+  "status": 200,
+  "ok": true
+ }
+}

@@ -4090,5 +4090,37 @@
   "vitestBaseline": "481 files / 3559 tests（L0 亲验，本波免重跑）"
  },
  "wave155Note": "wave-155：三件齐——①活 cookie whoami==200 前置断言 ②新脸重建 H2 三比 ③sessions/channels 同脸活会话复跑首次真读数；375 NM 2→0 读数已入台账，总 PASS 宣称归 L0 销账不自我宣布（L0 原话「NM 归零后才可谈总 PASS」——归零已达成，宣称权在 L0）。判据项闭合，web/scripts/** 本波未动。lowMainPass155 扫描见下。",
- "lowMainPass155": []
+ "lowMainPass155": [],
+ "whoamiProof156": {
+  "status": 200,
+  "at_utc": "2026-11-22T12:57:09.372Z",
+  "at_local": "2026-11-22 20:57:09 +0800",
+  "method": "urllib GET :9122/auth/whoami, cookie 由 ui-qa-auth-state.json 构造 header（旗标不算登录态——显式码+时刻补此）",
+  "port": 9122,
+  "entry": "assets/index-DuhonhGE.js"
+ },
+ "residual401Source156": {
+  "counts": {
+   "sessions_401": 7,
+   "sessions_whoamiAborted": 1,
+   "channels_401": 13,
+   "channels_whoamiAborted": 1
+  },
+  "url_sample": [
+   "/auth/whoami",
+   "/agent-api/api/sessions?limit=50&offset=0&order=created&exclude_sources=cron%2Ctool%2Coneshot%2Capi_server%2Cacp%2Chermes_flow%2Cvulcan_delegate%2Cwebhook",
+   "/agent-api/api/sessions?limit=20&offset=0&order=created&exclude_sources=cron%2Ctool%2Coneshot%2Capi_server%2Cacp%2Chermes_flow%2Cvulcan_delegate%2Cwebhook",
+   "/auth/whoami",
+   "/agent-api/api/sessions?limit=50&offset=0&order=created&exclude_sources=cron%2Ctool%2Coneshot%2Capi_server%2Cacp%2Chermes_flow%2Cvulcan_delegate%2Cwebhook",
+   "/agent-api/api/sessions?limit=20&offset=0&order=created&exclude_sources=cron%2Ctool%2Coneshot%2Capi_server%2Cacp%2Chermes_flow%2Cvulcan_delegate%2Cwebhook",
+   "/agent-api/api/sessions?limit=50&offset=0&order=created&exclude_sources=cron%2Ctool%2Coneshot%2Capi_server%2Cacp%2Chermes_flow%2Cvulcan_delegate%2Cwebhook",
+   "/auth/whoami",
+   "/agent-api/api/hermes-summary?limit=50",
+   "/agent-api/api/datasources?limit=50",
+   "/agent-api/api/mcp/servers?limit=50",
+   "/agent-api/api/gateway-connections?limit=50"
+  ],
+  "verdict": "非早衰 cookie 收尾（当拍 whoami==200 实证），也非未转发 /api/*——全部落在 /auth/whoami 与 /agent-api/api/* 业务端点（sessions、hermes-summary、datasources、mcp/servers、gateway-connections、messaging/platforms）：反代已覆盖但域层凭据不止 console 会话可通=鉴权外接口面；量级有界恒定（每窗 ≤13、delta≤1、不随窗口翻倍），与已闭的 401 风暴环（nav 线性增）无涉。域层缺哪层凭据归 ui-b/L4，不越判。",
+  "raw": "w156-whoami-401-readings.json"
+ }
 }
