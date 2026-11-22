@@ -1137,3 +1137,24 @@ describe("DutyPage trend window caliber note", () => {
     expect(q('[data-testid="duty-trend-window-note"]')).not.toBeNull();
   });
 });
+
+describe("DutyPage row-level drill links (B1-duty P0#1)", () => {
+  it("sends run rows to the registered query form /runs/?run= — not the unregistered path form", async () => {
+    fetchJSON.mockImplementation((url: string) => Promise.resolve(ok(url)));
+    await render(<DutyPage />);
+    const rows = Array.from(container.querySelectorAll("a.duty-row-title"));
+    expect(rows.length).toBeGreaterThan(0);
+    for (const a of rows) {
+      expect(a.getAttribute("href")).toBe("/runs/?run=run_abcdef123456");
+    }
+  });
+
+  it("sends approval blocker rows to /approvals?id= and keeps no dead path forms", async () => {
+    fetchJSON.mockImplementation((url: string) => Promise.resolve(ok(url)));
+    await render(<DutyPage />);
+    const links = Array.from(container.querySelectorAll("a.duty-link")).map((a) => a.getAttribute("href"));
+    expect(links).toContain("/approvals?id=apr_1");
+    expect(links.some((h) => /^\/approvals\//.test(h ?? ""))).toBe(false);
+    expect(links.some((h) => /^\/runs\/[^?]/.test(h ?? ""))).toBe(false);
+  });
+});

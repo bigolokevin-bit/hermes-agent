@@ -386,7 +386,7 @@ function TodayRunsCard({ stats, runs, onRetry }: { stats: Loadable<RunStatsBody>
             {runs.data.slice(0, 3).map((run) => (
               <li key={run.runId}>
                 <RunStatusBadge status={run.status} />
-                <Link className="duty-row-title" to={`/runs/${encodeURIComponent(run.runId)}`}>
+                <Link className="duty-row-title" to={`/runs/?run=${encodeURIComponent(run.runId)}`}>
                   {shortId(run.runId)}
                 </Link>
                 <span className="duty-row-time">{beijing(run.startedAt)}</span>
@@ -835,7 +835,7 @@ function RecentCard({ runs, onRetry }: { runs: Loadable<RunRow[]>; onRetry: () =
           <ul className="duty-list">
             {(runs.k === "ready" ? runs.data : []).slice(0, 3).map((run) => (
               <li key={run.runId}>
-                <Link className="duty-row-title font-mono" to={`/runs/${encodeURIComponent(run.runId)}`}>
+                <Link className="duty-row-title font-mono" to={`/runs/?run=${encodeURIComponent(run.runId)}`}>
                   {shortId(run.runId)}
                 </Link>
                 <RunStatusBadge status={run.status} />
