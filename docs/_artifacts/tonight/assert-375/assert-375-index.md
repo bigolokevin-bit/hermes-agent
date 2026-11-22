@@ -193,3 +193,11 @@ matrix(#/employees?tab=matrix) present=true ok=true
 - ②(b) 风暴计数复验判据未达（如实，禁粉饰）：sessions 6s 窗 401=789/framenavigated=267/total=8324，12s 窗 delta 401=781/nav=260/total=8273——线性增长未止；channels delta 401=1186/nav=237/total=6944。401 三闸后截图/读数腿通了，环本身未闸住，归 L0/ui-b 复处；本轮不再刷。RAW=storm-counters-4a3363a951.json。
 - ③ 缺失反证：ASSERT375_BREAK_FIELD=1 下 #/knowledge 族 7/7 行落 NOT_MEASURED+navError=criteria-field-missing: violOutsideShell not numeric（两梯子同口径），禁静默 PASS 实证。RAW=crit152-breakfield-proof.json（其 NM 行不并入台账行）。
 - 纪律：counts 重算 51/0/0（exitCode=0 仅行算术），375 总 PASS 宣称仍归 L0 销账；sessions/channels 改判 PASS 仅限逐元素维度；判据阈值未动；51 路其余行未重扫沿用历面。
+
+## wave-153 判据加硬：骨架阈值+风暴清单 @c5e046c522（端口9122/entry index-CCLAG-mZ.js）
+
+- L0 @1214@ 拒收 wave-152 的 51/51 总 PASS：①转 PASS 两行 mainTextLen=10 属骨架/门控空壳面，探针缺「页面真渲染」维度；②风暴计数 nav/401 随时窗翻倍（sessions 267→527、789→1570；channels 247→484、1225→2411）。处置：两行复跑改判 NOT_MEASURED，counts 回退 49/0/2、exitCode=1。
+- 判据只加严不放宽：新增骨架闸 mainTextLen<30 ⇒ NOT_MEASURED（阈值依据：骨架面 10/1 vs 真渲染最小 42/55，取 30 居中）+ 风暴清单闸 ASSERT375_STORM_NM 命中 ⇒ NOT_MEASURED（清单由风暴计数探针供给，脚本不自臆）；两条梯子（普通腿+字体旁路重判腿）同口径。原 376/-1/VH812/FAIL优先/matrix必产图 判据未动。
+- 牙齿反证两跑：`--only-routes='#/sessions,#/capabilities?tab=channels'` ⇒ exit1、两行 NOT_MEASURED skeleton-below-threshold: mainTextLen=10<30（该 NM 必 NM 实证，RAW=w153-skeleton-teeth-reroll-summary.json）；`ASSERT375_STORM_NM='#/knowledge?tab=citations'` 单路 ⇒ 该行 main=494（真渲染）照样 NOT_MEASURED storm-linear-growth（清单闸独立生效，RAW=w153-stormgate-proof.json）。
+- 探针口径（B 项）：w1=6s/w2=12s 累计计数 delta 判线性；domcontentloaded 30s+主文本稳定轮询≤4s，不用 networkidle；带 storageState 登录态；framenavigated 计每个重定向跳（非 unique 页面）、401 计全部 401 响应（静态经 v4_proxy 不产 401）、total 含静态资源。与 ui-b stub（navs=5/401≈29）口径不同不可直接比；两说并存：ui-b 称脱NM/有界，本道 152 读数为线性增长——不互相覆盖，骨架维度独立成立。
+- 纪律：375 总 PASS 继续禁（NM=sessions/channels 双闸口径在册）；51 路未重扫；其余 PASS 行 mainTextLen<30 全表扫描为空；全量 vitest 基线 481/3557 L0 亲验，wave-154#1 纯 docs 免重跑。

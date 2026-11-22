@@ -10,9 +10,9 @@
     "matrix": "required png, nonzero"
   },
   "routes": 51,
-  "pass": 51,
+  "pass": 49,
   "fail": 0,
-  "notMeasured": 0,
+  "notMeasured": 2,
   "matrixHash": "#/employees?tab=matrix",
   "matrixPresent": true,
   "matrixOk": true,
@@ -492,9 +492,9 @@
       "label": "平台接入",
       "source": "CONSOLE_TABS",
       "viewport": "375",
-      "verdict": "PASS",
+      "verdict": "NOT_MEASURED",
       "mainTextLen": 10,
-      "navError": null,
+      "navError": "skeleton-below-threshold: mainTextLen=10<30 页面未真渲染（153 加硬）",
       "png": "capabilities-tab-channels-375.png",
       "pngBytes": 6471,
       "pngW": 375,
@@ -570,10 +570,17 @@
             "faceNote": ""
           },
           "desc": "wave-152 前态（真NM 记录）"
+        },
+        {
+          "at": "2026-11-22 19:18:34",
+          "from": "PASS",
+          "mainTextLen": 10,
+          "navError": null,
+          "note": "wave-152 PASS(main=10) 被 L0 拒收（51/51 不采），153 骨架闸复跑判 NOT_MEASURED 实证（牙齿反证）"
         }
       ],
-      "rerollFace": "4a3363a951",
-      "rerunAt": "2026-11-22 18:47:31",
+      "rerollFace": "c5e046c522",
+      "rerunAt": "2026-11-22 19:18:34",
       "firstElementReadings152": true,
       "waveNote152": "401 三闸（4a3363a951）后首次逐元素读数；main=10 骨架/门控壳面如实；风暴计数环未止见 stormCounters152"
     },
@@ -1983,11 +1990,11 @@
       "label": "列表",
       "source": "COMPAT_MODULES",
       "viewport": "375",
-      "verdict": "PASS",
+      "verdict": "NOT_MEASURED",
       "mainTextLen": 10,
-      "navError": null,
+      "navError": "skeleton-below-threshold: mainTextLen=10<30 页面未真渲染（153 加硬）",
       "png": "sessions-375.png",
-      "pngBytes": 12529,
+      "pngBytes": 6579,
       "pngW": 375,
       "pngH": 812,
       "elementsChecked": 86,
@@ -2066,10 +2073,17 @@
             "faceNote": ""
           },
           "desc": "wave-152 前态（真NM 记录）"
+        },
+        {
+          "at": "2026-11-22 19:18:34",
+          "from": "PASS",
+          "mainTextLen": 10,
+          "navError": null,
+          "note": "wave-152 PASS(main=10) 被 L0 拒收（51/51 不采），153 骨架闸复跑判 NOT_MEASURED 实证（牙齿反证）"
         }
       ],
-      "rerollFace": "4a3363a951",
-      "rerunAt": "2026-11-22 18:47:31",
+      "rerollFace": "c5e046c522",
+      "rerunAt": "2026-11-22 19:18:34",
       "firstElementReadings152": true,
       "waveNote152": "401 三闸（4a3363a951）后首次逐元素读数；main=10 骨架/门控壳面如实；风暴计数环未止见 stormCounters152"
     },
@@ -2579,7 +2593,7 @@
     }
   ],
   "rerollNote": "点名重跑 sessions/channels/models @d2cc49fe 面（L0②）：sessions 转 PASS（fb+fit，PNG 入账）、models PASS；channels 新面反成失分页（45s 旁路超时、main=10、viol 数据不可得）记 NOT_MEASURED 逐条 navError 入账，首轮 6586df6b 读数存 firstRunRow（L0①其余 48 路保留首轮）",
-  "headHash": "4a3363a951",
+  "headHash": "c5e046c522",
   "entry": "assets/index-CCLAG-mZ.js",
   "entrySha256": "0ac0f3322e58956ef2a1ce61e8c815d180ae3e9dec1137a8d3dfd5fc0ce9868f",
   "entryBytes": 172800,
@@ -2590,7 +2604,7 @@
   "servedCssAfter": "index-DLpXaUuB.css",
   "criteriaNote": "旧 document 级 375 全绿作废不入账（L0③）；本代 375 承者=assert-375 逐元素判据+视口加高取图腿+字体等待旁路复测；channels=点名重跑合入 PASS（首轮读数存 firstRunRow）；sessions=真 NOT MEASURED：45s 旁路仍 screenshot 超时，逐条 navError 入账",
   "stampNote": "wave-129 6586df6b 本代新跑（非沿用）",
-  "exitCode": 0,
+  "exitCode": 1,
   "faceNote": "sessions=PASS 系 d2cc49fe（ui-b P1-B4 runs375 卡片字段名+知识第四改）面复测，L0④『维持真NM不空转』的旧面判定已由新面点名复测取代——本条为有界单轮复测结果非连刷",
   "namedRerollNote": "wave-134 定脸 6edcba4d（L0 第四次改脸·不重扫）：23 路点名重跑 @entry index-3Opmhawd.js（172422B sha256 6a6a98df47b0ed8a805dd51381a4ce84e1dc06d638f557b5c15f91f5c5a50b15，served==disk 03:37 实核）全 PASS viol=0；0a258f7b/CBCiEYq3 与更早代次点名读数留 firstRunRow.reroll_*；sessions/channels 双真 NM 维持；其余保留 6586df6b 首轮读数（L0①）。②点名两路（共存采样，RAW=coex-6edcba4d.json）：employees zone 直址 panel/state/rid 全保留 viol=0 main=61（『链接应剥 panel』语义属产品测试 console.test.tsx，L0 亲验 vitest 476f/3493t 绿，不在探针重复实现）；knowledge panel×state 共存采样 retrieval/evidence 双 PASS viol=0 main=77。375 总 PASS 仍禁：pass=49 / fail=0 / NM=2 / 51。",
   "wave134Note": "L0 第四次改脸 6edcba4d：不重扫 51 路；entry 重读=3Opmhawd；点名两路=employees?zone=config 剥 panel 保 state/rid（共存采样，见 coex-6edcba4d.json）+ knowledge panel×state 四态共存采样（同件）；23 路点名重跑 @6edcba4d 全 PASS viol=0；49 路首轮读数保留；sessions/channels 真 NM 维持；375 总 PASS 仍禁。部署闸 UX-r5-E1：六标记 3e01e190/a95ab6cf/3c22b6db/0a258f7b/35115d74/6edcba4d 在 dist(js/css/html) 与 web/src 全 0 命中——commit-sha 字面串不入构建（minify 剥注释、源码无此串），字面实读判据本环境无法成立，挂『未达待裁』；旁证 entry 随 console.tsx 每一刀实测换代 BuZxlyEv→DJUfcxXn→CBCiEYq3→3Opmhawd 且 served==disk。",
@@ -3545,6 +3559,35 @@
       }
     },
     "stormVerdict": "NOT MET（如实）：401 三闸后读数腿通了，但同窗计数仍线性增长——sessions 6s 窗 401=789/nav=267 delta=781/260；channels 401=1225/nav=247 delta=1186/237；环未止，归 L0/ui-b 复处，本轮不再刷",
-    "discipline": "读数已入台账待 L0 销账；375 总 PASS 不自我宣称；判据阈值未动；sessions/channels 改判 PASS 仅限逐元素维度"
+    "discipline": "读数已入台账待 L0 销账；375 总 PASS 不自我宣称；判据阈值未动；sessions/channels 改判 PASS 仅限逐元素维度",
+    "retract153": "L0 拒收 51/51 总 PASS：sessions/channels 两行 153 复跑改判 NOT_MEASURED（骨架维度加硬后），本字段保留 152 当时读数原样存史"
+  },
+  "carriedFrom153": "4a3363a951",
+  "faceNote153": "wave-154 #1（c5e046c522 merge ui-b 8d151889d7）为纯 docs 复跑读数入账，web/src 无变更 ⇒ 验收脸不变：端口9122 entry index-CCLAG-mZ.js（served==disk 已在前拍实测）。两说并存如实：ui-b 复跑称 sessions/channels 脱NM/风暴有界，本道 152 风暴计数读数为线性增长（sessions nav 267→527、401 789→1570；channels nav 247→484、401 1225→2411）；两者不互相覆盖，骨架维度（main=10）独立成立并已加硬。",
+  "skeletonGate153": {
+    "threshold": 30,
+    "依据": "本脸实测 main：骨架/门控面=10、风暴页=1；真渲染最小 42（员工模板 EMP-01 复跑代）/55（loading coex 态）——阈值取 30 居中留余量",
+    "rule": "mainTextLen<30 ⇒ NOT_MEASURED 禁签 PASS（skeleton-below-threshold），两条梯子同口径（普通腿+字体旁路重判腿）",
+    "teethRun": {
+      "cmd": "node web/scripts/assert-375.mjs --base=http://127.0.0.1:9122 --auth-state=$HOME/.local/state/sekoi-ops/ui-qa-auth-state.json --out=/tmp/d-w153-nm --only-routes='#/sessions,#/capabilities?tab=channels'",
+      "result": "exit1 routes2 pass0 fail0 NM2，两行 err=skeleton-below-threshold: mainTextLen=10<30（wave-152 误签 PASS 的两行同梯子复跑必 NM=空壳牙齿反证）",
+      "raw": "w153-skeleton-teeth-reroll-summary.json"
+    },
+    "stormListProof": {
+      "cmd": "ASSERT375_STORM_NM='#/knowledge?tab=citations' node web/scripts/assert-375.mjs --base=http://127.0.0.1:9122 --auth-state=$HOME/.local/state/sekoi-ops/ui-qa-auth-state.json --out=/tmp/d-w153-stormgate --only-routes='#/knowledge?tab=citations'",
+      "result": "exit1 routes1 NM1：该行 main=494（真渲染）但命中风暴清单 ⇒ NOT_MEASURED storm-linear-growth——闸独立生效，清单命中即禁签"
+    },
+    "script": "ASSERT375_STORM_NM 逗号清单由风暴计数探针供给（脚本不自臆页面状态）"
+  },
+  "stormProbeCaliber153": {
+    "windows": "w1=加载后 6s 累计计数、w2=再 12s 时累计计数，delta=w2-w1（线性增长判据看 delta）",
+    "wait": "goto domcontentloaded 30s + 主文本稳定轮询≤4s；明确不用 networkidle（长连接/轮询会吊死）",
+    "auth": "带 storageState authstate（登录态）",
+    "counting": "framenavigated=每个 frame 导航事件都计（重定向环内每跳+1，非 unique 页面数）；401=全部 status==401 响应计数（v4_proxy 静态资源不产 401，storm 中 401 均为 /agent-api|auth 端点）；total=全类型请求含静态",
+    "comparability": "与 ui-b stub 读数（navs=5/401≈29）口径不同不可直接比：stub 为短窗/计数定义不明或 mock 环境；本探针为事件级×18s 累计窗"
+  },
+  "scan153": {
+    "lowMainPassRows": [],
+    "note": "全表扫描 PASS 行 mainTextLen<30 仅上列（期望为空）"
   }
 }

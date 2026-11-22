@@ -1,0 +1,52 @@
+{
+  "schema": "assert-375/1",
+  "base": "http://127.0.0.1:9122",
+  "authState": "provided",
+  "criteria": {
+    "perElement": "right<=376 && left>=-1 for every visible element; inside a genuinely scrollable overflow-x shell recorded as violInsideScrollableShell, only violOutsideShell FAILs (wave-150); violOutsideShell 非数字判 NOT_MEASURED 禁静默 PASS（151）",
+    "scrollContainers": "scrollWidth<=clientWidth for overflow-x:auto|scroll, reported separately — compliant shell-scroll evidence, does not FAIL; 退出判红依据＝UI-RUBRIC「表格除外且须有容器内滚动」（wave-150/151）",
+    "teethSelftest": null,
+    "skeletonGate": "mainTextLen<30 判 NOT_MEASURED 禁签 PASS（153 加硬：骨架级空页非真渲染；依据：骨架面 main=10/1，真渲染最小 42/55，取 30 留余量）",
+    "stormGate": "STORM_NM 清单命中判 NOT_MEASURED 禁签 PASS（153 加硬）：#/knowledge?tab=citations",
+    "domScrollWidth": "auxiliary only (domOverflowPx column), never greens a page",
+    "shot": "fullPage:true && pngH>812 else NOT_MEASURED",
+    "matrix": "skipped-scope"
+  },
+  "routes": 1,
+  "pass": 0,
+  "fail": 0,
+  "notMeasured": 1,
+  "matrixHash": "#/employees?tab=matrix",
+  "matrixPresent": false,
+  "matrixOk": null,
+  "rows": [
+    {
+      "hash": "#/knowledge?tab=citations",
+      "label": "证据与引用",
+      "source": "COMPAT_TABS",
+      "viewport": "375",
+      "verdict": "NOT_MEASURED",
+      "mainTextLen": 494,
+      "navError": "storm-linear-growth: 同窗两段计数线性增长（153 加硬，清单由风暴计数探针供给）",
+      "png": "knowledge-tab-citations-375.png",
+      "pngBytes": 62735,
+      "pngW": 375,
+      "pngH": 812,
+      "elementsChecked": 166,
+      "offscreenLeft": 62,
+      "expandApplied": true,
+      "scrollersExpanded": 1,
+      "contentFit": true,
+      "targetHeight": 812,
+      "violCount": 0,
+      "violInsideScrollableShell": 0,
+      "violOutsideShell": 0,
+      "viol": [],
+      "scrollOverflowCount": 0,
+      "scrollOverflow": [],
+      "domOverflowPx": 0,
+      "fontBypass": false,
+      "consoleErrorsProduct": 0
+    }
+  ]
+}
