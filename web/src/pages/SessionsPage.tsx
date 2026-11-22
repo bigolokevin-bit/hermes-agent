@@ -88,6 +88,27 @@ import { apiErrorFromResponse, errorMessage } from "@/lib/api-error";
 
 /** Render an FTS5 snippet with highlighted matches.
  *  The backend wraps matches in >>> and <<< delimiters. */
+/**
+ * 缺值兜底（sessions-nan-fix）：网关给的 message_count / last_active 可能缺失或
+ * 非有限数，共享 `timeAgo` 拿到 NaN 会一路落到末路返回「NaNd ago」直接上屏。
+ * 只在调用侧兜底，不改共享 util 的语义（`isoTimeAgo` 里已有同类守卫可参照）：
+ * 合法的 0 照实显示，缺失/非法只给人话占位「—」，绝不显示 `NaN`、也不折成 0。
+ */
+const MISSING_PLACEHOLDER = "—";
+
+function countText(value: number | null | undefined): string {
+  return typeof value === "number" && Number.isFinite(value)
+    ? String(value)
+    : MISSING_PLACEHOLDER;
+}
+
+function agoText(value: number | null | undefined): string {
+  // epoch 0 与负值是占位不是时刻，交给占位符，别让 timeAgo 算出荒谬时长。
+  return typeof value === "number" && Number.isFinite(value) && value > 0
+    ? timeAgo(value)
+    : MISSING_PLACEHOLDER;
+}
+
 function SnippetHighlight({ snippet }: { snippet: string }) {
   const parts: React.ReactNode[] = [];
   const regex = />>>(.*?)<<</g;
@@ -633,8 +654,11 @@ function SessionRow({
                     <span className="text-border">&#183;</span>
                   </>
                 )}
-                <span className="shrink-0">
-                  {session.message_count} {t.common.msgs}
+                <span
+                  className="shrink-0"
+                  data-testid="session-row-message-count"
+                >
+                  {countText(session.message_count)} {t.common.msgs}
                 </span>
                 {session.tool_call_count > 0 && (
                   <>
@@ -645,7 +669,9 @@ function SessionRow({
                   </>
                 )}
                 <span className="text-border">&#183;</span>
-                <span className="shrink-0">{timeAgo(session.last_active)}</span>
+                <span className="shrink-0" data-testid="session-row-age">
+                  {agoText(session.last_active)}
+                </span>
               </div>
               {snippet && <SnippetHighlight snippet={snippet} />}
             </div>
@@ -2101,7 +2127,10 @@ export default function SessionsPage() {
                             : t.common.untitled)}
                       </span>
 
-                      <span className="min-w-0 break-words text-xs text-muted-foreground">
+                      <span
+                        className="min-w-0 break-words text-xs text-muted-foreground"
+                        data-testid="session-card-meta"
+                      >
                         {s.model && (
                           <>
                             <span className="font-mono-ui">
@@ -2110,8 +2139,8 @@ export default function SessionsPage() {
                             ·{" "}
                           </>
                         )}
-                        {s.message_count} {t.common.msgs} ·{" "}
-                        {timeAgo(s.last_active)}
+                        {countText(s.message_count)} {t.common.msgs} ·{" "}
+                        {agoText(s.last_active)}
                       </span>
 
                       {s.preview && s.title && (

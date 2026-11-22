@@ -30,6 +30,18 @@ import { useI18n } from "@/i18n";
 import { api, type SessionInfo } from "@/lib/api";
 import { cn, timeAgo } from "@/lib/utils";
 
+/**
+ * 缺值兜底（sessions-nan-fix）：`last_active` 缺失或非有限数时，共享 `timeAgo`
+ * 会返回「NaNd ago」直接上屏。只在调用侧兜底成占位符，不改共享 util 语义。
+ */
+const MISSING_PLACEHOLDER = "\u2014";
+
+function agoText(value: number | null | undefined): string {
+  return typeof value === "number" && Number.isFinite(value) && value > 0
+    ? timeAgo(value)
+    : MISSING_PLACEHOLDER;
+}
+
 const SESSION_LIMIT = 30;
 const SESSION_REFRESH_MS = 20_000;
 interface ChatSessionListProps {
@@ -227,7 +239,7 @@ export function ChatSessionList({
                 {rowLabel(s, t.sessions.untitledSession)}
               </span>
               <span className="flex w-full items-center gap-1.5 text-[0.6875rem] text-text-tertiary">
-                <span>{timeAgo(s.last_active)}</span>
+                <span data-testid="chat-session-age">{agoText(s.last_active)}</span>
                 {s.message_count > 0 && (
                   <>
                     <span aria-hidden>·</span>
