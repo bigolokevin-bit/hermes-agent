@@ -15,6 +15,17 @@
   padding-inline: var(--space-ls-2);
 }
 
+/* ghost 档：DS 没有第四种形状，用去面色实现，颜色一律取令牌。 */
+.ui-button-ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--color-text-muted-ls);
+}
+
+.ui-button-ghost:hover:not(:disabled) {
+  color: var(--color-text-ls);
+}
+
 .ui-textarea {
   display: block;
   width: 100%;
