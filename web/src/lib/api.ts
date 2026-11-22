@@ -73,6 +73,14 @@ import {
   clearDashboardTokenReloadAttempt,
 } from "@/lib/dashboard-auth-reload";
 import { apiErrorFromNetworkFailure, apiErrorFromResponse, authExpiredError, AUTH_NAVIGATION_GRACE_MS } from "@/lib/api-error";
+import {
+  attemptLoginRedirectOnce,
+  authBackoffRemaining,
+  clearAuthBackoff,
+  clearLoginRedirectAttempt,
+  dedupeInflight,
+  registerAuthFailure,
+} from "@/lib/auth-storm-guard";
 import { clearSessionExpired, markSessionExpired } from "@/lib/session-expiry";
 import type { AutomationBlueprint } from "@/lib/automation-blueprints";
 
@@ -160,7 +168,37 @@ function isSessionExpiryExempt(url: string): boolean {
   return SESSION_EXPIRY_EXEMPT_PREFIXES.some((prefix) => path.startsWith(prefix));
 }
 
-export async function fetchJSON<T>(
+/**
+ * 401 风暴守卫闸口（L0 点单 2026-11-22）：冷却期内的 target 不碰网络；
+ * 无副作用的 GET 并发去重。真正的 401 处理在 fetchJSONUncached 里。
+ */
+export function fetchJSON<T>(
+  url: string,
+  init?: RequestInit,
+  options?: FetchJSONOptions,
+): Promise<T> {
+  const scoped = withManagementProfile(url);
+  // resolveSameOrigin 自己会对跨源 URL 抛结构化拒绝（evil.example 腿的既有契约），
+  // 闸必须让那条校验留在原处：解析不了就原样交给 uncached 去抛正确的错。
+  let target = "";
+  try {
+    target = resolveSameOrigin(BASE, scoped);
+  } catch {
+    return fetchJSONUncached(url, init, options);
+  }
+  if (authBackoffRemaining(target) > 0) {
+    // 冷却=对同一 target 刚才已经吃过 401：直接给调用方结构化 401，
+    // 页面渲染自己的「需要登录」错误态；不再给风暴添一次网络往返。
+    return Promise.reject(authExpiredError(url));
+  }
+  const method = (init?.method ?? "GET").toUpperCase();
+  if (method === "GET" && !init?.body && !init?.signal) {
+    return dedupeInflight(target, () => fetchJSONUncached(url, init, options));
+  }
+  return fetchJSONUncached(url, init, options);
+}
+
+async function fetchJSONUncached<T>(
   url: string,
   init?: RequestInit,
   options?: FetchJSONOptions,
@@ -198,6 +236,9 @@ export async function fetchJSON<T>(
     throw err;
   }
   if (res.status === 401) {
+    // 风暴闸②：该 target 进入指数冷却（1s 起、30s 封顶），冷却期内
+    // fetchJSON 不再为它碰网络。
+    registerAuthFailure(target);
     // Design lane ①: one shared signal replaces the four per-page expiry cards.
     // Presentation only — the structured error below still rejects exactly as
     // before, so every caller's own state machine is untouched.
@@ -239,11 +280,15 @@ export async function fetchJSON<T>(
       } catch {
         /* SSR / privacy mode — ignore */
       }
-      window.location.assign(body.login_url);
-      // R5 item 1: the page is about to unload — but if the browser blocks the
-      // navigation, reject after a grace period so consumers render the plain
-      // 「需要登录」 state instead of hanging on Loading forever.
-      return pendingAuthNavigation<T>(url);
+      // 风暴闸①：整页跳登录一个页签世代只允许一次。第二次起改走结构化
+      // 错误——页面的「需要登录」态比无限 framenavigated 诚实得多。
+      if (attemptLoginRedirectOnce()) {
+        window.location.assign(body.login_url);
+        // R5 item 1: the page is about to unload — but if the browser blocks the
+        // navigation, reject after a grace period so consumers render the plain
+        // 「需要登录」 state instead of hanging on Loading forever.
+        return pendingAuthNavigation<T>(url);
+      }
     }
     // Loopback mode: ``_SESSION_TOKEN`` rotates on every server restart
     // (``hermes update``, ``hermes gateway restart``, etc.). A tab kept
@@ -268,6 +313,9 @@ export async function fetchJSON<T>(
     // current ``window.__HERMES_SESSION_TOKEN__`` is valid, so the next
     // 401 — if any — should be allowed to trigger its own reload cycle.
     clearDashboardTokenReloadAttempt();
+    // 风暴闸复位：2xx 是会话活着的证明，跳转闩与冷却同时放行下一个世代。
+    clearLoginRedirectAttempt();
+    clearAuthBackoff(target);
     // Design lane ①: the same proof closes the expiry episode — a 2xx means the
     // session is live, so the banner must not sit there any longer, and the next
     // real expiry is a NEW episode that surfaces again after a dismissal.

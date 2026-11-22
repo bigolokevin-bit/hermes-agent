@@ -10,6 +10,7 @@ import {
   setManagementProfile,
 } from "./api";
 import { clearSessionExpired, isSessionExpired } from "./session-expiry";
+import { __resetAuthStormGuardForTests } from "@/lib/auth-storm-guard";
 
 const reloadMocks = vi.hoisted(() => ({
   attemptDashboardTokenReloadOnce: vi.fn(() => false),
@@ -24,6 +25,7 @@ vi.mock("./dashboard-auth-reload", () => ({
 const SESSION_HEADER = "X-Hermes-Session-Token";
 
 beforeEach(() => {
+  __resetAuthStormGuardForTests();
   reloadMocks.attemptDashboardTokenReloadOnce.mockReset();
   reloadMocks.attemptDashboardTokenReloadOnce.mockReturnValue(false);
   reloadMocks.clearDashboardTokenReloadAttempt.mockReset();
@@ -44,6 +46,7 @@ afterEach(() => {
   setManagementProfile("");
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
+  __resetAuthStormGuardForTests();
 });
 
 function jsonFetchMock(body: unknown = { ok: true }) {
