@@ -18,7 +18,7 @@
 - 全量 vitest 归 L0 亲验基线（487 files/3596 tests），本车道未自跑。
 
 ## 补证轮（L0 wave-171 判定后，chat 腿）
-- 根因：storageState cookie 域=100.117.184.117，浏览器打 127.0.0.1 页面不带 cookie ⇒ 旧 chat-path 拍（mainLen=15『⠋ Loading chat…』、res4xxSample=[401 /auth/whoami]）=未登录伪像，**作废不作数**（原帧仍在册仅供对照）。
+- 根因：storageState cookie 域=100.117.184.117，浏览器打 127.0.0.1 页面不带 cookie ⇒ 旧 chat-path 拍（mainLen=15『⠋ Loading chat…』、res4xxSample=[401 /auth/whoami]）=未登录伪像，**作废不作数**（旧帧已被本拍真帧替换，原帧可由 git 历史 21c276dd0b 取回仅供对照）。
 - 正解形制：token 不动、仅把 cookie 域改写为 127.0.0.1 注入浏览器（urllib 带 cookie 头 whoami=200 先证 token 活）；每次截帧前在浏览器内 `await fetch('/auth/whoami').then(r=>r.status)` 紧贴断言。
 - 读数（chat-补证-readings.json + chat-1440.png / chat-375.png）：
   - 1440x900：whoamiPre=200、whoamiAtShot=200、mode=live、实渲非骨架（loadingSkeleton=false）、jsErrors=0、4xx=0；ageCount=0（侧栏无行）⇒ 按『空态平凡真、覆盖不足』如实记，main/body/row NaN=0。
