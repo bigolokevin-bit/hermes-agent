@@ -1,0 +1,90 @@
+{
+  "base": "http://127.0.0.1:9122",
+  "port": 9122,
+  "entry": "assets/index-B7MjhP14.js",
+  "face": "eb697ca5d2",
+  "at": "2026-11-22T08:42:14.044Z",
+  "auditPage": {
+    "url": "/system?tab=events&window=30d&limit=25",
+    "mainLen": 699,
+    "anchors": [
+      {
+        "href": "/system?window=30d&limit=25",
+        "text": "系统健康",
+        "testid": null
+      },
+      {
+        "href": "/system?tab=defaults&window=30d&limit=25",
+        "text": "默认设置",
+        "testid": null
+      },
+      {
+        "href": "/system?tab=version&window=30d&limit=25",
+        "text": "版本",
+        "testid": null
+      },
+      {
+        "href": "/system?tab=events&window=30d&limit=25",
+        "text": "审计事件",
+        "testid": null
+      },
+      {
+        "href": "/audit?tab=events&window=30d&limit=25",
+        "text": "分享这一问",
+        "testid": "aud-source-href"
+      }
+    ],
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    ],
+    "viol": {
+      "elements": 254,
+      "viol": 0,
+      "maxRight": 375
+    }
+  },
+  "auditShapes": {},
+  "auditDestinations": [],
+  "matrix": {
+    "url": "/employees?tab=matrix",
+    "mainLen": 1094,
+    "anchors": [
+      {
+        "testid": "mtx5-owner-emp_fixture04a1b2c3",
+        "href": "/employees/emp_fixture04a1b2c3",
+        "text": "小鲤 · FIXTURE0"
+      },
+      {
+        "testid": "mtx5-owner-emp_fixture05d4e5f6",
+        "href": "/employees/emp_fixture05d4e5f6",
+        "text": "小满 · FIXTURE0"
+      },
+      {
+        "testid": "mtx5-owner-emp_fixture07a8b9c0",
+        "href": "/employees/emp_fixture07a8b9c0",
+        "text": "阿吉 · FIXTURE0"
+      }
+    ],
+    "cellLinks": 0,
+    "door": "fixture-preview",
+    "pinKept": 4,
+    "fixtureNote": true,
+    "viol": {
+      "elements": 207,
+      "viol": 38,
+      "maxRight": 747
+    }
+  },
+  "matrixOwnerLanding": {
+    "from": {
+      "testid": "mtx5-owner-emp_fixture04a1b2c3",
+      "href": "/employees/emp_fixture04a1b2c3",
+      "text": "小鲤 · FIXTURE0"
+    },
+    "mainLen": 1061,
+    "url": "/overview",
+    "labelInPage": false,
+    "head": "运营 · 控制台\n运营总览\n值班台\n用量与成本\n值班台\n运营总览 · 只读\n采集时刻 —（北京时间）\n近 24 小时\n近 7 天\n近 14 天\n近 30 天\n刷新\n可上岗\n去员工列表\n\n数据截至 —（北京时间） · 来源 员工目录与运行统计\n\n这一块没有读取成功\n\n请求编号 80389e87b3aa4d0eb214ae9784a914a1复制\n\n详情\n重试\n今日运行\n运行记录\n\n数据截至 —（北京时间） · 来源 运行窗口统计\n\n这一块没有读取成功\n\n请求编号 eb32cd7046074e79ad55d796227d3574复制\n\n详情\n重试\n今日成本\n去指标页看成本\n\n数据截至 —（北京时间"
+  }
+}

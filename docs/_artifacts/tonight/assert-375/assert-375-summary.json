@@ -686,7 +686,7 @@
       "source": "CONSOLE_TABS",
       "viewport": "375",
       "verdict": "PASS",
-      "mainTextLen": 213,
+      "mainTextLen": 228,
       "navError": null,
       "png": "employees-tab-matrix-375.png",
       "pngBytes": 52935,
@@ -705,7 +705,7 @@
       "domOverflowPx": 0,
       "fontBypass": false,
       "consoleErrorsProduct": 0,
-      "rerollFace": "470f2c2fce",
+      "rerollFace": "eb697ca5d2",
       "prevFaceSnapshot": [
         {
           "verdict": "PASS",
@@ -725,7 +725,7 @@
           "targetHeight": 812
         }
       ],
-      "faceNote": "wave-146 bounds 点名重跑 PASS viol=0 elems=141 main=213 contentFit=True pngH=812",
+      "faceNote": "eb697ca5d2 点名重跑（matrix 行深链入脸，bounds 复测）：PASS viol=0 main=228（页脚新文案）；历面链保留",
       "faceSnapshotChain": [
         {
           "face": "a382334c",
@@ -738,6 +738,12 @@
           "pngH": 812,
           "mainTextLen": 213,
           "violCount": 0
+        },
+        {
+          "face": "470f2c2fce",
+          "viol": 0,
+          "main": 213,
+          "elems": 141
         }
       ]
     },
@@ -2428,14 +2434,14 @@
     }
   ],
   "rerollNote": "点名重跑 sessions/channels/models @d2cc49fe 面（L0②）：sessions 转 PASS（fb+fit，PNG 入账）、models PASS；channels 新面反成失分页（45s 旁路超时、main=10、viol 数据不可得）记 NOT_MEASURED 逐条 navError 入账，首轮 6586df6b 读数存 firstRunRow（L0①其余 48 路保留首轮）",
-  "headHash": "470f2c2fce",
-  "entry": "assets/index-INJI_bcS.js",
-  "entrySha256": "154fee732d542517c5348114343f69ea0b998eaf50e478baaac27a81f8e69b56",
+  "headHash": "eb697ca5d2",
+  "entry": "assets/index-B7MjhP14.js",
+  "entrySha256": "2b8081ea9f55b58ed30c29518afae87054f3cefecfb7bded8da8059309afd45a",
   "entryBytes": 172800,
   "css": "assets/index-DLpXaUuB.css",
   "cssSha256": "13a111877909a0a34aa08f54c6635f795fb77351f3ebef339d42d5926fd0a0dc",
   "cssBytes": 146491,
-  "servedEntryAfter": "index-INJI_bcS.js",
+  "servedEntryAfter": "index-B7MjhP14.js",
   "servedCssAfter": "index-DLpXaUuB.css",
   "criteriaNote": "旧 document 级 375 全绿作废不入账（L0③）；本代 375 承者=assert-375 逐元素判据+视口加高取图腿+字体等待旁路复测；channels=点名重跑合入 PASS（首轮读数存 firstRunRow）；sessions=真 NOT MEASURED：45s 旁路仍 screenshot 超时，逐条 navError 入账",
   "stampNote": "wave-129 6586df6b 本代新跑（非沿用）",
@@ -2468,7 +2474,7 @@
     "raw": "coex-4a654bba.json",
     "priorFace": "coex-4705edea.json"
   },
-  "entryMtime": "2026-11-22 15:05:55",
+  "entryMtime": "2026-11-22 16:40:43",
   "outerTabHighlightTriState": {
     "face": "4a654bba",
     "panelIngest": "pane+selected=sources，selected href 含 panel=ingest+state+rid，其余 tab href 无 panel=（viol0 main74）",
@@ -2478,6 +2484,7 @@
     "priorFace": "highlight-tristate-4705edea.json"
   },
   "counts": {
+    "routes": 51,
     "pass": 49,
     "fail": 0,
     "notMeasured": 2
@@ -3124,5 +3131,31 @@
   },
   "faceNote146": "wave-146 定脸 470f2c2fce（merge lane/console-ui2@e035f94a matrix 375 版式列头冻结，脸时刻 2026-11-22 14:57:17 +0800）。重建 vite build VITE=0：entry assets/index-INJI_bcS.js 172800B sha256 154fee732d542517c5348114343f69ea0b998eaf50e478baaac27a81f8e69b56 mtime 15:05:55（构建晚于定脸 8'38\"，含全脸无抢跑）；主 css index-DLpXaUuB.css 146491B 未换代；matrix 新规则实测 lazy chunk assets/MatrixModulePage-BtD1oKaq.css（mtx5-pin 命中）；served==disk 双 MATCH（端口9122 静态按请求读盘无需重启）。读数方法=vite build 于 HEAD=470f2c2fce 完成后读盘+curl :9122 对账。",
   "waveNote146": "点名重跑仅 matrix 一路（bounds+列头冻结行为），51 路未重扫；sessions/channels 两路真 NM 维持未改判；375 总 PASS 禁宣称；新基线 vitest 480 files/3543 tests L0 亲验免重跑",
-  "correction147": "L0 现查更正覆盖：top-level entry 键此前留在 w145 旧代次 B9avOQha；现读=assets/index-INJI_bcS.js 172800B sha256 154fee73…69b56 mtime 15:05:55，晚于 470f2c2fce merge（14:57:17）与 e035f94a 提交（13:55:45）⇒ 本 dist 即含 matrix 列头冻结代次；MatrixModulePage-BtD1oKaq.css/MatrixModulePage-BbG2W9XR.js 均实测含 mtx5-pin。sticky 行为取证 readings 15:09:45 已在该现脸产出（verdict sticky-head-frozen），本笔仅按现读落账，不重建不刷 51 路矩阵读数。"
+  "correction147": "L0 现查更正覆盖：top-level entry 键此前留在 w145 旧代次 B9avOQha；现读=assets/index-INJI_bcS.js 172800B sha256 154fee73…69b56 mtime 15:05:55，晚于 470f2c2fce merge（14:57:17）与 e035f94a 提交（13:55:45）⇒ 本 dist 即含 matrix 列头冻结代次；MatrixModulePage-BtD1oKaq.css/MatrixModulePage-BbG2W9XR.js 均实测含 mtx5-pin。sticky 行为取证 readings 15:09:45 已在该现脸产出（verdict sticky-head-frozen），本笔仅按现读落账，不重建不刷 51 路矩阵读数。",
+  "faceNote148": "wave-148 三笔 @eb697ca5d2（36f44e8c94 shell e1Contract 自足化纯单元 / 3d5e8cf569 audit 资源深链守卫=本道 employees 形制 / eb697ca5d2 matrix 行深链到属主 d5fbdf785）。ff 脸 16:34:57，vite build VITE=0 完成 16:40:43（构建晚于定脸 5'46\"，含全脸无抢跑），entry 换代 INJI_bcS→B7MjhP14，主 css DLpXaUuB 未换代，served==disk 双 MATCH（端口9122，静态按请求读盘未重启）。chunk 特征：新 MatrixModulePage-UKb0Ij2w.js 含 mtx5-owner（d5fbdf785 归属证据）；knowledge chunk CEIQKje5.css 不变。",
+  "matrixOwnerLink148": {
+    "face": "eb697ca5d2",
+    "port": 9122,
+    "entry": "assets/index-B7MjhP14.js",
+    "bounds": "assert-375 点名 #/employees?tab=matrix PASS viol=0 elems=141 main=228（页脚新文案「行首的名字就是入口」入图，213→228）pngH=812 contentFit=true matrixPresent=true",
+    "ownerLinks": "产品 fixture-preview 门（d5fbdf785 自述：门在 404/unreachable 时载入示例表并标 data-fixture/示例数据，非探针伪造；live /api/matrix 现 no-payload 无表体如实）下出 3 枚 mtx5-owner-* 锚点（小鲤/小满/阿吉 → /employees/emp_fixture…），SPA 点击首行落 /employees/emp_fixture04a1b2c3（idInUrl=true, main=146 详情面解析该 id）",
+    "readonly": "cellLinks=0（mtx5-cell 内零 a/button，「矩阵只读」仍字面真）；span.mtx5-pin=4 钉列外层保持（R272 形制不动）；375 逐元素判据以 assert-375 为准 PASS；探针粗扫 viol=38/maxRight=747 为 .mtx5-scroll 横向壳 720px min-width 设计内滚动区（非回归，判据不放宽不越判）",
+    "raw": [
+      "matrix-owner-audit-deeplink-probe1-eb697ca5d2.json",
+      "matrix-owner-audit-deeplink-probe2-eb697ca5d2.json"
+    ]
+  },
+  "auditDeepLink148": {
+    "face": "eb697ca5d2",
+    "port": 9122,
+    "entry": "assets/index-B7MjhP14.js",
+    "auditFace": "#/audit?window=30d|90d 被客户端归口到 /system?tab=events&…（审计已并入系统页签，现状如实）；375 渲染实测 viol=0 elements=254 maxRight=375 main≈695-699",
+    "liveResourceLinks": "本脸事件表按 aud01-row- 前缀计数 rows=0、资源出口锚点=0（现窗无可出口行，非缺陷判定）；employees/approvals/runs/work 深链闭集与员工形制由 3d5e8cf569 单元护栏持有（audit 19/19 + L0 亲验全量 480 files/3546 tests 绿），/employees/:id URL 形制已经 matrix 点击腿实证 SPA 可达落主",
+    "approvalsNote": "approvals 历史页产品自带链接仅 /approvals 与 ?tab=history 页签形制（点击落 /approvals main=344）；本脸未见带 id 的历史行锚点，不据此断言缺失——深链闭集归单元件（先例：现网无行≠单元合同）",
+    "raw": [
+      "matrix-owner-audit-deeplink-probe1-eb697ca5d2.json",
+      "matrix-owner-audit-deeplink-probe2-eb697ca5d2.json"
+    ]
+  },
+  "waveNote148": "wave-148 同波次续章：只点名 audit 深链+matrix 行深链两路，51 路未重扫；49 路首轮读数保留；sessions/channels 两路真 NM 维持未改判；375 总 PASS 未宣称；判据不变（376/-1/812/FAIL优先/matrix必产图）；全量 vitest 480/3546 L0 亲验免重跑。"
 }

@@ -1,0 +1,53 @@
+{
+  "base": "http://127.0.0.1:9122",
+  "port": 9122,
+  "entry": "assets/index-B7MjhP14.js",
+  "face": "eb697ca5d2",
+  "at": "2026-11-22T08:43:21.425Z",
+  "method": "SPA click through product links (no hand-built URLs)",
+  "employeesListLinks": [],
+  "approvalsHistoryLinks": {
+    "ml0": 530,
+    "links": [
+      {
+        "href": "/approvals",
+        "text": "待处理",
+        "testid": null
+      },
+      {
+        "href": "/approvals?tab=history",
+        "text": "历史决策",
+        "testid": null
+      }
+    ]
+  },
+  "approvalsLanding": {
+    "from": "/approvals",
+    "ml": 344,
+    "url": "/approvals",
+    "mainLen": 344,
+    "head": "运营 · 控制台\n审批与发布门\n待处理\n历史决策\n筛选条件（无）\n汇总（与列表同源）：\n待办 —\n已批 —\n已拒 —\n高风险 —\n中风险 —\n低风险 —\n审批申请读取失败\n重置筛选\n导出 CSV\n—\n\napprovals-pending-pending-default-default-20261122-1643.csv\n\n排序：\n标题\n状态\n风险档\n更新时间\n复制预览详情\n\n列表读取失败，可复制请求编号重试\n\n刷新\n审批申请没能加载出来",
+    "errCard": false
+  },
+  "matrixOwner": {
+    "href": "/employees/emp_fixture04a1b2c3",
+    "text": "小鲤 · FIXTURE0",
+    "testid": "mtx5-owner-emp_fixture04a1b2c3"
+  },
+  "matrixOwnerLanding": {
+    "ml": 146,
+    "idInUrl": true,
+    "url": "/employees/emp_fixture04a1b2c3",
+    "mainLen": 146,
+    "head": "工作台\n配置\n任务\n运行\n证据\n员工 · FIXTURE0\n\n—\n\n返回\n总览\n任务\n运行\n审批\n概览\n能力与权限\n审批\n运行\n审计\n\n员工档案没能加载出来\n\n重新登录后回到这个页面，即可继续查看。\n\n请求编号：\n390d3e3f5cda477c9baaa6b5c00581dd\n复制\n\n重试",
+    "errCard": false
+  },
+  "audit90d": {
+    "url": "/system?tab=events&window=90d&limit=100",
+    "mainLen": 695,
+    "head": "系统 · 控制台\n系统设置\n系统健康\n默认设置\n版本\n审计事件\n\n审计事件读取失败\n\n时间为北京时间\n导出 CSV\n完整性校验\n刷新\n导出当前筛选 CSV\n将导出 0 条\n导出的就是屏上这一份：当前时间窗与筛选下的全部类型，共 0 行，与上面「已显示」和类型分布的计数同一个集合；文件名带齐时间窗、操作者、资源、动作与行数，时间为北京时间到分。\n时间窗\n最近 24 小时\n最近 7 天\n最近 30 天\n自定义\n事件类型\n全部事件类型\n操作者",
+    "errCard": false,
+    "anchors": [],
+    "rows": 0
+  }
+}
