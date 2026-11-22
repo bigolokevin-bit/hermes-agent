@@ -277,3 +277,11 @@ matrix(#/employees?tab=matrix) present=true ok=true
 - P0-1 新脸同口径复跑：sessions 401 7→8(+1) nav 5→5(0) main=106；channels 401 13→13(0) nav 5→5(0) main=200 ⇒ 窗口翻倍不翻倍且 mainTextLen>=30 达标；残余 401=鉴权外端点恒定（156 口径一致）。
 - 160/161 判词补答：160 比对 face=7a47010b35、重建 22:14 磁盘 mtime 实读=22:14（重建真发生）；同名同 sha=ui/** 未被应用引用入模块图（vite hash 只覆盖图内字节）；本波 in-graph 改动 entry 立即换代+字节 172800→171257 反证该口径成立。
 - 纪律：375 总 PASS 放行权归 UX 总审不自签；判据未动（web/scripts/** 本轮零改动）；基线 484/3574 已记；RAW=w162-full-scan-{summary,index}+w162-kn375-readings+storm-counters-w162+51帧。
+
+## wave-165 重建 H2+全表复扫+触点/主题面（附 163 轮存档）@e8d9295318（端口9122/entry index-Dzqdzj0R.js）
+- 脸 e8d9295318（2026-11-23 00:04:44，UiTabs 方向键/ARIA +135 与棘轮门契约 +98）；重建 VITE=0 00:14：entry index-Dzqdzj0R.js 171123B sha256 0885e8e3…、css index-BuNLfk0U.css 148943B——与 163 脸同名同 sha，但磁盘 mtime 00:03→00:14=重建真发生；内容级证据：Tabs.tsx 特征串 ArrowLeft/role=7、ui/Tabs 被 modules 引用数=0 ⇒ 图外基元不入 bundle，非『未重建』。台账前值 Ceaj0F6k/57d90c0c… 不 match=162→163 换代实证。/agent-v2/ 引用同名；/assets/ bit js/css 双 match。
+- 51 路复扫固化：pass=51 fail=0 notMeasured=0 matrixOk=true exitCode=0；lowMainPass165=[]；violOutsideShell null 行=[]；knowledge 7 行全 PASS out=0（main 198~575）。
+- 触点复验：seg_btn 4 枚 44.0×169.8px under44=0（raw=w165-kn375-readings.json，whoami 200@00:18:14 显式前置并已进 51/51 逐行 whoami165）。
+- 主题/设置面：ThemeSwitcher 无独立路由，在 shell 顶栏每页 DOM（全表已覆盖）；专项探针 trigger found（rect right<=1 offscreen-left 豁免）、panel opened、swatch/字体栈运行时恒等、consoleErrors=401 资源面口径（raw=w165-theme-readings.json）。
+- 163 轮（451621e760）读数存档：未及落章脸即推进，h2Rebuild/touch/theme/事故（pkill 误杀首轮扫描复跑成）全录 wave163Interim+RAW w163-*。
+- 纪律：判据未放宽；375 总 PASS 放行权归 UX 总审 ses_e02192ce8ffeOClSfwe4Iq6QAK 不自签；vitest 基线 486 files/3583 tests（L0 亲验）；pkill 不与全扫并发。
