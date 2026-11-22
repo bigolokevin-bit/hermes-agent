@@ -1416,3 +1416,15 @@
     inset: -10px 0;
   }
 }
+
+/* 手机档最小触控高（L0 点单：375 下小触点 26-30px）
+   视觉字号与内距一个像素都不动，只兜住最小高；44px 走 A 层令牌 --touch-target-ls，
+   令牌还没接上时回落到 rubric 的 44px，绝不在页面里另造一套尺寸。 */
+@media (max-width: 767.98px) {
+  .knw5-drill,
+  .knw5-copy,
+  .knw5-seg button,
+  button[data-testid$="-clear"] {
+    min-block-size: var(--touch-target-ls, 44px);
+  }
+}
