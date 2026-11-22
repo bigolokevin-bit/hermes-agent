@@ -227,3 +227,11 @@ matrix(#/employees?tab=matrix) present=true ok=true
 - whoami 显式读数（①）：GET :9122/auth/whoami == **200**，取数时刻 2026-11-22 20:57:09 +0800（urllib，cookie 由 ui-qa-auth-state.json 构造；旗标不算登录态，此即显式码+时刻）。
 - 残余 401 来源（②）：sessions 7 / channels 13、whoamiAborted 各 1——URL 全落在 /auth/whoami 与 /agent-api/api/* 业务端点（sessions、hermes-summary、datasources、mcp/servers、gateway-connections、messaging/platforms），**非早衰 cookie 收尾（whoami 200 实证）、非未转发 /api***：反代已覆盖但域层凭据不止 console 会话可通=鉴权外接口面；量级有界恒定（每窗 ≤13、delta≤1、不随窗口翻倍），与已闭合的 401 风暴环（nav 线性增）无涉。域层缺哪层凭据归 ui-b/L4。RAW=w156-whoami-401-readings.json。
 - 375 总 PASS 放行权在 UX 总审（L0 已移交证据链），本车道持续不自我宣称。
+
+## wave-157 重建 H2 + 首批可见改动实证 @7ce5c5fdee（端口9122/entry index-Cm_kToHo.js）
+
+- 脸：7ce5c5fdee（20:59:11；←7f183e2741 UI-F 令牌单源接线 b2905d5dfc + B1 parity docs）。重建 vite VITE=0 21:02:26（晚定脸 3分15秒 无抢跑）。
+- H2 三比：entry index-Cm_kToHo.js 172800B sha256 1d72f7023d70…86d4f7 mtime 21:02:26；css **换代** index-CFs-JKms.css 148285B sha 6f18d6b4d0f73952…（DLpXaUuB 退役）；/ 与 /agent-v2/ index 同值；assets 逐位走 /assets/ js/css 双 match=True。
+- **首批可见改动实证（用户 12h 节拍第一笔）**：同一现役页 #/approvals、同 cookie（whoami==200 显式码+时刻前后各一次）：7 个 *-ls 契约名 **before 0/7 全空 → after 7/7 全取到值**（--color-primary-ls ""→#ffe6cb、--color-bg-ls ""→#041c1c、--color-border-ls ""→#ffe6cb4d），与 UI-KD 自证方向一致且为本车道 9122 现役脸独立复现。RAW=w157-token-{before,after}.json + 2 帧。
+- 补证引用：whoamiProof156（200@20:57:09+0800）与 residual401Source156（鉴权外业务端点面）已随 293b705994 在 remote，未重做。
+- counts 维持 51/51/0/NM0 exitCode0（未重扫 51 路）；375 总 PASS 放行权在 UX 总审；判据项闭合 web/scripts/** 未动。

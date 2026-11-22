@@ -1,0 +1,32 @@
+{
+ "label": "after",
+ "whoami": 200,
+ "whoamiAt": "2026-11-22T13:02:34.079Z",
+ "entry": {
+  "vars": {
+   "--color-bg-ls": "#041c1c",
+   "--color-border-ls": "#ffe6cb4d",
+   "--color-border-strong-ls": "#ffe6cb66",
+   "--color-border-subtle-ls": "#ffe6cb24",
+   "--color-primary-ls": "#ffe6cb",
+   "--color-danger-ls": "#fb2c36",
+   "--color-success-ls": "#4ade80"
+  },
+  "nonEmpty": 7,
+  "button": {
+   "tag": "BUTTON",
+   "text": "菜单",
+   "radius": "0px",
+   "padY": "18.75px",
+   "padX": "13.5px",
+   "fontWeight": "700",
+   "fontSize": "15px",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": "color(srgb 1 0.901961 0.796078 / 0.8)"
+  },
+  "scriptSrc": [
+   "/assets/index-Cm_kToHo.js"
+  ]
+ },
+ "at": "2026-11-22T13:02:38.988Z"
+}

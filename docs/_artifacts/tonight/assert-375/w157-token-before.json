@@ -1,0 +1,32 @@
+{
+ "label": "before",
+ "whoami": 200,
+ "whoamiAt": "2026-11-22T13:02:11.031Z",
+ "entry": {
+  "vars": {
+   "--color-bg-ls": "",
+   "--color-border-ls": "",
+   "--color-border-strong-ls": "",
+   "--color-border-subtle-ls": "",
+   "--color-primary-ls": "",
+   "--color-danger-ls": "",
+   "--color-success-ls": ""
+  },
+  "nonEmpty": 0,
+  "button": {
+   "tag": "BUTTON",
+   "text": "菜单",
+   "radius": "0px",
+   "padY": "18.75px",
+   "padX": "13.5px",
+   "fontWeight": "700",
+   "fontSize": "15px",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": "color(srgb 1 0.901961 0.796078 / 0.8)"
+  },
+  "scriptSrc": [
+   "/assets/index-DuhonhGE.js"
+  ]
+ },
+ "at": "2026-11-22T13:02:16.515Z"
+}

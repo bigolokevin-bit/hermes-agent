@@ -2994,15 +2994,15 @@
   }
  ],
  "rerollNote": "点名重跑 sessions/channels/models @d2cc49fe 面（L0②）：sessions 转 PASS（fb+fit，PNG 入账）、models PASS；channels 新面反成失分页（45s 旁路超时、main=10、viol 数据不可得）记 NOT_MEASURED 逐条 navError 入账，首轮 6586df6b 读数存 firstRunRow（L0①其余 48 路保留首轮）",
- "headHash": "0379ae9f4e",
- "entry": "assets/index-DuhonhGE.js",
- "entrySha256": "1bf0d9ef48e733d3c73da47d18836ab592033404c3abe881091286b08c36f10d",
+ "headHash": "7ce5c5fdee",
+ "entry": "assets/index-Cm_kToHo.js",
+ "entrySha256": "1d72f7023d701a3609a91e514868cf49001aacc97396e1acb46e36a57886d4f7",
  "entryBytes": 172800,
- "css": "assets/index-DLpXaUuB.css",
- "cssSha256": "13a111877909a0a34aa08f54c6635f795fb77351f3ebef339d42d5926fd0a0dc",
- "cssBytes": 146491,
- "servedEntryAfter": "index-DuhonhGE.js",
- "servedCssAfter": "index-DLpXaUuB.css",
+ "css": "assets/index-CFs-JKms.css",
+ "cssSha256": "6f18d6b4d0f73952 (前16位全值见 index；sha256 完整=6f18d6b4d0f73952 起)",
+ "cssBytes": 148285,
+ "servedEntryAfter": "index-Cm_kToHo.js",
+ "servedCssAfter": "index-CFs-JKms.css",
  "criteriaNote": "旧 document 级 375 全绿作废不入账（L0③）；本代 375 承者=assert-375 逐元素判据+视口加高取图腿+字体等待旁路复测；channels=点名重跑合入 PASS（首轮读数存 firstRunRow）；sessions=真 NOT MEASURED：45s 旁路仍 screenshot 超时，逐条 navError 入账",
  "stampNote": "wave-129 6586df6b 本代新跑（非沿用）",
  "exitCode": 0,
@@ -3034,7 +3034,7 @@
   "raw": "coex-4a654bba.json",
   "priorFace": "coex-4705edea.json"
  },
- "entryMtime": "2026-11-22 20:44:30",
+ "entryMtime": "2026-11-22 21:02:26",
  "outerTabHighlightTriState": {
   "face": "4a654bba",
   "panelIngest": "pane+selected=sources，selected href 含 panel=ingest+state+rid，其余 tab href 无 panel=（viol0 main74）",
@@ -4122,5 +4122,23 @@
   ],
   "verdict": "非早衰 cookie 收尾（当拍 whoami==200 实证），也非未转发 /api/*——全部落在 /auth/whoami 与 /agent-api/api/* 业务端点（sessions、hermes-summary、datasources、mcp/servers、gateway-connections、messaging/platforms）：反代已覆盖但域层凭据不止 console 会话可通=鉴权外接口面；量级有界恒定（每窗 ≤13、delta≤1、不随窗口翻倍），与已闭的 401 风暴环（nav 线性增）无涉。域层缺哪层凭据归 ui-b/L4，不越判。",
   "raw": "w156-whoami-401-readings.json"
- }
+ },
+ "carriedFrom157": "0379ae9f4e",
+ "h2Rebuild157": {
+  "face": "7ce5c5fdee (merge lane/console-ui2@87095fa1bc B1 parity docs) ← 7f183e2741 (merge lane/console-design@b2905d5dfc UI-F 令牌单源接线: styles/tokens.css 164行/93定义唯一真值源, shell/tokens.css 只剩 @import) face时刻 20:59:11 +0800",
+  "builtAt": "2026-11-22 21:02:26",
+  "buildCmd": "cd web && node_modules/.bin/vite build VITE=0",
+  "noRush": "构建晚于定脸 3分15秒 无抢跑",
+  "tripleCheck": "ls -l：index-Cm_kToHo.js 172800B mtime 21:02:26；shasum：1d72f7023d701a3609a91e514868cf49001aacc97396e1acb46e36a57886d4f7；curl / 与 /agent-v2/ index 同值引用 Cm_kToHo；assets 逐位走 /assets/：js match=True、css index-CFs-JKms.css 148285B sha 6f18d6b4d0f73952… match=True",
+  "cssGen": "主 CSS 换代 DLpXaUuB→CFs-JKms（tokens 单源接线改样式图，与 wave-123 以来首次换代一致合理）",
+  "vitestBaseline": "481 files/3559 tests（L0 亲验免重跑）"
+ },
+ "firstVisibleChangeProof157": {
+  "method": "同一现役页 #/approvals、同一 ui-qa cookie（每拍 whoami==200 显式前置：before 20:57:09 与 after 21:04 各码+时刻入 RAW），7 个 *-ls 契约名 getComputedStyle(:root) 值对比重建前后",
+  "before": "脸 index-DuhonhGE.js：nonEmpty=0/7（全空串，与 UI-KD 自证改前一致）",
+  "after": "脸 index-Cm_kToHo.js：nonEmpty=7/7 全取到值；样例 --color-primary-ls \"\"→#ffe6cb、--color-bg-ls \"\"→#041c1c、--color-border-ls \"\"→#ffe6cb4d",
+  "verdict": "首批可见改动实证成立：令牌单源接线让 7 契约名从空串到全部取到值，页面无需改码即接线（App.tsx 引用路径不变）；RAW=w157-token-before.json/w157-token-after.json + approvals-before/after.png",
+  "port": 9122
+ },
+ "waveNote157": "wave-157：重建 H2 三比 + 首批 token 接线前后对比入账；wave-156 两补证（whoamiProof156 200@20:57:09、residual401Source156 鉴权外端点面）已在 remote（293b705994 系，L0 @1300@ 重复索取按不重做纪律引用之）。counts 51/51/0/NM0 exitCode0 不变（本轮未重跑 51 路）；总 PASS 放行权在 UX 总审不自我宣称；判据项闭合 web/scripts/** 未动。"
 }
