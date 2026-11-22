@@ -114,6 +114,20 @@ export function sortReading(state: SortState, count: number): string {
   return `本列按${label}${direction}排，只重排这一页已加载的 ${count} 条；服务端没有可用的排序参数（本轮实测拿不到生效证据），所以这不是整窗重排。缺这个值的行恒排在最后。`;
 }
 
+/**
+ * audit-sort-p1（B2 表「排序本地降级 P1」）：每行说自己参与的是哪一种顺序。
+ * `service-order` = 这一页保持服务回的行序；`local-page` = 本列在已加载的行里
+ * 本地重排过。服务端没有可用的排序参数（本轮实测拿不到生效证据），所以行级
+ * 标注比一句话披露更可判——测试与取图都能逐行读到。
+ */
+export const SORT_SCOPE_SERVICE = "service-order";
+export const SORT_SCOPE_LOCAL = "local-page";
+
+/** The scope word stamped on every row while this state is in force. */
+export function sortScopeOf(state: SortState): string {
+  return state.column && state.direction ? SORT_SCOPE_LOCAL : SORT_SCOPE_SERVICE;
+}
+
 /** The ARIA word for the column's current state. */
 export function ariaSort(state: SortState, column: SortColumn): "ascending" | "descending" | "none" {
   if (state.column !== column || !state.direction) return "none";

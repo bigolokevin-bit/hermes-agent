@@ -58,7 +58,7 @@ import {
 import { filterChipsOf, type AuditChip } from "./filterChips";
 import { auditGatesOf, gateMirror } from "./auditGates";
 import type { SortColumn, SortState } from "./sorting";
-import { SORT_COLUMNS, ariaSort, nextSort, sortReading, sortRows, sortStateOf } from "./sorting";
+import { SORT_COLUMNS, ariaSort, nextSort, sortReading, sortRows, sortScopeOf, sortStateOf } from "./sorting";
 import { applyScroll, clearScrollMark, readScrollMark, readScrollY, saveScrollMark, scrollFingerprint } from "./scrollMemory";
 import type { AuditRow } from "./model";
 import { downloadCsv, downloadText, exportName, filteredCsvText, filterSnapshotExportName } from "./csv";
@@ -508,6 +508,10 @@ function AuditRowKeyboard({
   open,
   deepLink,
   isRoving,
+  /** audit-sort-p1: 这一行参与的是哪一种顺序（service-order / local-page）。 */
+  sortScope,
+  /** audit-sort-p1: 屏上实序，1 起——与 `aud-sort-scope-note` 的条数同源。 */
+  sortPosition,
   onToggle,
   onClose,
   onRoving,
@@ -522,6 +526,8 @@ function AuditRowKeyboard({
   deepLink: boolean;
   /** audK: this row holds the list's single tab stop right now. */
   isRoving: boolean;
+  sortScope: string;
+  sortPosition: number;
   onToggle: () => void;
   onClose: () => void;
   /** audK: the person reached this row by keyboard, so it takes the stop. */
@@ -588,6 +594,8 @@ function AuditRowKeyboard({
         data-testid={`audK-row-${row.key}`}
         data-audk-roving={isRoving ? "true" : "false"}
         data-audk-open={open ? "true" : "false"}
+        data-aud-sort-scope={sortScope}
+        data-aud-sort-position={sortPosition}
       />
       {children}
     </div>
@@ -1989,10 +1997,12 @@ function AuditEventsSurface(): ReactNode {
                 role="list"
                 aria-label="审计事件行：用上下方向键逐行移动，Home 与 End 到首尾，Enter 展开或收起这一条的预览，Esc 收起"
               >
-                {listedRows.map((row) => (
+                {listedRows.map((row, index) => (
                 <AuditRowKeyboard
                   key={row.key}
                   row={row}
+                  sortScope={sortScopeOf(sortState)}
+                  sortPosition={index + 1}
                   open={openPreview === row.key}
                   deepLink={row.key === deepLinkId || row.rawId === deepLinkId}
                   isRoving={row.key === roving}
