@@ -1,0 +1,62 @@
+/* UI-F 令牌契约（页面侧唯一入口）。规矩：本文件只允许 var() 别名，不得新增字面量；
+   页面代码只用带 -ls 后缀的名字，禁止直接抓 shell 冻结骨架变量（--bg/--panel/--fg …）。
+   浅色主题落地时只改这些别名的「指向」，名字一律不动，页面零改动。
+   本次真补的缺口：--tabular-ls（数字等宽）、--z-ls-*（层级此前散落为魔法数）、
+   --duration-ls-*/--ease-ls-standard（动效时长）、--control-h-*（控件档位）、
+   --color-text-subtle-ls/--color-text-faint-ls（--fg-3/--fg-4 此前没有语义名）。 */
+:root {
+  /* 面色（全部指向 shell 冻结骨架层，不改值） */
+  --color-bg-ls: var(--bg);
+  --color-surface-ls: var(--panel);
+  --color-surface-raised-ls: var(--panel-2);
+  --color-sunken-ls: var(--sunk);
+  --color-text-ls: var(--fg);
+  --color-text-muted-ls: var(--fg-2);
+  --color-text-subtle-ls: var(--fg-3);
+  --color-text-faint-ls: var(--fg-4);
+  --color-border-ls: var(--line-2);
+  --color-border-subtle-ls: var(--line);
+  --color-border-strong-ls: var(--line-strong);
+  --color-primary-ls: var(--fg);
+  --color-primary-inactive-ls: var(--fg-3);
+  --color-success-ls: var(--ok);
+  --color-warning-ls: var(--warn);
+  --color-danger-ls: var(--bad);
+  --color-info-ls: var(--info);
+  --font-family-sans-ls: var(--sans);
+  --font-family-mono-ls: var(--mono);
+  /* 字号阶梯 / 行高 / 字重（700 起属违规） */
+  --font-size-ls-1: 12px; --font-size-ls-2: 13px; --font-size-ls-3: 14px;
+  --font-size-ls-4: 16px; --font-size-ls-5: 20px; --font-size-ls-6: 24px;
+  --line-height-ls-1: 1.25; --line-height-ls-2: 1.4; --line-height-ls-3: 1.5;
+  --font-weight-ls-regular: 400; --font-weight-ls-medium: 500;
+  /* 间距阶梯 4-8-12-16-24-32 */
+  --space-ls-1: 4px; --space-ls-2: 8px; --space-ls-3: 12px;
+  --space-ls-4: 16px; --space-ls-6: 24px; --space-ls-8: 32px;
+  /* 圆角 / 描边 / 阴影（阴影只两档） */
+  --radius-ls-1: 4px; --radius-ls-2: 8px; --radius-ls-3: 12px;
+  --border-ls-1: 1px solid var(--color-border-subtle-ls);
+  --border-strong-ls: 1px solid var(--color-border-ls);
+  --shadow-ls-1: 0 1px 2px rgb(0 0 0 / 40%);
+  --shadow-ls-2: 0 12px 32px rgb(0 0 0 / 55%);
+  /* 表格：40 常规行高，36 只给嵌入子表；数字一律等宽 */
+  --table-row-h-ls: 40px;
+  --table-row-h-compact-ls: 36px;
+  --tabular-ls: tabular-nums;
+  /* 控件档位与命中区 */
+  --control-h-ls: 32px; --control-h-inline-ls: 28px; --control-h-dialog-ls: 36px;
+  --hit-min-ls: 32px;
+  --opacity-disabled-ls: 0.56;
+  /* 层级：此前 60/70/80 以魔法数散落在页面 CSS */
+  --z-ls-sticky: 1; --z-ls-dropdown: 60; --z-ls-overlay: 70; --z-ls-dialog: 80;
+  /* 动效 */
+  --duration-ls-fast: 120ms; --duration-ls-base: 200ms; --duration-ls-slow: 320ms;
+  --ease-ls-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
+  /* 焦点：2px 主色 + 2px 偏移，禁 outline:none */
+  --focus-ring-ls: 2px solid var(--color-primary-ls);
+  --focus-ring-offset-ls: 2px;
+}
+/* 减少动效偏好：只把时长归零，颜色与几何不动。 */
+@media (prefers-reduced-motion: reduce) {
+  :root { --duration-ls-fast: 0ms; --duration-ls-base: 0ms; --duration-ls-slow: 0ms; }
+}
