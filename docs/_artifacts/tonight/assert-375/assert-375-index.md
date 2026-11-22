@@ -131,3 +131,9 @@ matrix(#/employees?tab=matrix) present=true ok=true
 - runs：#/runs 不在 51 路表；直访 rows=0/run-window-* 未命中（fallback duty-range-30d）⇒ 游标行为腿本脸不可复现如实；375 bounds elements=333 viol=0；语义归 e4b4efa545 vitest。
 - 纪律：51 路未重扫；49 首轮保留；sessions/channels 真 NM 维持未改判；375 总 PASS 未宣称；判据不变（376/-1/812/FAIL优先/matrix必产图）。
 - 补账（L0 令 2026-11-22）：entry assets/index-B9avOQha.js sha256 dc13c252faca20d8d8c74c24ad47d5be1c0cf2dfc63c03fd1444f2308d7b5711、172750B；定脸 645e86ef00 提交时刻 2026-11-22 13:52:46 +0800，index.html mtime 13:59:34 ⇒ 构建晚于定脸 6 分 48 秒，构建含全脸无抢跑；端口 9122 served==disk 双 MATCH 已在面（L0 独立双证一致）。
+
+## wave-146 定脸 @470f2c2fce（端口9122/entry INJI_bcS）
+- H2 五样：dist=主树 hermes_cli/web_dist；entry assets/index-INJI_bcS.js 172800B；mtime 2026-11-22 15:05:55 ≥ 定脸 14:57:17（构建晚 8'38" 无抢跑）；served==disk sha256 154fee732d54…69b56 双 MATCH；方法=vite build 于 HEAD=470f2c2fce 完成后读盘+curl :9122 对账（launchd v4_proxy 静态按请求读盘无需重启）。主 css DLpXaUuB 未换代；matrix 规则在 lazy chunk MatrixModulePage-BtD1oKaq.css（mtx5-pin 命中）。
+- matrix bounds 点名重跑：PASS viol=0 elems=141 main=213 pngH=812 contentFit=True，rerollFace=470f2c2fce（历面快照链保留）。
+- 列头冻结取证：真实 /api/matrix 本脸 no-payload（状态面 main=213 无表体，plain 探针如实保留）；经 page.route 404 触发产品自带 fixture-preview 兜底门（示例数据角标+mtx5-fixture-note 产品标注，非伪造）后，.mtx5-scroll 真实横向壳 scrollWidth720>clientWidth310@375，scrollLeft 拉满后 .mtx5-head .mtx5-pin left 27.3→27.3 不变、非 pin 列头 214.8→-195.2 左移 410px ⇒ sticky-head-frozen 行为级通过（L0「壳 scrollLeft 拉满比 left 不变」法）。
+- 纪律：51 路未重扫、49 首轮保留、sessions/channels 两路真 NM 维持未改判、375 总 PASS 禁宣称、判据（right<=376/left>=-1/812/FAIL优先/matrix必产图）不变、新基线 vitest 480 files/3543 tests L0 亲验免重跑、自取交付 ≤10 分钟 ping 新规已记。

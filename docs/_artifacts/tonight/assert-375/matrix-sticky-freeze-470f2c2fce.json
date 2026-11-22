@@ -1,0 +1,49 @@
+{
+  "base": "http://127.0.0.1:9122",
+  "port": 9122,
+  "route": "#/employees?tab=matrix",
+  "entry": "assets/index-INJI_bcS.js",
+  "face": "470f2c2fce",
+  "at": "2026-11-22T07:09:45.281Z",
+  "method": "page.route 404 /agent-api/api/matrix ⇒ 模块 shipped fixture-preview 兜底门渲染表体（示例数据角标+说明条随产品码自带），再壳 scrollLeft 拉满比列头 .mtx5-pin left 不变/非 pin 单元左移",
+  "doorNote": "桩=产品自带 fixture-preview 兜底（matrix.ts:250），非探针伪造数据",
+  "census": {
+    "hasShell": true,
+    "door": "fixture-preview",
+    "fixtureNote": true,
+    "sampleBadge": true,
+    "shellScrollWidth": 720,
+    "shellClientWidth": 310,
+    "headPinRect": {
+      "left": 27.3,
+      "right": 207.3,
+      "width": 180
+    },
+    "firstNonPinRect": {
+      "left": 214.8,
+      "right": 342.3,
+      "width": 128
+    },
+    "mainLen": 482
+  },
+  "after": {
+    "scrollLeft": 410,
+    "headPinRect": {
+      "left": 27.3,
+      "right": 207.3,
+      "width": 180
+    },
+    "firstNonPinRect": {
+      "left": -195.2,
+      "right": -67.7,
+      "width": 128
+    },
+    "bodyCellRect": {
+      "left": 27.3,
+      "right": 207.3,
+      "width": 180
+    }
+  },
+  "verdict": "sticky-head-frozen",
+  "png": "matrix-sticky-fixture-375.png"
+}

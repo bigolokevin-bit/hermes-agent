@@ -1,0 +1,13 @@
+{
+  "base": "http://127.0.0.1:9122",
+  "port": 9122,
+  "entry": "assets/index-INJI_bcS.js",
+  "face": "470f2c2fce",
+  "at": "2026-11-22T07:06:42.142Z",
+  "viewport": "375x812",
+  "mainLen": 213,
+  "shell": {
+    "found": false
+  },
+  "verdict": "mtx5-scroll container not found on live face"
+}

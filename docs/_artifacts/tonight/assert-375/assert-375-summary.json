@@ -705,16 +705,27 @@
       "domOverflowPx": 0,
       "fontBypass": false,
       "consoleErrorsProduct": 0,
-      "rerollFace": "ed5527e7",
-      "prevFaceSnapshot": {
-        "verdict": "PASS",
-        "violCount": 0,
-        "mainTextLen": 213,
-        "pngH": 812,
-        "pngBytes": 52807,
-        "rerollFace": "6edcba4d"
-      },
-      "faceNote": "ed5527e718 matrix real-gate markers（7aed14a6）点名重跑：PASS viol=0 main=213 pngH=812；历面链保留",
+      "rerollFace": "470f2c2fce",
+      "prevFaceSnapshot": [
+        {
+          "verdict": "PASS",
+          "violCount": 0,
+          "mainTextLen": 213,
+          "pngH": 812,
+          "pngBytes": 52807,
+          "rerollFace": "6edcba4d"
+        },
+        {
+          "face": "ed5527e7",
+          "verdict": "PASS",
+          "violCount": 0,
+          "elementsChecked": 141,
+          "mainTextLen": 213,
+          "contentFit": true,
+          "targetHeight": 812
+        }
+      ],
+      "faceNote": "wave-146 bounds 点名重跑 PASS viol=0 elems=141 main=213 contentFit=True pngH=812",
       "faceSnapshotChain": [
         {
           "face": "a382334c",
@@ -2417,7 +2428,7 @@
     }
   ],
   "rerollNote": "点名重跑 sessions/channels/models @d2cc49fe 面（L0②）：sessions 转 PASS（fb+fit，PNG 入账）、models PASS；channels 新面反成失分页（45s 旁路超时、main=10、viol 数据不可得）记 NOT_MEASURED 逐条 navError 入账，首轮 6586df6b 读数存 firstRunRow（L0①其余 48 路保留首轮）",
-  "headHash": "645e86ef00",
+  "headHash": "470f2c2fce",
   "entry": "assets/index-B9avOQha.js",
   "entrySha256": "dc13c252faca20d8d8c74c24ad47d5be1c0cf2dfc63c03fd1444f2308d7b5711",
   "entryBytes": 172750,
@@ -2469,8 +2480,7 @@
   "counts": {
     "pass": 49,
     "fail": 0,
-    "notMeasured": 2,
-    "rows": 51
+    "notMeasured": 2
   },
   "employeeZoneLinks": {
     "face": "build 4a654bba / tip e808d90e32 test-only 未重建",
@@ -3095,5 +3105,22 @@
       "runs-375-645e86ef.png"
     ]
   },
-  "waveNote145": "wave-145 点名重跑：metrics×1 + knowledge×7 rerollFace=645e86ef00 全 PASS viol=0；冷链三态+四态共存复跑全 clean；载入态如实记（瞬态未捕获、state= 形态在）；runs 腿维持不可复现裁决；sessions/channels 真 NM 未触未改判；counts pass=49 fail=0 notMeasured=2 rows=51 matrixOk=True；51 路未重扫。"
+  "waveNote145": "wave-145 点名重跑：metrics×1 + knowledge×7 rerollFace=645e86ef00 全 PASS viol=0；冷链三态+四态共存复跑全 clean；载入态如实记（瞬态未捕获、state= 形态在）；runs 腿维持不可复现裁决；sessions/channels 真 NM 未触未改判；counts pass=49 fail=0 notMeasured=2 rows=51 matrixOk=True；51 路未重扫。",
+  "matrixStickyFreeze146": {
+    "method": "page.route 将 **/agent-api/api/matrix 打 404 ⇒ 触发产品自带 fixture-preview 兜底门（matrix.ts:250 注释、示例数据角标+mtx5-fixture-note 产品标注，非探针伪造），随后壳 scrollLeft 拉满比列头 left（L0「壳 scrollLeft 拉满比 left 不变」法）",
+    "verdict": "sticky-head-frozen",
+    "pinLeftBefore": 27.3,
+    "pinLeftAfter": 27.3,
+    "nonPinLeftBefore": 214.8,
+    "nonPinLeftAfter": -195.2,
+    "scrollWidth": 720,
+    "clientWidth": 310,
+    "viewport": "375x812",
+    "door": "fixture-preview",
+    "liveNoPayloadNote": "真实 /api/matrix 在本脸为 no-payload 状态面（main=213 无表体，plain 探针无 .mtx5-scroll，如实保留于 matrix-sticky-readings-470f2c2fce.json）；冻结行为取证经产品 fixture-preview 门完成，示例数据为产品自标桩，不判 FAIL 不造假",
+    "fakeBffNote": "wave-138 时代的 fake-bff 夹具脚本已不在仓（git ls-files/find 零命中、:9114 未运行），故走产品兜底门路线",
+    "raw": "matrix-sticky-freeze-470f2c2fce.json"
+  },
+  "faceNote146": "wave-146 定脸 470f2c2fce（merge lane/console-ui2@e035f94a matrix 375 版式列头冻结，脸时刻 2026-11-22 14:57:17 +0800）。重建 vite build VITE=0：entry assets/index-INJI_bcS.js 172800B sha256 154fee732d542517c5348114343f69ea0b998eaf50e478baaac27a81f8e69b56 mtime 15:05:55（构建晚于定脸 8'38\"，含全脸无抢跑）；主 css index-DLpXaUuB.css 146491B 未换代；matrix 新规则实测 lazy chunk assets/MatrixModulePage-BtD1oKaq.css（mtx5-pin 命中）；served==disk 双 MATCH（端口9122 静态按请求读盘无需重启）。读数方法=vite build 于 HEAD=470f2c2fce 完成后读盘+curl :9122 对账。",
+  "waveNote146": "点名重跑仅 matrix 一路（bounds+列头冻结行为），51 路未重扫；sessions/channels 两路真 NM 维持未改判；375 总 PASS 禁宣称；新基线 vitest 480 files/3543 tests L0 亲验免重跑"
 }
