@@ -753,6 +753,43 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     expect(byTestid("kn6-search-panel")).toBeNull();
   });
 
+  // 队列#22 UX r1 P1-3（维度 4「三态无差异」的载入腿）：载入中必须自己说清在等什么，
+  // 带关键词时还要把关键词回显出来——否则「载入中」与「无命中」在屏上只差几条占位条。
+  it("P1-3 载入态在屏上说出在等什么，落定后这句话消失", async () => {
+    let q22Docs: (value: unknown) => void = () => {};
+    fetchMock.mockImplementation((url: string) =>
+      url === DOCUMENTS_PLAIN
+        ? new Promise((resolve) => { q22Docs = resolve; })
+        : Promise.resolve({ items: [] }),
+    );
+    await render("/knowledge?tab=spaces");
+    expect(byTestid("kn6-search-loading")).toBeTruthy();
+    const hint = byTestid("kn6-search-loading-hint");
+    expect(hint, "载入中必须有一句在屏上的状态话").toBeTruthy();
+    expect(hint?.getAttribute("role")).toBe("status");
+    expect(hint?.textContent).toContain("正在取这份文档列表");
+    expect(hint?.textContent ?? "").not.toMatch(/(^|[^0-9.])0\s*(条|篇|个)/); // 裸 0 不上屏
+    await act(async () => { q22Docs({ documents: [] }); });
+    await act(async () => {});
+    expect(attr("kn6-search", "data-state")).toBe("ready");
+    expect(byTestid("kn6-search-loading-hint"), "落定后这句话必须消失").toBeNull();
+
+    let q22Search: (value: unknown) => void = () => {};
+    fetchMock.mockImplementation((url: string) =>
+      url === SEARCH_STAFF
+        ? new Promise((resolve) => { q22Search = resolve; })
+        : Promise.resolve({ items: [] }),
+    );
+    await render("/knowledge?tab=spaces&panel=retrieval&q=%E5%91%98%E5%B7%A5");
+    expect(attr("knw5-search", "data-state")).toBe("loading");
+    const searchHint = byTestid("knw5-search-loading-hint");
+    expect(searchHint, "检索面载入中同样要有状态话").toBeTruthy();
+    expect(searchHint?.textContent).toContain("员工");
+    await act(async () => { q22Search({ items: [] }); });
+    await act(async () => {});
+    expect(byTestid("knw5-search-loading-hint")).toBeNull();
+  });
+
   it("lists a space's documents as focusable rows with honest gaps and a local filter", async () => {
     const DOC_ROWS = {
       asOf: "2026-11-19T08:00:00Z",

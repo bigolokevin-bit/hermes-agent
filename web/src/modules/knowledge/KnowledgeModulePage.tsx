@@ -347,6 +347,12 @@ interface SurfaceProps<T> {
    * `knN-error-*`/`knN-rid-*`/`knN-retry-*`。全部 display:none、零可见变化（knD-marker 同手法）。
    */
   probe?: { id: string; noMatch: boolean };
+  /**
+   * UX r1 P1-3（队列 line 22 · knowledge 子集）：载入中必须自己说清在等什么。
+   * 不给这句话时，「载入中」与「无命中」在屏上只差几条占位条，状态读不出来。
+   * 只在 loading 腿渲染，其它三态一字不影响。
+   */
+  loadingHint?: string;
 }
 
 /** The four states, once, for every surface on the page. */
@@ -361,6 +367,7 @@ function Surface<T>({
   unwiredHuman = UNWIRED_HUMAN,
   honestState = false,
   probe,
+  loadingHint,
 }: SurfaceProps<T>): ReactNode {
   const value = state.kind === "ready" ? state.value : null;
   const stamp = value?.stamp ?? null;
@@ -449,7 +456,16 @@ function Surface<T>({
         </>
       ) : null}
 
-      {state.kind === "loading" ? <Skeleton testid={`${testid}-loading`} /> : null}
+      {state.kind === "loading" ? (
+        <>
+          <Skeleton testid={`${testid}-loading`} />
+          {loadingHint ? (
+            <p className="knw5-hint" data-testid={`${testid}-loading-hint`} role="status">
+              {loadingHint}
+            </p>
+          ) : null}
+        </>
+      ) : null}
 
       {state.kind === "unwired" ? (
         <div className="knw5-unwired" data-testid={`${testid}-unwired`} role="status" title={KNOWLEDGE_GAP}>
@@ -3106,6 +3122,11 @@ function DocumentNameSearch({
         onRetry={surface.retry}
         unwiredHead={DOCUMENTS_UNWIRED_HEAD}
         unwiredHuman={DOCUMENTS_UNWIRED_HUMAN}
+        loadingHint={
+          needle === ""
+            ? "正在取这份文档列表，结果未到；到之前这里不放占位条目。"
+            : `正在按关键词「${text.trim()}」查文档，结果未到；到之前这里不放占位条目。`
+        }
         empty={() =>
           needle === "" ? (
             <EmptyNote testid="knN-empty-text-doc-search" knn="empty">
@@ -3485,6 +3506,11 @@ function SearchSurface({ nonce, query, onSearch }: SearchSurfaceProps): ReactNod
         onRetry={surface.retry}
         unwiredHead={SEARCH_UNWIRED_HEAD}
         unwiredHuman={SEARCH_UNWIRED_HUMAN}
+        loadingHint={
+          query.trim() === ""
+            ? "正在取检索结果，结果未到；到之前这里不放占位条目。"
+            : `正在检索「${query.trim()}」，结果未到；到之前这里不放占位条目。`
+        }
         empty={() => (
           <EmptyNote>
             {query.trim() === ""
