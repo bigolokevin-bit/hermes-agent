@@ -149,3 +149,10 @@ matrix(#/employees?tab=matrix) present=true ok=true
 - 纪律：51 路未重扫、49 首轮保留、sessions/channels 真 NM 维持未改判、375 总 PASS 未宣称、判据不变、e1Contract 自足化（SKIPPED-NOT-DEPLOYED）已知悉、自取交付 ≤10min ping 新规执行。
 
 - 代次补记（L0 令 2026-11-22）：ca36e06cc3（wave-149 #1 ← lane/ui-b-employees-csv@e1355e9d）现查纯测试件（web/src 仅 EmployeeDetailModulePage.test.tsx +49，0 生产码）⇒ 无源码变更、不必重建、证据沿用 carried=true。当代脸现读=端口9122 entry assets/index-B7MjhP14.js 172800B sha256 2b8081ea…afd45a mtime 16:40:43 served==disk 双 MATCH，主 css DLpXaUuB 未换代；来文 index-CQZqo9UW.js 与现读不符（dist 零命中），按现读入账。3017590322 幻象标识符未据此建行改脸；三证新规矩收悉，本行自带四证。
+
+## H2 代次矛盾补账 @f4e6bb150e（端口9122，L0 验收问询应答）
+
+- ①重建时刻/②触发提交/③entry sha256（served==disk）三列：15:05:55 ← 470f2c2fce（matrix 源码）= index-INJI_bcS.js 172800B sha256 154fee732d54…69b56 ✓；16:40:43 ← eb697ca5d2（audit/matrix/shell 源码）= index-B7MjhP14.js 172800B sha256 2b8081ea9f55…afd45a ✓（现读 served==disk 仍此值，index.html mtime 16:40:43 原值未动）。
+- 16:45:42 的 index-CQZqo9UW.js 非本道构建：ca36e06cc3/f4e6bb150e 纯测试/纯账本不产新 entry（L0 结构判断成立）；该文件已无残留（assets grep=0），sha 无法补测，不指认触发方，禁造数值。
+- B7MjhP14 恢复方式不可考（mtime 保持 16:40:43=非重跑重建）；H2 销账以本表可实测三键为准。
+- 纪律：51 路未重扫、sessions/channels 真NM 维持、375 总 PASS 未宣称、脸 f4e6bb150e 未动。
