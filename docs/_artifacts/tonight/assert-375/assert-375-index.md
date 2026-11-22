@@ -115,3 +115,11 @@ matrix(#/employees?tab=matrix) present=true ok=true
 - matrix real-gate（7aed14a6）点名重跑：PASS viol=0 main=213 pngH=812（rerollFace=ed5527e7，历面链保留）。
 - knowledge 冷链三态+四态共存：全 viol=0、panel 只留属主 href、state/rid 保留（RAW=highlight-tristate-ed5527e7.json/coex-ed5527e7.json+8 帧）。
 - 纪律：51 路未重扫，49 首轮保留；sessions/channels 两路 NM 未改判；375 总 PASS 未宣称。
+
+
+## wave-144 定脸 @e288119860（重建 H2 + 点名 knowledge/runs）
+
+- H2：dist=hermes_cli/web_dist；entry assets/index-CaryT0dm.js 172750B sha256 4dd60687…1b4f mtime 2026-11-22 13:41:46（换代 from Dm2Mt71f）；主 css index-DLpXaUuB.css 未换代；触点规则实测 lazy chunk KnowledgeModulePage-CEIQKje5.css（knw5-drill grep 命中）；served==disk MATCH×2（:9122 静态按请求读盘）。方法=vite build 于 HEAD=e288119860 后读盘+curl 对账。L0 亲验 vitest 479f/3535t 绿。
+- knowledge 族 7 路逐元素点名重跑：全 PASS viol=0 contentFit=True（#/knowledge 178/533、citations 166/494、evidence 116/198、ingest 174/575、retrieval 177/526、scope 178/533、sources 174/575）⇒ 323d4edd90 触点命中区伪元素方案（::after 外扩≈44px 视觉零变化）经逐元素验证版式零变化得证。rerollFace=e288119860，历面快照存 prevFaceSnapshots/firstRunRow。RAW=w144-knowledge-reroll-summary.json+7 帧。
+- runs 腿：#/runs 不在 51 路表（routes.ts 无枚举行）；直访 live 脸 rows=0/tabStop=-1、run-window-* 未命中（fallback 落 duty-range-30d）⇒ 游标行为腿本脸不可复现如实，禁造数值；375 逐元素 bounds elements=333 viol=0 maxRight=375；行为语义归 e4b4efa545 自带 vitest runs.cursor-window.test.tsx + L0 全量绿。RAW=runs-cursor-readings-e2881198.json+2 帧。
+- 纪律：51 路未重扫；sessions/channels 真NM 维持未改判；49 首轮保留 counts 49/0/2；matrixOk=true 未触；375 总 PASS 未宣称；判据 376/-1/812/FAIL优先/matrix必产图 不变。

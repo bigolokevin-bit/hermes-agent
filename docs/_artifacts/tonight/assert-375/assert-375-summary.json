@@ -1137,7 +1137,36 @@
           "fontBypass": false
         }
       },
-      "rerollFace": "6edcba4d"
+      "rerollFace": "e288119860",
+      "prevFaceSnapshots": [
+        {
+          "hash": "#/knowledge",
+          "label": "知识空间",
+          "source": "CONSOLE_TABS",
+          "viewport": "375",
+          "verdict": "PASS",
+          "mainTextLen": 533,
+          "navError": null,
+          "png": "knowledge-375.png",
+          "pngBytes": 61362,
+          "pngW": 375,
+          "pngH": 812,
+          "elementsChecked": 178,
+          "offscreenLeft": 62,
+          "expandApplied": true,
+          "scrollersExpanded": 1,
+          "contentFit": true,
+          "targetHeight": 812,
+          "violCount": 0,
+          "viol": [],
+          "scrollOverflowCount": 0,
+          "scrollOverflow": [],
+          "domOverflowPx": 0,
+          "fontBypass": false,
+          "consoleErrorsProduct": 0,
+          "rerollFace": "6edcba4d"
+        }
+      ]
     },
     {
       "hash": "#/knowledge?tab=citations",
@@ -1193,7 +1222,36 @@
           "fontBypass": false
         }
       },
-      "rerollFace": "6edcba4d"
+      "rerollFace": "e288119860",
+      "prevFaceSnapshots": [
+        {
+          "hash": "#/knowledge?tab=citations",
+          "label": "证据与引用",
+          "source": "COMPAT_TABS",
+          "viewport": "375",
+          "verdict": "PASS",
+          "mainTextLen": 494,
+          "navError": null,
+          "png": "knowledge-tab-citations-375.png",
+          "pngBytes": 62735,
+          "pngW": 375,
+          "pngH": 812,
+          "elementsChecked": 166,
+          "offscreenLeft": 62,
+          "expandApplied": true,
+          "scrollersExpanded": 1,
+          "contentFit": true,
+          "targetHeight": 812,
+          "violCount": 0,
+          "viol": [],
+          "scrollOverflowCount": 0,
+          "scrollOverflow": [],
+          "domOverflowPx": 0,
+          "fontBypass": false,
+          "consoleErrorsProduct": 0,
+          "rerollFace": "6edcba4d"
+        }
+      ]
     },
     {
       "hash": "#/knowledge?tab=evidence",
@@ -1201,16 +1259,16 @@
       "source": "CONSOLE_TABS",
       "viewport": "375",
       "verdict": "PASS",
-      "mainTextLen": 494,
+      "mainTextLen": 198,
       "navError": null,
       "png": "knowledge-tab-evidence-375.png",
-      "pngBytes": 62735,
+      "pngBytes": 49929,
       "pngW": 375,
       "pngH": 812,
-      "elementsChecked": 166,
+      "elementsChecked": 116,
       "offscreenLeft": 62,
       "expandApplied": true,
-      "scrollersExpanded": 1,
+      "scrollersExpanded": 0,
       "contentFit": true,
       "targetHeight": 812,
       "violCount": 0,
@@ -1249,7 +1307,36 @@
           "fontBypass": false
         }
       },
-      "rerollFace": "6edcba4d"
+      "rerollFace": "e288119860",
+      "prevFaceSnapshots": [
+        {
+          "hash": "#/knowledge?tab=evidence",
+          "label": "审计证据",
+          "source": "CONSOLE_TABS",
+          "viewport": "375",
+          "verdict": "PASS",
+          "mainTextLen": 494,
+          "navError": null,
+          "png": "knowledge-tab-evidence-375.png",
+          "pngBytes": 62735,
+          "pngW": 375,
+          "pngH": 812,
+          "elementsChecked": 166,
+          "offscreenLeft": 62,
+          "expandApplied": true,
+          "scrollersExpanded": 1,
+          "contentFit": true,
+          "targetHeight": 812,
+          "violCount": 0,
+          "viol": [],
+          "scrollOverflowCount": 0,
+          "scrollOverflow": [],
+          "domOverflowPx": 0,
+          "fontBypass": false,
+          "consoleErrorsProduct": 0,
+          "rerollFace": "6edcba4d"
+        }
+      ]
     },
     {
       "hash": "#/knowledge?tab=ingest",
@@ -1260,7 +1347,7 @@
       "mainTextLen": 575,
       "navError": null,
       "png": "knowledge-tab-ingest-375.png",
-      "pngBytes": 63071,
+      "pngBytes": 63091,
       "pngW": 375,
       "pngH": 812,
       "elementsChecked": 174,
@@ -1305,7 +1392,36 @@
           "fontBypass": false
         }
       },
-      "rerollFace": "6edcba4d"
+      "rerollFace": "e288119860",
+      "prevFaceSnapshots": [
+        {
+          "hash": "#/knowledge?tab=ingest",
+          "label": "数据源",
+          "source": "COMPAT_TABS",
+          "viewport": "375",
+          "verdict": "PASS",
+          "mainTextLen": 575,
+          "navError": null,
+          "png": "knowledge-tab-ingest-375.png",
+          "pngBytes": 63071,
+          "pngW": 375,
+          "pngH": 812,
+          "elementsChecked": 174,
+          "offscreenLeft": 62,
+          "expandApplied": true,
+          "scrollersExpanded": 1,
+          "contentFit": true,
+          "targetHeight": 812,
+          "violCount": 0,
+          "viol": [],
+          "scrollOverflowCount": 0,
+          "scrollOverflow": [],
+          "domOverflowPx": 0,
+          "fontBypass": false,
+          "consoleErrorsProduct": 0,
+          "rerollFace": "6edcba4d"
+        }
+      ]
     },
     {
       "hash": "#/knowledge?tab=retrieval",
@@ -1361,7 +1477,36 @@
           "fontBypass": false
         }
       },
-      "rerollFace": "6edcba4d"
+      "rerollFace": "e288119860",
+      "prevFaceSnapshots": [
+        {
+          "hash": "#/knowledge?tab=retrieval",
+          "label": "检索",
+          "source": "COMPAT_TABS",
+          "viewport": "375",
+          "verdict": "PASS",
+          "mainTextLen": 526,
+          "navError": null,
+          "png": "knowledge-tab-retrieval-375.png",
+          "pngBytes": 61585,
+          "pngW": 375,
+          "pngH": 812,
+          "elementsChecked": 177,
+          "offscreenLeft": 62,
+          "expandApplied": true,
+          "scrollersExpanded": 1,
+          "contentFit": true,
+          "targetHeight": 812,
+          "violCount": 0,
+          "viol": [],
+          "scrollOverflowCount": 0,
+          "scrollOverflow": [],
+          "domOverflowPx": 0,
+          "fontBypass": false,
+          "consoleErrorsProduct": 0,
+          "rerollFace": "6edcba4d"
+        }
+      ]
     },
     {
       "hash": "#/knowledge?tab=scope",
@@ -1417,7 +1562,36 @@
           "fontBypass": false
         }
       },
-      "rerollFace": "6edcba4d"
+      "rerollFace": "e288119860",
+      "prevFaceSnapshots": [
+        {
+          "hash": "#/knowledge?tab=scope",
+          "label": "知识空间",
+          "source": "COMPAT_TABS",
+          "viewport": "375",
+          "verdict": "PASS",
+          "mainTextLen": 533,
+          "navError": null,
+          "png": "knowledge-tab-scope-375.png",
+          "pngBytes": 61362,
+          "pngW": 375,
+          "pngH": 812,
+          "elementsChecked": 178,
+          "offscreenLeft": 62,
+          "expandApplied": true,
+          "scrollersExpanded": 1,
+          "contentFit": true,
+          "targetHeight": 812,
+          "violCount": 0,
+          "viol": [],
+          "scrollOverflowCount": 0,
+          "scrollOverflow": [],
+          "domOverflowPx": 0,
+          "fontBypass": false,
+          "consoleErrorsProduct": 0,
+          "rerollFace": "6edcba4d"
+        }
+      ]
     },
     {
       "hash": "#/knowledge?tab=sources",
@@ -1428,7 +1602,7 @@
       "mainTextLen": 575,
       "navError": null,
       "png": "knowledge-tab-sources-375.png",
-      "pngBytes": 63071,
+      "pngBytes": 63091,
       "pngW": 375,
       "pngH": 812,
       "elementsChecked": 174,
@@ -1473,7 +1647,36 @@
           "fontBypass": false
         }
       },
-      "rerollFace": "6edcba4d"
+      "rerollFace": "e288119860",
+      "prevFaceSnapshots": [
+        {
+          "hash": "#/knowledge?tab=sources",
+          "label": "数据源",
+          "source": "CONSOLE_TABS",
+          "viewport": "375",
+          "verdict": "PASS",
+          "mainTextLen": 575,
+          "navError": null,
+          "png": "knowledge-tab-sources-375.png",
+          "pngBytes": 63071,
+          "pngW": 375,
+          "pngH": 812,
+          "elementsChecked": 174,
+          "offscreenLeft": 62,
+          "expandApplied": true,
+          "scrollersExpanded": 1,
+          "contentFit": true,
+          "targetHeight": 812,
+          "violCount": 0,
+          "viol": [],
+          "scrollOverflowCount": 0,
+          "scrollOverflow": [],
+          "domOverflowPx": 0,
+          "fontBypass": false,
+          "consoleErrorsProduct": 0,
+          "rerollFace": "6edcba4d"
+        }
+      ]
     },
     {
       "hash": "#/metrics",
@@ -2155,14 +2358,14 @@
     }
   ],
   "rerollNote": "点名重跑 sessions/channels/models @d2cc49fe 面（L0②）：sessions 转 PASS（fb+fit，PNG 入账）、models PASS；channels 新面反成失分页（45s 旁路超时、main=10、viol 数据不可得）记 NOT_MEASURED 逐条 navError 入账，首轮 6586df6b 读数存 firstRunRow（L0①其余 48 路保留首轮）",
-  "headHash": "ed5527e7",
-  "entry": "assets/index-Dm2Mt71f.js",
-  "entrySha256": "6446ec8c290a71e2ccd0c16c9a0983d1eac08c16146f61a44ef5ad255c0bf114",
+  "headHash": "e288119860",
+  "entry": "assets/index-CaryT0dm.js",
+  "entrySha256": "4dd606874002e2d28be02ced5b9f873fe38e0e680c8fd8334bff853ba10e1b4f",
   "entryBytes": 172750,
   "css": "assets/index-DLpXaUuB.css",
   "cssSha256": "13a111877909a0a34aa08f54c6635f795fb77351f3ebef339d42d5926fd0a0dc",
   "cssBytes": 146491,
-  "servedEntryAfter": "index-Dm2Mt71f.js",
+  "servedEntryAfter": "index-CaryT0dm.js",
   "servedCssAfter": "index-DLpXaUuB.css",
   "criteriaNote": "旧 document 级 375 全绿作废不入账（L0③）；本代 375 承者=assert-375 逐元素判据+视口加高取图腿+字体等待旁路复测；channels=点名重跑合入 PASS（首轮读数存 firstRunRow）；sessions=真 NOT MEASURED：45s 旁路仍 screenshot 超时，逐条 navError 入账",
   "stampNote": "wave-129 6586df6b 本代新跑（非沿用）",
@@ -2195,7 +2398,7 @@
     "raw": "coex-4a654bba.json",
     "priorFace": "coex-4705edea.json"
   },
-  "entryMtime": "2026-11-22 08:58:18",
+  "entryMtime": "2026-11-22 13:41:46",
   "outerTabHighlightTriState": {
     "face": "4a654bba",
     "panelIngest": "pane+selected=sources，selected href 含 panel=ingest+state+rid，其余 tab href 无 panel=（viol0 main74）",
@@ -2650,5 +2853,80 @@
     },
     "verdict": "三态+四态共存全部 viol=0、panel 只留属主 href、state/rid 保留，与前脸逐项一致；NM 行未改判"
   },
-  "waveNote142": "wave-142：定脸 ed5527e718 重建 H2（entry Dm2Mt71f 换代）+点名两路（matrix real-gate reroll PASS、knowledge 冷链三态/共存）；51 路未重扫，49 首轮保留；两路 NM 未改判；375 总 PASS 禁"
+  "waveNote142": "wave-142：定脸 ed5527e718 重建 H2（entry Dm2Mt71f 换代）+点名两路（matrix real-gate reroll PASS、knowledge 冷链三态/共存）；51 路未重扫，49 首轮保留；两路 NM 未改判；375 总 PASS 禁",
+  "faceNote144": {
+    "face": "e2881198605e9de21cf853c07b0a840046b70d70",
+    "port": 9122,
+    "entry": "assets/index-CaryT0dm.js 172750B sha256 4dd606874002e2d28be02ced5b9f873fe38e0e680c8fd8334bff853ba10e1b4f mtime 2026-11-22 13:41:46（换代 from index-Dm2Mt71f.js，字节同长内容异）",
+    "css": "主 css assets/index-DLpXaUuB.css 146491B sha256 13a111877909a0a34aa08f54c6635f795fb77351f3ebef339d42d5926fd0a0dc 未换代；wave-144 触点规则实测在 lazy chunk assets/KnowledgeModulePage-CEIQKje5.css（grep knw5-drill 命中）",
+    "method": "vite build 于 HEAD=e288119860 完成后读磁盘 entry 名/字节/mtime/sha256，再 curl :9122 对账 served==disk（launchd v4_proxy 静态按请求读盘，无需重启）MATCH×2",
+    "vitest": "L0 亲验全量 479 files/3535 tests 绿（wave-144 面），免重跑"
+  },
+  "runsLeg144": {
+    "route": "#/runs（不在 51 路表 routes.ts 枚举内，直访 hash 可达）",
+    "verdict": "游标行为腿在本脸不可复现（如实）：直访 #/runs 表体 rows=0、tabStop=-1，未命中 run-window-* 钮（fallback 点击落在 duty-range-30d 属他控件）；禁造数值——不以本探针断言行/停点保持",
+    "bounds375": {
+      "elements": 333,
+      "viol": 0,
+      "maxRight": 375
+    },
+    "before": {
+      "rowCount": 0,
+      "tabStop": -1,
+      "tabStopText": "",
+      "firstTexts": [],
+      "windowButtons": [
+        {
+          "testid": "duty-range-24h",
+          "label": "近 24 小时"
+        },
+        {
+          "testid": "duty-range-7d",
+          "label": "近 7 天"
+        },
+        {
+          "testid": "duty-range-14d",
+          "label": "近 14 天"
+        },
+        {
+          "testid": "duty-range-30d",
+          "label": "近 30 天"
+        }
+      ]
+    },
+    "after": {
+      "rowCount": 0,
+      "tabStop": -1,
+      "tabStopText": "",
+      "firstTexts": [],
+      "windowButtons": [
+        {
+          "testid": "duty-range-24h",
+          "label": "近 24 小时"
+        },
+        {
+          "testid": "duty-range-7d",
+          "label": "近 7 天"
+        },
+        {
+          "testid": "duty-range-14d",
+          "label": "近 14 天"
+        },
+        {
+          "testid": "duty-range-30d",
+          "label": "近 30 天"
+        }
+      ]
+    },
+    "clicked": {
+      "testid": "duty-range-30d",
+      "label": "近 30 天"
+    },
+    "semanticsOwner": "e4b4efa545 自带 vitest runs.cursor-window.test.tsx（172 例：key=sinceKey 重挂+父层记 runId 重播游标+越界回第一页）由 L0 全量 479f/3535t 绿持有",
+    "raw": "runs-cursor-readings-e2881198.json + runs-cursor-1440.png + runs-375.png",
+    "face": "e288119860",
+    "port": 9122,
+    "entry": "assets/index-CaryT0dm.js"
+  },
+  "waveNote144": "wave-144 续章盖章：knowledge 族 7 路逐元素点名重跑全 PASS viol=0（触点命中区伪元素方案版式零变化经逐元素验证得证）；runs 不在 51 路表、行为腿本脸不可复现如实+375 bounds 实测 0 越界；51 路未重扫；sessions/channels 真NM 维持未改判；49 首轮保留"
 }

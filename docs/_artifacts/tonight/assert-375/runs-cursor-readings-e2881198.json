@@ -1,0 +1,92 @@
+{
+  "base": "http://127.0.0.1:9122",
+  "port": 9122,
+  "entry": "assets/index-CaryT0dm.js",
+  "face": "e288119860",
+  "at": "2026-11-22T05:46:10.744Z",
+  "initial": {
+    "rowCount": 0,
+    "tabStop": -1,
+    "tabStopText": "",
+    "firstTexts": [],
+    "windowButtons": [
+      {
+        "testid": "duty-range-24h",
+        "label": "近 24 小时"
+      },
+      {
+        "testid": "duty-range-7d",
+        "label": "近 7 天"
+      },
+      {
+        "testid": "duty-range-14d",
+        "label": "近 14 天"
+      },
+      {
+        "testid": "duty-range-30d",
+        "label": "近 30 天"
+      }
+    ]
+  },
+  "moved": {
+    "error": "no rows"
+  },
+  "beforeWindow": {
+    "rowCount": 0,
+    "tabStop": -1,
+    "tabStopText": "",
+    "firstTexts": [],
+    "windowButtons": [
+      {
+        "testid": "duty-range-24h",
+        "label": "近 24 小时"
+      },
+      {
+        "testid": "duty-range-7d",
+        "label": "近 7 天"
+      },
+      {
+        "testid": "duty-range-14d",
+        "label": "近 14 天"
+      },
+      {
+        "testid": "duty-range-30d",
+        "label": "近 30 天"
+      }
+    ]
+  },
+  "clicked": {
+    "testid": "duty-range-30d",
+    "label": "近 30 天"
+  },
+  "afterWindow": {
+    "rowCount": 0,
+    "tabStop": -1,
+    "tabStopText": "",
+    "firstTexts": [],
+    "windowButtons": [
+      {
+        "testid": "duty-range-24h",
+        "label": "近 24 小时"
+      },
+      {
+        "testid": "duty-range-7d",
+        "label": "近 7 天"
+      },
+      {
+        "testid": "duty-range-14d",
+        "label": "近 14 天"
+      },
+      {
+        "testid": "duty-range-30d",
+        "label": "近 30 天"
+      }
+    ]
+  },
+  "verdict": "insufficient-rows-or-buttons",
+  "b375": {
+    "elements": 333,
+    "viol": 0,
+    "maxRight": 375
+  }
+}
