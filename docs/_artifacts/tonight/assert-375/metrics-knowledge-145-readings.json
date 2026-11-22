@@ -1,0 +1,111 @@
+{
+  "base": "http://127.0.0.1:9122",
+  "port": 9122,
+  "entry": "assets/index-B9avOQha.js",
+  "face": "645e86ef00",
+  "at": "2026-11-22T06:01:02.665Z",
+  "metrics": {
+    "settled": {
+      "url": "/analytics",
+      "mainLen": 818,
+      "mainHead": "TOKEN ANALYTICS HIDDEN\n\nThe token, cost, and per-day analytics on this page are a local debug estimate. They only count successful main-agent responses with a u",
+      "loadingCount": 0,
+      "loadingTexts": [],
+      "caliber": null,
+      "hintNodes": [],
+      "snapState": null,
+      "viol": 23,
+      "maxRight": 1440
+    }
+  },
+  "knLoading": {
+    "first": {
+      "url": "/knowledge",
+      "mainLen": 533,
+      "mainHead": "治理 · 控制台\n知识与数据\n知识空间\n数据源\n审计证据\n知识空间\n空间、文档、检索与引用 · 只读\n刷新\n按文档名搜索\n搜索\n\n只在已加载的文档里搜索：这份文档读口今天不接受关键词参数，所以这里不叫全库搜索。\n\n文档命中\n\n来源：文档名（当前已加载的列表） · 数据截至 未知\n这次没有读到数据，数据截至时间未知。\n\n",
+      "loadingCount": 0,
+      "loadingTexts": [],
+      "caliber": null,
+      "hintNodes": [],
+      "snapState": null,
+      "viol": 84,
+      "maxRight": 1440
+    },
+    "second": {
+      "url": "/knowledge",
+      "mainLen": 533,
+      "mainHead": "治理 · 控制台\n知识与数据\n知识空间\n数据源\n审计证据\n知识空间\n空间、文档、检索与引用 · 只读\n刷新\n按文档名搜索\n搜索\n\n只在已加载的文档里搜索：这份文档读口今天不接受关键词参数，所以这里不叫全库搜索。\n\n文档命中\n\n来源：文档名（当前已加载的列表） · 数据截至 未知\n这次没有读到数据，数据截至时间未知。\n\n",
+      "loadingCount": 0,
+      "loadingTexts": [],
+      "caliber": null,
+      "hintNodes": [],
+      "snapState": null,
+      "viol": 84,
+      "maxRight": 1440
+    },
+    "settled": {
+      "url": "/knowledge",
+      "mainLen": 533,
+      "mainHead": "治理 · 控制台\n知识与数据\n知识空间\n数据源\n审计证据\n知识空间\n空间、文档、检索与引用 · 只读\n刷新\n按文档名搜索\n搜索\n\n只在已加载的文档里搜索：这份文档读口今天不接受关键词参数，所以这里不叫全库搜索。\n\n文档命中\n\n来源：文档名（当前已加载的列表） · 数据截至 未知\n这次没有读到数据，数据截至时间未知。\n\n",
+      "loadingCount": 0,
+      "loadingTexts": [],
+      "caliber": null,
+      "hintNodes": [],
+      "snapState": null,
+      "viol": 84,
+      "maxRight": 1440
+    }
+  },
+  "knStateLoading": {
+    "settled": {
+      "url": "/knowledge?panel=retrieval&state=loading&rid=abc12345",
+      "mainLen": 55,
+      "mainHead": "治理 · 控制台\n知识与数据\n知识空间\n数据源\n审计证据\n加载中…\n强制态：?state=loading\n返回",
+      "loadingCount": 0,
+      "loadingTexts": [],
+      "caliber": null,
+      "hintNodes": [],
+      "snapState": null,
+      "viol": 33,
+      "maxRight": 1440
+    }
+  },
+  "knLoading375": {
+    "first": {
+      "url": "/knowledge",
+      "mainLen": 533,
+      "mainHead": "治理 · 控制台\n知识与数据\n知识空间\n数据源\n审计证据\n知识空间\n空间、文档、检索与引用 · 只读\n刷新\n按文档名搜索\n搜索\n\n只在已加载的文档里搜索：这份文档读口今天不接受关键词参数，所以这里不叫全库搜索。\n\n文档命中\n\n来源：文档名（当前已加载的列表） · 数据截至 未知\n这次没有读到数据，数据截至时间未知。\n\n",
+      "loadingCount": 0,
+      "loadingTexts": [],
+      "caliber": null,
+      "hintNodes": [],
+      "snapState": null,
+      "viol": 0,
+      "maxRight": 375
+    },
+    "second": {
+      "url": "/knowledge",
+      "mainLen": 533,
+      "mainHead": "治理 · 控制台\n知识与数据\n知识空间\n数据源\n审计证据\n知识空间\n空间、文档、检索与引用 · 只读\n刷新\n按文档名搜索\n搜索\n\n只在已加载的文档里搜索：这份文档读口今天不接受关键词参数，所以这里不叫全库搜索。\n\n文档命中\n\n来源：文档名（当前已加载的列表） · 数据截至 未知\n这次没有读到数据，数据截至时间未知。\n\n",
+      "loadingCount": 0,
+      "loadingTexts": [],
+      "caliber": null,
+      "hintNodes": [],
+      "snapState": null,
+      "viol": 0,
+      "maxRight": 375
+    },
+    "settled": {
+      "url": "/knowledge",
+      "mainLen": 533,
+      "mainHead": "治理 · 控制台\n知识与数据\n知识空间\n数据源\n审计证据\n知识空间\n空间、文档、检索与引用 · 只读\n刷新\n按文档名搜索\n搜索\n\n只在已加载的文档里搜索：这份文档读口今天不接受关键词参数，所以这里不叫全库搜索。\n\n文档命中\n\n来源：文档名（当前已加载的列表） · 数据截至 未知\n这次没有读到数据，数据截至时间未知。\n\n",
+      "loadingCount": 0,
+      "loadingTexts": [],
+      "caliber": null,
+      "hintNodes": [],
+      "snapState": null,
+      "viol": 0,
+      "maxRight": 375
+    }
+  }
+}

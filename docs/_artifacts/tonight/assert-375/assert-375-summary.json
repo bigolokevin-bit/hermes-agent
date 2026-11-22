@@ -1137,7 +1137,7 @@
           "fontBypass": false
         }
       },
-      "rerollFace": "e288119860",
+      "rerollFace": "645e86ef00",
       "prevFaceSnapshots": [
         {
           "hash": "#/knowledge",
@@ -1165,6 +1165,13 @@
           "fontBypass": false,
           "consoleErrorsProduct": 0,
           "rerollFace": "6edcba4d"
+        },
+        {
+          "face": "e288119860",
+          "verdict": "PASS",
+          "violCount": 0,
+          "elementsChecked": 178,
+          "mainTextLen": 533
         }
       ]
     },
@@ -1222,7 +1229,7 @@
           "fontBypass": false
         }
       },
-      "rerollFace": "e288119860",
+      "rerollFace": "645e86ef00",
       "prevFaceSnapshots": [
         {
           "hash": "#/knowledge?tab=citations",
@@ -1250,6 +1257,13 @@
           "fontBypass": false,
           "consoleErrorsProduct": 0,
           "rerollFace": "6edcba4d"
+        },
+        {
+          "face": "e288119860",
+          "verdict": "PASS",
+          "violCount": 0,
+          "elementsChecked": 166,
+          "mainTextLen": 494
         }
       ]
     },
@@ -1307,7 +1321,7 @@
           "fontBypass": false
         }
       },
-      "rerollFace": "e288119860",
+      "rerollFace": "645e86ef00",
       "prevFaceSnapshots": [
         {
           "hash": "#/knowledge?tab=evidence",
@@ -1335,6 +1349,13 @@
           "fontBypass": false,
           "consoleErrorsProduct": 0,
           "rerollFace": "6edcba4d"
+        },
+        {
+          "face": "e288119860",
+          "verdict": "PASS",
+          "violCount": 0,
+          "elementsChecked": 116,
+          "mainTextLen": 198
         }
       ]
     },
@@ -1392,7 +1413,7 @@
           "fontBypass": false
         }
       },
-      "rerollFace": "e288119860",
+      "rerollFace": "645e86ef00",
       "prevFaceSnapshots": [
         {
           "hash": "#/knowledge?tab=ingest",
@@ -1420,6 +1441,13 @@
           "fontBypass": false,
           "consoleErrorsProduct": 0,
           "rerollFace": "6edcba4d"
+        },
+        {
+          "face": "e288119860",
+          "verdict": "PASS",
+          "violCount": 0,
+          "elementsChecked": 174,
+          "mainTextLen": 575
         }
       ]
     },
@@ -1477,7 +1505,7 @@
           "fontBypass": false
         }
       },
-      "rerollFace": "e288119860",
+      "rerollFace": "645e86ef00",
       "prevFaceSnapshots": [
         {
           "hash": "#/knowledge?tab=retrieval",
@@ -1505,6 +1533,13 @@
           "fontBypass": false,
           "consoleErrorsProduct": 0,
           "rerollFace": "6edcba4d"
+        },
+        {
+          "face": "e288119860",
+          "verdict": "PASS",
+          "violCount": 0,
+          "elementsChecked": 177,
+          "mainTextLen": 526
         }
       ]
     },
@@ -1562,7 +1597,7 @@
           "fontBypass": false
         }
       },
-      "rerollFace": "e288119860",
+      "rerollFace": "645e86ef00",
       "prevFaceSnapshots": [
         {
           "hash": "#/knowledge?tab=scope",
@@ -1590,6 +1625,13 @@
           "fontBypass": false,
           "consoleErrorsProduct": 0,
           "rerollFace": "6edcba4d"
+        },
+        {
+          "face": "e288119860",
+          "verdict": "PASS",
+          "violCount": 0,
+          "elementsChecked": 178,
+          "mainTextLen": 533
         }
       ]
     },
@@ -1647,7 +1689,7 @@
           "fontBypass": false
         }
       },
-      "rerollFace": "e288119860",
+      "rerollFace": "645e86ef00",
       "prevFaceSnapshots": [
         {
           "hash": "#/knowledge?tab=sources",
@@ -1675,6 +1717,13 @@
           "fontBypass": false,
           "consoleErrorsProduct": 0,
           "rerollFace": "6edcba4d"
+        },
+        {
+          "face": "e288119860",
+          "verdict": "PASS",
+          "violCount": 0,
+          "elementsChecked": 174,
+          "mainTextLen": 575
         }
       ]
     },
@@ -1702,7 +1751,17 @@
       "scrollOverflow": [],
       "domOverflowPx": 0,
       "fontBypass": false,
-      "consoleErrorsProduct": 0
+      "consoleErrorsProduct": 0,
+      "rerollFace": "645e86ef00",
+      "prevFaceSnapshots": [
+        {
+          "face": "e288119860",
+          "verdict": "PASS",
+          "violCount": 0,
+          "elementsChecked": 95,
+          "mainTextLen": 818
+        }
+      ]
     },
     {
       "hash": "#/org",
@@ -2358,14 +2417,14 @@
     }
   ],
   "rerollNote": "点名重跑 sessions/channels/models @d2cc49fe 面（L0②）：sessions 转 PASS（fb+fit，PNG 入账）、models PASS；channels 新面反成失分页（45s 旁路超时、main=10、viol 数据不可得）记 NOT_MEASURED 逐条 navError 入账，首轮 6586df6b 读数存 firstRunRow（L0①其余 48 路保留首轮）",
-  "headHash": "e288119860",
-  "entry": "assets/index-CaryT0dm.js",
-  "entrySha256": "4dd606874002e2d28be02ced5b9f873fe38e0e680c8fd8334bff853ba10e1b4f",
+  "headHash": "645e86ef00",
+  "entry": "assets/index-B9avOQha.js",
+  "entrySha256": "dc13c252faca20d8d8c74c24ad47d5be1c0cf2dfc63c03fd1444f2308d7b5711",
   "entryBytes": 172750,
   "css": "assets/index-DLpXaUuB.css",
   "cssSha256": "13a111877909a0a34aa08f54c6635f795fb77351f3ebef339d42d5926fd0a0dc",
   "cssBytes": 146491,
-  "servedEntryAfter": "index-CaryT0dm.js",
+  "servedEntryAfter": "index-B9avOQha.js",
   "servedCssAfter": "index-DLpXaUuB.css",
   "criteriaNote": "旧 document 级 375 全绿作废不入账（L0③）；本代 375 承者=assert-375 逐元素判据+视口加高取图腿+字体等待旁路复测；channels=点名重跑合入 PASS（首轮读数存 firstRunRow）；sessions=真 NOT MEASURED：45s 旁路仍 screenshot 超时，逐条 navError 入账",
   "stampNote": "wave-129 6586df6b 本代新跑（非沿用）",
@@ -2383,7 +2442,7 @@
     "6edcba4d",
     "947db917"
   ],
-  "entryGenChain": "BuZxlyEv(03fcc769)→DJUfcxXn(196f19fd)→CBCiEYq3(0a258f7b)→3Opmhawd(35115d74/6edcba4d)→DyjS0EIp(01c52e91)→D7HvX3yl(a382334c, 947db917 门入面实测换代)→D7HvX3yl(a382334c)→6BxjN-jw(4705edea)→Dm2Mt71f(ed5527e718, manifest+matrix 产品码入面, 构建 08:58:18 VITE=0, served==disk 双 MATCH)",
+  "entryGenChain": "BuZxlyEv(03fcc769)→DJUfcxXn(196f19fd)→CBCiEYq3(0a258f7b)→3Opmhawd(35115d74/6edcba4d)→DyjS0EIp(01c52e91)→D7HvX3yl(a382334c, 947db917 门入面实测换代)→D7HvX3yl(a382334c)→6BxjN-jw(4705edea)→Dm2Mt71f(ed5527e718, manifest+matrix 产品码入面, 构建 08:58:18 VITE=0, served==disk 双 MATCH) →B9avOQha(645e86ef00 metrics 成本行口径, 构建 13:59 VITE=0 served==disk MATCH×2)",
   "pureTestCommitVerdicts": {
     "01c52e91": "refactor(shell) 改 console.tsx 代码→entry 换代 DyjS0EIp 已实测；非纯测试",
     "d2646540": "test(shell) 单文件 217+ 纯测试→不改 entry 字节，明确判词",
@@ -2398,7 +2457,7 @@
     "raw": "coex-4a654bba.json",
     "priorFace": "coex-4705edea.json"
   },
-  "entryMtime": "2026-11-22 13:41:46",
+  "entryMtime": "2026-11-22 13:59:34",
   "outerTabHighlightTriState": {
     "face": "4a654bba",
     "panelIngest": "pane+selected=sources，selected href 含 panel=ingest+state+rid，其余 tab href 无 panel=（viol0 main74）",
@@ -2928,5 +2987,113 @@
     "port": 9122,
     "entry": "assets/index-CaryT0dm.js"
   },
-  "waveNote144": "wave-144 续章盖章：knowledge 族 7 路逐元素点名重跑全 PASS viol=0（触点命中区伪元素方案版式零变化经逐元素验证得证）；runs 不在 51 路表、行为腿本脸不可复现如实+375 bounds 实测 0 越界；51 路未重扫；sessions/channels 真NM 维持未改判；49 首轮保留"
+  "waveNote144": "wave-144 续章盖章：knowledge 族 7 路逐元素点名重跑全 PASS viol=0（触点命中区伪元素方案版式零变化经逐元素验证得证）；runs 不在 51 路表、行为腿本脸不可复现如实+375 bounds 实测 0 越界；51 路未重扫；sessions/channels 真NM 维持未改判；49 首轮保留",
+  "faceNote145": "wave-145 定脸 645e86ef00（ad577662 metrics 成本行口径，写域仅 modules/metrics 两文件）；重建入口换代 CaryT0dm→B9avOQha，主 css index-DLpXaUuB 未换代（实测）；served==disk sha256 双 MATCH @端口9122；L0 来文称 9122 仍 Dm2Mt71f 系旧代次声称，实测 w144 重建已换 CaryT0dm、本拍再换 B9avOQha，如实记录。",
+  "metricsCostRow145": {
+    "route": "#/metrics",
+    "bounds": "assert-375 PASS viol=0 elements=95 main=818 contentFit=True pngH=812 @rerollFace=645e86ef00",
+    "caliberOnLiveFace": "absent — metAJ-cost-row-caliber 未渲染：该行条件 monthSnapshot.rows.length>0，本脸活体数据月度快照为空（metAH-cap-note-snapshot=null），口径行随快照面走",
+    "caliberText": "COST_CALIBER_TEXT=成本按账本实扣显示：真实的零写 $0.00，没有记账写「—」，不把读不到当成 0。账本实扣与「调用次数」不是同一套口径，两边数字各以本页卡片为准。",
+    "semanticsOwner": "ad577662 自带 metrics.caliber.test.ts(+83) + L0 全量 vitest 479f/3538t 绿；不造数值不假称在屏",
+    "raw": "metrics-knowledge-145-readings.json",
+    "frame": "metrics-caliber-1440.png",
+    "viol": 23,
+    "maxRight": 1440
+  },
+  "knowledgeLoading145": {
+    "earlyCaptures": {
+      "commit+400ms loadingMarkers": 0,
+      "interactive loadingMarkers": 0,
+      "settled loadingMarkers": 0
+    },
+    "verdict": "静态本地直访未捕捉到瞬态载入骨架（三拍均 0 标记）；载入态可测面=pane data-state=loading（state= 参数形态），settled main=55 viol=33；375 逐元素 v375 viol=0",
+    "coexLoadingMain": 55,
+    "raw": "metrics-knowledge-145-readings.json",
+    "frames": [
+      "knowledge-early-1440.png",
+      "knowledge-early-375.png"
+    ]
+  },
+  "coldChain145": {
+    "rerun": "d-w137-probe @645e86ef00 全部 viol=0 maxRight=375：a panel=ingest→sources 高亮+owner href 含 panel（main74）；b retrieval→spaces 保持（79）；c 无 panel→spaces 回退（533，url 实测 /knowledge?state=ready&panel=spaces 与前脸 /knowledge?state=ready 略异，如实记）；coex 四态 main 55/62/74/526",
+    "raw": "coldchain-645e86ef.json",
+    "frames": [
+      "highlight-a-panel-ingest-645e86ef.png",
+      "highlight-b-panel-retrieval-645e86ef.png",
+      "highlight-c-no-panel-645e86ef.png",
+      "coex-loading-645e86ef.png",
+      "coex-empty-645e86ef.png",
+      "coex-error-645e86ef.png",
+      "coex-ready-645e86ef.png"
+    ]
+  },
+  "runsLeg145": {
+    "route": "#/runs 不在 51 路表（routes.ts 无枚举行）",
+    "verdict": "insufficient-rows-or-buttons",
+    "before": {
+      "rowCount": 0,
+      "tabStop": -1,
+      "tabStopText": "",
+      "firstTexts": [],
+      "windowButtons": [
+        {
+          "testid": "duty-range-24h",
+          "label": "近 24 小时"
+        },
+        {
+          "testid": "duty-range-7d",
+          "label": "近 7 天"
+        },
+        {
+          "testid": "duty-range-14d",
+          "label": "近 14 天"
+        },
+        {
+          "testid": "duty-range-30d",
+          "label": "近 30 天"
+        }
+      ]
+    },
+    "after": {
+      "rowCount": 0,
+      "tabStop": -1,
+      "tabStopText": "",
+      "firstTexts": [],
+      "windowButtons": [
+        {
+          "testid": "duty-range-24h",
+          "label": "近 24 小时"
+        },
+        {
+          "testid": "duty-range-7d",
+          "label": "近 7 天"
+        },
+        {
+          "testid": "duty-range-14d",
+          "label": "近 14 天"
+        },
+        {
+          "testid": "duty-range-30d",
+          "label": "近 30 天"
+        }
+      ]
+    },
+    "clicked": {
+      "testid": "duty-range-30d",
+      "label": "近 30 天"
+    },
+    "b375": {
+      "elements": 333,
+      "viol": 0,
+      "maxRight": 375
+    },
+    "face": "645e86ef00",
+    "semanticsOwner": "e4b4efa545 vitest runs.cursor-window.test.tsx + L0 全量绿；本脸直访 rows=0 游标行为腿不可复现如实（与 w144 读数同形）",
+    "raw": "runs-cursor-readings-645e86ef.json",
+    "frames": [
+      "runs-cursor-1440-645e86ef.png",
+      "runs-375-645e86ef.png"
+    ]
+  },
+  "waveNote145": "wave-145 点名重跑：metrics×1 + knowledge×7 rerollFace=645e86ef00 全 PASS viol=0；冷链三态+四态共存复跑全 clean；载入态如实记（瞬态未捕获、state= 形态在）；runs 腿维持不可复现裁决；sessions/channels 真 NM 未触未改判；counts pass=49 fail=0 notMeasured=2 rows=51 matrixOk=True；51 路未重扫。"
 }

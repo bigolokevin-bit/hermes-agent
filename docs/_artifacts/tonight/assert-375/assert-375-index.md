@@ -123,3 +123,10 @@ matrix(#/employees?tab=matrix) present=true ok=true
 - knowledge 族 7 路逐元素点名重跑：全 PASS viol=0 contentFit=True（#/knowledge 178/533、citations 166/494、evidence 116/198、ingest 174/575、retrieval 177/526、scope 178/533、sources 174/575）⇒ 323d4edd90 触点命中区伪元素方案（::after 外扩≈44px 视觉零变化）经逐元素验证版式零变化得证。rerollFace=e288119860，历面快照存 prevFaceSnapshots/firstRunRow。RAW=w144-knowledge-reroll-summary.json+7 帧。
 - runs 腿：#/runs 不在 51 路表（routes.ts 无枚举行）；直访 live 脸 rows=0/tabStop=-1、run-window-* 未命中（fallback 落 duty-range-30d）⇒ 游标行为腿本脸不可复现如实，禁造数值；375 逐元素 bounds elements=333 viol=0 maxRight=375；行为语义归 e4b4efa545 自带 vitest runs.cursor-window.test.tsx + L0 全量绿。RAW=runs-cursor-readings-e2881198.json+2 帧。
 - 纪律：51 路未重扫；sessions/channels 真NM 维持未改判；49 首轮保留 counts 49/0/2；matrixOk=true 未触；375 总 PASS 未宣称；判据 376/-1/812/FAIL优先/matrix必产图 不变。
+
+## wave-145 定脸 @645e86ef00（端口9122/entry B9avOQha）
+- H2：dist hermes_cli/web_dist；entry assets/index-B9avOQha.js 172750B sha256 dc13c252faca…b5711 mtime 2026-11-22 13:59:34；主 css index-DLpXaUuB.css 未换代；served==disk sha256 MATCH×2；方法=vite build 于 HEAD=645e86ef00 完成（VITE=0）后读盘+curl 对账（静态按请求读盘无需重启）。L0 来文 Dm2Mt71f 系旧代次声称，实测代次链如实注记。
+- metrics 成本行：bounds PASS viol=0（rerollFace=645e86ef00）；口径行 metAJ-cost-row-caliber 本脸未渲染（monthSnapshot 空，行随快照面走）；文案与 title 语义归 ad577662 自带 metrics.caliber.test.ts + L0 全量 479f/3538t 绿——不造数值。
+- knowledge：触点/冷链三态/coex 四态全部 viol=0 maxRight=375（a→sources 高亮 owner href 含 panel；b→spaces 保持；c→回退 spaces，url 实测含 panel=spaces 与前脸略异如实）；载入态=state= 参数 pane data-state=loading（main55），瞬态骨架三拍未捕（本地静态过快），如实记不冒充。
+- runs：#/runs 不在 51 路表；直访 rows=0/run-window-* 未命中（fallback duty-range-30d）⇒ 游标行为腿本脸不可复现如实；375 bounds elements=333 viol=0；语义归 e4b4efa545 vitest。
+- 纪律：51 路未重扫；49 首轮保留；sessions/channels 真 NM 维持未改判；375 总 PASS 未宣称；判据不变（376/-1/812/FAIL优先/matrix必产图）。
