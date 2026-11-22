@@ -1,0 +1,58 @@
+{
+  "port": 9122,
+  "entry": "assets/index-Ceaj0F6k.js",
+  "face": "1f078a8aed",
+  "at": "2026-11-22T14:50:13.382Z",
+  "windows": "6s/12s domcontentloaded+no networkidle",
+  "baselineWave140": "sessions 401x1308 nav x2488 total 79453 req/15s",
+  "routes": {
+    "#/sessions": {
+      "w1": {
+        "nav": 5,
+        "http401": 7,
+        "whoamiAborted": 1,
+        "failed": 2,
+        "total": 64
+      },
+      "w2": {
+        "nav": 5,
+        "http401": 8,
+        "whoamiAborted": 1,
+        "failed": 2,
+        "total": 66
+      },
+      "delta": {
+        "nav": 0,
+        "http401": 1,
+        "whoamiAborted": 0,
+        "failed": 0,
+        "total": 2
+      },
+      "mainLen": 106
+    },
+    "#/capabilities?tab=channels": {
+      "w1": {
+        "nav": 5,
+        "http401": 13,
+        "whoamiAborted": 1,
+        "failed": 3,
+        "total": 63
+      },
+      "w2": {
+        "nav": 5,
+        "http401": 13,
+        "whoamiAborted": 1,
+        "failed": 3,
+        "total": 64
+      },
+      "delta": {
+        "nav": 0,
+        "http401": 0,
+        "whoamiAborted": 0,
+        "failed": 0,
+        "total": 1
+      },
+      "mainLen": 200
+    }
+  }
+}
