@@ -311,3 +311,68 @@ describe("LoginPage (auth5 / R18)", () => {
     }
   });
 });
+
+// L0: the feishu-callback bridge 302s back to /login?auth=<code> (no rid in
+// the URL), so the page must speak each code in plain Chinese — worded like
+// the bridge's _AUTH_MSG table — and offer the code itself as the copyable
+// reference for bug reports. Never bounce silently, never render blank.
+describe("LoginPage ?auth= bridge codes", () => {
+  const okFetch = async (url: string) => {
+    if (url === "/auth/captcha") return jsonResponse(200, CAPTCHA_A);
+    throw new Error(`unexpected call ${url}`);
+  };
+
+  // [bridge shape as sent by v4_proxy 302, expected human sentence from _AUTH_MSG]
+  const cases: Array<[string, string]> = [
+    ["auth.state_invalid", "登录请求校验失败或已过期，请重新发起登录"],
+    ["auth.sso_sync_rejected", "统一身份同步未通过，请重新发起登录"],
+    ["auth.feishu_exchange_failed", "飞书授权校验失败，请重新发起登录"],
+    ["auth.upstream_unavailable", "认证上游不可用，请稍后重试"],
+  ];
+
+  for (const [code, sentence] of cases) {
+    it(`renders ${code} as honest Chinese with a copyable code and keeps the form`, async () => {
+      mountAt(`/login?auth=${encodeURIComponent(code)}`, okFetch);
+      await flush();
+      const card = container.querySelector('[data-testid="auth5-auth-error"]');
+      expect(card, `card for ${code}`).toBeTruthy();
+      expect(card?.textContent).toContain(sentence);
+      // the code is the copyable reference since the 302 carries no rid
+      expect(card?.querySelector('[data-testid="auth5-auth-code"]')?.textContent).toBe(code);
+      expect(card?.querySelector('[data-testid="auth5-auth-code-copy"]')).toBeTruthy();
+      // no silent bounce: the sign-in form stays usable below the card
+      expect(container.querySelector('[data-testid="auth5-form"]')).toBeTruthy();
+      expect(container.querySelector('[data-testid="auth5-feishu"]')).toBeTruthy();
+    });
+  }
+
+  it("matches the short code shape too, not only the auth.-prefixed one", async () => {
+    mountAt("/login?auth=sso_sync_rejected", okFetch);
+    await flush();
+    const card = container.querySelector('[data-testid="auth5-auth-error"]');
+    expect(card?.textContent).toContain("统一身份同步未通过，请重新发起登录");
+  });
+
+  it("falls back honestly for an unknown code and keeps it copyable, never blank", async () => {
+    mountAt("/login?auth=auth.some_future_code", okFetch);
+    await flush();
+    const card = container.querySelector('[data-testid="auth5-auth-error"]');
+    expect(card).toBeTruthy();
+    expect(card?.textContent).toContain("登录没有完成");
+    expect(card?.textContent?.trim()).not.toBe("");
+    expect(card?.querySelector('[data-testid="auth5-auth-code"]')?.textContent).toBe("auth.some_future_code");
+    expect(card?.querySelector('[data-testid="auth5-auth-code-copy"]')).toBeTruthy();
+  });
+
+  it("copies the error code to the clipboard when 复制 is pressed", async () => {
+    mountAt("/login?auth=auth.state_invalid", okFetch);
+    await flush();
+    const copyBtn = container.querySelector('[data-testid="auth5-auth-code-copy"]') as HTMLButtonElement;
+    await act(async () => {
+      copyBtn.click();
+    });
+    await flush();
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith("auth.state_invalid");
+    expect(container.querySelector('[data-testid="auth5-auth-code-state"]')?.textContent).toContain("已复制");
+  });
+});
