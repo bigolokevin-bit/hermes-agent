@@ -156,3 +156,9 @@ matrix(#/employees?tab=matrix) present=true ok=true
 - 16:45:42 的 index-CQZqo9UW.js 非本道构建：ca36e06cc3/f4e6bb150e 纯测试/纯账本不产新 entry（L0 结构判断成立）；该文件已无残留（assets grep=0），sha 无法补测，不指认触发方，禁造数值。
 - B7MjhP14 恢复方式不可考（mtime 保持 16:40:43=非重跑重建）；H2 销账以本表可实测三键为准。
 - 纪律：51 路未重扫、sessions/channels 真NM 维持、375 总 PASS 未宣称、脸 f4e6bb150e 未动。
+
+### 更正澄清 152（L0 验收更正请求应答）
+
+- 9bf49c08f0e0e7c2 从未写入本道账本（git show 5ef2d465c5 grep=0），本道第二行 triggerCommit=eb697ca5d2（cat-file -e ✓）。
+- L0 来文两枚 entry sha（1f978216…/173065B、61c97e51…/173129B）与本道实测 B7MjhP14 sha256 2b8081ea9f55…afd45a/172800B/16:40:43 不同谱系；本次应答前再读盘与 served 仍是本道值（再实测 MATCH、mtime 未动、CQZqo9UW 零残留）。同名不同 sha 不成立（vite 内容哈希）⇒ 双方读到不同 dist 面，非本道缺口。
+- CQZqo9UW 行维持「触发源不可证」；如 L0 有 1f978216/61c97e51 的复现日志请贴出对账，本道不采未实测值。

@@ -3218,6 +3218,13 @@
       "servedEqDisk": true,
       "css": "index-DLpXaUuB.css 146491B sha 13a111877909a0a3…0a0dc 未换代"
     },
-    "verdict": "当代可验脸=本道 wave-148 构建 B7MjhP14（served==disk 实测一致）；CQZqo9UW 为外道瞬时构建、无残留不可复测，H2 销账以本表可实测三键为准"
+    "verdict": "当代可验脸=本道 wave-148 构建 B7MjhP14（served==disk 实测一致）；CQZqo9UW 为外道瞬时构建、无残留不可复测，H2 销账以本表可实测三键为准",
+    "clarify152": {
+      "at": "2026-11-22 应答 L0 验收更正请求（5ef2d465c5 收账后）",
+      "phantomShaVerdict": "9bf49c08f0e0e7c2 从未写入本道账本：git show 5ef2d465c5 grep 命中=0；本道现查 git cat-file -e 该 sha=Not a valid object（与 L0 一致）。本道第二行 triggerCommit=eb697ca5d2，cat-file -e 可解析✓。",
+      "lineageDivergence": "L0 来文读数（第一次重建 eb697ca5d2→CQZqo9UW sha 1f978216…/173065B/16:45:42；第二次 B7MjhP14 sha 61c97e51…/173129B/16:54:22）与本道实测不同源：本道同提交 eb697ca5d2 构建实测=B7MjhP14 sha256 2b8081ea9f55…afd45a/172800B/16:40:43；且本次应答前再读盘与 served 仍是该值（sha 再实测一致、mtime 未动、CQZqo9UW 零残留、无 61c97e51 迹象）。同名不同 sha 结构上不成立（vite 内容哈希），故判定双方读到的是不同构建谱系/不同 dist 面，非本道侧缺口。",
+      "honestDisposition": "CQZqo9UW 行维持「触发源不可证」+不指认；若 L0 侧 1f978216…/61c97e51… 有独立复现日志，欢迎贴出对账，本道不采未实测值入账（禁造数值）。",
+      "discipline": "入账前 cat-file -e 验 sha——本道两行 triggerCommit 均可解析，外道行已标不可证，合规。"
+    }
   }
 }
