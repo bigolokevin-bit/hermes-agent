@@ -1,0 +1,81 @@
+{
+  "audit": {
+    "ticket": "L0 @1424@ 补证（不阻塞主报）：w165-theme consoleErrors 11 条逐 URL 计数本体",
+    "run165LiveSession": {
+      "at": "2026-11-22T16:18:37.607Z",
+      "face": "e8d9295318",
+      "whoami": "200（探针内显式前置码）",
+      "whoami165Ledger": {},
+      "consoleErrorsTotal": 11,
+      "consoleErrorsShape": "Failed to load resource: ... 401 (Unauthorized) ×11（无 URL 文本）",
+      "conclusion": "whoami==200 的活会话下已出 11 条 401 资源错误 ⇒ 非 cookie 早衰伪像"
+    },
+    "run166UrlLedger": {
+      "at": "2026-11-22T17:13:38.401Z",
+      "face": "40bc5af6d3",
+      "port": 9122,
+      "entry": "assets/index-Dzqdzj0R.js",
+      "page": "#/overview",
+      "whoamiAtRun": 401,
+      "note_whoami": "本轮起跑前 whoami=401 ⇒ ui-qa cookie 再度早衰（wave-155 已知坑）；URL 本体在死会话面采集，业务端点清单仍成立，但活会话下精确组成未复测——如实标注不造数值",
+      "count401Total": 11,
+      "count401ByUrl": {
+        "http://127.0.0.1:9122/auth/whoami": 1,
+        "http://127.0.0.1:9122/agent-api/api/employees?limit=100": 1,
+        "http://127.0.0.1:9122/agent-api/api/employee-stats": 1,
+        "http://127.0.0.1:9122/agent-api/api/workbench/summary?range=1d": 1,
+        "http://127.0.0.1:9122/agent-api/api/run-activity?weeks=2&tz=Asia%2FShanghai": 1,
+        "http://127.0.0.1:9122/agent-api/api/workbench/timeseries?range=30d&bucket=day&metric=runs": 1,
+        "http://127.0.0.1:9122/agent-api/api/workbench/queue?page_size=100": 1,
+        "http://127.0.0.1:9122/agent-api/api/runs?since=2026-11-22T16%3A00%3A00.000Z&limit=3": 1,
+        "http://127.0.0.1:9122/agent-api/api/runs?since=2026-11-15T17%3A13%3A41.120Z&limit=3": 1,
+        "http://127.0.0.1:9122/agent-api/api/tasks?status=blocked&limit=3": 1,
+        "http://127.0.0.1:9122/agent-api/api/runs?since=2026-11-21T17%3A13%3A41.120Z&limit=3&status=failed": 1
+      },
+      "pageJsErrors": [],
+      "otherConsoleErrors": [],
+      "mainLen": 1061
+    },
+    "verdict": "10 条业务端点 401（employee-stats/employees/run-activity/runs×3/tasks/workbench×3）+ 1 条 /auth/whoami，各一条无风暴线性增长 ⇒ 属既有 residual401Source156「鉴权外业务端点面」同族（域层凭据缺口归 ui-b/L4），非 console 门假绿：错误真实存在且逐 URL 入账，本页版式无 JS error",
+    "raw": "w166-console-errors-166.json"
+  },
+  "run166Readings": {
+    "port": 9122,
+    "entry": "assets/index-Dzqdzj0R.js",
+    "face": "40bc5af6d3",
+    "page": "#/overview",
+    "at": "2026-11-22T17:13:38.401Z",
+    "whoami": 401,
+    "mainLen": 1061,
+    "count401Total": 11,
+    "count401ByUrl": {
+      "http://127.0.0.1:9122/auth/whoami": 1,
+      "http://127.0.0.1:9122/agent-api/api/employees?limit=100": 1,
+      "http://127.0.0.1:9122/agent-api/api/employee-stats": 1,
+      "http://127.0.0.1:9122/agent-api/api/workbench/summary?range=1d": 1,
+      "http://127.0.0.1:9122/agent-api/api/run-activity?weeks=2&tz=Asia%2FShanghai": 1,
+      "http://127.0.0.1:9122/agent-api/api/workbench/timeseries?range=30d&bucket=day&metric=runs": 1,
+      "http://127.0.0.1:9122/agent-api/api/workbench/queue?page_size=100": 1,
+      "http://127.0.0.1:9122/agent-api/api/runs?since=2026-11-22T16%3A00%3A00.000Z&limit=3": 1,
+      "http://127.0.0.1:9122/agent-api/api/runs?since=2026-11-15T17%3A13%3A41.120Z&limit=3": 1,
+      "http://127.0.0.1:9122/agent-api/api/tasks?status=blocked&limit=3": 1,
+      "http://127.0.0.1:9122/agent-api/api/runs?since=2026-11-21T17%3A13%3A41.120Z&limit=3&status=failed": 1
+    },
+    "pageJsErrors": [],
+    "otherConsoleErrors": [],
+    "note": "165 主题探针同页复跑，收集 401 响应 URL 本体；/agent-v2/assets 为 SPA 回退页，与业务 401 无关"
+  },
+  "run165ConsoleErrors": [
+    "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+    "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+    "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+    "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+    "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+    "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+    "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+    "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+    "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+    "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+    "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+  ]
+}

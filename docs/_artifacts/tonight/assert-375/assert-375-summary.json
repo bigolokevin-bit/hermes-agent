@@ -6736,5 +6736,22 @@
     "disposition": "未及单独落章 push 脸即被 wave-165 推进 ⇒ 163 读数以本存档字段+RAW w163-* 随 165 笔入档"
   },
   "vitestBaseline165": "486 files/3583 tests (L0 亲验, 旧 485/3578 作废)",
-  "waveNote165": "L0 来文称现役 Ceaj0F6k 已过时——现查链：163 轮起=Dzqdzj0R，165 重建同名同 sha、mtime 00:14 自证重建。触点/主题探针读数原样嵌入 fullScan165（键名以 readings 文件为准，未逐键复述）。"
+  "waveNote165": "L0 来文称现役 Ceaj0F6k 已过时——现查链：163 轮起=Dzqdzj0R，165 重建同名同 sha、mtime 00:14 自证重建。触点/主题探针读数原样嵌入 fullScan165（键名以 readings 文件为准，未逐键复述）。",
+  "themeConsoleErrorAudit166": {
+    "run165Live": {
+      "at": "2026-11-22T16:18:37.607Z",
+      "errors": 11,
+      "whoami": "200"
+    },
+    "run166Ledger": {
+      "at": "2026-11-22T17:13:38.401Z",
+      "face": "40bc5af6d3",
+      "total": 11,
+      "businessUrls": 10,
+      "whoamiAtRun": 401,
+      "jsErrors": 0
+    },
+    "verdict": "10 条业务端点 401（employee-stats/employees/run-activity/runs×3/tasks/workbench×3）+ 1 条 /auth/whoami，各一条无风暴线性增长 ⇒ 属既有 residual401Source156「鉴权外业务端点面」同族（域层凭据缺口归 ui-b/L4），非 console 门假绿：错误真实存在且逐 URL 入账，本页版式无 JS error",
+    "raw": "w166-console-errors-166.json"
+  }
 }

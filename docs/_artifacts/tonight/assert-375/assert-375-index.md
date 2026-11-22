@@ -285,3 +285,9 @@ matrix(#/employees?tab=matrix) present=true ok=true
 - 主题/设置面：ThemeSwitcher 无独立路由，在 shell 顶栏每页 DOM（全表已覆盖）；专项探针 trigger found（rect right<=1 offscreen-left 豁免）、panel opened、swatch/字体栈运行时恒等、consoleErrors=401 资源面口径（raw=w165-theme-readings.json）。
 - 163 轮（451621e760）读数存档：未及落章脸即推进，h2Rebuild/touch/theme/事故（pkill 误杀首轮扫描复跑成）全录 wave163Interim+RAW w163-*。
 - 纪律：判据未放宽；375 总 PASS 放行权归 UX 总审 ses_e02192ce8ffeOClSfwe4Iq6QAK 不自签；vitest 基线 486 files/3583 tests（L0 亲验）；pkill 不与全扫并发。
+
+## wave-166 consoleErrors 补证 @40bc5af6d3（端口9122/entry index-Dzqdzj0R.js）
+- 165 活会话（whoami==200）主题探针已录 11 条 401 资源错误 ⇒ 非 cookie 早衰伪像。
+- 166 本轮逐 URL 本体：10 条业务端点（employee-stats/employees?limit=100/run-activity/runs×3/tasks/workbench queue|summary|timeseries）各 1 条 + 1 条 /auth/whoami（本轮 cookie 再度早衰，如实注记；总数 11 与 165 等量）。
+- 无风暴线性增长、无页面 JS error ⇒ 归属 residual401Source156「鉴权外业务端点面」同族（域层凭据缺口归 ui-b/L4）；console 门未假绿——错误真实入账非抹平。
+- RAW=w166-console-errors-166.json + assert375/ce-overview-375-166.png。
