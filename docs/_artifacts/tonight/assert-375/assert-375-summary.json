@@ -26,7 +26,7 @@
    "mainTextLen": 201,
    "navError": null,
    "png": "access-375.png",
-   "pngBytes": 45044,
+   "pngBytes": 45093,
    "pngW": 375,
    "pngH": 812,
    "elementsChecked": 141,
@@ -50,15 +50,22 @@
      "mainTextLen": 201,
      "navError": null,
      "snapshot158": "wave-155/156 前态（活会话两路 PASS 0379ae9f4e 系与更早 NM 链）"
+    },
+    {
+     "verdict": "PASS",
+     "mainTextLen": 201,
+     "navError": null,
+     "rerollFace": "0cc5818aba",
+     "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+     "snapshot161": "wave-158/160 态（脸 0cc5818aba/7a47010b35 系）"
     }
    ],
-   "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
-   "whoami160": {
+   "rerollFace": "a9f802dbe9",
+   "rerunAt": "2026-11-22 22:27 全表 51 路复扫固化（wave-161）",
+   "whoami161": {
     "status": 200,
-    "at_local": "2026-11-22 22:14:53 +0800",
-    "ref": "w160 top-level",
-    "prior": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
+    "at": "2026-11-22T14:31:04.624Z",
+    "note": "起跑前置显式码+时刻，覆盖本轮全表/触点/storm 同会话"
    }
   },
   {
@@ -70,7 +77,7 @@
    "mainTextLen": 344,
    "navError": null,
    "png": "approvals-375.png",
-   "pngBytes": 56649,
+   "pngBytes": 56446,
    "pngW": 375,
    "pngH": 812,
    "elementsChecked": 201,
@@ -95,6 +102,14 @@
      "navError": null,
      "rerollFace": "6edcba4d",
      "snapshot158": "wave-155/156 前态（活会话两路 PASS 0379ae9f4e 系与更早 NM 链）"
+    },
+    {
+     "verdict": "PASS",
+     "mainTextLen": 344,
+     "navError": null,
+     "rerollFace": "0cc5818aba",
+     "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+     "snapshot161": "wave-158/160 态（脸 0cc5818aba/7a47010b35 系）"
     }
    ],
    "firstRunRow": {
@@ -126,13 +141,12 @@
      "fontBypass": false
     }
    },
-   "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
-   "whoami160": {
+   "rerollFace": "a9f802dbe9",
+   "rerunAt": "2026-11-22 22:27 全表 51 路复扫固化（wave-161）",
+   "whoami161": {
     "status": 200,
-    "at_local": "2026-11-22 22:14:53 +0800",
-    "ref": "w160 top-level",
-    "prior": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
+    "at": "2026-11-22T14:31:04.624Z",
+    "note": "起跑前置显式码+时刻，覆盖本轮全表/触点/storm 同会话"
    }
   },
   {
@@ -144,7 +158,7 @@
    "mainTextLen": 530,
    "navError": null,
    "png": "approvals-tab-history-375.png",
-   "pngBytes": 84957,
+   "pngBytes": 84917,
    "pngW": 375,
    "pngH": 812,
    "elementsChecked": 239,
@@ -169,6 +183,14 @@
      "navError": null,
      "rerollFace": "6edcba4d",
      "snapshot158": "wave-155/156 前态（活会话两路 PASS 0379ae9f4e 系与更早 NM 链）"
+    },
+    {
+     "verdict": "PASS",
+     "mainTextLen": 530,
+     "navError": null,
+     "rerollFace": "0cc5818aba",
+     "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+     "snapshot161": "wave-158/160 态（脸 0cc5818aba/7a47010b35 系）"
     }
    ],
    "firstRunRow": {
@@ -200,13 +222,12 @@
      "fontBypass": false
     }
    },
-   "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
-   "whoami160": {
+   "rerollFace": "a9f802dbe9",
+   "rerunAt": "2026-11-22 22:27 全表 51 路复扫固化（wave-161）",
+   "whoami161": {
     "status": 200,
-    "at_local": "2026-11-22 22:14:53 +0800",
-    "ref": "w160 top-level",
-    "prior": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
+    "at": "2026-11-22T14:31:04.624Z",
+    "note": "起跑前置显式码+时刻，覆盖本轮全表/触点/storm 同会话"
    }
   },
   {
@@ -218,7 +239,7 @@
    "mainTextLen": 344,
    "navError": null,
    "png": "approvals-tab-mine-375.png",
-   "pngBytes": 56502,
+   "pngBytes": 56591,
    "pngW": 375,
    "pngH": 812,
    "elementsChecked": 201,
@@ -243,6 +264,14 @@
      "navError": null,
      "rerollFace": "6edcba4d",
      "snapshot158": "wave-155/156 前态（活会话两路 PASS 0379ae9f4e 系与更早 NM 链）"
+    },
+    {
+     "verdict": "PASS",
+     "mainTextLen": 344,
+     "navError": null,
+     "rerollFace": "0cc5818aba",
+     "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+     "snapshot161": "wave-158/160 态（脸 0cc5818aba/7a47010b35 系）"
     }
    ],
    "firstRunRow": {
@@ -274,13 +303,12 @@
      "fontBypass": false
     }
    },
-   "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
-   "whoami160": {
+   "rerollFace": "a9f802dbe9",
+   "rerunAt": "2026-11-22 22:27 全表 51 路复扫固化（wave-161）",
+   "whoami161": {
     "status": 200,
-    "at_local": "2026-11-22 22:14:53 +0800",
-    "ref": "w160 top-level",
-    "prior": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
+    "at": "2026-11-22T14:31:04.624Z",
+    "note": "起跑前置显式码+时刻，覆盖本轮全表/触点/storm 同会话"
    }
   },
   {
@@ -292,7 +320,7 @@
    "mainTextLen": 344,
    "navError": null,
    "png": "approvals-tab-pending-view-mine-375.png",
-   "pngBytes": 57261,
+   "pngBytes": 56369,
    "pngW": 375,
    "pngH": 812,
    "elementsChecked": 201,
@@ -317,6 +345,14 @@
      "navError": null,
      "rerollFace": "6edcba4d",
      "snapshot158": "wave-155/156 前态（活会话两路 PASS 0379ae9f4e 系与更早 NM 链）"
+    },
+    {
+     "verdict": "PASS",
+     "mainTextLen": 344,
+     "navError": null,
+     "rerollFace": "0cc5818aba",
+     "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+     "snapshot161": "wave-158/160 态（脸 0cc5818aba/7a47010b35 系）"
     }
    ],
    "firstRunRow": {
@@ -348,13 +384,12 @@
      "fontBypass": false
     }
    },
-   "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
-   "whoami160": {
+   "rerollFace": "a9f802dbe9",
+   "rerunAt": "2026-11-22 22:27 全表 51 路复扫固化（wave-161）",
+   "whoami161": {
     "status": 200,
-    "at_local": "2026-11-22 22:14:53 +0800",
-    "ref": "w160 top-level",
-    "prior": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
+    "at": "2026-11-22T14:31:04.624Z",
+    "note": "起跑前置显式码+时刻，覆盖本轮全表/触点/storm 同会话"
    }
   },
   {
@@ -366,7 +401,7 @@
    "mainTextLen": 344,
    "navError": null,
    "png": "approvals-tab-pending-view-release-375.png",
-   "pngBytes": 56792,
+   "pngBytes": 56620,
    "pngW": 375,
    "pngH": 812,
    "elementsChecked": 201,
@@ -391,6 +426,14 @@
      "navError": null,
      "rerollFace": "6edcba4d",
      "snapshot158": "wave-155/156 前态（活会话两路 PASS 0379ae9f4e 系与更早 NM 链）"
+    },
+    {
+     "verdict": "PASS",
+     "mainTextLen": 344,
+     "navError": null,
+     "rerollFace": "0cc5818aba",
+     "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+     "snapshot161": "wave-158/160 态（脸 0cc5818aba/7a47010b35 系）"
     }
    ],
    "firstRunRow": {
@@ -422,13 +465,12 @@
      "fontBypass": false
     }
    },
-   "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
-   "whoami160": {
+   "rerollFace": "a9f802dbe9",
+   "rerunAt": "2026-11-22 22:27 全表 51 路复扫固化（wave-161）",
+   "whoami161": {
     "status": 200,
-    "at_local": "2026-11-22 22:14:53 +0800",
-    "ref": "w160 top-level",
-    "prior": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
+    "at": "2026-11-22T14:31:04.624Z",
+    "note": "起跑前置显式码+时刻，覆盖本轮全表/触点/storm 同会话"
    }
   },
   {
@@ -440,7 +482,7 @@
    "mainTextLen": 344,
    "navError": null,
    "png": "approvals-tab-policy-375.png",
-   "pngBytes": 56842,
+   "pngBytes": 56368,
    "pngW": 375,
    "pngH": 812,
    "elementsChecked": 201,
@@ -465,6 +507,14 @@
      "navError": null,
      "rerollFace": "6edcba4d",
      "snapshot158": "wave-155/156 前态（活会话两路 PASS 0379ae9f4e 系与更早 NM 链）"
+    },
+    {
+     "verdict": "PASS",
+     "mainTextLen": 344,
+     "navError": null,
+     "rerollFace": "0cc5818aba",
+     "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+     "snapshot161": "wave-158/160 态（脸 0cc5818aba/7a47010b35 系）"
     }
    ],
    "firstRunRow": {
@@ -496,13 +546,12 @@
      "fontBypass": false
     }
    },
-   "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
-   "whoami160": {
+   "rerollFace": "a9f802dbe9",
+   "rerunAt": "2026-11-22 22:27 全表 51 路复扫固化（wave-161）",
+   "whoami161": {
     "status": 200,
-    "at_local": "2026-11-22 22:14:53 +0800",
-    "ref": "w160 top-level",
-    "prior": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
+    "at": "2026-11-22T14:31:04.624Z",
+    "note": "起跑前置显式码+时刻，覆盖本轮全表/触点/storm 同会话"
    }
   },
   {
@@ -514,7 +563,7 @@
    "mainTextLen": 344,
    "navError": null,
    "png": "approvals-tab-release-375.png",
-   "pngBytes": 56635,
+   "pngBytes": 56523,
    "pngW": 375,
    "pngH": 812,
    "elementsChecked": 201,
@@ -539,6 +588,14 @@
      "navError": null,
      "rerollFace": "6edcba4d",
      "snapshot158": "wave-155/156 前态（活会话两路 PASS 0379ae9f4e 系与更早 NM 链）"
+    },
+    {
+     "verdict": "PASS",
+     "mainTextLen": 344,
+     "navError": null,
+     "rerollFace": "0cc5818aba",
+     "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+     "snapshot161": "wave-158/160 态（脸 0cc5818aba/7a47010b35 系）"
     }
    ],
    "firstRunRow": {
@@ -570,13 +627,12 @@
      "fontBypass": false
     }
    },
-   "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
-   "whoami160": {
+   "rerollFace": "a9f802dbe9",
+   "rerunAt": "2026-11-22 22:27 全表 51 路复扫固化（wave-161）",
+   "whoami161": {
     "status": 200,
-    "at_local": "2026-11-22 22:14:53 +0800",
-    "ref": "w160 top-level",
-    "prior": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
+    "at": "2026-11-22T14:31:04.624Z",
+    "note": "起跑前置显式码+时刻，覆盖本轮全表/触点/storm 同会话"
    }
   },
   {
@@ -612,15 +668,22 @@
      "mainTextLen": 673,
      "navError": null,
      "snapshot158": "wave-155/156 前态（活会话两路 PASS 0379ae9f4e 系与更早 NM 链）"
+    },
+    {
+     "verdict": "PASS",
+     "mainTextLen": 673,
+     "navError": null,
+     "rerollFace": "0cc5818aba",
+     "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+     "snapshot161": "wave-158/160 态（脸 0cc5818aba/7a47010b35 系）"
     }
    ],
-   "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
-   "whoami160": {
+   "rerollFace": "a9f802dbe9",
+   "rerunAt": "2026-11-22 22:27 全表 51 路复扫固化（wave-161）",
+   "whoami161": {
     "status": 200,
-    "at_local": "2026-11-22 22:14:53 +0800",
-    "ref": "w160 top-level",
-    "prior": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
+    "at": "2026-11-22T14:31:04.624Z",
+    "note": "起跑前置显式码+时刻，覆盖本轮全表/触点/storm 同会话"
    }
   },
   {
@@ -632,7 +695,7 @@
    "mainTextLen": 355,
    "navError": null,
    "png": "capabilities-375.png",
-   "pngBytes": 64208,
+   "pngBytes": 64150,
    "pngW": 375,
    "pngH": 812,
    "elementsChecked": 158,
@@ -656,15 +719,22 @@
      "mainTextLen": 355,
      "navError": null,
      "snapshot158": "wave-155/156 前态（活会话两路 PASS 0379ae9f4e 系与更早 NM 链）"
+    },
+    {
+     "verdict": "PASS",
+     "mainTextLen": 355,
+     "navError": null,
+     "rerollFace": "0cc5818aba",
+     "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+     "snapshot161": "wave-158/160 态（脸 0cc5818aba/7a47010b35 系）"
     }
    ],
-   "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
-   "whoami160": {
+   "rerollFace": "a9f802dbe9",
+   "rerunAt": "2026-11-22 22:27 全表 51 路复扫固化（wave-161）",
+   "whoami161": {
     "status": 200,
-    "at_local": "2026-11-22 22:14:53 +0800",
-    "ref": "w160 top-level",
-    "prior": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
+    "at": "2026-11-22T14:31:04.624Z",
+    "note": "起跑前置显式码+时刻，覆盖本轮全表/触点/storm 同会话"
    }
   },
   {
@@ -676,7 +746,7 @@
    "mainTextLen": 200,
    "navError": null,
    "png": "capabilities-tab-channels-375.png",
-   "pngBytes": 51245,
+   "pngBytes": 51398,
    "pngW": 375,
    "pngH": 812,
    "elementsChecked": 150,
@@ -758,6 +828,14 @@
      "rerollFace": "0379ae9f4e",
      "rerunAt": "2026-11-22 20:45:06",
      "snapshot158": "wave-155/156 前态（活会话两路 PASS 0379ae9f4e 系与更早 NM 链）"
+    },
+    {
+     "verdict": "PASS",
+     "mainTextLen": 200,
+     "navError": null,
+     "rerollFace": "0cc5818aba",
+     "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+     "snapshot161": "wave-158/160 态（脸 0cc5818aba/7a47010b35 系）"
     }
    ],
    "firstRunRow": {
@@ -775,13 +853,12 @@
     "fontBypass": false,
     "verdict": "NOT_MEASURED"
    },
-   "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
-   "whoami160": {
+   "rerollFace": "a9f802dbe9",
+   "rerunAt": "2026-11-22 22:27 全表 51 路复扫固化（wave-161）",
+   "whoami161": {
     "status": 200,
-    "at_local": "2026-11-22 22:14:53 +0800",
-    "ref": "w160 top-level",
-    "prior": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
+    "at": "2026-11-22T14:31:04.624Z",
+    "note": "起跑前置显式码+时刻，覆盖本轮全表/触点/storm 同会话"
    }
   },
   {
@@ -793,7 +870,7 @@
    "mainTextLen": 178,
    "navError": null,
    "png": "capabilities-tab-models-375.png",
-   "pngBytes": 44089,
+   "pngBytes": 44582,
    "pngW": 375,
    "pngH": 812,
    "elementsChecked": 118,
@@ -817,6 +894,14 @@
      "mainTextLen": 178,
      "navError": null,
      "snapshot158": "wave-155/156 前态（活会话两路 PASS 0379ae9f4e 系与更早 NM 链）"
+    },
+    {
+     "verdict": "PASS",
+     "mainTextLen": 178,
+     "navError": null,
+     "rerollFace": "0cc5818aba",
+     "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+     "snapshot161": "wave-158/160 态（脸 0cc5818aba/7a47010b35 系）"
     }
    ],
    "firstRunRow": {
@@ -831,13 +916,12 @@
     "contentFit": true,
     "navError": null
    },
-   "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
-   "whoami160": {
+   "rerollFace": "a9f802dbe9",
+   "rerunAt": "2026-11-22 22:27 全表 51 路复扫固化（wave-161）",
+   "whoami161": {
     "status": 200,
-    "at_local": "2026-11-22 22:14:53 +0800",
-    "ref": "w160 top-level",
-    "prior": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
+    "at": "2026-11-22T14:31:04.624Z",
+    "note": "起跑前置显式码+时刻，覆盖本轮全表/触点/storm 同会话"
    }
   },
   {
@@ -849,7 +933,7 @@
    "mainTextLen": 390,
    "navError": null,
    "png": "capabilities-tab-tools-375.png",
-   "pngBytes": 73078,
+   "pngBytes": 72809,
    "pngW": 375,
    "pngH": 812,
    "elementsChecked": 176,
@@ -873,15 +957,22 @@
      "mainTextLen": 390,
      "navError": null,
      "snapshot158": "wave-155/156 前态（活会话两路 PASS 0379ae9f4e 系与更早 NM 链）"
+    },
+    {
+     "verdict": "PASS",
+     "mainTextLen": 390,
+     "navError": null,
+     "rerollFace": "0cc5818aba",
+     "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+     "snapshot161": "wave-158/160 态（脸 0cc5818aba/7a47010b35 系）"
     }
    ],
-   "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
-   "whoami160": {
+   "rerollFace": "a9f802dbe9",
+   "rerunAt": "2026-11-22 22:27 全表 51 路复扫固化（wave-161）",
+   "whoami161": {
     "status": 200,
-    "at_local": "2026-11-22 22:14:53 +0800",
-    "ref": "w160 top-level",
-    "prior": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
+    "at": "2026-11-22T14:31:04.624Z",
+    "note": "起跑前置显式码+时刻，覆盖本轮全表/触点/storm 同会话"
    }
   },
   {
@@ -918,6 +1009,14 @@
      "navError": null,
      "rerollFace": "6edcba4d",
      "snapshot158": "wave-155/156 前态（活会话两路 PASS 0379ae9f4e 系与更早 NM 链）"
+    },
+    {
+     "verdict": "PASS",
+     "mainTextLen": 296,
+     "navError": null,
+     "rerollFace": "0cc5818aba",
+     "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+     "snapshot161": "wave-158/160 态（脸 0cc5818aba/7a47010b35 系）"
     }
    ],
    "firstRunRow": {
@@ -949,13 +1048,12 @@
      "fontBypass": false
     }
    },
-   "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
-   "whoami160": {
+   "rerollFace": "a9f802dbe9",
+   "rerunAt": "2026-11-22 22:27 全表 51 路复扫固化（wave-161）",
+   "whoami161": {
     "status": 200,
-    "at_local": "2026-11-22 22:14:53 +0800",
-    "ref": "w160 top-level",
-    "prior": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
+    "at": "2026-11-22T14:31:04.624Z",
+    "note": "起跑前置显式码+时刻，覆盖本轮全表/触点/storm 同会话"
    }
   },
   {
@@ -967,7 +1065,7 @@
    "mainTextLen": 228,
    "navError": null,
    "png": "employees-tab-matrix-375.png",
-   "pngBytes": 54208,
+   "pngBytes": 54309,
    "pngW": 375,
    "pngH": 812,
    "elementsChecked": 141,
@@ -992,15 +1090,22 @@
      "navError": null,
      "rerollFace": "eb697ca5d2",
      "snapshot158": "wave-155/156 前态（活会话两路 PASS 0379ae9f4e 系与更早 NM 链）"
+    },
+    {
+     "verdict": "PASS",
+     "mainTextLen": 228,
+     "navError": null,
+     "rerollFace": "0cc5818aba",
+     "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+     "snapshot161": "wave-158/160 态（脸 0cc5818aba/7a47010b35 系）"
     }
    ],
-   "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
-   "whoami160": {
+   "rerollFace": "a9f802dbe9",
+   "rerunAt": "2026-11-22 22:27 全表 51 路复扫固化（wave-161）",
+   "whoami161": {
     "status": 200,
-    "at_local": "2026-11-22 22:14:53 +0800",
-    "ref": "w160 top-level",
-    "prior": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
+    "at": "2026-11-22T14:31:04.624Z",
+    "note": "起跑前置显式码+时刻，覆盖本轮全表/触点/storm 同会话"
    }
   },
   {
@@ -1012,10 +1117,10 @@
    "mainTextLen": 42,
    "navError": null,
    "png": "employees-employeeId-375.png",
-   "pngBytes": 36305,
+   "pngBytes": 23039,
    "pngW": 375,
    "pngH": 812,
-   "elementsChecked": 116,
+   "elementsChecked": 102,
    "offscreenLeft": 62,
    "expandApplied": true,
    "scrollersExpanded": 0,
@@ -1036,15 +1141,22 @@
      "mainTextLen": 42,
      "navError": null,
      "snapshot158": "wave-155/156 前态（活会话两路 PASS 0379ae9f4e 系与更早 NM 链）"
+    },
+    {
+     "verdict": "PASS",
+     "mainTextLen": 42,
+     "navError": null,
+     "rerollFace": "0cc5818aba",
+     "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+     "snapshot161": "wave-158/160 态（脸 0cc5818aba/7a47010b35 系）"
     }
    ],
-   "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
-   "whoami160": {
+   "rerollFace": "a9f802dbe9",
+   "rerunAt": "2026-11-22 22:27 全表 51 路复扫固化（wave-161）",
+   "whoami161": {
     "status": 200,
-    "at_local": "2026-11-22 22:14:53 +0800",
-    "ref": "w160 top-level",
-    "prior": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
+    "at": "2026-11-22T14:31:04.624Z",
+    "note": "起跑前置显式码+时刻，覆盖本轮全表/触点/storm 同会话"
    }
   },
   {
@@ -1056,10 +1168,10 @@
    "mainTextLen": 42,
    "navError": null,
    "png": "employees-employeeId-zone-config-375.png",
-   "pngBytes": 36507,
+   "pngBytes": 36399,
    "pngW": 375,
    "pngH": 812,
-   "elementsChecked": 116,
+   "elementsChecked": 102,
    "offscreenLeft": 62,
    "expandApplied": true,
    "scrollersExpanded": 0,
@@ -1080,15 +1192,22 @@
      "mainTextLen": 42,
      "navError": null,
      "snapshot158": "wave-155/156 前态（活会话两路 PASS 0379ae9f4e 系与更早 NM 链）"
+    },
+    {
+     "verdict": "PASS",
+     "mainTextLen": 42,
+     "navError": null,
+     "rerollFace": "0cc5818aba",
+     "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+     "snapshot161": "wave-158/160 态（脸 0cc5818aba/7a47010b35 系）"
     }
    ],
-   "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
-   "whoami160": {
+   "rerollFace": "a9f802dbe9",
+   "rerunAt": "2026-11-22 22:27 全表 51 路复扫固化（wave-161）",
+   "whoami161": {
     "status": 200,
-    "at_local": "2026-11-22 22:14:53 +0800",
-    "ref": "w160 top-level",
-    "prior": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
+    "at": "2026-11-22T14:31:04.624Z",
+    "note": "起跑前置显式码+时刻，覆盖本轮全表/触点/storm 同会话"
    }
   },
   {
@@ -1100,10 +1219,10 @@
    "mainTextLen": 42,
    "navError": null,
    "png": "employees-employeeId-zone-evidence-375.png",
-   "pngBytes": 36990,
+   "pngBytes": 36544,
    "pngW": 375,
    "pngH": 812,
-   "elementsChecked": 116,
+   "elementsChecked": 102,
    "offscreenLeft": 62,
    "expandApplied": true,
    "scrollersExpanded": 0,
@@ -1124,15 +1243,22 @@
      "mainTextLen": 42,
      "navError": null,
      "snapshot158": "wave-155/156 前态（活会话两路 PASS 0379ae9f4e 系与更早 NM 链）"
+    },
+    {
+     "verdict": "PASS",
+     "mainTextLen": 42,
+     "navError": null,
+     "rerollFace": "0cc5818aba",
+     "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+     "snapshot161": "wave-158/160 态（脸 0cc5818aba/7a47010b35 系）"
     }
    ],
-   "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
-   "whoami160": {
+   "rerollFace": "a9f802dbe9",
+   "rerunAt": "2026-11-22 22:27 全表 51 路复扫固化（wave-161）",
+   "whoami161": {
     "status": 200,
-    "at_local": "2026-11-22 22:14:53 +0800",
-    "ref": "w160 top-level",
-    "prior": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
+    "at": "2026-11-22T14:31:04.624Z",
+    "note": "起跑前置显式码+时刻，覆盖本轮全表/触点/storm 同会话"
    }
   },
   {
@@ -1144,7 +1270,7 @@
    "mainTextLen": 42,
    "navError": null,
    "png": "employees-employeeId-zone-runs-375.png",
-   "pngBytes": 36546,
+   "pngBytes": 36251,
    "pngW": 375,
    "pngH": 812,
    "elementsChecked": 116,
@@ -1169,6 +1295,14 @@
      "navError": null,
      "rerollFace": "d2cc49fe",
      "snapshot158": "wave-155/156 前态（活会话两路 PASS 0379ae9f4e 系与更早 NM 链）"
+    },
+    {
+     "verdict": "PASS",
+     "mainTextLen": 42,
+     "navError": null,
+     "rerollFace": "0cc5818aba",
+     "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+     "snapshot161": "wave-158/160 态（脸 0cc5818aba/7a47010b35 系）"
     }
    ],
    "firstRunRow": {
@@ -1185,13 +1319,12 @@
     "contentFit": true,
     "navError": null
    },
-   "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
-   "whoami160": {
+   "rerollFace": "a9f802dbe9",
+   "rerunAt": "2026-11-22 22:27 全表 51 路复扫固化（wave-161）",
+   "whoami161": {
     "status": 200,
-    "at_local": "2026-11-22 22:14:53 +0800",
-    "ref": "w160 top-level",
-    "prior": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
+    "at": "2026-11-22T14:31:04.624Z",
+    "note": "起跑前置显式码+时刻，覆盖本轮全表/触点/storm 同会话"
    }
   },
   {
@@ -1203,10 +1336,10 @@
    "mainTextLen": 42,
    "navError": null,
    "png": "employees-employeeId-zone-tasks-375.png",
-   "pngBytes": 36652,
+   "pngBytes": 23214,
    "pngW": 375,
    "pngH": 812,
-   "elementsChecked": 116,
+   "elementsChecked": 102,
    "offscreenLeft": 62,
    "expandApplied": true,
    "scrollersExpanded": 0,
@@ -1227,15 +1360,22 @@
      "mainTextLen": 143,
      "navError": null,
      "snapshot158": "wave-155/156 前态（活会话两路 PASS 0379ae9f4e 系与更早 NM 链）"
+    },
+    {
+     "verdict": "PASS",
+     "mainTextLen": 42,
+     "navError": null,
+     "rerollFace": "0cc5818aba",
+     "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+     "snapshot161": "wave-158/160 态（脸 0cc5818aba/7a47010b35 系）"
     }
    ],
-   "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
-   "whoami160": {
+   "rerollFace": "a9f802dbe9",
+   "rerunAt": "2026-11-22 22:27 全表 51 路复扫固化（wave-161）",
+   "whoami161": {
     "status": 200,
-    "at_local": "2026-11-22 22:14:53 +0800",
-    "ref": "w160 top-level",
-    "prior": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
+    "at": "2026-11-22T14:31:04.624Z",
+    "note": "起跑前置显式码+时刻，覆盖本轮全表/触点/storm 同会话"
    }
   },
   {
@@ -1247,7 +1387,7 @@
    "mainTextLen": 154,
    "navError": null,
    "png": "identity-375.png",
-   "pngBytes": 38695,
+   "pngBytes": 38460,
    "pngW": 375,
    "pngH": 812,
    "elementsChecked": 128,
@@ -1271,15 +1411,22 @@
      "mainTextLen": 154,
      "navError": null,
      "snapshot158": "wave-155/156 前态（活会话两路 PASS 0379ae9f4e 系与更早 NM 链）"
+    },
+    {
+     "verdict": "PASS",
+     "mainTextLen": 154,
+     "navError": null,
+     "rerollFace": "0cc5818aba",
+     "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+     "snapshot161": "wave-158/160 态（脸 0cc5818aba/7a47010b35 系）"
     }
    ],
-   "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
-   "whoami160": {
+   "rerollFace": "a9f802dbe9",
+   "rerunAt": "2026-11-22 22:27 全表 51 路复扫固化（wave-161）",
+   "whoami161": {
     "status": 200,
-    "at_local": "2026-11-22 22:14:53 +0800",
-    "ref": "w160 top-level",
-    "prior": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
+    "at": "2026-11-22T14:31:04.624Z",
+    "note": "起跑前置显式码+时刻，覆盖本轮全表/触点/storm 同会话"
    }
   },
   {
@@ -1291,7 +1438,7 @@
    "mainTextLen": 154,
    "navError": null,
    "png": "identity-tab-admins-375.png",
-   "pngBytes": 38666,
+   "pngBytes": 38465,
    "pngW": 375,
    "pngH": 812,
    "elementsChecked": 128,
@@ -1315,15 +1462,22 @@
      "mainTextLen": 154,
      "navError": null,
      "snapshot158": "wave-155/156 前态（活会话两路 PASS 0379ae9f4e 系与更早 NM 链）"
+    },
+    {
+     "verdict": "PASS",
+     "mainTextLen": 154,
+     "navError": null,
+     "rerollFace": "0cc5818aba",
+     "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+     "snapshot161": "wave-158/160 态（脸 0cc5818aba/7a47010b35 系）"
     }
    ],
-   "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
-   "whoami160": {
+   "rerollFace": "a9f802dbe9",
+   "rerunAt": "2026-11-22 22:27 全表 51 路复扫固化（wave-161）",
+   "whoami161": {
     "status": 200,
-    "at_local": "2026-11-22 22:14:53 +0800",
-    "ref": "w160 top-level",
-    "prior": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
+    "at": "2026-11-22T14:31:04.624Z",
+    "note": "起跑前置显式码+时刻，覆盖本轮全表/触点/storm 同会话"
    }
   },
   {
@@ -1335,7 +1489,7 @@
    "mainTextLen": 154,
    "navError": null,
    "png": "identity-tab-binding-375.png",
-   "pngBytes": 38285,
+   "pngBytes": 39042,
    "pngW": 375,
    "pngH": 812,
    "elementsChecked": 128,
@@ -1359,15 +1513,22 @@
      "mainTextLen": 154,
      "navError": null,
      "snapshot158": "wave-155/156 前态（活会话两路 PASS 0379ae9f4e 系与更早 NM 链）"
+    },
+    {
+     "verdict": "PASS",
+     "mainTextLen": 154,
+     "navError": null,
+     "rerollFace": "0cc5818aba",
+     "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+     "snapshot161": "wave-158/160 态（脸 0cc5818aba/7a47010b35 系）"
     }
    ],
-   "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
-   "whoami160": {
+   "rerollFace": "a9f802dbe9",
+   "rerunAt": "2026-11-22 22:27 全表 51 路复扫固化（wave-161）",
+   "whoami161": {
     "status": 200,
-    "at_local": "2026-11-22 22:14:53 +0800",
-    "ref": "w160 top-level",
-    "prior": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
+    "at": "2026-11-22T14:31:04.624Z",
+    "note": "起跑前置显式码+时刻，覆盖本轮全表/触点/storm 同会话"
    }
   },
   {
@@ -1379,7 +1540,7 @@
    "mainTextLen": 154,
    "navError": null,
    "png": "identity-tab-checks-375.png",
-   "pngBytes": 39066,
+   "pngBytes": 38658,
    "pngW": 375,
    "pngH": 812,
    "elementsChecked": 128,
@@ -1403,15 +1564,22 @@
      "mainTextLen": 154,
      "navError": null,
      "snapshot158": "wave-155/156 前态（活会话两路 PASS 0379ae9f4e 系与更早 NM 链）"
+    },
+    {
+     "verdict": "PASS",
+     "mainTextLen": 154,
+     "navError": null,
+     "rerollFace": "0cc5818aba",
+     "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+     "snapshot161": "wave-158/160 态（脸 0cc5818aba/7a47010b35 系）"
     }
    ],
-   "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
-   "whoami160": {
+   "rerollFace": "a9f802dbe9",
+   "rerunAt": "2026-11-22 22:27 全表 51 路复扫固化（wave-161）",
+   "whoami161": {
     "status": 200,
-    "at_local": "2026-11-22 22:14:53 +0800",
-    "ref": "w160 top-level",
-    "prior": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
+    "at": "2026-11-22T14:31:04.624Z",
+    "note": "起跑前置显式码+时刻，覆盖本轮全表/触点/storm 同会话"
    }
   },
   {
@@ -1447,15 +1615,22 @@
      "mainTextLen": 143,
      "navError": null,
      "snapshot158": "wave-155/156 前态（活会话两路 PASS 0379ae9f4e 系与更早 NM 链）"
+    },
+    {
+     "verdict": "PASS",
+     "mainTextLen": 143,
+     "navError": null,
+     "rerollFace": "0cc5818aba",
+     "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+     "snapshot161": "wave-158/160 态（脸 0cc5818aba/7a47010b35 系）"
     }
    ],
-   "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
-   "whoami160": {
+   "rerollFace": "a9f802dbe9",
+   "rerunAt": "2026-11-22 22:27 全表 51 路复扫固化（wave-161）",
+   "whoami161": {
     "status": 200,
-    "at_local": "2026-11-22 22:14:53 +0800",
-    "ref": "w160 top-level",
-    "prior": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
+    "at": "2026-11-22T14:31:04.624Z",
+    "note": "起跑前置显式码+时刻，覆盖本轮全表/触点/storm 同会话"
    }
   },
   {
@@ -1467,7 +1642,7 @@
    "mainTextLen": 154,
    "navError": null,
    "png": "identity-tab-people-view-admins-375.png",
-   "pngBytes": 38722,
+   "pngBytes": 38739,
    "pngW": 375,
    "pngH": 812,
    "elementsChecked": 128,
@@ -1491,15 +1666,22 @@
      "mainTextLen": 154,
      "navError": null,
      "snapshot158": "wave-155/156 前态（活会话两路 PASS 0379ae9f4e 系与更早 NM 链）"
+    },
+    {
+     "verdict": "PASS",
+     "mainTextLen": 154,
+     "navError": null,
+     "rerollFace": "0cc5818aba",
+     "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+     "snapshot161": "wave-158/160 态（脸 0cc5818aba/7a47010b35 系）"
     }
    ],
-   "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
-   "whoami160": {
+   "rerollFace": "a9f802dbe9",
+   "rerunAt": "2026-11-22 22:27 全表 51 路复扫固化（wave-161）",
+   "whoami161": {
     "status": 200,
-    "at_local": "2026-11-22 22:14:53 +0800",
-    "ref": "w160 top-level",
-    "prior": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
+    "at": "2026-11-22T14:31:04.624Z",
+    "note": "起跑前置显式码+时刻，覆盖本轮全表/触点/storm 同会话"
    }
   },
   {
@@ -1511,7 +1693,7 @@
    "mainTextLen": 201,
    "navError": null,
    "png": "identity-tab-roles-375.png",
-   "pngBytes": 44967,
+   "pngBytes": 45042,
    "pngW": 375,
    "pngH": 812,
    "elementsChecked": 141,
@@ -1535,15 +1717,22 @@
      "mainTextLen": 201,
      "navError": null,
      "snapshot158": "wave-155/156 前态（活会话两路 PASS 0379ae9f4e 系与更早 NM 链）"
+    },
+    {
+     "verdict": "PASS",
+     "mainTextLen": 201,
+     "navError": null,
+     "rerollFace": "0cc5818aba",
+     "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+     "snapshot161": "wave-158/160 态（脸 0cc5818aba/7a47010b35 系）"
     }
    ],
-   "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
-   "whoami160": {
+   "rerollFace": "a9f802dbe9",
+   "rerunAt": "2026-11-22 22:27 全表 51 路复扫固化（wave-161）",
+   "whoami161": {
     "status": 200,
-    "at_local": "2026-11-22 22:14:53 +0800",
-    "ref": "w160 top-level",
-    "prior": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
+    "at": "2026-11-22T14:31:04.624Z",
+    "note": "起跑前置显式码+时刻，覆盖本轮全表/触点/storm 同会话"
    }
   },
   {
@@ -1555,7 +1744,7 @@
    "mainTextLen": 154,
    "navError": null,
    "png": "identity-tab-tenant-375.png",
-   "pngBytes": 38740,
+   "pngBytes": 38727,
    "pngW": 375,
    "pngH": 812,
    "elementsChecked": 128,
@@ -1579,15 +1768,22 @@
      "mainTextLen": 154,
      "navError": null,
      "snapshot158": "wave-155/156 前态（活会话两路 PASS 0379ae9f4e 系与更早 NM 链）"
+    },
+    {
+     "verdict": "PASS",
+     "mainTextLen": 154,
+     "navError": null,
+     "rerollFace": "0cc5818aba",
+     "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+     "snapshot161": "wave-158/160 态（脸 0cc5818aba/7a47010b35 系）"
     }
    ],
-   "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
-   "whoami160": {
+   "rerollFace": "a9f802dbe9",
+   "rerunAt": "2026-11-22 22:27 全表 51 路复扫固化（wave-161）",
+   "whoami161": {
     "status": 200,
-    "at_local": "2026-11-22 22:14:53 +0800",
-    "ref": "w160 top-level",
-    "prior": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
+    "at": "2026-11-22T14:31:04.624Z",
+    "note": "起跑前置显式码+时刻，覆盖本轮全表/触点/storm 同会话"
    }
   },
   {
@@ -1599,7 +1795,7 @@
    "mainTextLen": 533,
    "navError": null,
    "png": "knowledge-375.png",
-   "pngBytes": 61362,
+   "pngBytes": 60836,
    "pngW": 375,
    "pngH": 812,
    "elementsChecked": 178,
@@ -1658,6 +1854,14 @@
      "navError": null,
      "rerollFace": "645e86ef00",
      "snapshot158": "wave-155/156 前态（活会话两路 PASS 0379ae9f4e 系与更早 NM 链）"
+    },
+    {
+     "verdict": "PASS",
+     "mainTextLen": 533,
+     "navError": null,
+     "rerollFace": "0cc5818aba",
+     "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+     "snapshot161": "wave-158/160 态（脸 0cc5818aba/7a47010b35 系）"
     }
    ],
    "firstRunRow": {
@@ -1689,13 +1893,12 @@
      "fontBypass": false
     }
    },
-   "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
-   "whoami160": {
+   "rerollFace": "a9f802dbe9",
+   "rerunAt": "2026-11-22 22:27 全表 51 路复扫固化（wave-161）",
+   "whoami161": {
     "status": 200,
-    "at_local": "2026-11-22 22:14:53 +0800",
-    "ref": "w160 top-level",
-    "prior": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
+    "at": "2026-11-22T14:31:04.624Z",
+    "note": "起跑前置显式码+时刻，覆盖本轮全表/触点/storm 同会话"
    }
   },
   {
@@ -1707,7 +1910,7 @@
    "mainTextLen": 494,
    "navError": null,
    "png": "knowledge-tab-citations-375.png",
-   "pngBytes": 62735,
+   "pngBytes": 59188,
    "pngW": 375,
    "pngH": 812,
    "elementsChecked": 166,
@@ -1766,6 +1969,14 @@
      "navError": null,
      "rerollFace": "645e86ef00",
      "snapshot158": "wave-155/156 前态（活会话两路 PASS 0379ae9f4e 系与更早 NM 链）"
+    },
+    {
+     "verdict": "PASS",
+     "mainTextLen": 494,
+     "navError": null,
+     "rerollFace": "0cc5818aba",
+     "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+     "snapshot161": "wave-158/160 态（脸 0cc5818aba/7a47010b35 系）"
     }
    ],
    "firstRunRow": {
@@ -1797,13 +2008,12 @@
      "fontBypass": false
     }
    },
-   "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
-   "whoami160": {
+   "rerollFace": "a9f802dbe9",
+   "rerunAt": "2026-11-22 22:27 全表 51 路复扫固化（wave-161）",
+   "whoami161": {
     "status": 200,
-    "at_local": "2026-11-22 22:14:53 +0800",
-    "ref": "w160 top-level",
-    "prior": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
+    "at": "2026-11-22T14:31:04.624Z",
+    "note": "起跑前置显式码+时刻，覆盖本轮全表/触点/storm 同会话"
    }
   },
   {
@@ -1874,6 +2084,14 @@
      "navError": null,
      "rerollFace": "645e86ef00",
      "snapshot158": "wave-155/156 前态（活会话两路 PASS 0379ae9f4e 系与更早 NM 链）"
+    },
+    {
+     "verdict": "PASS",
+     "mainTextLen": 198,
+     "navError": null,
+     "rerollFace": "0cc5818aba",
+     "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+     "snapshot161": "wave-158/160 态（脸 0cc5818aba/7a47010b35 系）"
     }
    ],
    "firstRunRow": {
@@ -1905,13 +2123,12 @@
      "fontBypass": false
     }
    },
-   "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
-   "whoami160": {
+   "rerollFace": "a9f802dbe9",
+   "rerunAt": "2026-11-22 22:27 全表 51 路复扫固化（wave-161）",
+   "whoami161": {
     "status": 200,
-    "at_local": "2026-11-22 22:14:53 +0800",
-    "ref": "w160 top-level",
-    "prior": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
+    "at": "2026-11-22T14:31:04.624Z",
+    "note": "起跑前置显式码+时刻，覆盖本轮全表/触点/storm 同会话"
    }
   },
   {
@@ -1923,7 +2140,7 @@
    "mainTextLen": 575,
    "navError": null,
    "png": "knowledge-tab-ingest-375.png",
-   "pngBytes": 63091,
+   "pngBytes": 59581,
    "pngW": 375,
    "pngH": 812,
    "elementsChecked": 174,
@@ -1982,6 +2199,14 @@
      "navError": null,
      "rerollFace": "645e86ef00",
      "snapshot158": "wave-155/156 前态（活会话两路 PASS 0379ae9f4e 系与更早 NM 链）"
+    },
+    {
+     "verdict": "PASS",
+     "mainTextLen": 575,
+     "navError": null,
+     "rerollFace": "0cc5818aba",
+     "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+     "snapshot161": "wave-158/160 态（脸 0cc5818aba/7a47010b35 系）"
     }
    ],
    "firstRunRow": {
@@ -2013,13 +2238,12 @@
      "fontBypass": false
     }
    },
-   "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
-   "whoami160": {
+   "rerollFace": "a9f802dbe9",
+   "rerunAt": "2026-11-22 22:27 全表 51 路复扫固化（wave-161）",
+   "whoami161": {
     "status": 200,
-    "at_local": "2026-11-22 22:14:53 +0800",
-    "ref": "w160 top-level",
-    "prior": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
+    "at": "2026-11-22T14:31:04.624Z",
+    "note": "起跑前置显式码+时刻，覆盖本轮全表/触点/storm 同会话"
    }
   },
   {
@@ -2031,7 +2255,7 @@
    "mainTextLen": 526,
    "navError": null,
    "png": "knowledge-tab-retrieval-375.png",
-   "pngBytes": 61585,
+   "pngBytes": 61320,
    "pngW": 375,
    "pngH": 812,
    "elementsChecked": 177,
@@ -2090,6 +2314,14 @@
      "navError": null,
      "rerollFace": "645e86ef00",
      "snapshot158": "wave-155/156 前态（活会话两路 PASS 0379ae9f4e 系与更早 NM 链）"
+    },
+    {
+     "verdict": "PASS",
+     "mainTextLen": 526,
+     "navError": null,
+     "rerollFace": "0cc5818aba",
+     "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+     "snapshot161": "wave-158/160 态（脸 0cc5818aba/7a47010b35 系）"
     }
    ],
    "firstRunRow": {
@@ -2121,13 +2353,12 @@
      "fontBypass": false
     }
    },
-   "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
-   "whoami160": {
+   "rerollFace": "a9f802dbe9",
+   "rerunAt": "2026-11-22 22:27 全表 51 路复扫固化（wave-161）",
+   "whoami161": {
     "status": 200,
-    "at_local": "2026-11-22 22:14:53 +0800",
-    "ref": "w160 top-level",
-    "prior": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
+    "at": "2026-11-22T14:31:04.624Z",
+    "note": "起跑前置显式码+时刻，覆盖本轮全表/触点/storm 同会话"
    }
   },
   {
@@ -2139,7 +2370,7 @@
    "mainTextLen": 533,
    "navError": null,
    "png": "knowledge-tab-scope-375.png",
-   "pngBytes": 61362,
+   "pngBytes": 60836,
    "pngW": 375,
    "pngH": 812,
    "elementsChecked": 178,
@@ -2198,6 +2429,14 @@
      "navError": null,
      "rerollFace": "645e86ef00",
      "snapshot158": "wave-155/156 前态（活会话两路 PASS 0379ae9f4e 系与更早 NM 链）"
+    },
+    {
+     "verdict": "PASS",
+     "mainTextLen": 533,
+     "navError": null,
+     "rerollFace": "0cc5818aba",
+     "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+     "snapshot161": "wave-158/160 态（脸 0cc5818aba/7a47010b35 系）"
     }
    ],
    "firstRunRow": {
@@ -2229,13 +2468,12 @@
      "fontBypass": false
     }
    },
-   "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
-   "whoami160": {
+   "rerollFace": "a9f802dbe9",
+   "rerunAt": "2026-11-22 22:27 全表 51 路复扫固化（wave-161）",
+   "whoami161": {
     "status": 200,
-    "at_local": "2026-11-22 22:14:53 +0800",
-    "ref": "w160 top-level",
-    "prior": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
+    "at": "2026-11-22T14:31:04.624Z",
+    "note": "起跑前置显式码+时刻，覆盖本轮全表/触点/storm 同会话"
    }
   },
   {
@@ -2247,7 +2485,7 @@
    "mainTextLen": 575,
    "navError": null,
    "png": "knowledge-tab-sources-375.png",
-   "pngBytes": 63091,
+   "pngBytes": 59581,
    "pngW": 375,
    "pngH": 812,
    "elementsChecked": 174,
@@ -2306,6 +2544,14 @@
      "navError": null,
      "rerollFace": "645e86ef00",
      "snapshot158": "wave-155/156 前态（活会话两路 PASS 0379ae9f4e 系与更早 NM 链）"
+    },
+    {
+     "verdict": "PASS",
+     "mainTextLen": 575,
+     "navError": null,
+     "rerollFace": "0cc5818aba",
+     "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+     "snapshot161": "wave-158/160 态（脸 0cc5818aba/7a47010b35 系）"
     }
    ],
    "firstRunRow": {
@@ -2337,13 +2583,12 @@
      "fontBypass": false
     }
    },
-   "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
-   "whoami160": {
+   "rerollFace": "a9f802dbe9",
+   "rerunAt": "2026-11-22 22:27 全表 51 路复扫固化（wave-161）",
+   "whoami161": {
     "status": 200,
-    "at_local": "2026-11-22 22:14:53 +0800",
-    "ref": "w160 top-level",
-    "prior": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
+    "at": "2026-11-22T14:31:04.624Z",
+    "note": "起跑前置显式码+时刻，覆盖本轮全表/触点/storm 同会话"
    }
   },
   {
@@ -2387,15 +2632,22 @@
      "navError": null,
      "rerollFace": "645e86ef00",
      "snapshot158": "wave-155/156 前态（活会话两路 PASS 0379ae9f4e 系与更早 NM 链）"
+    },
+    {
+     "verdict": "PASS",
+     "mainTextLen": 818,
+     "navError": null,
+     "rerollFace": "0cc5818aba",
+     "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+     "snapshot161": "wave-158/160 态（脸 0cc5818aba/7a47010b35 系）"
     }
    ],
-   "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
-   "whoami160": {
+   "rerollFace": "a9f802dbe9",
+   "rerunAt": "2026-11-22 22:27 全表 51 路复扫固化（wave-161）",
+   "whoami161": {
     "status": 200,
-    "at_local": "2026-11-22 22:14:53 +0800",
-    "ref": "w160 top-level",
-    "prior": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
+    "at": "2026-11-22T14:31:04.624Z",
+    "note": "起跑前置显式码+时刻，覆盖本轮全表/触点/storm 同会话"
    }
   },
   {
@@ -2407,7 +2659,7 @@
    "mainTextLen": 154,
    "navError": null,
    "png": "org-375.png",
-   "pngBytes": 38721,
+   "pngBytes": 39017,
    "pngW": 375,
    "pngH": 812,
    "elementsChecked": 128,
@@ -2432,6 +2684,14 @@
      "navError": null,
      "rerollFace": "6edcba4d",
      "snapshot158": "wave-155/156 前态（活会话两路 PASS 0379ae9f4e 系与更早 NM 链）"
+    },
+    {
+     "verdict": "PASS",
+     "mainTextLen": 154,
+     "navError": null,
+     "rerollFace": "0cc5818aba",
+     "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+     "snapshot161": "wave-158/160 态（脸 0cc5818aba/7a47010b35 系）"
     }
    ],
    "firstRunRow": {
@@ -2463,13 +2723,12 @@
      "fontBypass": false
     }
    },
-   "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
-   "whoami160": {
+   "rerollFace": "a9f802dbe9",
+   "rerunAt": "2026-11-22 22:27 全表 51 路复扫固化（wave-161）",
+   "whoami161": {
     "status": 200,
-    "at_local": "2026-11-22 22:14:53 +0800",
-    "ref": "w160 top-level",
-    "prior": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
+    "at": "2026-11-22T14:31:04.624Z",
+    "note": "起跑前置显式码+时刻，覆盖本轮全表/触点/storm 同会话"
    }
   },
   {
@@ -2481,7 +2740,7 @@
    "mainTextLen": 1061,
    "navError": null,
    "png": "overview-375.png",
-   "pngBytes": 53572,
+   "pngBytes": 53743,
    "pngW": 375,
    "pngH": 812,
    "elementsChecked": 354,
@@ -2506,6 +2765,14 @@
      "navError": null,
      "rerollFace": "6edcba4d",
      "snapshot158": "wave-155/156 前态（活会话两路 PASS 0379ae9f4e 系与更早 NM 链）"
+    },
+    {
+     "verdict": "PASS",
+     "mainTextLen": 1061,
+     "navError": null,
+     "rerollFace": "0cc5818aba",
+     "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+     "snapshot161": "wave-158/160 态（脸 0cc5818aba/7a47010b35 系）"
     }
    ],
    "firstRunRow": {
@@ -2537,13 +2804,12 @@
      "fontBypass": false
     }
    },
-   "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
-   "whoami160": {
+   "rerollFace": "a9f802dbe9",
+   "rerunAt": "2026-11-22 22:27 全表 51 路复扫固化（wave-161）",
+   "whoami161": {
     "status": 200,
-    "at_local": "2026-11-22 22:14:53 +0800",
-    "ref": "w160 top-level",
-    "prior": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
+    "at": "2026-11-22T14:31:04.624Z",
+    "note": "起跑前置显式码+时刻，覆盖本轮全表/触点/storm 同会话"
    }
   },
   {
@@ -2555,7 +2821,7 @@
    "mainTextLen": 136,
    "navError": null,
    "png": "overview-tab-usage-375.png",
-   "pngBytes": 38586,
+   "pngBytes": 38733,
    "pngW": 375,
    "pngH": 812,
    "elementsChecked": 147,
@@ -2589,6 +2855,14 @@
      "rerollFace": "ba282ab484",
      "rerunAt": "2026-11-22T18:27+08:00",
      "snapshot158": "wave-155/156 前态（活会话两路 PASS 0379ae9f4e 系与更早 NM 链）"
+    },
+    {
+     "verdict": "PASS",
+     "mainTextLen": 136,
+     "navError": null,
+     "rerollFace": "0cc5818aba",
+     "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+     "snapshot161": "wave-158/160 态（脸 0cc5818aba/7a47010b35 系）"
     }
    ],
    "firstRunRow": {
@@ -2620,13 +2894,12 @@
      "fontBypass": false
     }
    },
-   "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
-   "whoami160": {
+   "rerollFace": "a9f802dbe9",
+   "rerunAt": "2026-11-22 22:27 全表 51 路复扫固化（wave-161）",
+   "whoami161": {
     "status": 200,
-    "at_local": "2026-11-22 22:14:53 +0800",
-    "ref": "w160 top-level",
-    "prior": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
+    "at": "2026-11-22T14:31:04.624Z",
+    "note": "起跑前置显式码+时刻，覆盖本轮全表/触点/storm 同会话"
    }
   },
   {
@@ -2720,6 +2993,14 @@
      "rerollFace": "0379ae9f4e",
      "rerunAt": "2026-11-22 20:45:06",
      "snapshot158": "wave-155/156 前态（活会话两路 PASS 0379ae9f4e 系与更早 NM 链）"
+    },
+    {
+     "verdict": "PASS",
+     "mainTextLen": 106,
+     "navError": null,
+     "rerollFace": "0cc5818aba",
+     "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+     "snapshot161": "wave-158/160 态（脸 0cc5818aba/7a47010b35 系）"
     }
    ],
    "firstRunRow": {
@@ -2741,13 +3022,12 @@
      "contentFit": true
     }
    },
-   "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
-   "whoami160": {
+   "rerollFace": "a9f802dbe9",
+   "rerunAt": "2026-11-22 22:27 全表 51 路复扫固化（wave-161）",
+   "whoami161": {
     "status": 200,
-    "at_local": "2026-11-22 22:14:53 +0800",
-    "ref": "w160 top-level",
-    "prior": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
+    "at": "2026-11-22T14:31:04.624Z",
+    "note": "起跑前置显式码+时刻，覆盖本轮全表/触点/storm 同会话"
    }
   },
   {
@@ -2759,7 +3039,7 @@
    "mainTextLen": 948,
    "navError": null,
    "png": "system-375.png",
-   "pngBytes": 61817,
+   "pngBytes": 61807,
    "pngW": 375,
    "pngH": 812,
    "elementsChecked": 255,
@@ -2793,15 +3073,22 @@
      "rerollFace": "ba282ab484",
      "rerunAt": "2026-11-22T18:27+08:00",
      "snapshot158": "wave-155/156 前态（活会话两路 PASS 0379ae9f4e 系与更早 NM 链）"
+    },
+    {
+     "verdict": "PASS",
+     "mainTextLen": 948,
+     "navError": null,
+     "rerollFace": "0cc5818aba",
+     "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+     "snapshot161": "wave-158/160 态（脸 0cc5818aba/7a47010b35 系）"
     }
    ],
-   "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
-   "whoami160": {
+   "rerollFace": "a9f802dbe9",
+   "rerunAt": "2026-11-22 22:27 全表 51 路复扫固化（wave-161）",
+   "whoami161": {
     "status": 200,
-    "at_local": "2026-11-22 22:14:53 +0800",
-    "ref": "w160 top-level",
-    "prior": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
+    "at": "2026-11-22T14:31:04.624Z",
+    "note": "起跑前置显式码+时刻，覆盖本轮全表/触点/storm 同会话"
    }
   },
   {
@@ -2813,7 +3100,7 @@
    "mainTextLen": 125,
    "navError": null,
    "png": "system-tab-defaults-375.png",
-   "pngBytes": 36861,
+   "pngBytes": 37297,
    "pngW": 375,
    "pngH": 812,
    "elementsChecked": 120,
@@ -2847,15 +3134,22 @@
      "rerollFace": "ba282ab484",
      "rerunAt": "2026-11-22T18:27+08:00",
      "snapshot158": "wave-155/156 前态（活会话两路 PASS 0379ae9f4e 系与更早 NM 链）"
+    },
+    {
+     "verdict": "PASS",
+     "mainTextLen": 125,
+     "navError": null,
+     "rerollFace": "0cc5818aba",
+     "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+     "snapshot161": "wave-158/160 态（脸 0cc5818aba/7a47010b35 系）"
     }
    ],
-   "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
-   "whoami160": {
+   "rerollFace": "a9f802dbe9",
+   "rerunAt": "2026-11-22 22:27 全表 51 路复扫固化（wave-161）",
+   "whoami161": {
     "status": 200,
-    "at_local": "2026-11-22 22:14:53 +0800",
-    "ref": "w160 top-level",
-    "prior": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
+    "at": "2026-11-22T14:31:04.624Z",
+    "note": "起跑前置显式码+时刻，覆盖本轮全表/触点/storm 同会话"
    }
   },
   {
@@ -2901,15 +3195,22 @@
      "rerollFace": "ba282ab484",
      "rerunAt": "2026-11-22T18:27+08:00",
      "snapshot158": "wave-155/156 前态（活会话两路 PASS 0379ae9f4e 系与更早 NM 链）"
+    },
+    {
+     "verdict": "PASS",
+     "mainTextLen": 673,
+     "navError": null,
+     "rerollFace": "0cc5818aba",
+     "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+     "snapshot161": "wave-158/160 态（脸 0cc5818aba/7a47010b35 系）"
     }
    ],
-   "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
-   "whoami160": {
+   "rerollFace": "a9f802dbe9",
+   "rerunAt": "2026-11-22 22:27 全表 51 路复扫固化（wave-161）",
+   "whoami161": {
     "status": 200,
-    "at_local": "2026-11-22 22:14:53 +0800",
-    "ref": "w160 top-level",
-    "prior": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
+    "at": "2026-11-22T14:31:04.624Z",
+    "note": "起跑前置显式码+时刻，覆盖本轮全表/触点/storm 同会话"
    }
   },
   {
@@ -2955,15 +3256,22 @@
      "rerollFace": "ba282ab484",
      "rerunAt": "2026-11-22T18:27+08:00",
      "snapshot158": "wave-155/156 前态（活会话两路 PASS 0379ae9f4e 系与更早 NM 链）"
+    },
+    {
+     "verdict": "PASS",
+     "mainTextLen": 673,
+     "navError": null,
+     "rerollFace": "0cc5818aba",
+     "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+     "snapshot161": "wave-158/160 态（脸 0cc5818aba/7a47010b35 系）"
     }
    ],
-   "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
-   "whoami160": {
+   "rerollFace": "a9f802dbe9",
+   "rerunAt": "2026-11-22 22:27 全表 51 路复扫固化（wave-161）",
+   "whoami161": {
     "status": 200,
-    "at_local": "2026-11-22 22:14:53 +0800",
-    "ref": "w160 top-level",
-    "prior": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
+    "at": "2026-11-22T14:31:04.624Z",
+    "note": "起跑前置显式码+时刻，覆盖本轮全表/触点/storm 同会话"
    }
   },
   {
@@ -3009,15 +3317,22 @@
      "rerollFace": "ba282ab484",
      "rerunAt": "2026-11-22T18:27+08:00",
      "snapshot158": "wave-155/156 前态（活会话两路 PASS 0379ae9f4e 系与更早 NM 链）"
+    },
+    {
+     "verdict": "PASS",
+     "mainTextLen": 673,
+     "navError": null,
+     "rerollFace": "0cc5818aba",
+     "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+     "snapshot161": "wave-158/160 态（脸 0cc5818aba/7a47010b35 系）"
     }
    ],
-   "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
-   "whoami160": {
+   "rerollFace": "a9f802dbe9",
+   "rerunAt": "2026-11-22 22:27 全表 51 路复扫固化（wave-161）",
+   "whoami161": {
     "status": 200,
-    "at_local": "2026-11-22 22:14:53 +0800",
-    "ref": "w160 top-level",
-    "prior": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
+    "at": "2026-11-22T14:31:04.624Z",
+    "note": "起跑前置显式码+时刻，覆盖本轮全表/触点/storm 同会话"
    }
   },
   {
@@ -3029,7 +3344,7 @@
    "mainTextLen": 293,
    "navError": null,
    "png": "system-tab-security-375.png",
-   "pngBytes": 53731,
+   "pngBytes": 53681,
    "pngW": 375,
    "pngH": 812,
    "elementsChecked": 139,
@@ -3063,15 +3378,22 @@
      "rerollFace": "ba282ab484",
      "rerunAt": "2026-11-22T18:27+08:00",
      "snapshot158": "wave-155/156 前态（活会话两路 PASS 0379ae9f4e 系与更早 NM 链）"
+    },
+    {
+     "verdict": "PASS",
+     "mainTextLen": 293,
+     "navError": null,
+     "rerollFace": "0cc5818aba",
+     "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+     "snapshot161": "wave-158/160 态（脸 0cc5818aba/7a47010b35 系）"
     }
    ],
-   "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
-   "whoami160": {
+   "rerollFace": "a9f802dbe9",
+   "rerunAt": "2026-11-22 22:27 全表 51 路复扫固化（wave-161）",
+   "whoami161": {
     "status": 200,
-    "at_local": "2026-11-22 22:14:53 +0800",
-    "ref": "w160 top-level",
-    "prior": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
+    "at": "2026-11-22T14:31:04.624Z",
+    "note": "起跑前置显式码+时刻，覆盖本轮全表/触点/storm 同会话"
    }
   },
   {
@@ -3117,15 +3439,22 @@
      "rerollFace": "ba282ab484",
      "rerunAt": "2026-11-22T18:27+08:00",
      "snapshot158": "wave-155/156 前态（活会话两路 PASS 0379ae9f4e 系与更早 NM 链）"
+    },
+    {
+     "verdict": "PASS",
+     "mainTextLen": 588,
+     "navError": null,
+     "rerollFace": "0cc5818aba",
+     "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+     "snapshot161": "wave-158/160 态（脸 0cc5818aba/7a47010b35 系）"
     }
    ],
-   "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
-   "whoami160": {
+   "rerollFace": "a9f802dbe9",
+   "rerunAt": "2026-11-22 22:27 全表 51 路复扫固化（wave-161）",
+   "whoami161": {
     "status": 200,
-    "at_local": "2026-11-22 22:14:53 +0800",
-    "ref": "w160 top-level",
-    "prior": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
+    "at": "2026-11-22T14:31:04.624Z",
+    "note": "起跑前置显式码+时刻，覆盖本轮全表/触点/storm 同会话"
    }
   },
   {
@@ -3137,7 +3466,7 @@
    "mainTextLen": 281,
    "navError": null,
    "png": "work-375.png",
-   "pngBytes": 70632,
+   "pngBytes": 70802,
    "pngW": 375,
    "pngH": 812,
    "elementsChecked": 166,
@@ -3162,6 +3491,14 @@
      "navError": null,
      "rerollFace": "6edcba4d",
      "snapshot158": "wave-155/156 前态（活会话两路 PASS 0379ae9f4e 系与更早 NM 链）"
+    },
+    {
+     "verdict": "PASS",
+     "mainTextLen": 281,
+     "navError": null,
+     "rerollFace": "0cc5818aba",
+     "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+     "snapshot161": "wave-158/160 态（脸 0cc5818aba/7a47010b35 系）"
     }
    ],
    "firstRunRow": {
@@ -3193,13 +3530,12 @@
      "fontBypass": false
     }
    },
-   "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
-   "whoami160": {
+   "rerollFace": "a9f802dbe9",
+   "rerunAt": "2026-11-22 22:27 全表 51 路复扫固化（wave-161）",
+   "whoami161": {
     "status": 200,
-    "at_local": "2026-11-22 22:14:53 +0800",
-    "ref": "w160 top-level",
-    "prior": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
+    "at": "2026-11-22T14:31:04.624Z",
+    "note": "起跑前置显式码+时刻，覆盖本轮全表/触点/storm 同会话"
    }
   },
   {
@@ -3211,7 +3547,7 @@
    "mainTextLen": 281,
    "navError": null,
    "png": "work-tab-board-view-cron-375.png",
-   "pngBytes": 70869,
+   "pngBytes": 70173,
    "pngW": 375,
    "pngH": 812,
    "elementsChecked": 166,
@@ -3236,6 +3572,14 @@
      "navError": null,
      "rerollFace": "6edcba4d",
      "snapshot158": "wave-155/156 前态（活会话两路 PASS 0379ae9f4e 系与更早 NM 链）"
+    },
+    {
+     "verdict": "PASS",
+     "mainTextLen": 281,
+     "navError": null,
+     "rerollFace": "0cc5818aba",
+     "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+     "snapshot161": "wave-158/160 态（脸 0cc5818aba/7a47010b35 系）"
     }
    ],
    "firstRunRow": {
@@ -3267,13 +3611,12 @@
      "fontBypass": false
     }
    },
-   "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
-   "whoami160": {
+   "rerollFace": "a9f802dbe9",
+   "rerunAt": "2026-11-22 22:27 全表 51 路复扫固化（wave-161）",
+   "whoami161": {
     "status": 200,
-    "at_local": "2026-11-22 22:14:53 +0800",
-    "ref": "w160 top-level",
-    "prior": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
+    "at": "2026-11-22T14:31:04.624Z",
+    "note": "起跑前置显式码+时刻，覆盖本轮全表/触点/storm 同会话"
    }
   },
   {
@@ -3285,7 +3628,7 @@
    "mainTextLen": 281,
    "navError": null,
    "png": "work-tab-cron-375.png",
-   "pngBytes": 71023,
+   "pngBytes": 71148,
    "pngW": 375,
    "pngH": 812,
    "elementsChecked": 166,
@@ -3310,6 +3653,14 @@
      "navError": null,
      "rerollFace": "6edcba4d",
      "snapshot158": "wave-155/156 前态（活会话两路 PASS 0379ae9f4e 系与更早 NM 链）"
+    },
+    {
+     "verdict": "PASS",
+     "mainTextLen": 281,
+     "navError": null,
+     "rerollFace": "0cc5818aba",
+     "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+     "snapshot161": "wave-158/160 态（脸 0cc5818aba/7a47010b35 系）"
     }
    ],
    "firstRunRow": {
@@ -3341,13 +3692,12 @@
      "fontBypass": false
     }
    },
-   "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
-   "whoami160": {
+   "rerollFace": "a9f802dbe9",
+   "rerunAt": "2026-11-22 22:27 全表 51 路复扫固化（wave-161）",
+   "whoami161": {
     "status": 200,
-    "at_local": "2026-11-22 22:14:53 +0800",
-    "ref": "w160 top-level",
-    "prior": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
+    "at": "2026-11-22T14:31:04.624Z",
+    "note": "起跑前置显式码+时刻，覆盖本轮全表/触点/storm 同会话"
    }
   },
   {
@@ -3359,7 +3709,7 @@
    "mainTextLen": 483,
    "navError": null,
    "png": "work-tab-runs-375.png",
-   "pngBytes": 68902,
+   "pngBytes": 68964,
    "pngW": 375,
    "pngH": 812,
    "elementsChecked": 210,
@@ -3384,6 +3734,14 @@
      "navError": null,
      "rerollFace": "6edcba4d",
      "snapshot158": "wave-155/156 前态（活会话两路 PASS 0379ae9f4e 系与更早 NM 链）"
+    },
+    {
+     "verdict": "PASS",
+     "mainTextLen": 483,
+     "navError": null,
+     "rerollFace": "0cc5818aba",
+     "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
+     "snapshot161": "wave-158/160 态（脸 0cc5818aba/7a47010b35 系）"
     }
    ],
    "firstRunRow": {
@@ -3415,18 +3773,17 @@
      "fontBypass": false
     }
    },
-   "rerollFace": "0cc5818aba",
-   "rerunAt": "2026-11-22 21:09:44 起跑 全表 51 路重扫",
-   "whoami160": {
+   "rerollFace": "a9f802dbe9",
+   "rerunAt": "2026-11-22 22:27 全表 51 路复扫固化（wave-161）",
+   "whoami161": {
     "status": 200,
-    "at_local": "2026-11-22 22:14:53 +0800",
-    "ref": "w160 top-level",
-    "prior": "top-level whoami160 (200@21:54:30, 同会话覆盖本行取数；158 重扫当时未单码=已补账如实)"
+    "at": "2026-11-22T14:31:04.624Z",
+    "note": "起跑前置显式码+时刻，覆盖本轮全表/触点/storm 同会话"
    }
   }
  ],
  "rerollNote": "点名重跑 sessions/channels/models @d2cc49fe 面（L0②）：sessions 转 PASS（fb+fit，PNG 入账）、models PASS；channels 新面反成失分页（45s 旁路超时、main=10、viol 数据不可得）记 NOT_MEASURED 逐条 navError 入账，首轮 6586df6b 读数存 firstRunRow（L0①其余 48 路保留首轮）",
- "headHash": "7a47010b35",
+ "headHash": "a9f802dbe9",
  "entry": "assets/index-D4QqzZ8Z.js",
  "entrySha256": "7dbba1c57e40501d5a121ad6cf098984b862d55b67231bb2471db4175e6fd54b",
  "entryBytes": 172800,
@@ -4649,5 +5006,97 @@
   "png": "assert375/kn375-after-D4QqzZ8Z-160.png"
  },
  "carriedFrom160": "facff767e0",
- "waveNote160": "wave-160：重建核验——产物未换代（同名同 sha 如实，不冒充新代次）+ #/knowledge 手机档触点族复跑入账（seg 4/44×169.8 under44=0，三族数据面同 159 处置）+ whoami160 顶层刷新+逐行引用（51 行）；counts 维持 51/51/0/NM0 exitCode0——本波未重扫 51 路（L0 只令触点族纳入检查，touchCheck160 完成）；机检门 81a30df3f9 于本脸补双向核对（454392fa0f 系）；B3 v1 3e64c385+v2 49c59a52+队列补勾 898c6105 在案引用不重做；375 总 PASS 放行权在 UX 总审不自签；web/scripts/** 未动。"
+ "waveNote160": "wave-160：重建核验——产物未换代（同名同 sha 如实，不冒充新代次）+ #/knowledge 手机档触点族复跑入账（seg 4/44×169.8 under44=0，三族数据面同 159 处置）+ whoami160 顶层刷新+逐行引用（51 行）；counts 维持 51/51/0/NM0 exitCode0——本波未重扫 51 路（L0 只令触点族纳入检查，touchCheck160 完成）；机检门 81a30df3f9 于本脸补双向核对（454392fa0f 系）；B3 v1 3e64c385+v2 49c59a52+队列补勾 898c6105 在案引用不重做；375 总 PASS 放行权在 UX 总审不自签；web/scripts/** 未动。",
+ "carriedFrom161": "7a47010b35",
+ "h2Rebuild161": {
+  "face": "a9f802dbe9c4fa8e453858218f04631ad12c72ea (22:19:37 纯 docs；L0 @1359@ 所指 a713871561 在 lineage 其链源码 7a47010b35 已含，diff 7a47010b35..a9f802dbe9 web/src=0 现查)",
+  "builtAt": "2026-11-22 22:26:44",
+  "buildCmd": "cd web && node_modules/.bin/vite build VITE=0",
+  "entry": "assets/index-D4QqzZ8Z.js 172800B sha256 7dbba1c57e40501d5a121ad6cf098984b862d55b67231bb2471db4175e6fd54b mtime 22:26:44",
+  "css": "assets/index-DVxC9bvL.css 148329B sha256 286694e44b704533b7dbb6d37f69b0249707659bfd88aa6022a771f6c2f5f93a",
+  "generation": "同名同 sha 产物未换代（构建无新源码入图；df749fb259 shell refactor 为构建后他人未推提交，未入本次 serve 面亦未随本章推送）——不冒充新代次",
+  "tripleCheck": "ls -l 172800B/148329B mtime 22:26:44 + shasum 全值 + curl /agent-v2/ index 引用同值 + /assets/ urllib bit js/css 双 match=True",
+  "noRush": "重建晚于 tip 提交 22:19:37 约 7 分钟",
+  "vitestBaseline": "482 files/3564 tests（L0 亲验免重跑）",
+  "laneNote": "共享树出现他人未推源码提交 df749fb259（refactor(shell) console-chrome token 化，22:32:10）——按让位规矩不代推不 rewind：本章以 detached@a9f802dbe9 形态直落远端 tip，他人 commit 留其自推"
+ },
+ "fullScan161": {
+  "scope": "L0 @1359@ 令：全表 51 路复扫固化 + #/knowledge 触点族纳入复验",
+  "result": "routes 51 / pass 51 / fail 0 / notMeasured 0 / matrixOk true / exitCode 0；lowMainPass161=[]",
+  "touch161": {
+   "seg_btn_count": 4,
+   "under44": 0,
+   "sample": {
+    "h": 44.0,
+    "w": 169.8,
+    "minBlockSize": "44px",
+    "testId": "knw5-tab-spaces"
+   },
+   "drill/copy/clear": "count=0 同 159/160 数据面处置（css 同块纸面+机检门为凭）",
+   "whoami": {
+    "status": 200,
+    "at": "2026-11-22T14:31:04.624Z"
+   }
+  },
+  "raw": [
+   "w161-full-scan-summary.json",
+   "w161-full-scan-index.md",
+   "w161-kn375-readings.json",
+   "assert375/kn375-after-D4QqzZ8Z-161.png",
+   "51 帧"
+  ]
+ },
+ "p0StormRecheck161": {
+  "criteria": "L0 @1359@ P0-1 复跑口径：窗口翻倍时 nav/401 不翻倍且 mainTextLen>=30；同脸真计数表随附",
+  "sessions": {
+   "w1": {
+    "nav": 5,
+    "http401": 7,
+    "whoamiAborted": 1,
+    "failed": 2,
+    "total": 65
+   },
+   "w2": {
+    "nav": 5,
+    "http401": 8,
+    "whoamiAborted": 1,
+    "failed": 2,
+    "total": 68
+   },
+   "delta": {
+    "nav": 0,
+    "http401": 1,
+    "whoamiAborted": 0,
+    "failed": 0,
+    "total": 3
+   },
+   "mainLen": 106
+  },
+  "channels": {
+   "w1": {
+    "nav": 5,
+    "http401": 13,
+    "whoamiAborted": 1,
+    "failed": 3,
+    "total": 61
+   },
+   "w2": {
+    "nav": 5,
+    "http401": 13,
+    "whoamiAborted": 1,
+    "failed": 3,
+    "total": 62
+   },
+   "delta": {
+    "nav": 0,
+    "http401": 0,
+    "whoamiAborted": 0,
+    "failed": 0,
+    "total": 1
+   },
+   "mainLen": 200
+  },
+  "verdict": "达标：sessions delta_401=+1 delta_nav=0（6s→12s 窗）main=106；channels delta 全 0 main=200——窗口翻倍不翻倍、mainTextLen>=30；残余 401=鉴权外端点恒定值（与 residual401Source156 口径一致），无风暴环复活",
+  "raw": "storm-counters-w161.json"
+ }
 }

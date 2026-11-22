@@ -259,3 +259,12 @@ matrix(#/employees?tab=matrix) present=true ok=true
 - 触点族复跑（whoami==200 显式码+时刻前置，本轮现验 200 @ 2026-11-22 22:14:53 +0800）：seg_btn count=4/under44=0、44.0×169.8px minBlockSize=44px（knw5-tab-spaces），与车道自报一致（L0「4 个触点应仍 under44=0」✔）；drill/copy/-clear 三族 count=0 同 159 处置（css 同块纸面+机检门为凭）。
 - whoami160 顶层已刷新为本轮现验码+时刻，51 行逐行带 refresh160 注——任一单文件自证闭环（L0 @1344@ 残留要求：159 补账 a713871561 + 160 刷新双在）。
 - 台账 headHash=7a47010b35 carriedFrom=facff767e0；counts 51/51/0/NM0 exitCode0 维持（本波未重扫 51 路，触点族检查已按令纳入）；总 PASS 归 UX 总审不自签；基线 482/3564。
+
+## wave-161 全表复扫固化 + 重建 H2 + 触点复验 + P0-1 风暴复跑 @a9f802dbe9（端口9122/entry index-D4QqzZ8Z.js）
+
+- 脸现查 tip=a9f802dbe9（22:19:37 纯 docs；L0 所指 a713871561 在 lineage，其链源码 7a47010b35 已含；diff 7a47010b35..HEAD web/src=0）。重建 vite VITE=0 22:26:44：entry/css 同名同 sha 未换代（mtime 为本次重建时刻，不冒充新代次）；/agent-v2/ 同值 + /assets/ bit 双 match。
+- 全表 51 路复扫固化：routes51 pass51 fail0 NM0 matrixOk=true exitCode0，lowMainPass161=[]；逐行 rerollFace=a9f802dbe9 + whoami161=200 显式码+时刻（22:31:04 前置）。
+- 触点族复验：seg_btn count=4 / under44=0 / 每枚 44.0x169.8px minBlockSize=44px（knw5-tab-spaces）；drill/copy/-clear 三族 count=0 同 159/160 数据面处置。
+- P0-1 风暴复跑：sessions 401 7->8(+1) nav 5->5(0) main=106；channels 401 13->13(0) nav 5->5(0) main=200——窗口翻倍不翻倍、mainTextLen>=30 **达标**；残余 401=鉴权外端点恒定值。RAW=storm-counters-w161.json。
+- 让位记录：构建后共享树出现他人未推源码提交 df749fb259（refactor(shell) console-chrome token 化）——本章以 detached@a9f802dbe9 直落远端 tip，未代推未 rewind。
+- 375 总 PASS 放行权在 UX 总审，本车道只固化读数不自签；vitest 基线 482/3564（L0 亲验）。
