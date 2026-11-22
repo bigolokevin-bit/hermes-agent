@@ -1,0 +1,135 @@
+{
+  "face": "8af8ac5f124c59ba02e2b72de0f6a9132b314861",
+  "port": 8183,
+  "target": "http://100.117.184.117:8183/agent-v2/#/overview",
+  "startedAt": "2026-11-22T22:17:18.088Z",
+  "shots": [
+    {
+      "viewport": "1440x900",
+      "entry": "/assets/index-Cv4DBs--.js",
+      "whoamiPreShot": 200,
+      "at": "2026-11-22T22:17:21.166Z",
+      "mainLen": 1074,
+      "jsErrors": 0,
+      "jsErrSamples": [],
+      "consoleErrors": 10,
+      "consoleErrSamples": [
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "res4xx": 10,
+      "res4xxUrls": [
+        {
+          "url": "http://100.117.184.117:8183/agent-api/api/employees?limit=100",
+          "status": 403
+        },
+        {
+          "url": "http://100.117.184.117:8183/agent-api/api/workbench/queue?page_size=100",
+          "status": 403
+        },
+        {
+          "url": "http://100.117.184.117:8183/agent-api/api/runs?since=2026-11-22T16%3A00%3A00.000Z&limit=3",
+          "status": 403
+        },
+        {
+          "url": "http://100.117.184.117:8183/agent-api/api/runs?since=2026-11-15T22%3A17%3A19.393Z&limit=3",
+          "status": 403
+        },
+        {
+          "url": "http://100.117.184.117:8183/agent-api/api/runs?since=2026-11-21T22%3A17%3A19.393Z&limit=3&status=failed",
+          "status": 403
+        },
+        {
+          "url": "http://100.117.184.117:8183/agent-api/api/run-activity?weeks=2&tz=Asia%2FShanghai",
+          "status": 403
+        },
+        {
+          "url": "http://100.117.184.117:8183/agent-api/api/tasks?status=blocked&limit=3",
+          "status": 403
+        },
+        {
+          "url": "http://100.117.184.117:8183/agent-api/api/workbench/summary?range=1d",
+          "status": 403
+        },
+        {
+          "url": "http://100.117.184.117:8183/agent-api/api/employee-stats",
+          "status": 403
+        },
+        {
+          "url": "http://100.117.184.117:8183/agent-api/api/workbench/timeseries?range=30d&bucket=day&metric=runs",
+          "status": 403
+        }
+      ],
+      "screenshot": "/tmp/d-w179-shot/overview-8183-1440.png",
+      "shotMode": "fullPage",
+      "blocked": null
+    },
+    {
+      "viewport": "375x812",
+      "entry": "/assets/index-Cv4DBs--.js",
+      "whoamiPreShot": 200,
+      "at": "2026-11-22T22:17:22.801Z",
+      "mainLen": 1074,
+      "jsErrors": 0,
+      "jsErrSamples": [],
+      "consoleErrors": 10,
+      "consoleErrSamples": [
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "res4xx": 10,
+      "res4xxUrls": [
+        {
+          "url": "http://100.117.184.117:8183/agent-api/api/employees?limit=100",
+          "status": 403
+        },
+        {
+          "url": "http://100.117.184.117:8183/agent-api/api/workbench/summary?range=1d",
+          "status": 403
+        },
+        {
+          "url": "http://100.117.184.117:8183/agent-api/api/workbench/timeseries?range=30d&bucket=day&metric=runs",
+          "status": 403
+        },
+        {
+          "url": "http://100.117.184.117:8183/agent-api/api/run-activity?weeks=2&tz=Asia%2FShanghai",
+          "status": 403
+        },
+        {
+          "url": "http://100.117.184.117:8183/agent-api/api/employee-stats",
+          "status": 403
+        },
+        {
+          "url": "http://100.117.184.117:8183/agent-api/api/runs?since=2026-11-22T16%3A00%3A00.000Z&limit=3",
+          "status": 403
+        },
+        {
+          "url": "http://100.117.184.117:8183/agent-api/api/workbench/queue?page_size=100",
+          "status": 403
+        },
+        {
+          "url": "http://100.117.184.117:8183/agent-api/api/runs?since=2026-11-15T22%3A17%3A21.431Z&limit=3",
+          "status": 403
+        },
+        {
+          "url": "http://100.117.184.117:8183/agent-api/api/tasks?status=blocked&limit=3",
+          "status": 403
+        },
+        {
+          "url": "http://100.117.184.117:8183/agent-api/api/runs?since=2026-11-21T22%3A17%3A21.431Z&limit=3&status=failed",
+          "status": 403
+        }
+      ],
+      "screenshot": "/tmp/d-w179-shot/overview-8183-375.png",
+      "shotMode": "fullPage",
+      "blocked": null
+    }
+  ],
+  "finishedAt": "2026-11-22T22:17:22.967Z"
+}
