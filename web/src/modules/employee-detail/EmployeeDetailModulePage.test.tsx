@@ -1229,3 +1229,52 @@ describe("R96 department caliber parity (ed1-identity-department)", () => {
     expect(qid("ed1-identity-department")?.getAttribute("title")).toContain("读口没有回传");
   });
 });
+
+describe("UI-C2 header department reads the same caliber as the identity card", () => {
+  const body = (dept: unknown) => ({
+    id: EMP,
+    name: "AgentOS 产品助理",
+    title: "产品助理",
+    lifecycleState: "active",
+    ownerUserId: "1",
+    createdAt: "2026-11-13T22:15:30Z",
+    asOf: "2026-11-20T07:00:00Z",
+    ...(dept === "MISSING" ? {} : { department: dept }),
+  });
+  const serve = (dept: unknown) =>
+    mockApi((url) =>
+      url.includes(`/api/employees/${encodeURIComponent(EMP)}`)
+        ? Promise.resolve(body(dept))
+        : silent502(url),
+    );
+  // 头部没有 testid（禁新增）——按 header 内的「部门 · 」前缀取那一段。
+  const headerDept = () =>
+    Array.from(container.querySelectorAll("header p span")).find((el) =>
+      (el.textContent ?? "").startsWith("部门 · "),
+    ) ?? null;
+  const qid2 = (t: string) => container.querySelector(`[data-testid="${t}"]`);
+
+  it("real value: header and identity card show the identical departmentView label", async () => {
+    serve("增长组");
+    await renderAt(page, at());
+    expect(headerDept()?.textContent).toBe(`部门 · 增长组`);
+    expect(headerDept()?.getAttribute("title")).toBeNull();
+    expect(qid2("ed1-identity-department")?.textContent).toBe(
+      (headerDept()?.textContent ?? "").replace("部门 · ", ""),
+    );
+  });
+
+  it("empty value: header reads 未标注部门 with the shared hover reason", async () => {
+    serve(null);
+    await renderAt(page, at());
+    expect(headerDept()?.textContent).toBe(`部门 · ${DEPT_UNLABELED_LABEL}`);
+    expect(headerDept()?.getAttribute("title")).toContain("值为空");
+  });
+
+  it("missing key: header reads 该字段未返回, never faking a bucket", async () => {
+    serve("MISSING");
+    await renderAt(page, at());
+    expect(headerDept()?.textContent).toBe(`部门 · ${FIELD_MISSING}`);
+    expect(headerDept()?.getAttribute("title")).toContain("读口没有回传");
+  });
+});
