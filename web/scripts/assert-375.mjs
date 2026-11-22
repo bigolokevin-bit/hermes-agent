@@ -11,6 +11,11 @@
 //  ① 逐元素：每个可见元素 boundingRect.right <= 375+1 且 left >= -1；
 //     可滚动容器（overflow-x: auto|scroll）单独查 scrollWidth <= clientWidth；
 //     DOM 级 scrollWidth 只作辅助读数（domOverflowPx）报告，永不签绿。
+//     wave-150 判据修复（L0 令，UI-KD 撤回件 f8c9c229 坐实）：越界元素按最近
+//     可滚祖先拆两路——位于「自带 overflow-x:auto|scroll 且 scrollWidth>clientWidth
+//     的真滚壳」内者记 violInsideScrollableShell（rubric 表格豁免=容器内滚动，合规，
+//     只记录不判红）；壳外者记 violOutsideShell，只有后者判 FAIL。禁放宽成恒真：
+//     壳必须真的能滚（scrollWidth>clientWidth+1），文档级溢出 domOverflowPx 照常报数。
 //  ② 截图 fullPage:true，且产图高度必须 > 视口高（812）；否则该页 375 腿记
 //     NOT_MEASURED，不许签绿（恰 812 = 只捕首屏的可疑形态）。
 //     回退：内部滚动壳（h-screen + overflow-y:auto 面板）使文档恒 812；
@@ -214,7 +219,16 @@ const PROBE = (VW_) => {
   const scrollOverflow = [];
   let checked = 0;
   let offscreenLeft = 0;
+  let insideShell = 0;
   const de = document.documentElement;
+  // 最近可滚祖先（wave-150）：overflow-x auto|scroll 且内容真能横滚才算壳
+  const shellOf = (el) => {
+    for (let p = el.parentElement; p; p = p.parentElement) {
+      const pcs = getComputedStyle(p);
+      if (/(auto|scroll)/.test(pcs.overflowX) && p.scrollWidth > p.clientWidth + 1) return p;
+    }
+    return null;
+  };
   for (const el of document.querySelectorAll('body *')) {
     if (!el.isConnected) continue;
     const cs = getComputedStyle(el);
@@ -234,7 +248,18 @@ const PROBE = (VW_) => {
     if (r.right <= 1) {
       offscreenLeft += 1; // 完全出画布（收起抽屉），无横向可见性，不计违规
     } else if (r.right > VW_ + 1 || r.left < -1) {
-      viol.push(rec);
+      const shell = shellOf(el);
+      if (shell) {
+        insideShell += 1; // 真滚壳内越界 = rubric 表格豁免，只记录不判红
+        viol.push({
+          ...rec,
+          inShell: 1,
+          shellTid: shell.getAttribute('data-testid') || '',
+          shellCls: (typeof shell.className === 'string' ? shell.className : '').slice(0, 60),
+        });
+      } else {
+        viol.push({ ...rec, inShell: 0 });
+      }
     }
     const ox = cs.overflowX;
     if (/(auto|scroll)/.test(ox) && el.scrollWidth > el.clientWidth + 1) {
@@ -245,6 +270,8 @@ const PROBE = (VW_) => {
     checked,
     offscreenLeft,
     violCount: viol.length,
+    violInsideScrollableShell: insideShell, // wave-150：壳内只记录，不判红
+    violOutsideShell: viol.length - insideShell, // 只有壳外判 FAIL
     viol: viol.slice(0, 30),
     scrollOverflowCount: scrollOverflow.length,
     scrollOverflow: scrollOverflow.slice(0, 30),
@@ -390,7 +417,7 @@ for (const row of target) {
       dims = null;
       navError = navError || `screenshot: ${String(e.message ?? e).slice(0, 120)}`;
     }
-    if (probe && (probe.violCount > 0 || probe.scrollOverflowCount > 0)) {
+    if (probe && probe.violOutsideShell > 0) { // wave-150（L0 令）：只判壳外违规；真滚壳内=表格豁免仍记录，滚动壳明细仍入账
       // 逐元素违规独立于截图质量：FAIL 优先于 NOT_MEASURED
       verdict = 'FAIL';
       red += 1;
@@ -511,7 +538,7 @@ for (const row of target) {
     }
     // 撤销原 NM 计数，按同一判据梯子重判（FAIL 优先）
     notMeasured -= 1;
-    if (probe && (probe.violCount > 0 || probe.scrollOverflowCount > 0)) {
+    if (probe && probe.violOutsideShell > 0) { // wave-150（L0 令）：只判壳外违规；真滚壳内=表格豁免仍记录，滚动壳明细仍入账
       verdict = 'FAIL';
       red += 1;
     } else if (!probe || !dims) {
@@ -546,6 +573,8 @@ for (const row of target) {
     contentFit,
     targetHeight, // 视口加高法目标高（null=未触发）
     violCount: probe ? probe.violCount : null,
+    violInsideScrollableShell: probe ? probe.violInsideScrollableShell : null,
+    violOutsideShell: probe ? probe.violOutsideShell : null,
     viol: probe ? probe.viol : [],
     scrollOverflowCount: probe ? probe.scrollOverflowCount : null,
     scrollOverflow: probe ? probe.scrollOverflow : [],
@@ -571,8 +600,8 @@ const summary = {
   base: BASE,
   authState: AUTH_STATE ? 'provided' : 'gated-flag-anon',
   criteria: {
-    perElement: 'right<=376 && left>=-1 for every visible element',
-    scrollContainers: 'scrollWidth<=clientWidth for overflow-x:auto|scroll, reported separately',
+    perElement: 'right<=376 && left>=-1 for every visible element; inside a genuinely scrollable overflow-x shell recorded as violInsideScrollableShell (rubric table exemption), only violOutsideShell FAILs (wave-150)',
+    scrollContainers: 'scrollWidth<=clientWidth for overflow-x:auto|scroll, reported separately — compliant shell-scroll evidence, does not FAIL (wave-150)',
     domScrollWidth: 'auxiliary only (domOverflowPx column), never greens a page',
     shot: 'fullPage:true && pngH>812 else NOT_MEASURED',
     matrix: fullScope ? 'required png, nonzero' : 'skipped-scope',
@@ -593,11 +622,11 @@ atomicWrite(
   [
     '# assert-375 index（L0 P0 判据纠偏令 · 新判据）',
     '',
-    '| route | verdict | viol | scrollOvf | domOvf(旧) | pngH | main |',
+    '| route | verdict | viol(out/in) | scrollOvf | domOvf(旧) | pngH | main |',
     '| --- | --- | ---: | ---: | ---: | ---: | ---: |',
     ...index.map(
       (r) =>
-        `| ${r.hash} | ${r.verdict} | ${r.violCount ?? '-'} | ${r.scrollOverflowCount ?? '-'} | ${r.domOverflowPx ?? '-'} | ${r.pngH ?? '-'} | ${r.mainTextLen} |`,
+        `| ${r.hash} | ${r.verdict} | ${(r.violOutsideShell ?? '-') + ' / ' + (r.violInsideScrollableShell ?? '-')} | ${r.scrollOverflowCount ?? '-'} | ${r.domOverflowPx ?? '-'} | ${r.pngH ?? '-'} | ${r.mainTextLen} |`,
     ),
     '',
     `matrix(${MATRIX_HASH}) present=${Boolean(matrixRow)} ok=${matrixOk ?? 'skipped-scope'}`,
