@@ -298,7 +298,10 @@ const GATED_FLAG_INIT = () => {
 // L0 令 151 牙齿自检：ASSERT375_TEETH=1 时在 body 级注入 600px 宽元素（无任何可滚壳祖先），
 // 走同一 PROBE + 同一判据梯子，必须得 violOutsideShell>=1 且 verdict=FAIL——
 // 用来区分「壳内被正确分流」与「探针丢了判定维度」。正常跑不设此 env 即零影响。
+// L0 令 152 反证钩子：ASSERT375_BREAK_FIELD=1 时在两条梯子前人为删除 probe.violOutsideShell，
+// criteriaMissing 必须把该行判 NOT_MEASURED（禁静默 PASS）——证明缺失字段兜底真实生效。
 const TEETH = process.env.ASSERT375_TEETH === '1';
+const BREAK_FIELD = process.env.ASSERT375_BREAK_FIELD === '1';
 const TEETH_INIT = () => {
   const put = () => {
     if (document.querySelector('[data-selftest="teeth-600"]')) return;
@@ -371,6 +374,7 @@ for (const row of target) {
     notMeasured += 1;
   } else {
     probe = await page.evaluate(PROBE, VW).catch(() => null);
+    if (BREAK_FIELD && probe) delete probe.violOutsideShell; // 反证钩子（152）：人为缺失该字段必须落 NOT_MEASURED
     try {
       await page.evaluate(() => document.fonts.ready.then(() => true)).catch(() => false);
       try {
@@ -502,6 +506,7 @@ for (const row of target) {
         fbPrev = l;
       }
       probe = await fbPage.evaluate(PROBE, VW).catch(() => null);
+      if (BREAK_FIELD && probe) delete probe.violOutsideShell; // 反证钩子（152）：旁路重判腿同口径
       await fbPage.evaluate(() => document.fonts.ready.then(() => true)).catch(() => false);
       await fbPage.screenshot({ path: file, fullPage: true, timeout: 45_000 });
       bytes = statSync(file).size;
