@@ -18,6 +18,7 @@ vi.mock('@/modules/models/fetchJson', () => ({ fetchJsonStrict: api.fetchJsonStr
 vi.mock('@/lib/clipboard', () => ({ copyTextToClipboard: clip.copyTextToClipboard }));
 
 import { MetricsModulePage } from './MetricsModulePage';
+import { COST_CALIBER_TEXT, costCaliberTitle } from './costCaliberNote';
 import {
   EMPTY_SOURCE_STAMP,
   SOURCE_STALE_MS,
@@ -339,5 +340,85 @@ describe('metN — R6: provenance headers are always present, missing cells stay
   it('R6 does not grow a header when the file has no rows', () => {
     expect(toCsv(SHARE_CSV_HEADER, [])).toBe('group,runs,cost_usd,share_pct,as_of,window');
     expect(shareCsv([])).toBe('group,runs,cost_usd,share_pct,as_of,window');
+  });
+});
+
+describe('metN — R7: the cost rows carry the caliber sentence, and a gap stays a dash', () => {
+  const ZERO = { employeeId: 'emp_aaaabbbbcccc', period: '2026-11', periodKind: 'month', costUsd: 0, updatedAt: '2026-11-20T02:00:00.000Z' };
+  // A ledger row that names no period and carries no amount and no stamp: every
+  // value face of it has to read as a gap, never as 0 and never as an empty cell.
+  const GAP = { employeeId: 'emp_ddddeeeeffff', periodKind: 'month', costUsd: null };
+  const PAID = { employeeId: 'emp_iiiijjjjkkkk', period: '2026-11', periodKind: 'month', costUsd: 0.5, updatedAt: '2026-11-20T03:00:00.000Z' };
+  const MONTH_ROWS = [ZERO, GAP, PAID];
+  const DAY_ROWS = MONTH_ROWS.map((row) => ({ ...row, period: '2026-11-20' }));
+
+  function caliberRouter(): (url: string) => Promise<unknown> {
+    return (url: string): Promise<unknown> => {
+      if (url.includes('run-activity')) {
+        return Promise.resolve({ cells: [], max: null, from: '2026-11-12T16:00:00Z', to: '2026-11-19T15:59:59Z', tz: 'Asia/Shanghai' });
+      }
+      if (url.includes('run-stats')) return Promise.resolve(STATS);
+      if (url.includes('/api/employees')) {
+        return Promise.resolve({
+          items: [
+            { employeeId: 'emp_aaaabbbbcccc', name: '小鲤' },
+            { employeeId: 'emp_ddddeeeeffff', name: '小满' },
+            { employeeId: 'emp_iiiijjjjkkkk', name: '阿吉' },
+          ],
+          nextCursor: null,
+        });
+      }
+      if (url.includes('models/pricing')) return Promise.resolve({ prices: [] });
+      if (url.includes('hermes-usage')) return Promise.resolve({ by_model: [], cost: { cost_status: 'unknown' }, asOf: null });
+      if (url.includes('budget-usage')) {
+        const periodKind = url.includes('periodKind=month') ? 'month' : 'day';
+        return Promise.resolve({ items: periodKind === 'month' ? MONTH_ROWS : DAY_ROWS, missingEmployeeIds: [] });
+      }
+      return Promise.resolve({});
+    };
+  }
+
+  function snapshotRow(name: string): Element | null {
+    const rows = [...document.querySelectorAll('[data-testid="met6-cost-rows"] .met6-row')];
+    return rows.find((row) => (row.querySelector('.met6-row-who')?.textContent ?? '').startsWith(name)) ?? null;
+  }
+
+  function face(row: Element, selector: string): string {
+    return (row.querySelector(selector)?.textContent ?? '').trim();
+  }
+
+  it('R7 puts the caliber sentence on the rows card and says it in one voice', async () => {
+    await mount(caliberRouter());
+    await waitFor(() => document.querySelector('[data-testid="met6-cost-rows"]') !== null, 'cost rows ready');
+
+    const card = document.querySelector('[data-testid="metAJ-cost-row-caliber"]');
+    expect(card).not.toBeNull();
+    // The words are the page's single source, not a second copy written for this card.
+    expect(card?.textContent?.trim()).toBe(COST_CALIBER_TEXT);
+    expect(card?.getAttribute('title')).toBe(costCaliberTitle('metrics'));
+    // R7: the card names the other dimension, so a reader cannot divide money by calls.
+    expect(card?.textContent ?? '').toContain('调用次数');
+    const wide = document.querySelector('[data-testid="met-cost-caliber-note"]');
+    expect(wide).not.toBeNull();
+    expect(wide?.textContent?.trim()).toBe(card?.textContent?.trim());
+  });
+
+  it('R7 keeps a real zero an amount and an absent amount a dash on every face', async () => {
+    await mount(caliberRouter());
+    await waitFor(() => document.querySelector('[data-testid="met6-cost-rows"]') !== null, 'cost rows ready');
+
+    const zero = snapshotRow('小鲤');
+    const gap = snapshotRow('小满');
+    expect(zero).not.toBeNull();
+    expect(gap).not.toBeNull();
+    // R1 again, this time on the rows card: a ledger zero is an amount.
+    expect(face(zero!, '.met6-row-amount')).toBe('$0.00');
+    expect(face(zero!, '.met6-row-period')).toBe('2026-11');
+    expect(face(zero!, '.met6-row-asof')).not.toBe('');
+    // A missing money, period or stamp prints the dash, never 0 and never a blank.
+    expect(face(gap!, '.met6-row-amount')).toBe('—');
+    expect(face(gap!, '.met6-row-period')).toBe('—');
+    expect(face(gap!, '.met6-row-asof')).toBe('—');
+    expect(face(gap!, '.met6-row-who')).toContain('小满');
   });
 });
