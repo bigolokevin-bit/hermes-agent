@@ -1,0 +1,631 @@
+[
+  {
+    "leg": "kn-spaces",
+    "request": "/#/knowledge",
+    "nav": {
+      "url": "/knowledge",
+      "entry": "/assets/index-INJI_bcS.js",
+      "outerSelected": {
+        "tabId": "spaces",
+        "label": "知识空间",
+        "selected": true
+      },
+      "innerSelected": {
+        "testid": "knw5-tab-spaces",
+        "label": "空间台账",
+        "selected": true,
+        "right": 182
+      },
+      "panelDataTab": "spaces",
+      "faces": [
+        "文档命中",
+        "空间台账"
+      ],
+      "collision": [],
+      "rows": 0,
+      "scrollShells": []
+    },
+    "fold": {
+      "vw": 375,
+      "checked": 187,
+      "violCount": 0,
+      "worstRight": 375,
+      "offscreenLeft": 61,
+      "viol": [],
+      "scrollOverflow": [],
+      "domOverflowPx": 0
+    },
+    "expanded": {
+      "vw": 375,
+      "checked": 187,
+      "violCount": 0,
+      "worstRight": 375,
+      "offscreenLeft": 61,
+      "viol": [],
+      "scrollOverflow": [],
+      "domOverflowPx": 0
+    },
+    "boost": {
+      "scrollers": 1,
+      "grown": 1470
+    },
+    "png": "/private/var/folders/2b/bnpsyz450pn98w375q_803yw0000gn/T/opencode/knw-density/ev-knw375/kn-spaces-375.png",
+    "pngW": 375,
+    "pngH": 1470,
+    "measured": true,
+    "foldBytes": 1,
+    "pageErrors": []
+  },
+  {
+    "leg": "kn-tab-sources",
+    "request": "/#/knowledge?tab=sources",
+    "nav": {
+      "url": "/knowledge?tab=sources&panel=ingest",
+      "entry": "/assets/index-INJI_bcS.js",
+      "outerSelected": {
+        "tabId": "sources",
+        "label": "数据源",
+        "selected": true
+      },
+      "innerSelected": {
+        "testid": "knw5-tab-ingest",
+        "label": "数据接入",
+        "selected": true,
+        "right": 351.8
+      },
+      "panelDataTab": "ingest",
+      "faces": [
+        "文档命中",
+        "接入健康",
+        "接入任务",
+        "接入对象"
+      ],
+      "collision": [],
+      "rows": 0,
+      "scrollShells": []
+    },
+    "fold": {
+      "vw": 375,
+      "checked": 207,
+      "violCount": 0,
+      "worstRight": 375,
+      "offscreenLeft": 61,
+      "viol": [],
+      "scrollOverflow": [],
+      "domOverflowPx": 0
+    },
+    "expanded": {
+      "vw": 375,
+      "checked": 207,
+      "violCount": 0,
+      "worstRight": 375,
+      "offscreenLeft": 61,
+      "viol": [],
+      "scrollOverflow": [],
+      "domOverflowPx": 0
+    },
+    "boost": {
+      "scrollers": 1,
+      "grown": 1665
+    },
+    "png": "/private/var/folders/2b/bnpsyz450pn98w375q_803yw0000gn/T/opencode/knw-density/ev-knw375/kn-tab-sources-375.png",
+    "pngW": 375,
+    "pngH": 1665,
+    "measured": true,
+    "foldBytes": 1,
+    "pageErrors": []
+  },
+  {
+    "leg": "kn-tab-ingest",
+    "request": "/#/knowledge?tab=ingest",
+    "nav": {
+      "url": "/knowledge?tab=sources&panel=ingest",
+      "entry": "/assets/index-INJI_bcS.js",
+      "outerSelected": {
+        "tabId": "sources",
+        "label": "数据源",
+        "selected": true
+      },
+      "innerSelected": {
+        "testid": "knw5-tab-ingest",
+        "label": "数据接入",
+        "selected": true,
+        "right": 351.8
+      },
+      "panelDataTab": "ingest",
+      "faces": [
+        "文档命中",
+        "接入健康",
+        "接入任务",
+        "接入对象"
+      ],
+      "collision": [],
+      "rows": 0,
+      "scrollShells": []
+    },
+    "fold": {
+      "vw": 375,
+      "checked": 207,
+      "violCount": 0,
+      "worstRight": 375,
+      "offscreenLeft": 61,
+      "viol": [],
+      "scrollOverflow": [],
+      "domOverflowPx": 0
+    },
+    "expanded": {
+      "vw": 375,
+      "checked": 207,
+      "violCount": 0,
+      "worstRight": 375,
+      "offscreenLeft": 61,
+      "viol": [],
+      "scrollOverflow": [],
+      "domOverflowPx": 0
+    },
+    "boost": {
+      "scrollers": 1,
+      "grown": 1665
+    },
+    "png": "/private/var/folders/2b/bnpsyz450pn98w375q_803yw0000gn/T/opencode/knw-density/ev-knw375/kn-tab-ingest-375.png",
+    "pngW": 375,
+    "pngH": 1665,
+    "measured": true,
+    "foldBytes": 1,
+    "pageErrors": []
+  },
+  {
+    "leg": "kn-tab-retrieval",
+    "request": "/#/knowledge?tab=retrieval",
+    "nav": {
+      "url": "/knowledge?panel=retrieval",
+      "entry": "/assets/index-INJI_bcS.js",
+      "outerSelected": {
+        "tabId": "spaces",
+        "label": "知识空间",
+        "selected": true
+      },
+      "innerSelected": {
+        "testid": "knw5-tab-retrieval",
+        "label": "检索",
+        "selected": true,
+        "right": 182
+      },
+      "panelDataTab": "retrieval",
+      "faces": [
+        "文档命中",
+        "检索命中",
+        "读取记录"
+      ],
+      "collision": [],
+      "rows": 0,
+      "scrollShells": []
+    },
+    "fold": {
+      "vw": 375,
+      "checked": 188,
+      "violCount": 0,
+      "worstRight": 375,
+      "offscreenLeft": 61,
+      "viol": [],
+      "scrollOverflow": [],
+      "domOverflowPx": 0
+    },
+    "expanded": {
+      "vw": 375,
+      "checked": 188,
+      "violCount": 0,
+      "worstRight": 375,
+      "offscreenLeft": 61,
+      "viol": [],
+      "scrollOverflow": [],
+      "domOverflowPx": 0
+    },
+    "boost": {
+      "scrollers": 1,
+      "grown": 1476
+    },
+    "png": "/private/var/folders/2b/bnpsyz450pn98w375q_803yw0000gn/T/opencode/knw-density/ev-knw375/kn-tab-retrieval-375.png",
+    "pngW": 375,
+    "pngH": 1476,
+    "measured": true,
+    "foldBytes": 1,
+    "pageErrors": []
+  },
+  {
+    "leg": "kn-tab-citations",
+    "request": "/#/knowledge?tab=citations",
+    "nav": {
+      "url": "/knowledge?panel=evidence",
+      "entry": "/assets/index-INJI_bcS.js",
+      "outerSelected": {
+        "tabId": "spaces",
+        "label": "知识空间",
+        "selected": true
+      },
+      "innerSelected": {
+        "testid": "knw5-tab-evidence",
+        "label": "运行事件引用",
+        "selected": true,
+        "right": 351.8
+      },
+      "panelDataTab": "evidence",
+      "faces": [
+        "文档命中",
+        "引用台账",
+        "会话引用"
+      ],
+      "collision": [],
+      "rows": 0,
+      "scrollShells": []
+    },
+    "fold": {
+      "vw": 375,
+      "checked": 178,
+      "violCount": 0,
+      "worstRight": 375,
+      "offscreenLeft": 61,
+      "viol": [],
+      "scrollOverflow": [],
+      "domOverflowPx": 0
+    },
+    "expanded": {
+      "vw": 375,
+      "checked": 178,
+      "violCount": 0,
+      "worstRight": 375,
+      "offscreenLeft": 61,
+      "viol": [],
+      "scrollOverflow": [],
+      "domOverflowPx": 0
+    },
+    "boost": {
+      "scrollers": 1,
+      "grown": 1375
+    },
+    "png": "/private/var/folders/2b/bnpsyz450pn98w375q_803yw0000gn/T/opencode/knw-density/ev-knw375/kn-tab-citations-375.png",
+    "pngW": 375,
+    "pngH": 1375,
+    "measured": true,
+    "foldBytes": 1,
+    "pageErrors": []
+  },
+  {
+    "leg": "kn-tab-scope",
+    "request": "/#/knowledge?tab=scope",
+    "nav": {
+      "url": "/knowledge?panel=spaces",
+      "entry": "/assets/index-INJI_bcS.js",
+      "outerSelected": {
+        "tabId": "spaces",
+        "label": "知识空间",
+        "selected": true
+      },
+      "innerSelected": {
+        "testid": "knw5-tab-spaces",
+        "label": "空间台账",
+        "selected": true,
+        "right": 182
+      },
+      "panelDataTab": "spaces",
+      "faces": [
+        "文档命中",
+        "空间台账"
+      ],
+      "collision": [],
+      "rows": 0,
+      "scrollShells": []
+    },
+    "fold": {
+      "vw": 375,
+      "checked": 187,
+      "violCount": 0,
+      "worstRight": 375,
+      "offscreenLeft": 61,
+      "viol": [],
+      "scrollOverflow": [],
+      "domOverflowPx": 0
+    },
+    "expanded": {
+      "vw": 375,
+      "checked": 187,
+      "violCount": 0,
+      "worstRight": 375,
+      "offscreenLeft": 61,
+      "viol": [],
+      "scrollOverflow": [],
+      "domOverflowPx": 0
+    },
+    "boost": {
+      "scrollers": 1,
+      "grown": 1470
+    },
+    "png": "/private/var/folders/2b/bnpsyz450pn98w375q_803yw0000gn/T/opencode/knw-density/ev-knw375/kn-tab-scope-375.png",
+    "pngW": 375,
+    "pngH": 1470,
+    "measured": true,
+    "foldBytes": 1,
+    "pageErrors": []
+  },
+  {
+    "leg": "kn-tab-evidence",
+    "request": "/#/knowledge?tab=evidence",
+    "nav": {
+      "url": "/knowledge?tab=evidence",
+      "entry": "/assets/index-INJI_bcS.js",
+      "outerSelected": {
+        "tabId": "evidence",
+        "label": "审计证据",
+        "selected": true
+      },
+      "innerSelected": null,
+      "panelDataTab": null,
+      "faces": [],
+      "collision": [],
+      "rows": 0,
+      "scrollShells": []
+    },
+    "fold": {
+      "vw": 375,
+      "checked": 957,
+      "violCount": 0,
+      "worstRight": 375,
+      "offscreenLeft": 61,
+      "viol": [],
+      "scrollOverflow": [],
+      "domOverflowPx": 0
+    },
+    "expanded": {
+      "vw": 375,
+      "checked": 957,
+      "violCount": 0,
+      "worstRight": 375,
+      "offscreenLeft": 61,
+      "viol": [],
+      "scrollOverflow": [],
+      "domOverflowPx": 0
+    },
+    "boost": {
+      "scrollers": 1,
+      "grown": 6707
+    },
+    "png": "/private/var/folders/2b/bnpsyz450pn98w375q_803yw0000gn/T/opencode/knw-density/ev-knw375/kn-tab-evidence-375.png",
+    "pngW": 375,
+    "pngH": 6707,
+    "measured": true,
+    "foldBytes": 1,
+    "pageErrors": []
+  },
+  {
+    "leg": "kn-panel-spaces",
+    "request": "/#/knowledge?panel=spaces",
+    "nav": {
+      "url": "/knowledge?panel=spaces",
+      "entry": "/assets/index-INJI_bcS.js",
+      "outerSelected": {
+        "tabId": "spaces",
+        "label": "知识空间",
+        "selected": true
+      },
+      "innerSelected": {
+        "testid": "knw5-tab-spaces",
+        "label": "空间台账",
+        "selected": true,
+        "right": 182
+      },
+      "panelDataTab": "spaces",
+      "faces": [
+        "文档命中",
+        "空间台账"
+      ],
+      "collision": [],
+      "rows": 0,
+      "scrollShells": []
+    },
+    "fold": {
+      "vw": 375,
+      "checked": 187,
+      "violCount": 0,
+      "worstRight": 375,
+      "offscreenLeft": 61,
+      "viol": [],
+      "scrollOverflow": [],
+      "domOverflowPx": 0
+    },
+    "expanded": {
+      "vw": 375,
+      "checked": 187,
+      "violCount": 0,
+      "worstRight": 375,
+      "offscreenLeft": 61,
+      "viol": [],
+      "scrollOverflow": [],
+      "domOverflowPx": 0
+    },
+    "boost": {
+      "scrollers": 1,
+      "grown": 1470
+    },
+    "png": "/private/var/folders/2b/bnpsyz450pn98w375q_803yw0000gn/T/opencode/knw-density/ev-knw375/kn-panel-spaces-375.png",
+    "pngW": 375,
+    "pngH": 1470,
+    "measured": true,
+    "foldBytes": 1,
+    "pageErrors": []
+  },
+  {
+    "leg": "kn-panel-ingest",
+    "request": "/#/knowledge?panel=ingest",
+    "nav": {
+      "url": "/knowledge?tab=sources&panel=ingest",
+      "entry": "/assets/index-INJI_bcS.js",
+      "outerSelected": {
+        "tabId": "sources",
+        "label": "数据源",
+        "selected": true
+      },
+      "innerSelected": {
+        "testid": "knw5-tab-ingest",
+        "label": "数据接入",
+        "selected": true,
+        "right": 351.8
+      },
+      "panelDataTab": "ingest",
+      "faces": [
+        "文档命中",
+        "接入健康",
+        "接入任务",
+        "接入对象"
+      ],
+      "collision": [],
+      "rows": 0,
+      "scrollShells": []
+    },
+    "fold": {
+      "vw": 375,
+      "checked": 207,
+      "violCount": 0,
+      "worstRight": 375,
+      "offscreenLeft": 61,
+      "viol": [],
+      "scrollOverflow": [],
+      "domOverflowPx": 0
+    },
+    "expanded": {
+      "vw": 375,
+      "checked": 207,
+      "violCount": 0,
+      "worstRight": 375,
+      "offscreenLeft": 61,
+      "viol": [],
+      "scrollOverflow": [],
+      "domOverflowPx": 0
+    },
+    "boost": {
+      "scrollers": 1,
+      "grown": 1665
+    },
+    "png": "/private/var/folders/2b/bnpsyz450pn98w375q_803yw0000gn/T/opencode/knw-density/ev-knw375/kn-panel-ingest-375.png",
+    "pngW": 375,
+    "pngH": 1665,
+    "measured": true,
+    "foldBytes": 1,
+    "pageErrors": []
+  },
+  {
+    "leg": "kn-panel-retrieval",
+    "request": "/#/knowledge?panel=retrieval",
+    "nav": {
+      "url": "/knowledge?panel=retrieval",
+      "entry": "/assets/index-INJI_bcS.js",
+      "outerSelected": {
+        "tabId": "spaces",
+        "label": "知识空间",
+        "selected": true
+      },
+      "innerSelected": {
+        "testid": "knw5-tab-retrieval",
+        "label": "检索",
+        "selected": true,
+        "right": 182
+      },
+      "panelDataTab": "retrieval",
+      "faces": [
+        "文档命中",
+        "检索命中",
+        "读取记录"
+      ],
+      "collision": [],
+      "rows": 0,
+      "scrollShells": []
+    },
+    "fold": {
+      "vw": 375,
+      "checked": 188,
+      "violCount": 0,
+      "worstRight": 375,
+      "offscreenLeft": 61,
+      "viol": [],
+      "scrollOverflow": [],
+      "domOverflowPx": 0
+    },
+    "expanded": {
+      "vw": 375,
+      "checked": 188,
+      "violCount": 0,
+      "worstRight": 375,
+      "offscreenLeft": 61,
+      "viol": [],
+      "scrollOverflow": [],
+      "domOverflowPx": 0
+    },
+    "boost": {
+      "scrollers": 1,
+      "grown": 1476
+    },
+    "png": "/private/var/folders/2b/bnpsyz450pn98w375q_803yw0000gn/T/opencode/knw-density/ev-knw375/kn-panel-retrieval-375.png",
+    "pngW": 375,
+    "pngH": 1476,
+    "measured": true,
+    "foldBytes": 1,
+    "pageErrors": []
+  },
+  {
+    "leg": "kn-panel-evidence",
+    "request": "/#/knowledge?panel=evidence",
+    "nav": {
+      "url": "/knowledge?panel=evidence",
+      "entry": "/assets/index-INJI_bcS.js",
+      "outerSelected": {
+        "tabId": "spaces",
+        "label": "知识空间",
+        "selected": true
+      },
+      "innerSelected": {
+        "testid": "knw5-tab-evidence",
+        "label": "运行事件引用",
+        "selected": true,
+        "right": 351.8
+      },
+      "panelDataTab": "evidence",
+      "faces": [
+        "文档命中",
+        "引用台账",
+        "会话引用"
+      ],
+      "collision": [],
+      "rows": 0,
+      "scrollShells": []
+    },
+    "fold": {
+      "vw": 375,
+      "checked": 178,
+      "violCount": 0,
+      "worstRight": 375,
+      "offscreenLeft": 61,
+      "viol": [],
+      "scrollOverflow": [],
+      "domOverflowPx": 0
+    },
+    "expanded": {
+      "vw": 375,
+      "checked": 178,
+      "violCount": 0,
+      "worstRight": 375,
+      "offscreenLeft": 61,
+      "viol": [],
+      "scrollOverflow": [],
+      "domOverflowPx": 0
+    },
+    "boost": {
+      "scrollers": 1,
+      "grown": 1375
+    },
+    "png": "/private/var/folders/2b/bnpsyz450pn98w375q_803yw0000gn/T/opencode/knw-density/ev-knw375/kn-panel-evidence-375.png",
+    "pngW": 375,
+    "pngH": 1375,
+    "measured": true,
+    "foldBytes": 1,
+    "pageErrors": []
+  }
+]
