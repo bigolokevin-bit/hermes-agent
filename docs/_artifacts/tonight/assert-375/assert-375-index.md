@@ -207,3 +207,8 @@ matrix(#/employees?tab=matrix) present=true ok=true
 - ②张冠李戴更正：rerollNote154 声明 d2cc49fe=昨夜 00:57 老脸（merge 3e01e190），其『sessions/models 转 PASS』不作当代读数；models 行字段 face=None（初代批次），d2cc49fe 归属仅存旧注记——如实拆开。
 - ③登录态口径：authStateCaliber154——本道 assert-375/shots/storm 全部带 --auth-state（RAW authState=provided）；无一条 NM 出自匿名态；UI-KD 221/29 登录态布局对照并存不冲突。
 - 全 51 行 finalVerdict154 逐行落 face+entry+authState+window+dim；counts/matrixOk 未动（49/0/2、true）；375 总 PASS 继续禁；api 项 claimed 不销。
+
+## wave-154 判定落档 @799e7106be（端口9122/entry index-CCLAG-mZ.js）
+- L0 判定：三缺口全采纳 ⇒ assert-375 判据项销账；放行条件 scan153.lowMainPassRows=[] 已核（49 PASS 无骨架空壳）；台账 51/49/0/NM2 exitCode1 收下。
+- 仍不闭合：375 总 PASS 继续禁（NM2）；api 项不许拿机制反证当现网读数（机制跑不采样为闸形制，结论型读数须同脸真计数表配对——已入 CONSOLE-ACCEPTANCE §5）。
+- 下一拍：ui-b 修复（lib/api.ts 401 环）入脸后，同脸复跑 #/sessions 与 #/capabilities?tab=channels，nav/401 继续落附表；现查 tip=799e7106be 尚无修复笔，待命不空转。
