@@ -212,3 +212,12 @@ matrix(#/employees?tab=matrix) present=true ok=true
 - L0 判定：三缺口全采纳 ⇒ assert-375 判据项销账；放行条件 scan153.lowMainPassRows=[] 已核（49 PASS 无骨架空壳）；台账 51/49/0/NM2 exitCode1 收下。
 - 仍不闭合：375 总 PASS 继续禁（NM2）；api 项不许拿机制反证当现网读数（机制跑不采样为闸形制，结论型读数须同脸真计数表配对——已入 CONSOLE-ACCEPTANCE §5）。
 - 下一拍：ui-b 修复（lib/api.ts 401 环）入脸后，同脸复跑 #/sessions 与 #/capabilities?tab=channels，nav/401 继续落附表；现查 tip=799e7106be 尚无修复笔，待命不空转。
+
+## wave-155 cookie 早衰改判·活会话同脸复跑 @0379ae9f4e（端口9122/entry index-DuhonhGE.js）
+
+- 判词采纳（L0）：375 两路 NM 根因=探针 cookie 早衰（死会话×SPA 假200 风暴闸复位=取证伪像），非渲染缺陷；authState=provided 旗标不算登录态，探针前置断言 whoami==200 已成规程。本轮 preflight whoami=200（expiry 余 ~12.5h）。
+- H2 三比：脸 0379ae9f4e（20:36:50，UI 基元+api 假200 修复入脸，diff web/src=11 文件+790）→ vite build VITE=0（20:44:30，晚定脸 7'40" 无抢跑）；entry index-DuhonhGE.js 172800B sha256 1bf0d9ef48e733d3c73da47d18836ab592033404c3abe881091286b08c36f10d mtime 20:44:30；css index-DLpXaUuB.css 146491B 未换代；curl / 与 /agent-v2/ index 同值 MATCH×2；assets 逐位走 /assets/ 双 YES（/agent-v2/assets/ 为 SPA 回退页非原始资产——三比 assets 腿必须用 /assets/，假200 族另一面如实记）。
+- 活会话同脸复跑（20:45:06，assert-375 带 --auth-state）：sessions **PASS** main=106 elems=141 out=0 in=0 pngH=812；channels **PASS** main=200 elems=150 out=0 in=0 pngH=812 ⇒ 375 台账 **routes51 pass51 fail0 NM0 matrixOk=true exitCode0**，NM 2→0 归零。与 ui-b 三组活会话读数交叉一致（sessions 116/channels 969 同真渲染量级，数字差=数据时窗，不造）。
+- 风暴计数附表（活 cookie，6s/12s 窗）：sessions 401 7→8（delta+1）nav 5→5（0）total 66→68；channels 401 13→13（0）nav 5→5（0）total 62→63 ⇒ 零线性增长（对照死 cookie wave-140 基线 sessions 401×1308/15s、wave-152 267→527）——cookie 早衰归因坐实。RAW=storm-counters-live-0379ae9f4e.json。
+- 牙齿注记：skeleton 闸（main<30 判 NM）独立价值保留——正是它当时拦住死 cookie 伪 PASS；判据项闭合，本波 web/scripts/** 未动（L0 令）。
+- 纪律：375 **总 PASS 宣称归 L0 销账**，本台账只记「NM 归零读数已入」；51 路未重扫（本轮两路点名复跑合入法，旧快照 prevFaceSnapshots 全链保留）；vitest 基线更新 481 files/3559 tests（L0 亲验免重跑）。
