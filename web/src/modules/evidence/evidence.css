@@ -1,0 +1,18 @@
+/* evidence (ev5) — 语义令牌类，替代原 22 处内联 style（UI-Quality §6.2 迁移）。
+ * 真值与原骨架 var() 一致：--color-text-muted-ls=--fg-2、--color-text-subtle-ls=--fg-3
+ * （styles/tokens.css 别名表，逐条核对）。--border 与 --surface-2 在仓内从未定义，
+ * 原内联写法按「失效自定义属性」渲染（边框留 currentColor、骨架条透明）；按派单
+ * 口径落到语义令牌后，边框描出 --color-border-ls（--line-2），骨架条显出
+ * --color-surface-raised-ls（--panel-2）——即作者本来的意图色。 */
+.ev5-muted {
+  color: var(--color-text-muted-ls);
+}
+.ev5-subtle {
+  color: var(--color-text-subtle-ls);
+}
+.ev5-bordered {
+  border-color: var(--color-border-ls);
+}
+.ev5-skeleton {
+  background: var(--color-surface-raised-ls);
+}
