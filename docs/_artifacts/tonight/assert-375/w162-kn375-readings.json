@@ -1,0 +1,96 @@
+{
+ "port": 9122,
+ "entry": "assets/index-D4QqzZ8Z(160脸复跑).js",
+ "face": "1f078a8aed",
+ "viewport": "375x812",
+ "whoami": {
+  "status": 200,
+  "at": "2026-11-22T14:50:05.501Z"
+ },
+ "census": {
+  "rootTouchVar": "",
+  "families": {
+   "knw5_drill": {
+    "count": 0,
+    "samples": [],
+    "under44": 0
+   },
+   "knw5_copy": {
+    "count": 0,
+    "samples": [],
+    "under44": 0
+   },
+   "clear_btn": {
+    "count": 0,
+    "samples": [],
+    "under44": 0
+   },
+   "seg_btn": {
+    "count": 4,
+    "samples": [
+     {
+      "h": 44,
+      "w": 169.8,
+      "minBlockSize": "44px",
+      "testId": "knw5-tab-spaces",
+      "visible": true
+     },
+     {
+      "h": 44,
+      "w": 169.8,
+      "minBlockSize": "44px",
+      "testId": "knw5-tab-ingest",
+      "visible": true
+     },
+     {
+      "h": 44,
+      "w": 169.8,
+      "minBlockSize": "44px",
+      "testId": "knw5-tab-retrieval",
+      "visible": true
+     }
+    ],
+    "under44": 0
+   }
+  },
+  "tabReadings": {
+   "检索": {
+    "knw5_drill": {
+     "count": 0,
+     "under44": 0,
+     "samples": []
+    },
+    "knw5_copy": {
+     "count": 0,
+     "under44": 0,
+     "samples": []
+    },
+    "clear_btn": {
+     "count": 0,
+     "under44": 0,
+     "samples": []
+    },
+    "seg_btn": {
+     "count": 4,
+     "under44": 0,
+     "samples": [
+      {
+       "h": 44,
+       "w": 169.8,
+       "minBlockSize": "44px",
+       "testId": "knw5-tab-spaces"
+      },
+      {
+       "h": 44,
+       "w": 169.8,
+       "minBlockSize": "44px",
+       "testId": "knw5-tab-ingest"
+      }
+     ]
+    }
+   },
+   "引用": "ABSENT"
+  }
+ },
+ "at": "2026-11-22T14:50:13.065Z"
+}

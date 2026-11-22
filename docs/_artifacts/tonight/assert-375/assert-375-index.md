@@ -268,3 +268,12 @@ matrix(#/employees?tab=matrix) present=true ok=true
 - P0-1 风暴复跑：sessions 401 7->8(+1) nav 5->5(0) main=106；channels 401 13->13(0) nav 5->5(0) main=200——窗口翻倍不翻倍、mainTextLen>=30 **达标**；残余 401=鉴权外端点恒定值。RAW=storm-counters-w161.json。
 - 让位记录：构建后共享树出现他人未推源码提交 df749fb259（refactor(shell) console-chrome token 化）——本章以 detached@a9f802dbe9 直落远端 tip，未代推未 rewind。
 - 375 总 PASS 放行权在 UX 总审，本车道只固化读数不自签；vitest 基线 482/3564（L0 亲验）。
+
+## wave-162 重建 H2 五件+全表复扫+P0-1 新脸复跑 @1f078a8aed（端口9122/entry index-Ceaj0F6k.js）
+
+- H2 五件：entry index-Ceaj0F6k.js / sha256 57d90c0cd40eb08cfd40e397e2a9468b40ba74d8cb0bc76309c54f0ae1235d87 / 171257B / mtime 2026-11-22 22:49:53 / curl /agent-v2/ 同名；css 换代 index-BuNLfk0U.css 148943B sha f0741a533da49d5e…36bf992；/assets/ bit 双 match。脸 1f078a8aed(22:42:12)，重建晚 7'41" 无抢跑；console.tsx/console-chrome.css/StateBlock 入图⇒双换代。
+- 全表 51 路复扫固化：pass 51 / fail 0 / NM 0，matrixOk=True，lowMainPass162=[]，51 帧 mtime 22:50:33；whoami162=200（2026-11-22T14:50:13.065Z）显式码进逐行表。
+- 触点族复验：#/knowledge 375 seg_btn count=4 / under44=0 / 每枚 44×169.8px minBlockSize=44px（knw5-tab-spaces）；drill/copy/-clear 三族 count=0 处置同 159-161。
+- P0-1 新脸同口径复跑：sessions 401 7→8(+1) nav 5→5(0) main=106；channels 401 13→13(0) nav 5→5(0) main=200 ⇒ 窗口翻倍不翻倍且 mainTextLen>=30 达标；残余 401=鉴权外端点恒定（156 口径一致）。
+- 160/161 判词补答：160 比对 face=7a47010b35、重建 22:14 磁盘 mtime 实读=22:14（重建真发生）；同名同 sha=ui/** 未被应用引用入模块图（vite hash 只覆盖图内字节）；本波 in-graph 改动 entry 立即换代+字节 172800→171257 反证该口径成立。
+- 纪律：375 总 PASS 放行权归 UX 总审不自签；判据未动（web/scripts/** 本轮零改动）；基线 484/3574 已记；RAW=w162-full-scan-{summary,index}+w162-kn375-readings+storm-counters-w162+51帧。
