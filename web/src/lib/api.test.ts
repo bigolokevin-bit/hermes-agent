@@ -130,6 +130,63 @@ describe("fetchJSON", () => {
 
     expect(reloadMocks.clearDashboardTokenReloadAttempt).toHaveBeenCalledTimes(1);
   });
+
+  // wave-154 现网复跑实锤：9122 的反代没转发 /api/status，SPA 兜底回了
+  // 200 + index.html —— 假 200 每次整页加载都清一次闩，reload 分支于是
+  // 以页面加载频率无限续命（15s 645 次导航，窗口翻倍计数翻倍）。
+  // HTML 正文的 2xx 不是会话证明：不得销任何风暴闸。
+  it("a 200 that is SPA-fallback HTML does not re-arm the reload latch", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        status: 200,
+        headers: new Headers({ "content-type": "text/html; charset=utf-8" }),
+        json: async () => {
+          throw new SyntaxError("Unexpected token <");
+        },
+      })),
+    );
+
+    await expect(fetchJSON("/api/status")).rejects.toThrow();
+
+    expect(reloadMocks.clearDashboardTokenReloadAttempt).not.toHaveBeenCalled();
+  });
+
+  it("a 200 that is SPA-fallback HTML does not close the expiry episode", async () => {
+    window.__HERMES_AUTH_REQUIRED__ = true;
+    try {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => ({
+          ok: false,
+          status: 401,
+          statusText: "Unauthorized",
+          headers: new Headers(),
+          clone: () => ({ json: async () => ({ code: "console.unauthenticated" }) }),
+          text: async () => JSON.stringify({ code: "console.unauthenticated" }),
+        })),
+      );
+      await expect(fetchJSON("/agent-api/api/sessions")).rejects.toMatchObject({ status: 401 });
+      expect(isSessionExpired()).toBe(true);
+
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => ({
+          ok: true,
+          status: 200,
+          headers: new Headers({ "content-type": "text/html" }),
+          json: async () => {
+            throw new SyntaxError("Unexpected token <");
+          },
+        })),
+      );
+      await expect(fetchJSON("/api/status")).rejects.toThrow();
+      expect(isSessionExpired()).toBe(true);
+    } finally {
+      window.__HERMES_AUTH_REQUIRED__ = false;
+    }
+  });
 });
 
 // 设计车道 ①：全站「会话已过期」横幅的唯一置位点。规则要窄 —— 登录流程与身份探测的
