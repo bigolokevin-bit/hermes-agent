@@ -132,6 +132,14 @@ import { UiButton, UiInput, UiTextarea, UiSelect, UiTable, StateBlock,
 - **`Select` 不合格**（见 §2）⇒ 一律 `UiSelect`。
 - 断言载体：`web/scripts/token-source-probe.mjs` 在集成脸上不存在（`git cat-file -e origin/lane/hermes-console:web/scripts/token-source-probe.mjs` 失败），所以「真断言」目前由计算样式对照表承担；`web/scripts/**` 不是我的写域，需要谁补谁报 L0。
 
+- **`StateBlock` 会拒收内部标识（硬门，不是缺口）**：基元本体 `web/src/components/ui/StateBlock.tsx` 自带 `containsInternalIdShape()`，命中 snake 形内部名（如 `run_id`、`session_id`）、≥8 位十六进制串、`rid-…` 时：**开发态抛错**（文案含「rubric 优先于迁移，这类文案请保留页面自有实现，并在迁移 PR 注明理由」）、**生产态返回 `null`**——既不把 id 摊上屏，也不白屏。B/C 的正确调用：
+  ```tsx
+  // 只放给人读的话术，id 交给页面自有的详情区或复制钮
+  <StateBlock tone="empty" title="这条筛选没有留下结果" detail="换个时间范围试试。" />
+  ```
+  会被拦（属预期，改页面写法，不要试图放宽基元）：`<StateBlock tone="error" detail={`请求 ${runId} 未完成`} />`。
+  诚实边界：纯 8 位以上数字串也会被当十六进制拦下，这类文案同样走页面自有实现。钉测在 `web/src/components/ui/StateBlock.internalid.test.tsx`（拦 5 例 / 放行 4 例，含 `会话 run-42`、`工单 RUN-7F3A9C` 这类业务话术不误伤）；`cd web && node_modules/.bin/vitest run src/components/ui` 现 2 files / 9 tests。
+  口径来源：UI-RUBRIC 扣分项「裸内部 id 或技术话术上屏」；L0 裁决「A 不为 rubric 让路」＝基元不为此开结构化 props。
 ## 5. duty 裸 id 口径（并入本指南，不再单开零碎修）
 - 展示 = **名称 + 末 6 位**；完整 id 收进折叠详情（既有 `duty-expand`/`details` 形制）或复制按钮，永远可取回。
 - 映射源只用已加载的会话/渠道列表（`summary.channels` 的 `chat_id → name`）；**映射缺失必须回退展示原 id**，禁止空串或 `—` 掩盖（`—` 只留给「值本身不存在」）。
@@ -166,6 +174,21 @@ import { UiButton, UiInput, UiTextarea, UiSelect, UiTable, StateBlock,
 **作废**，以本表为准。另注：`8 位 #RRGGBBAA` 另有 2 处，其中 1 处在
 `web/src/modules/employees/EmployeesModulePage.tsx`，不算本判据命中，但同属待清硬编码色。
 
+### 6.2 内联 style 负债现算与点名（脸 `1f078a8aed`，2026-11-23 重测）
+判据：`grep -rn 'style={{' web/src --include='*.tsx' | grep -v '\.test\.tsx'` ⇒ **生产代码 65 处**（旧 84 的差额 19 处是 `web/src/shell/console.tsx`，已由 L4 清，现该文件命中 0）。按可见收益排序：
+
+| 处数 | 文件 | 建议 owner（最终以 L0 派单为准） |
+|---|---|---|
+| 22 | `modules/evidence/EvidenceModulePage.tsx` | UI-B（evidence 面，r1 P0-1 那笔即由此提取） |
+| 10 | `pages/AnalyticsPage.tsx` | 无人认领：该文件最近一笔是上游 `7c0e12a526`，不在任何车道 ⇒ 请 L0 派单（建议随 metrics 线） |
+| 7 | `modules/employee-detail/EmployeeDetailWorkbench.tsx` | employees 线 |
+| 4 | `modules/employee-detail/EmployeeDetailModulePage.tsx` | employees 线（与上一行合一一 sha） |
+| 4 | `components/ThemeSwitcher.tsx` | 外壳/主题线 |
+| 4 | `App.tsx` | **必须先经 L0 裁决**（写域外） |
+| 3 | `pages/ModelsPage.tsx` | models 线 |
+
+迁移三步走（不新增视觉，只换写法）：① 尺寸/间距/颜色改 `-ls` 令牌类（见 §1、§2）；② 表格类内联宽度换 `UiTable` 的 `width`/`numeric` + `.ui-scroll-shell`；③ 状态块换 `StateBlock`，注意 §4 那条拒收规则。每页一 sha，动完贴计算样式或 375 读数。
+`themes/context.tsx`（2 处）是色值合法出口，**任何改动先经 L0 裁决**；A 车道不迁页面（裁决③/⑥）。
 ## 7. 冻结线后的令牌变更（硬流程，L0 令）
 
 冻结线：**2026-11-23T20:57+08:00**（= 接线笔 `b2905d5dfc` 提交时刻 +24h）。此后：
