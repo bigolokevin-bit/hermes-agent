@@ -2249,6 +2249,13 @@ export function MetricsModulePage() {
                     <p className="met6-hint">明细只列账本行；金额原样来自账本，不做换算。</p>
                     <p
                       className="met6-hint"
+                      data-testid="metAJ-cost-row-caliber"
+                      title={costCaliberTitle('metrics')}
+                    >
+                      {COST_CALIBER_TEXT}
+                    </p>
+                    <p
+                      className="met6-hint"
                       data-testid="metAH-cap-note-snapshot"
                       title="判据：monthSnapshot.rows 先按金额降序，只取前 8 行渲染；完整账本行在下方「导出明细 CSV」与员工分摊表里，本卡片不做分页。"
                     >
