@@ -2429,13 +2429,13 @@
   ],
   "rerollNote": "点名重跑 sessions/channels/models @d2cc49fe 面（L0②）：sessions 转 PASS（fb+fit，PNG 入账）、models PASS；channels 新面反成失分页（45s 旁路超时、main=10、viol 数据不可得）记 NOT_MEASURED 逐条 navError 入账，首轮 6586df6b 读数存 firstRunRow（L0①其余 48 路保留首轮）",
   "headHash": "470f2c2fce",
-  "entry": "assets/index-B9avOQha.js",
-  "entrySha256": "dc13c252faca20d8d8c74c24ad47d5be1c0cf2dfc63c03fd1444f2308d7b5711",
-  "entryBytes": 172750,
+  "entry": "assets/index-INJI_bcS.js",
+  "entrySha256": "154fee732d542517c5348114343f69ea0b998eaf50e478baaac27a81f8e69b56",
+  "entryBytes": 172800,
   "css": "assets/index-DLpXaUuB.css",
   "cssSha256": "13a111877909a0a34aa08f54c6635f795fb77351f3ebef339d42d5926fd0a0dc",
   "cssBytes": 146491,
-  "servedEntryAfter": "index-B9avOQha.js",
+  "servedEntryAfter": "index-INJI_bcS.js",
   "servedCssAfter": "index-DLpXaUuB.css",
   "criteriaNote": "旧 document 级 375 全绿作废不入账（L0③）；本代 375 承者=assert-375 逐元素判据+视口加高取图腿+字体等待旁路复测；channels=点名重跑合入 PASS（首轮读数存 firstRunRow）；sessions=真 NOT MEASURED：45s 旁路仍 screenshot 超时，逐条 navError 入账",
   "stampNote": "wave-129 6586df6b 本代新跑（非沿用）",
@@ -2468,7 +2468,7 @@
     "raw": "coex-4a654bba.json",
     "priorFace": "coex-4705edea.json"
   },
-  "entryMtime": "2026-11-22 13:59:34",
+  "entryMtime": "2026-11-22 15:05:55",
   "outerTabHighlightTriState": {
     "face": "4a654bba",
     "panelIngest": "pane+selected=sources，selected href 含 panel=ingest+state+rid，其余 tab href 无 panel=（viol0 main74）",
@@ -3119,8 +3119,10 @@
     "door": "fixture-preview",
     "liveNoPayloadNote": "真实 /api/matrix 在本脸为 no-payload 状态面（main=213 无表体，plain 探针无 .mtx5-scroll，如实保留于 matrix-sticky-readings-470f2c2fce.json）；冻结行为取证经产品 fixture-preview 门完成，示例数据为产品自标桩，不判 FAIL 不造假",
     "fakeBffNote": "wave-138 时代的 fake-bff 夹具脚本已不在仓（git ls-files/find 零命中、:9114 未运行），故走产品兜底门路线",
-    "raw": "matrix-sticky-freeze-470f2c2fce.json"
+    "raw": "matrix-sticky-freeze-470f2c2fce.json",
+    "onCurrentFace": "2026-11-22T15:09:45+08:00 @ :9122 entry INJI_bcS（≥ build 15:05:55）"
   },
   "faceNote146": "wave-146 定脸 470f2c2fce（merge lane/console-ui2@e035f94a matrix 375 版式列头冻结，脸时刻 2026-11-22 14:57:17 +0800）。重建 vite build VITE=0：entry assets/index-INJI_bcS.js 172800B sha256 154fee732d542517c5348114343f69ea0b998eaf50e478baaac27a81f8e69b56 mtime 15:05:55（构建晚于定脸 8'38\"，含全脸无抢跑）；主 css index-DLpXaUuB.css 146491B 未换代；matrix 新规则实测 lazy chunk assets/MatrixModulePage-BtD1oKaq.css（mtx5-pin 命中）；served==disk 双 MATCH（端口9122 静态按请求读盘无需重启）。读数方法=vite build 于 HEAD=470f2c2fce 完成后读盘+curl :9122 对账。",
-  "waveNote146": "点名重跑仅 matrix 一路（bounds+列头冻结行为），51 路未重扫；sessions/channels 两路真 NM 维持未改判；375 总 PASS 禁宣称；新基线 vitest 480 files/3543 tests L0 亲验免重跑"
+  "waveNote146": "点名重跑仅 matrix 一路（bounds+列头冻结行为），51 路未重扫；sessions/channels 两路真 NM 维持未改判；375 总 PASS 禁宣称；新基线 vitest 480 files/3543 tests L0 亲验免重跑",
+  "correction147": "L0 现查更正覆盖：top-level entry 键此前留在 w145 旧代次 B9avOQha；现读=assets/index-INJI_bcS.js 172800B sha256 154fee73…69b56 mtime 15:05:55，晚于 470f2c2fce merge（14:57:17）与 e035f94a 提交（13:55:45）⇒ 本 dist 即含 matrix 列头冻结代次；MatrixModulePage-BtD1oKaq.css/MatrixModulePage-BbG2W9XR.js 均实测含 mtx5-pin。sticky 行为取证 readings 15:09:45 已在该现脸产出（verdict sticky-head-frozen），本笔仅按现读落账，不重建不刷 51 路矩阵读数。"
 }
