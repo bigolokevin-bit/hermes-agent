@@ -85,6 +85,22 @@ import { PluginSlot } from "@/plugins";
 import { isDashboardEmbeddedChatEnabled } from "@/lib/dashboard-flags";
 import { apiErrorFromResponse, errorMessage } from "@/lib/api-error";
 
+/** The session API can omit message_count/last_active; rendering them raw
+ *  puts "NaNd ago" on screen (buglist P0-2). `—` is reserved for the value
+ *  itself being absent (ui-page-migration-guide §5). 0 is a legitimate
+ *  count; epoch 0 is a placeholder, not a timestamp. */
+function countText(value: unknown): string {
+  return typeof value === "number" && Number.isFinite(value)
+    ? String(value)
+    : "—";
+}
+
+function agoText(ts: unknown): string {
+  return typeof ts === "number" && ts > 0 && Number.isFinite(ts)
+    ? timeAgo(ts)
+    : "—";
+}
+
 
 /** Render an FTS5 snippet with highlighted matches.
  *  The backend wraps matches in >>> and <<< delimiters. */
@@ -634,7 +650,7 @@ function SessionRow({
                   </>
                 )}
                 <span className="shrink-0">
-                  {session.message_count} {t.common.msgs}
+                  {countText(session.message_count)} {t.common.msgs}
                 </span>
                 {session.tool_call_count > 0 && (
                   <>
@@ -645,7 +661,7 @@ function SessionRow({
                   </>
                 )}
                 <span className="text-border">&#183;</span>
-                <span className="shrink-0">{timeAgo(session.last_active)}</span>
+                <span className="shrink-0">{agoText(session.last_active)}</span>
               </div>
               {snippet && <SnippetHighlight snippet={snippet} />}
             </div>
@@ -2110,8 +2126,8 @@ export default function SessionsPage() {
                             ·{" "}
                           </>
                         )}
-                        {s.message_count} {t.common.msgs} ·{" "}
-                        {timeAgo(s.last_active)}
+                        {countText(s.message_count)} {t.common.msgs} ·{" "}
+                        {agoText(s.last_active)}
                       </span>
 
                       {s.preview && s.title && (

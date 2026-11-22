@@ -56,12 +56,18 @@ function click(el: Element | null) {
 
 const button = (label: string) => document.querySelector(`button[aria-label="${label}"]`);
 
-async function renderSessionsPage(rows: Record<string, unknown>[]) {
-  // Page list uses limit 20; the overview tab's recent-cards fetch uses 50 —
-  // keep the overview empty so the list view (with row actions) renders.
+async function renderSessionsPage(
+  rows: Record<string, unknown>[],
+  opts: { overview?: boolean } = {},
+) {
+  // List view uses limit 20; the overview tab's recent-cards fetch uses 50.
+  // By default the overview stays empty so the list view (with row actions)
+  // renders; ``overview: true`` inverts that so only the recent-cards
+  // surface renders.
+  const overview = opts.overview ?? false;
   apiMocks.getSessions.mockImplementation(async (limit: number) => ({
-    sessions: limit >= 50 ? [] : rows,
-    total: limit >= 50 ? 0 : rows.length,
+    sessions: limit >= 50 === overview ? rows : [],
+    total: limit >= 50 === overview ? rows.length : 0,
     limit,
     offset: 0,
   }));
@@ -91,7 +97,14 @@ async function renderSessionsPage(rows: Record<string, unknown>[]) {
       </I18nProvider>,
     ),
   );
-  await waitFor(() => Boolean(button("Delete session")));
+  if (overview) {
+    // Recent-cards surface: no row actions, wait for the first card title.
+    await waitFor(() =>
+      (document.body.textContent ?? "").includes(String(rows[0]?.title ?? "")),
+    );
+  } else {
+    await waitFor(() => Boolean(button("Delete session")));
+  }
 }
 
 beforeEach(() => {
@@ -314,5 +327,52 @@ describe("SessionsPage header slots across navigation", () => {
 
     expect(header()).toContain("Next action");
     expect(header()).not.toContain("Prune old sessions");
+  });
+});
+
+describe("session card number formatting (buglist P0-2)", () => {
+  // Shape an older backend returns for a half-written session row: no
+  // message_count, no last_active (the "msgs · NaNd ago" probe capture).
+  const ghostRow = (id: string, title: string) => ({
+    id,
+    profile: "default",
+    source: "cli",
+    model: null,
+    title,
+    started_at: 1,
+    ended_at: null,
+    is_active: false,
+    tool_call_count: 0,
+    input_tokens: 1,
+    output_tokens: 1,
+    preview: "hi",
+  });
+
+  it("keeps literal NaN out of list rows and shows a legitimate 0 count", async () => {
+    await renderSessionsPage([
+      ghostRow("sid-ghost", "Ghost row"),
+      { ...ghostRow("sid-zero", "Zero row"), last_active: 2_000_000_000, message_count: 0 },
+    ]);
+
+    const text = document.body.textContent ?? "";
+    expect(text).not.toContain("NaN");
+    expect(text).not.toContain("undefined");
+    expect(text).toContain("— msgs"); // missing count → honest placeholder
+    expect(text).toContain("0 msgs"); // zero is a real value, shown as-is
+  });
+
+  it("keeps literal NaN out of the recent-sessions cards", async () => {
+    await renderSessionsPage(
+      [
+        ghostRow("sid-ghost", "Ghost card"),
+        { ...ghostRow("sid-zero", "Zero card"), last_active: 2_000_000_000, message_count: 0 },
+      ],
+      { overview: true },
+    );
+
+    const text = document.body.textContent ?? "";
+    expect(text).not.toContain("NaN");
+    expect(text).toContain("— msgs");
+    expect(text).toContain("0 msgs");
   });
 });

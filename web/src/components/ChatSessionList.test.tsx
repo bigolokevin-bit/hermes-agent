@@ -61,12 +61,18 @@ vi.mock('@/i18n', () => ({
 
 vi.mock('@/lib/api', () => ({ api: { getSessions } }))
 
-vi.mock('@/lib/utils', () => ({
-  cn: (...classes: Array<string | false | null | undefined>) => classes.filter(Boolean).join(' '),
-  timeAgo: () => 'just now'
-}))
+vi.mock('@/lib/utils', async (importOriginal) => {
+  // Keep the REAL timeAgo so the NaN assertions below exercise the same
+  // arithmetic production runs (a stubbed 'just now' would mask regressions).
+  const actual = await importOriginal<typeof import('@/lib/utils')>()
+  return {
+    ...actual,
+    cn: (...classes: Array<string | false | null | undefined>) =>
+      classes.filter(Boolean).join(' ')
+  }
+})
 
-function session(id: string, title: string) {
+function session(id: string, title: string, overrides: Record<string, unknown> = {}) {
   return {
     id,
     source: 'cli',
@@ -80,7 +86,8 @@ function session(id: string, title: string) {
     tool_call_count: 0,
     input_tokens: 0,
     output_tokens: 0,
-    preview: null
+    preview: null,
+    ...overrides
   }
 }
 
@@ -194,5 +201,38 @@ describe('ChatSessionList', () => {
 
     expect(getSessions).toHaveBeenCalledTimes(2)
     expect(container.textContent).toContain('Newly created session')
+  })
+
+  it('never renders literal NaN when the API omits last_active or message_count', async () => {
+    getSessions.mockResolvedValueOnce({
+      sessions: [
+        session('no-time', 'Missing time', { last_active: undefined }),
+        session('bad-time', 'Invalid time', { last_active: 'not-a-date' }),
+        session('no-count', 'Missing count', { message_count: undefined }),
+        session('zero-count', 'Zero count', {
+          message_count: 0,
+          last_active: Math.floor(Date.now() / 1000) - 120
+        })
+      ],
+      total: 4,
+      limit: 30,
+      offset: 0
+    })
+
+    await act(async () => {
+      root.render(
+        <MemoryRouter>
+          <ChatSessionList activeSessionId={null} />
+        </MemoryRouter>
+      )
+    })
+
+    const text = container.textContent ?? ''
+    expect(text).not.toContain('NaN')
+    expect(text).not.toContain('undefined')
+    // Missing/invalid timestamps degrade to the em-dash placeholder...
+    expect(text).toContain('—')
+    // ...and a legitimate zero count is shown as zero, not swallowed.
+    expect(text).toContain('0 msgs')
   })
 })

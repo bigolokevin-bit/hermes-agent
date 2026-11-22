@@ -67,6 +67,16 @@ function rowLabel(session: SessionInfo, untitled: string): string {
   return untitled;
 }
 
+/** The session API can omit last_active or hand back a non-number; timeAgo
+ *  would compute "NaNd ago" out of that. `—` is reserved for the value
+ *  itself being absent (ui-page-migration-guide §5). Epoch 0 is a
+ *  placeholder, not a real timestamp. */
+function agoText(ts: unknown): string {
+  return typeof ts === "number" && ts > 0 && Number.isFinite(ts)
+    ? timeAgo(ts)
+    : "—";
+}
+
 export function ChatSessionList({
   activeSessionId,
   isActive = true,
@@ -210,6 +220,14 @@ export function ChatSessionList({
       <div className="flex flex-col gap-0.5">
         {sessions.map((s) => {
           const isActive = s.id === activeSessionId;
+          // 0 is a legitimate count — show it. Only a missing/non-numeric
+          // count drops the segment, which is what the layout already did
+          // for absent values.
+          const msgCount =
+            typeof s.message_count === "number" &&
+            Number.isFinite(s.message_count)
+              ? s.message_count
+              : null;
           return (
             <ListItem
               key={s.id}
@@ -227,11 +245,11 @@ export function ChatSessionList({
                 {rowLabel(s, t.sessions.untitledSession)}
               </span>
               <span className="flex w-full items-center gap-1.5 text-[0.6875rem] text-text-tertiary">
-                <span>{timeAgo(s.last_active)}</span>
-                {s.message_count > 0 && (
+                <span>{agoText(s.last_active)}</span>
+                {msgCount !== null && (
                   <>
                     <span aria-hidden>·</span>
-                    <span>{s.message_count} msgs</span>
+                    <span>{msgCount} msgs</span>
                   </>
                 )}
                 {s.source && s.source !== "cli" && (
