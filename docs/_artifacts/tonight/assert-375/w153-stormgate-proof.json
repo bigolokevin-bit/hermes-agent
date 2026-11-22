@@ -48,5 +48,6 @@
       "fontBypass": false,
       "consoleErrorsProduct": 0
     }
-  ]
+  ],
+  "proofScope154": "本文件为 STORM_NM 人工入单 ⇒ NOT_MEASURED 的闸机制反证；行内无 nav/401 计数属设计如此（机制跑不采样）。线性增长计数本体见 storm-counters-4a3363a951.json（sessions/channels）与 w154-citations-storm-counters.json（citations 零增长实证）。"
 }

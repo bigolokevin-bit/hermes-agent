@@ -1,0 +1,34 @@
+{
+  "port": 9122,
+  "entry": "assets/index-CCLAG-mZ.js",
+  "face": "72832bc31f（entry CCLAG-mZ 起自 4a3363a951 未变）",
+  "at": "2026-11-22T11:32:31.702Z",
+  "windows": "6s/12s domcontentloaded+no networkidle",
+  "baselineWave140": "sessions 401x1308 nav x2488 total 79453 req/15s",
+  "routes": {
+    "#/knowledge?tab=citations": {
+      "w1": {
+        "nav": 5,
+        "http401": 4,
+        "whoamiAborted": 0,
+        "failed": 0,
+        "total": 30
+      },
+      "w2": {
+        "nav": 5,
+        "http401": 4,
+        "whoamiAborted": 0,
+        "failed": 0,
+        "total": 31
+      },
+      "delta": {
+        "nav": 0,
+        "http401": 0,
+        "whoamiAborted": 0,
+        "failed": 0,
+        "total": 1
+      },
+      "mainLen": 494
+    }
+  }
+}

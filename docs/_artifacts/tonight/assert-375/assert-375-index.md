@@ -201,3 +201,9 @@ matrix(#/employees?tab=matrix) present=true ok=true
 - 牙齿反证两跑：`--only-routes='#/sessions,#/capabilities?tab=channels'` ⇒ exit1、两行 NOT_MEASURED skeleton-below-threshold: mainTextLen=10<30（该 NM 必 NM 实证，RAW=w153-skeleton-teeth-reroll-summary.json）；`ASSERT375_STORM_NM='#/knowledge?tab=citations'` 单路 ⇒ 该行 main=494（真渲染）照样 NOT_MEASURED storm-linear-growth（清单闸独立生效，RAW=w153-stormgate-proof.json）。
 - 探针口径（B 项）：w1=6s/w2=12s 累计计数 delta 判线性；domcontentloaded 30s+主文本稳定轮询≤4s，不用 networkidle；带 storageState 登录态；framenavigated 计每个重定向跳（非 unique 页面）、401 计全部 401 响应（静态经 v4_proxy 不产 401）、total 含静态资源。与 ui-b stub（navs=5/401≈29）口径不同不可直接比；两说并存：ui-b 称脱NM/有界，本道 152 读数为线性增长——不互相覆盖，骨架维度独立成立。
 - 纪律：375 总 PASS 继续禁（NM=sessions/channels 双闸口径在册）；51 路未重扫；其余 PASS 行 mainTextLen<30 全表扫描为空；全量 vitest 基线 481/3557 L0 亲验，wave-154#1 纯 docs 免重跑。
+
+## wave-154 三缺口补齐 @72832bc31f（端口9122/entry index-CCLAG-mZ.js 起自 4a3363a951 未变）
+- ①计数本体：stormCounters154 附表——sessions 6s(nav267/401x789/total8324)→12s(nav527/401x1570/total16597) delta≈翻倍；channels 6s(nav247/401x1225/total7159)→12s(nav484/401x2411/total14103)；citations 6s→12s nav5→5/401 4→4/total30→31 零增长（w154-citations-storm-counters.json）⇒ 线性增长实证仅 sessions/channels，citations 行为机制反证已在行内声明。两 NM 行 finalVerdict154.windowCounters 内嵌原始计数。
+- ②张冠李戴更正：rerollNote154 声明 d2cc49fe=昨夜 00:57 老脸（merge 3e01e190），其『sessions/models 转 PASS』不作当代读数；models 行字段 face=None（初代批次），d2cc49fe 归属仅存旧注记——如实拆开。
+- ③登录态口径：authStateCaliber154——本道 assert-375/shots/storm 全部带 --auth-state（RAW authState=provided）；无一条 NM 出自匿名态；UI-KD 221/29 登录态布局对照并存不冲突。
+- 全 51 行 finalVerdict154 逐行落 face+entry+authState+window+dim；counts/matrixOk 未动（49/0/2、true）；375 总 PASS 继续禁；api 项 claimed 不销。

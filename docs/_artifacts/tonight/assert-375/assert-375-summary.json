@@ -41,7 +41,14 @@
       "scrollOverflow": [],
       "domOverflowPx": 0,
       "fontBypass": false,
-      "consoleErrorsProduct": 0
+      "consoleErrorsProduct": 0,
+      "finalVerdict154": {
+        "face": "初代批次（d1d7b80f 代 L0 P0 纠偏全量扫描，链外老脸）",
+        "entry": "初代批次 entry 未逐行记（早于 entryGenChain 字段规范）",
+        "authState": "登录态 --auth-state=~/.local/state/sekoi-ops/ui-qa-auth-state.json（各 RAW summary authState=provided 在案）",
+        "window": "domcontentloaded 30s + 主文本稳定轮询≤4s + 视口加高复测；风暴窗口口径 6s/12s 两段累计（非 networkidle）",
+        "dim": "逐元素版式+渲染闸（153 加硬：mainTextLen<30 或风暴清单命中 ⇒ NOT_MEASURED）"
+      }
     },
     {
       "hash": "#/approvals",
@@ -97,7 +104,14 @@
           "fontBypass": false
         }
       },
-      "rerollFace": "6edcba4d"
+      "rerollFace": "6edcba4d",
+      "finalVerdict154": {
+        "face": "6edcba4d",
+        "entry": "index-3Opmhawd.js",
+        "authState": "登录态 --auth-state=~/.local/state/sekoi-ops/ui-qa-auth-state.json（各 RAW summary authState=provided 在案）",
+        "window": "domcontentloaded 30s + 主文本稳定轮询≤4s + 视口加高复测；风暴窗口口径 6s/12s 两段累计（非 networkidle）",
+        "dim": "逐元素版式+渲染闸（153 加硬：mainTextLen<30 或风暴清单命中 ⇒ NOT_MEASURED）"
+      }
     },
     {
       "hash": "#/approvals?tab=history",
@@ -153,7 +167,14 @@
           "fontBypass": false
         }
       },
-      "rerollFace": "6edcba4d"
+      "rerollFace": "6edcba4d",
+      "finalVerdict154": {
+        "face": "6edcba4d",
+        "entry": "index-3Opmhawd.js",
+        "authState": "登录态 --auth-state=~/.local/state/sekoi-ops/ui-qa-auth-state.json（各 RAW summary authState=provided 在案）",
+        "window": "domcontentloaded 30s + 主文本稳定轮询≤4s + 视口加高复测；风暴窗口口径 6s/12s 两段累计（非 networkidle）",
+        "dim": "逐元素版式+渲染闸（153 加硬：mainTextLen<30 或风暴清单命中 ⇒ NOT_MEASURED）"
+      }
     },
     {
       "hash": "#/approvals?tab=mine",
@@ -209,7 +230,14 @@
           "fontBypass": false
         }
       },
-      "rerollFace": "6edcba4d"
+      "rerollFace": "6edcba4d",
+      "finalVerdict154": {
+        "face": "6edcba4d",
+        "entry": "index-3Opmhawd.js",
+        "authState": "登录态 --auth-state=~/.local/state/sekoi-ops/ui-qa-auth-state.json（各 RAW summary authState=provided 在案）",
+        "window": "domcontentloaded 30s + 主文本稳定轮询≤4s + 视口加高复测；风暴窗口口径 6s/12s 两段累计（非 networkidle）",
+        "dim": "逐元素版式+渲染闸（153 加硬：mainTextLen<30 或风暴清单命中 ⇒ NOT_MEASURED）"
+      }
     },
     {
       "hash": "#/approvals?tab=pending&view=mine",
@@ -265,7 +293,14 @@
           "fontBypass": false
         }
       },
-      "rerollFace": "6edcba4d"
+      "rerollFace": "6edcba4d",
+      "finalVerdict154": {
+        "face": "6edcba4d",
+        "entry": "index-3Opmhawd.js",
+        "authState": "登录态 --auth-state=~/.local/state/sekoi-ops/ui-qa-auth-state.json（各 RAW summary authState=provided 在案）",
+        "window": "domcontentloaded 30s + 主文本稳定轮询≤4s + 视口加高复测；风暴窗口口径 6s/12s 两段累计（非 networkidle）",
+        "dim": "逐元素版式+渲染闸（153 加硬：mainTextLen<30 或风暴清单命中 ⇒ NOT_MEASURED）"
+      }
     },
     {
       "hash": "#/approvals?tab=pending&view=release",
@@ -321,7 +356,14 @@
           "fontBypass": false
         }
       },
-      "rerollFace": "6edcba4d"
+      "rerollFace": "6edcba4d",
+      "finalVerdict154": {
+        "face": "6edcba4d",
+        "entry": "index-3Opmhawd.js",
+        "authState": "登录态 --auth-state=~/.local/state/sekoi-ops/ui-qa-auth-state.json（各 RAW summary authState=provided 在案）",
+        "window": "domcontentloaded 30s + 主文本稳定轮询≤4s + 视口加高复测；风暴窗口口径 6s/12s 两段累计（非 networkidle）",
+        "dim": "逐元素版式+渲染闸（153 加硬：mainTextLen<30 或风暴清单命中 ⇒ NOT_MEASURED）"
+      }
     },
     {
       "hash": "#/approvals?tab=policy",
@@ -377,7 +419,14 @@
           "fontBypass": false
         }
       },
-      "rerollFace": "6edcba4d"
+      "rerollFace": "6edcba4d",
+      "finalVerdict154": {
+        "face": "6edcba4d",
+        "entry": "index-3Opmhawd.js",
+        "authState": "登录态 --auth-state=~/.local/state/sekoi-ops/ui-qa-auth-state.json（各 RAW summary authState=provided 在案）",
+        "window": "domcontentloaded 30s + 主文本稳定轮询≤4s + 视口加高复测；风暴窗口口径 6s/12s 两段累计（非 networkidle）",
+        "dim": "逐元素版式+渲染闸（153 加硬：mainTextLen<30 或风暴清单命中 ⇒ NOT_MEASURED）"
+      }
     },
     {
       "hash": "#/approvals?tab=release",
@@ -433,7 +482,14 @@
           "fontBypass": false
         }
       },
-      "rerollFace": "6edcba4d"
+      "rerollFace": "6edcba4d",
+      "finalVerdict154": {
+        "face": "6edcba4d",
+        "entry": "index-3Opmhawd.js",
+        "authState": "登录态 --auth-state=~/.local/state/sekoi-ops/ui-qa-auth-state.json（各 RAW summary authState=provided 在案）",
+        "window": "domcontentloaded 30s + 主文本稳定轮询≤4s + 视口加高复测；风暴窗口口径 6s/12s 两段累计（非 networkidle）",
+        "dim": "逐元素版式+渲染闸（153 加硬：mainTextLen<30 或风暴清单命中 ⇒ NOT_MEASURED）"
+      }
     },
     {
       "hash": "#/audit",
@@ -459,7 +515,14 @@
       "scrollOverflow": [],
       "domOverflowPx": 0,
       "fontBypass": false,
-      "consoleErrorsProduct": 0
+      "consoleErrorsProduct": 0,
+      "finalVerdict154": {
+        "face": "初代批次（d1d7b80f 代 L0 P0 纠偏全量扫描，链外老脸）",
+        "entry": "初代批次 entry 未逐行记（早于 entryGenChain 字段规范）",
+        "authState": "登录态 --auth-state=~/.local/state/sekoi-ops/ui-qa-auth-state.json（各 RAW summary authState=provided 在案）",
+        "window": "domcontentloaded 30s + 主文本稳定轮询≤4s + 视口加高复测；风暴窗口口径 6s/12s 两段累计（非 networkidle）",
+        "dim": "逐元素版式+渲染闸（153 加硬：mainTextLen<30 或风暴清单命中 ⇒ NOT_MEASURED）"
+      }
     },
     {
       "hash": "#/capabilities",
@@ -485,7 +548,14 @@
       "scrollOverflow": [],
       "domOverflowPx": 0,
       "fontBypass": false,
-      "consoleErrorsProduct": 0
+      "consoleErrorsProduct": 0,
+      "finalVerdict154": {
+        "face": "初代批次（d1d7b80f 代 L0 P0 纠偏全量扫描，链外老脸）",
+        "entry": "初代批次 entry 未逐行记（早于 entryGenChain 字段规范）",
+        "authState": "登录态 --auth-state=~/.local/state/sekoi-ops/ui-qa-auth-state.json（各 RAW summary authState=provided 在案）",
+        "window": "domcontentloaded 30s + 主文本稳定轮询≤4s + 视口加高复测；风暴窗口口径 6s/12s 两段累计（非 networkidle）",
+        "dim": "逐元素版式+渲染闸（153 加硬：mainTextLen<30 或风暴清单命中 ⇒ NOT_MEASURED）"
+      }
     },
     {
       "hash": "#/capabilities?tab=channels",
@@ -582,7 +652,39 @@
       "rerollFace": "c5e046c522",
       "rerunAt": "2026-11-22 19:18:34",
       "firstElementReadings152": true,
-      "waveNote152": "401 三闸（4a3363a951）后首次逐元素读数；main=10 骨架/门控壳面如实；风暴计数环未止见 stormCounters152"
+      "waveNote152": "401 三闸（4a3363a951）后首次逐元素读数；main=10 骨架/门控壳面如实；风暴计数环未止见 stormCounters152",
+      "finalVerdict154": {
+        "face": "c5e046c522",
+        "entry": "index-CCLAG-mZ.js",
+        "authState": "登录态 --auth-state=~/.local/state/sekoi-ops/ui-qa-auth-state.json（各 RAW summary authState=provided 在案）",
+        "window": "domcontentloaded 30s + 主文本稳定轮询≤4s + 视口加高复测；风暴窗口口径 6s/12s 两段累计（非 networkidle）",
+        "dim": "逐元素版式+渲染闸（153 加硬：mainTextLen<30 或风暴清单命中 ⇒ NOT_MEASURED）",
+        "windowCounters": {
+          "w1": {
+            "nav": 247,
+            "http401": 1225,
+            "whoamiAborted": 243,
+            "failed": 573,
+            "total": 7159
+          },
+          "w2": {
+            "nav": 484,
+            "http401": 2411,
+            "whoamiAborted": 480,
+            "failed": 1134,
+            "total": 14103
+          },
+          "delta": {
+            "nav": 237,
+            "http401": 1186,
+            "whoamiAborted": 237,
+            "failed": 561,
+            "total": 6944
+          },
+          "mainLen": 10
+        },
+        "countersSource": "storm-counters-4a3363a951.json"
+      }
     },
     {
       "hash": "#/capabilities?tab=models",
@@ -620,6 +722,13 @@
         "fontBypass": false,
         "contentFit": true,
         "navError": null
+      },
+      "finalVerdict154": {
+        "face": "初代批次（d1d7b80f 代 L0 P0 纠偏全量扫描，链外老脸）",
+        "entry": "初代批次 entry 未逐行记（早于 entryGenChain 字段规范）",
+        "authState": "登录态 --auth-state=~/.local/state/sekoi-ops/ui-qa-auth-state.json（各 RAW summary authState=provided 在案）",
+        "window": "domcontentloaded 30s + 主文本稳定轮询≤4s + 视口加高复测；风暴窗口口径 6s/12s 两段累计（非 networkidle）",
+        "dim": "逐元素版式+渲染闸（153 加硬：mainTextLen<30 或风暴清单命中 ⇒ NOT_MEASURED）"
       }
     },
     {
@@ -646,7 +755,14 @@
       "scrollOverflow": [],
       "domOverflowPx": 0,
       "fontBypass": false,
-      "consoleErrorsProduct": 0
+      "consoleErrorsProduct": 0,
+      "finalVerdict154": {
+        "face": "初代批次（d1d7b80f 代 L0 P0 纠偏全量扫描，链外老脸）",
+        "entry": "初代批次 entry 未逐行记（早于 entryGenChain 字段规范）",
+        "authState": "登录态 --auth-state=~/.local/state/sekoi-ops/ui-qa-auth-state.json（各 RAW summary authState=provided 在案）",
+        "window": "domcontentloaded 30s + 主文本稳定轮询≤4s + 视口加高复测；风暴窗口口径 6s/12s 两段累计（非 networkidle）",
+        "dim": "逐元素版式+渲染闸（153 加硬：mainTextLen<30 或风暴清单命中 ⇒ NOT_MEASURED）"
+      }
     },
     {
       "hash": "#/employees",
@@ -702,7 +818,14 @@
           "fontBypass": false
         }
       },
-      "rerollFace": "6edcba4d"
+      "rerollFace": "6edcba4d",
+      "finalVerdict154": {
+        "face": "6edcba4d",
+        "entry": "index-3Opmhawd.js",
+        "authState": "登录态 --auth-state=~/.local/state/sekoi-ops/ui-qa-auth-state.json（各 RAW summary authState=provided 在案）",
+        "window": "domcontentloaded 30s + 主文本稳定轮询≤4s + 视口加高复测；风暴窗口口径 6s/12s 两段累计（非 networkidle）",
+        "dim": "逐元素版式+渲染闸（153 加硬：mainTextLen<30 或风暴清单命中 ⇒ NOT_MEASURED）"
+      }
     },
     {
       "hash": "#/employees?tab=matrix",
@@ -769,7 +892,14 @@
           "main": 213,
           "elems": 141
         }
-      ]
+      ],
+      "finalVerdict154": {
+        "face": "eb697ca5d2",
+        "entry": "index-B7MjhP14.js",
+        "authState": "登录态 --auth-state=~/.local/state/sekoi-ops/ui-qa-auth-state.json（各 RAW summary authState=provided 在案）",
+        "window": "domcontentloaded 30s + 主文本稳定轮询≤4s + 视口加高复测；风暴窗口口径 6s/12s 两段累计（非 networkidle）",
+        "dim": "逐元素版式+渲染闸（153 加硬：mainTextLen<30 或风暴清单命中 ⇒ NOT_MEASURED）"
+      }
     },
     {
       "hash": "#/employees/:employeeId",
@@ -795,7 +925,14 @@
       "scrollOverflow": [],
       "domOverflowPx": 0,
       "fontBypass": false,
-      "consoleErrorsProduct": 0
+      "consoleErrorsProduct": 0,
+      "finalVerdict154": {
+        "face": "初代批次（d1d7b80f 代 L0 P0 纠偏全量扫描，链外老脸）",
+        "entry": "初代批次 entry 未逐行记（早于 entryGenChain 字段规范）",
+        "authState": "登录态 --auth-state=~/.local/state/sekoi-ops/ui-qa-auth-state.json（各 RAW summary authState=provided 在案）",
+        "window": "domcontentloaded 30s + 主文本稳定轮询≤4s + 视口加高复测；风暴窗口口径 6s/12s 两段累计（非 networkidle）",
+        "dim": "逐元素版式+渲染闸（153 加硬：mainTextLen<30 或风暴清单命中 ⇒ NOT_MEASURED）"
+      }
     },
     {
       "hash": "#/employees/:employeeId?zone=config",
@@ -821,7 +958,14 @@
       "scrollOverflow": [],
       "domOverflowPx": 0,
       "fontBypass": false,
-      "consoleErrorsProduct": 0
+      "consoleErrorsProduct": 0,
+      "finalVerdict154": {
+        "face": "初代批次（d1d7b80f 代 L0 P0 纠偏全量扫描，链外老脸）",
+        "entry": "初代批次 entry 未逐行记（早于 entryGenChain 字段规范）",
+        "authState": "登录态 --auth-state=~/.local/state/sekoi-ops/ui-qa-auth-state.json（各 RAW summary authState=provided 在案）",
+        "window": "domcontentloaded 30s + 主文本稳定轮询≤4s + 视口加高复测；风暴窗口口径 6s/12s 两段累计（非 networkidle）",
+        "dim": "逐元素版式+渲染闸（153 加硬：mainTextLen<30 或风暴清单命中 ⇒ NOT_MEASURED）"
+      }
     },
     {
       "hash": "#/employees/:employeeId?zone=evidence",
@@ -847,7 +991,14 @@
       "scrollOverflow": [],
       "domOverflowPx": 0,
       "fontBypass": false,
-      "consoleErrorsProduct": 0
+      "consoleErrorsProduct": 0,
+      "finalVerdict154": {
+        "face": "初代批次（d1d7b80f 代 L0 P0 纠偏全量扫描，链外老脸）",
+        "entry": "初代批次 entry 未逐行记（早于 entryGenChain 字段规范）",
+        "authState": "登录态 --auth-state=~/.local/state/sekoi-ops/ui-qa-auth-state.json（各 RAW summary authState=provided 在案）",
+        "window": "domcontentloaded 30s + 主文本稳定轮询≤4s + 视口加高复测；风暴窗口口径 6s/12s 两段累计（非 networkidle）",
+        "dim": "逐元素版式+渲染闸（153 加硬：mainTextLen<30 或风暴清单命中 ⇒ NOT_MEASURED）"
+      }
     },
     {
       "hash": "#/employees/:employeeId?zone=runs",
@@ -888,7 +1039,14 @@
         "contentFit": true,
         "navError": null
       },
-      "rerollFace": "d2cc49fe"
+      "rerollFace": "d2cc49fe",
+      "finalVerdict154": {
+        "face": "d2cc49fe",
+        "entry": "该面 entry 未实测入账（链外老脸，读数不作当代证据）",
+        "authState": "登录态 --auth-state=~/.local/state/sekoi-ops/ui-qa-auth-state.json（各 RAW summary authState=provided 在案）",
+        "window": "domcontentloaded 30s + 主文本稳定轮询≤4s + 视口加高复测；风暴窗口口径 6s/12s 两段累计（非 networkidle）",
+        "dim": "逐元素版式+渲染闸（153 加硬：mainTextLen<30 或风暴清单命中 ⇒ NOT_MEASURED）"
+      }
     },
     {
       "hash": "#/employees/:employeeId?zone=tasks",
@@ -914,7 +1072,14 @@
       "scrollOverflow": [],
       "domOverflowPx": 0,
       "fontBypass": false,
-      "consoleErrorsProduct": 0
+      "consoleErrorsProduct": 0,
+      "finalVerdict154": {
+        "face": "初代批次（d1d7b80f 代 L0 P0 纠偏全量扫描，链外老脸）",
+        "entry": "初代批次 entry 未逐行记（早于 entryGenChain 字段规范）",
+        "authState": "登录态 --auth-state=~/.local/state/sekoi-ops/ui-qa-auth-state.json（各 RAW summary authState=provided 在案）",
+        "window": "domcontentloaded 30s + 主文本稳定轮询≤4s + 视口加高复测；风暴窗口口径 6s/12s 两段累计（非 networkidle）",
+        "dim": "逐元素版式+渲染闸（153 加硬：mainTextLen<30 或风暴清单命中 ⇒ NOT_MEASURED）"
+      }
     },
     {
       "hash": "#/identity",
@@ -940,7 +1105,14 @@
       "scrollOverflow": [],
       "domOverflowPx": 0,
       "fontBypass": false,
-      "consoleErrorsProduct": 0
+      "consoleErrorsProduct": 0,
+      "finalVerdict154": {
+        "face": "初代批次（d1d7b80f 代 L0 P0 纠偏全量扫描，链外老脸）",
+        "entry": "初代批次 entry 未逐行记（早于 entryGenChain 字段规范）",
+        "authState": "登录态 --auth-state=~/.local/state/sekoi-ops/ui-qa-auth-state.json（各 RAW summary authState=provided 在案）",
+        "window": "domcontentloaded 30s + 主文本稳定轮询≤4s + 视口加高复测；风暴窗口口径 6s/12s 两段累计（非 networkidle）",
+        "dim": "逐元素版式+渲染闸（153 加硬：mainTextLen<30 或风暴清单命中 ⇒ NOT_MEASURED）"
+      }
     },
     {
       "hash": "#/identity?tab=admins",
@@ -966,7 +1138,14 @@
       "scrollOverflow": [],
       "domOverflowPx": 0,
       "fontBypass": false,
-      "consoleErrorsProduct": 0
+      "consoleErrorsProduct": 0,
+      "finalVerdict154": {
+        "face": "初代批次（d1d7b80f 代 L0 P0 纠偏全量扫描，链外老脸）",
+        "entry": "初代批次 entry 未逐行记（早于 entryGenChain 字段规范）",
+        "authState": "登录态 --auth-state=~/.local/state/sekoi-ops/ui-qa-auth-state.json（各 RAW summary authState=provided 在案）",
+        "window": "domcontentloaded 30s + 主文本稳定轮询≤4s + 视口加高复测；风暴窗口口径 6s/12s 两段累计（非 networkidle）",
+        "dim": "逐元素版式+渲染闸（153 加硬：mainTextLen<30 或风暴清单命中 ⇒ NOT_MEASURED）"
+      }
     },
     {
       "hash": "#/identity?tab=binding",
@@ -992,7 +1171,14 @@
       "scrollOverflow": [],
       "domOverflowPx": 0,
       "fontBypass": false,
-      "consoleErrorsProduct": 0
+      "consoleErrorsProduct": 0,
+      "finalVerdict154": {
+        "face": "初代批次（d1d7b80f 代 L0 P0 纠偏全量扫描，链外老脸）",
+        "entry": "初代批次 entry 未逐行记（早于 entryGenChain 字段规范）",
+        "authState": "登录态 --auth-state=~/.local/state/sekoi-ops/ui-qa-auth-state.json（各 RAW summary authState=provided 在案）",
+        "window": "domcontentloaded 30s + 主文本稳定轮询≤4s + 视口加高复测；风暴窗口口径 6s/12s 两段累计（非 networkidle）",
+        "dim": "逐元素版式+渲染闸（153 加硬：mainTextLen<30 或风暴清单命中 ⇒ NOT_MEASURED）"
+      }
     },
     {
       "hash": "#/identity?tab=checks",
@@ -1018,7 +1204,14 @@
       "scrollOverflow": [],
       "domOverflowPx": 0,
       "fontBypass": false,
-      "consoleErrorsProduct": 0
+      "consoleErrorsProduct": 0,
+      "finalVerdict154": {
+        "face": "初代批次（d1d7b80f 代 L0 P0 纠偏全量扫描，链外老脸）",
+        "entry": "初代批次 entry 未逐行记（早于 entryGenChain 字段规范）",
+        "authState": "登录态 --auth-state=~/.local/state/sekoi-ops/ui-qa-auth-state.json（各 RAW summary authState=provided 在案）",
+        "window": "domcontentloaded 30s + 主文本稳定轮询≤4s + 视口加高复测；风暴窗口口径 6s/12s 两段累计（非 networkidle）",
+        "dim": "逐元素版式+渲染闸（153 加硬：mainTextLen<30 或风暴清单命中 ⇒ NOT_MEASURED）"
+      }
     },
     {
       "hash": "#/identity?tab=departments",
@@ -1044,7 +1237,14 @@
       "scrollOverflow": [],
       "domOverflowPx": 0,
       "fontBypass": false,
-      "consoleErrorsProduct": 0
+      "consoleErrorsProduct": 0,
+      "finalVerdict154": {
+        "face": "初代批次（d1d7b80f 代 L0 P0 纠偏全量扫描，链外老脸）",
+        "entry": "初代批次 entry 未逐行记（早于 entryGenChain 字段规范）",
+        "authState": "登录态 --auth-state=~/.local/state/sekoi-ops/ui-qa-auth-state.json（各 RAW summary authState=provided 在案）",
+        "window": "domcontentloaded 30s + 主文本稳定轮询≤4s + 视口加高复测；风暴窗口口径 6s/12s 两段累计（非 networkidle）",
+        "dim": "逐元素版式+渲染闸（153 加硬：mainTextLen<30 或风暴清单命中 ⇒ NOT_MEASURED）"
+      }
     },
     {
       "hash": "#/identity?tab=people&view=admins",
@@ -1070,7 +1270,14 @@
       "scrollOverflow": [],
       "domOverflowPx": 0,
       "fontBypass": false,
-      "consoleErrorsProduct": 0
+      "consoleErrorsProduct": 0,
+      "finalVerdict154": {
+        "face": "初代批次（d1d7b80f 代 L0 P0 纠偏全量扫描，链外老脸）",
+        "entry": "初代批次 entry 未逐行记（早于 entryGenChain 字段规范）",
+        "authState": "登录态 --auth-state=~/.local/state/sekoi-ops/ui-qa-auth-state.json（各 RAW summary authState=provided 在案）",
+        "window": "domcontentloaded 30s + 主文本稳定轮询≤4s + 视口加高复测；风暴窗口口径 6s/12s 两段累计（非 networkidle）",
+        "dim": "逐元素版式+渲染闸（153 加硬：mainTextLen<30 或风暴清单命中 ⇒ NOT_MEASURED）"
+      }
     },
     {
       "hash": "#/identity?tab=roles",
@@ -1096,7 +1303,14 @@
       "scrollOverflow": [],
       "domOverflowPx": 0,
       "fontBypass": false,
-      "consoleErrorsProduct": 0
+      "consoleErrorsProduct": 0,
+      "finalVerdict154": {
+        "face": "初代批次（d1d7b80f 代 L0 P0 纠偏全量扫描，链外老脸）",
+        "entry": "初代批次 entry 未逐行记（早于 entryGenChain 字段规范）",
+        "authState": "登录态 --auth-state=~/.local/state/sekoi-ops/ui-qa-auth-state.json（各 RAW summary authState=provided 在案）",
+        "window": "domcontentloaded 30s + 主文本稳定轮询≤4s + 视口加高复测；风暴窗口口径 6s/12s 两段累计（非 networkidle）",
+        "dim": "逐元素版式+渲染闸（153 加硬：mainTextLen<30 或风暴清单命中 ⇒ NOT_MEASURED）"
+      }
     },
     {
       "hash": "#/identity?tab=tenant",
@@ -1122,7 +1336,14 @@
       "scrollOverflow": [],
       "domOverflowPx": 0,
       "fontBypass": false,
-      "consoleErrorsProduct": 0
+      "consoleErrorsProduct": 0,
+      "finalVerdict154": {
+        "face": "初代批次（d1d7b80f 代 L0 P0 纠偏全量扫描，链外老脸）",
+        "entry": "初代批次 entry 未逐行记（早于 entryGenChain 字段规范）",
+        "authState": "登录态 --auth-state=~/.local/state/sekoi-ops/ui-qa-auth-state.json（各 RAW summary authState=provided 在案）",
+        "window": "domcontentloaded 30s + 主文本稳定轮询≤4s + 视口加高复测；风暴窗口口径 6s/12s 两段累计（非 networkidle）",
+        "dim": "逐元素版式+渲染闸（153 加硬：mainTextLen<30 或风暴清单命中 ⇒ NOT_MEASURED）"
+      }
     },
     {
       "hash": "#/knowledge",
@@ -1214,7 +1435,14 @@
           "elementsChecked": 178,
           "mainTextLen": 533
         }
-      ]
+      ],
+      "finalVerdict154": {
+        "face": "645e86ef00",
+        "entry": "index-B9avOQha.js",
+        "authState": "登录态 --auth-state=~/.local/state/sekoi-ops/ui-qa-auth-state.json（各 RAW summary authState=provided 在案）",
+        "window": "domcontentloaded 30s + 主文本稳定轮询≤4s + 视口加高复测；风暴窗口口径 6s/12s 两段累计（非 networkidle）",
+        "dim": "逐元素版式+渲染闸（153 加硬：mainTextLen<30 或风暴清单命中 ⇒ NOT_MEASURED）"
+      }
     },
     {
       "hash": "#/knowledge?tab=citations",
@@ -1306,7 +1534,15 @@
           "elementsChecked": 166,
           "mainTextLen": 494
         }
-      ]
+      ],
+      "finalVerdict154": {
+        "face": "645e86ef00",
+        "entry": "index-B9avOQha.js",
+        "authState": "登录态 --auth-state=~/.local/state/sekoi-ops/ui-qa-auth-state.json（各 RAW summary authState=provided 在案）",
+        "window": "domcontentloaded 30s + 主文本稳定轮询≤4s + 视口加高复测；风暴窗口口径 6s/12s 两段累计（非 networkidle）",
+        "dim": "逐元素版式+渲染闸（153 加硬：mainTextLen<30 或风暴清单命中 ⇒ NOT_MEASURED）",
+        "note154": "wave-153 STORM_NM 命中行仅为闸机制演示；citations 自身原始计数见 w154-citations-storm-counters.json（6s→12s 零增长，非风暴页）"
+      }
     },
     {
       "hash": "#/knowledge?tab=evidence",
@@ -1398,7 +1634,14 @@
           "elementsChecked": 116,
           "mainTextLen": 198
         }
-      ]
+      ],
+      "finalVerdict154": {
+        "face": "645e86ef00",
+        "entry": "index-B9avOQha.js",
+        "authState": "登录态 --auth-state=~/.local/state/sekoi-ops/ui-qa-auth-state.json（各 RAW summary authState=provided 在案）",
+        "window": "domcontentloaded 30s + 主文本稳定轮询≤4s + 视口加高复测；风暴窗口口径 6s/12s 两段累计（非 networkidle）",
+        "dim": "逐元素版式+渲染闸（153 加硬：mainTextLen<30 或风暴清单命中 ⇒ NOT_MEASURED）"
+      }
     },
     {
       "hash": "#/knowledge?tab=ingest",
@@ -1490,7 +1733,14 @@
           "elementsChecked": 174,
           "mainTextLen": 575
         }
-      ]
+      ],
+      "finalVerdict154": {
+        "face": "645e86ef00",
+        "entry": "index-B9avOQha.js",
+        "authState": "登录态 --auth-state=~/.local/state/sekoi-ops/ui-qa-auth-state.json（各 RAW summary authState=provided 在案）",
+        "window": "domcontentloaded 30s + 主文本稳定轮询≤4s + 视口加高复测；风暴窗口口径 6s/12s 两段累计（非 networkidle）",
+        "dim": "逐元素版式+渲染闸（153 加硬：mainTextLen<30 或风暴清单命中 ⇒ NOT_MEASURED）"
+      }
     },
     {
       "hash": "#/knowledge?tab=retrieval",
@@ -1582,7 +1832,14 @@
           "elementsChecked": 177,
           "mainTextLen": 526
         }
-      ]
+      ],
+      "finalVerdict154": {
+        "face": "645e86ef00",
+        "entry": "index-B9avOQha.js",
+        "authState": "登录态 --auth-state=~/.local/state/sekoi-ops/ui-qa-auth-state.json（各 RAW summary authState=provided 在案）",
+        "window": "domcontentloaded 30s + 主文本稳定轮询≤4s + 视口加高复测；风暴窗口口径 6s/12s 两段累计（非 networkidle）",
+        "dim": "逐元素版式+渲染闸（153 加硬：mainTextLen<30 或风暴清单命中 ⇒ NOT_MEASURED）"
+      }
     },
     {
       "hash": "#/knowledge?tab=scope",
@@ -1674,7 +1931,14 @@
           "elementsChecked": 178,
           "mainTextLen": 533
         }
-      ]
+      ],
+      "finalVerdict154": {
+        "face": "645e86ef00",
+        "entry": "index-B9avOQha.js",
+        "authState": "登录态 --auth-state=~/.local/state/sekoi-ops/ui-qa-auth-state.json（各 RAW summary authState=provided 在案）",
+        "window": "domcontentloaded 30s + 主文本稳定轮询≤4s + 视口加高复测；风暴窗口口径 6s/12s 两段累计（非 networkidle）",
+        "dim": "逐元素版式+渲染闸（153 加硬：mainTextLen<30 或风暴清单命中 ⇒ NOT_MEASURED）"
+      }
     },
     {
       "hash": "#/knowledge?tab=sources",
@@ -1766,7 +2030,14 @@
           "elementsChecked": 174,
           "mainTextLen": 575
         }
-      ]
+      ],
+      "finalVerdict154": {
+        "face": "645e86ef00",
+        "entry": "index-B9avOQha.js",
+        "authState": "登录态 --auth-state=~/.local/state/sekoi-ops/ui-qa-auth-state.json（各 RAW summary authState=provided 在案）",
+        "window": "domcontentloaded 30s + 主文本稳定轮询≤4s + 视口加高复测；风暴窗口口径 6s/12s 两段累计（非 networkidle）",
+        "dim": "逐元素版式+渲染闸（153 加硬：mainTextLen<30 或风暴清单命中 ⇒ NOT_MEASURED）"
+      }
     },
     {
       "hash": "#/metrics",
@@ -1802,7 +2073,14 @@
           "elementsChecked": 95,
           "mainTextLen": 818
         }
-      ]
+      ],
+      "finalVerdict154": {
+        "face": "645e86ef00",
+        "entry": "index-B9avOQha.js",
+        "authState": "登录态 --auth-state=~/.local/state/sekoi-ops/ui-qa-auth-state.json（各 RAW summary authState=provided 在案）",
+        "window": "domcontentloaded 30s + 主文本稳定轮询≤4s + 视口加高复测；风暴窗口口径 6s/12s 两段累计（非 networkidle）",
+        "dim": "逐元素版式+渲染闸（153 加硬：mainTextLen<30 或风暴清单命中 ⇒ NOT_MEASURED）"
+      }
     },
     {
       "hash": "#/org",
@@ -1858,7 +2136,14 @@
           "fontBypass": false
         }
       },
-      "rerollFace": "6edcba4d"
+      "rerollFace": "6edcba4d",
+      "finalVerdict154": {
+        "face": "6edcba4d",
+        "entry": "index-3Opmhawd.js",
+        "authState": "登录态 --auth-state=~/.local/state/sekoi-ops/ui-qa-auth-state.json（各 RAW summary authState=provided 在案）",
+        "window": "domcontentloaded 30s + 主文本稳定轮询≤4s + 视口加高复测；风暴窗口口径 6s/12s 两段累计（非 networkidle）",
+        "dim": "逐元素版式+渲染闸（153 加硬：mainTextLen<30 或风暴清单命中 ⇒ NOT_MEASURED）"
+      }
     },
     {
       "hash": "#/overview",
@@ -1914,7 +2199,14 @@
           "fontBypass": false
         }
       },
-      "rerollFace": "6edcba4d"
+      "rerollFace": "6edcba4d",
+      "finalVerdict154": {
+        "face": "6edcba4d",
+        "entry": "index-3Opmhawd.js",
+        "authState": "登录态 --auth-state=~/.local/state/sekoi-ops/ui-qa-auth-state.json（各 RAW summary authState=provided 在案）",
+        "window": "domcontentloaded 30s + 主文本稳定轮询≤4s + 视口加高复测；风暴窗口口径 6s/12s 两段累计（非 networkidle）",
+        "dim": "逐元素版式+渲染闸（153 加硬：mainTextLen<30 或风暴清单命中 ⇒ NOT_MEASURED）"
+      }
     },
     {
       "hash": "#/overview?tab=usage",
@@ -1983,7 +2275,14 @@
       ],
       "rerunAt": "2026-11-22T18:27+08:00",
       "violInsideScrollableShell": 0,
-      "violOutsideShell": 0
+      "violOutsideShell": 0,
+      "finalVerdict154": {
+        "face": "ba282ab484",
+        "entry": "index-B7MjhP14.js",
+        "authState": "登录态 --auth-state=~/.local/state/sekoi-ops/ui-qa-auth-state.json（各 RAW summary authState=provided 在案）",
+        "window": "domcontentloaded 30s + 主文本稳定轮询≤4s + 视口加高复测；风暴窗口口径 6s/12s 两段累计（非 networkidle）",
+        "dim": "逐元素版式+渲染闸（153 加硬：mainTextLen<30 或风暴清单命中 ⇒ NOT_MEASURED）"
+      }
     },
     {
       "hash": "#/sessions",
@@ -2085,7 +2384,39 @@
       "rerollFace": "c5e046c522",
       "rerunAt": "2026-11-22 19:18:34",
       "firstElementReadings152": true,
-      "waveNote152": "401 三闸（4a3363a951）后首次逐元素读数；main=10 骨架/门控壳面如实；风暴计数环未止见 stormCounters152"
+      "waveNote152": "401 三闸（4a3363a951）后首次逐元素读数；main=10 骨架/门控壳面如实；风暴计数环未止见 stormCounters152",
+      "finalVerdict154": {
+        "face": "c5e046c522",
+        "entry": "index-CCLAG-mZ.js",
+        "authState": "登录态 --auth-state=~/.local/state/sekoi-ops/ui-qa-auth-state.json（各 RAW summary authState=provided 在案）",
+        "window": "domcontentloaded 30s + 主文本稳定轮询≤4s + 视口加高复测；风暴窗口口径 6s/12s 两段累计（非 networkidle）",
+        "dim": "逐元素版式+渲染闸（153 加硬：mainTextLen<30 或风暴清单命中 ⇒ NOT_MEASURED）",
+        "windowCounters": {
+          "w1": {
+            "nav": 267,
+            "http401": 789,
+            "whoamiAborted": 263,
+            "failed": 263,
+            "total": 8324
+          },
+          "w2": {
+            "nav": 527,
+            "http401": 1570,
+            "whoamiAborted": 523,
+            "failed": 523,
+            "total": 16597
+          },
+          "delta": {
+            "nav": 260,
+            "http401": 781,
+            "whoamiAborted": 260,
+            "failed": 260,
+            "total": 8273
+          },
+          "mainLen": 1
+        },
+        "countersSource": "storm-counters-4a3363a951.json"
+      }
     },
     {
       "hash": "#/system",
@@ -2125,7 +2456,14 @@
       "rerollFace": "ba282ab484",
       "rerunAt": "2026-11-22T18:27+08:00",
       "violInsideScrollableShell": 0,
-      "violOutsideShell": 0
+      "violOutsideShell": 0,
+      "finalVerdict154": {
+        "face": "ba282ab484",
+        "entry": "index-B7MjhP14.js",
+        "authState": "登录态 --auth-state=~/.local/state/sekoi-ops/ui-qa-auth-state.json（各 RAW summary authState=provided 在案）",
+        "window": "domcontentloaded 30s + 主文本稳定轮询≤4s + 视口加高复测；风暴窗口口径 6s/12s 两段累计（非 networkidle）",
+        "dim": "逐元素版式+渲染闸（153 加硬：mainTextLen<30 或风暴清单命中 ⇒ NOT_MEASURED）"
+      }
     },
     {
       "hash": "#/system?tab=defaults",
@@ -2165,7 +2503,14 @@
       "rerollFace": "ba282ab484",
       "rerunAt": "2026-11-22T18:27+08:00",
       "violInsideScrollableShell": 0,
-      "violOutsideShell": 0
+      "violOutsideShell": 0,
+      "finalVerdict154": {
+        "face": "ba282ab484",
+        "entry": "index-B7MjhP14.js",
+        "authState": "登录态 --auth-state=~/.local/state/sekoi-ops/ui-qa-auth-state.json（各 RAW summary authState=provided 在案）",
+        "window": "domcontentloaded 30s + 主文本稳定轮询≤4s + 视口加高复测；风暴窗口口径 6s/12s 两段累计（非 networkidle）",
+        "dim": "逐元素版式+渲染闸（153 加硬：mainTextLen<30 或风暴清单命中 ⇒ NOT_MEASURED）"
+      }
     },
     {
       "hash": "#/system?tab=events",
@@ -2205,7 +2550,14 @@
       "rerollFace": "ba282ab484",
       "rerunAt": "2026-11-22T18:27+08:00",
       "violInsideScrollableShell": 0,
-      "violOutsideShell": 0
+      "violOutsideShell": 0,
+      "finalVerdict154": {
+        "face": "ba282ab484",
+        "entry": "index-B7MjhP14.js",
+        "authState": "登录态 --auth-state=~/.local/state/sekoi-ops/ui-qa-auth-state.json（各 RAW summary authState=provided 在案）",
+        "window": "domcontentloaded 30s + 主文本稳定轮询≤4s + 视口加高复测；风暴窗口口径 6s/12s 两段累计（非 networkidle）",
+        "dim": "逐元素版式+渲染闸（153 加硬：mainTextLen<30 或风暴清单命中 ⇒ NOT_MEASURED）"
+      }
     },
     {
       "hash": "#/system?tab=events&view=anomaly",
@@ -2245,7 +2597,14 @@
       "rerollFace": "ba282ab484",
       "rerunAt": "2026-11-22T18:27+08:00",
       "violInsideScrollableShell": 0,
-      "violOutsideShell": 0
+      "violOutsideShell": 0,
+      "finalVerdict154": {
+        "face": "ba282ab484",
+        "entry": "index-B7MjhP14.js",
+        "authState": "登录态 --auth-state=~/.local/state/sekoi-ops/ui-qa-auth-state.json（各 RAW summary authState=provided 在案）",
+        "window": "domcontentloaded 30s + 主文本稳定轮询≤4s + 视口加高复测；风暴窗口口径 6s/12s 两段累计（非 networkidle）",
+        "dim": "逐元素版式+渲染闸（153 加硬：mainTextLen<30 或风暴清单命中 ⇒ NOT_MEASURED）"
+      }
     },
     {
       "hash": "#/system?tab=retention",
@@ -2285,7 +2644,14 @@
       "rerollFace": "ba282ab484",
       "rerunAt": "2026-11-22T18:27+08:00",
       "violInsideScrollableShell": 0,
-      "violOutsideShell": 0
+      "violOutsideShell": 0,
+      "finalVerdict154": {
+        "face": "ba282ab484",
+        "entry": "index-B7MjhP14.js",
+        "authState": "登录态 --auth-state=~/.local/state/sekoi-ops/ui-qa-auth-state.json（各 RAW summary authState=provided 在案）",
+        "window": "domcontentloaded 30s + 主文本稳定轮询≤4s + 视口加高复测；风暴窗口口径 6s/12s 两段累计（非 networkidle）",
+        "dim": "逐元素版式+渲染闸（153 加硬：mainTextLen<30 或风暴清单命中 ⇒ NOT_MEASURED）"
+      }
     },
     {
       "hash": "#/system?tab=security",
@@ -2325,7 +2691,14 @@
       "rerollFace": "ba282ab484",
       "rerunAt": "2026-11-22T18:27+08:00",
       "violInsideScrollableShell": 0,
-      "violOutsideShell": 0
+      "violOutsideShell": 0,
+      "finalVerdict154": {
+        "face": "ba282ab484",
+        "entry": "index-B7MjhP14.js",
+        "authState": "登录态 --auth-state=~/.local/state/sekoi-ops/ui-qa-auth-state.json（各 RAW summary authState=provided 在案）",
+        "window": "domcontentloaded 30s + 主文本稳定轮询≤4s + 视口加高复测；风暴窗口口径 6s/12s 两段累计（非 networkidle）",
+        "dim": "逐元素版式+渲染闸（153 加硬：mainTextLen<30 或风暴清单命中 ⇒ NOT_MEASURED）"
+      }
     },
     {
       "hash": "#/system?tab=version",
@@ -2365,7 +2738,14 @@
       "rerollFace": "ba282ab484",
       "rerunAt": "2026-11-22T18:27+08:00",
       "violInsideScrollableShell": 0,
-      "violOutsideShell": 0
+      "violOutsideShell": 0,
+      "finalVerdict154": {
+        "face": "ba282ab484",
+        "entry": "index-B7MjhP14.js",
+        "authState": "登录态 --auth-state=~/.local/state/sekoi-ops/ui-qa-auth-state.json（各 RAW summary authState=provided 在案）",
+        "window": "domcontentloaded 30s + 主文本稳定轮询≤4s + 视口加高复测；风暴窗口口径 6s/12s 两段累计（非 networkidle）",
+        "dim": "逐元素版式+渲染闸（153 加硬：mainTextLen<30 或风暴清单命中 ⇒ NOT_MEASURED）"
+      }
     },
     {
       "hash": "#/work",
@@ -2421,7 +2801,14 @@
           "fontBypass": false
         }
       },
-      "rerollFace": "6edcba4d"
+      "rerollFace": "6edcba4d",
+      "finalVerdict154": {
+        "face": "6edcba4d",
+        "entry": "index-3Opmhawd.js",
+        "authState": "登录态 --auth-state=~/.local/state/sekoi-ops/ui-qa-auth-state.json（各 RAW summary authState=provided 在案）",
+        "window": "domcontentloaded 30s + 主文本稳定轮询≤4s + 视口加高复测；风暴窗口口径 6s/12s 两段累计（非 networkidle）",
+        "dim": "逐元素版式+渲染闸（153 加硬：mainTextLen<30 或风暴清单命中 ⇒ NOT_MEASURED）"
+      }
     },
     {
       "hash": "#/work?tab=board&view=cron",
@@ -2477,7 +2864,14 @@
           "fontBypass": false
         }
       },
-      "rerollFace": "6edcba4d"
+      "rerollFace": "6edcba4d",
+      "finalVerdict154": {
+        "face": "6edcba4d",
+        "entry": "index-3Opmhawd.js",
+        "authState": "登录态 --auth-state=~/.local/state/sekoi-ops/ui-qa-auth-state.json（各 RAW summary authState=provided 在案）",
+        "window": "domcontentloaded 30s + 主文本稳定轮询≤4s + 视口加高复测；风暴窗口口径 6s/12s 两段累计（非 networkidle）",
+        "dim": "逐元素版式+渲染闸（153 加硬：mainTextLen<30 或风暴清单命中 ⇒ NOT_MEASURED）"
+      }
     },
     {
       "hash": "#/work?tab=cron",
@@ -2533,7 +2927,14 @@
           "fontBypass": false
         }
       },
-      "rerollFace": "6edcba4d"
+      "rerollFace": "6edcba4d",
+      "finalVerdict154": {
+        "face": "6edcba4d",
+        "entry": "index-3Opmhawd.js",
+        "authState": "登录态 --auth-state=~/.local/state/sekoi-ops/ui-qa-auth-state.json（各 RAW summary authState=provided 在案）",
+        "window": "domcontentloaded 30s + 主文本稳定轮询≤4s + 视口加高复测；风暴窗口口径 6s/12s 两段累计（非 networkidle）",
+        "dim": "逐元素版式+渲染闸（153 加硬：mainTextLen<30 或风暴清单命中 ⇒ NOT_MEASURED）"
+      }
     },
     {
       "hash": "#/work?tab=runs",
@@ -2589,7 +2990,14 @@
           "fontBypass": false
         }
       },
-      "rerollFace": "6edcba4d"
+      "rerollFace": "6edcba4d",
+      "finalVerdict154": {
+        "face": "6edcba4d",
+        "entry": "index-3Opmhawd.js",
+        "authState": "登录态 --auth-state=~/.local/state/sekoi-ops/ui-qa-auth-state.json（各 RAW summary authState=provided 在案）",
+        "window": "domcontentloaded 30s + 主文本稳定轮询≤4s + 视口加高复测；风暴窗口口径 6s/12s 两段累计（非 networkidle）",
+        "dim": "逐元素版式+渲染闸（153 加硬：mainTextLen<30 或风暴清单命中 ⇒ NOT_MEASURED）"
+      }
     }
   ],
   "rerollNote": "点名重跑 sessions/channels/models @d2cc49fe 面（L0②）：sessions 转 PASS（fb+fit，PNG 入账）、models PASS；channels 新面反成失分页（45s 旁路超时、main=10、viol 数据不可得）记 NOT_MEASURED 逐条 navError 入账，首轮 6586df6b 读数存 firstRunRow（L0①其余 48 路保留首轮）",
@@ -3589,5 +3997,85 @@
   "scan153": {
     "lowMainPassRows": [],
     "note": "全表扫描 PASS 行 mainTextLen<30 仅上列（期望为空）"
-  }
+  },
+  "stormCounters154": {
+    "口径": "domcontentloaded 30s + 主文本稳定轮询≤4s + 视口加高复测；风暴窗口口径 6s/12s 两段累计（非 networkidle）",
+    "appendix": "每路 6s(w1)/12s(w2)/delta 原始计数本体：",
+    "sessions": {
+      "w1": {
+        "nav": 267,
+        "http401": 789,
+        "whoamiAborted": 263,
+        "failed": 263,
+        "total": 8324
+      },
+      "w2": {
+        "nav": 527,
+        "http401": 1570,
+        "whoamiAborted": 523,
+        "failed": 523,
+        "total": 16597
+      },
+      "delta": {
+        "nav": 260,
+        "http401": 781,
+        "whoamiAborted": 260,
+        "failed": 260,
+        "total": 8273
+      },
+      "mainLen": 1
+    },
+    "channels": {
+      "w1": {
+        "nav": 247,
+        "http401": 1225,
+        "whoamiAborted": 243,
+        "failed": 573,
+        "total": 7159
+      },
+      "w2": {
+        "nav": 484,
+        "http401": 2411,
+        "whoamiAborted": 480,
+        "failed": 1134,
+        "total": 14103
+      },
+      "delta": {
+        "nav": 237,
+        "http401": 1186,
+        "whoamiAborted": 237,
+        "failed": 561,
+        "total": 6944
+      },
+      "mainLen": 10
+    },
+    "citations": {
+      "w1": {
+        "nav": 5,
+        "http401": 4,
+        "whoamiAborted": 0,
+        "failed": 0,
+        "total": 30
+      },
+      "w2": {
+        "nav": 5,
+        "http401": 4,
+        "whoamiAborted": 0,
+        "failed": 0,
+        "total": 31
+      },
+      "delta": {
+        "nav": 0,
+        "http401": 0,
+        "whoamiAborted": 0,
+        "failed": 0,
+        "total": 1
+      },
+      "mainLen": 494
+    },
+    "citationsCountersFile": "w154-citations-storm-counters.json",
+    "verdict154": "线性增长实证仅 sessions/channels（6s→12s 近似翻倍）；citations 零增长——wave-153 对 citations 的 NM 是人工入单的机制反证，已在该行 finalVerdict154.note154 声明，不冒充实证"
+  },
+  "rerollNote154": "更正154：原 rerollNote 把『sessions 转 PASS / models PASS』挂 @d2cc49fe——该面是昨夜 00:57 merge lane/console-design@3e01e190 老脸（L0 指认属实，cat-file -e 亦真），其读数不作当代脸证据。当代终判：sessions/channels=NOT_MEASURED@脸 c5e046c522/entry index-CCLAG-mZ.js（骨架闸 main=10）；#/capabilities?tab=models 行字段本就无 rerollFace（face=None），d2cc49fe 归属只存在于旧注记，其现行为初代批次读数待按当代脸复核后升格——不冒充。",
+  "authStateCaliber154": "登录态 --auth-state=~/.local/state/sekoi-ops/ui-qa-auth-state.json（各 RAW summary authState=provided 在案）；本道 assert-375/shots/storm 全部探针均带登录态跑，UI-KD 同端口登录态 #/system 221 元素/29 越界属布局维度对照读数，与本道逐元素闸+渲染闸口径并存不冲突；匿名态判 NM 不算布局结论——本道无一条 NM 出自匿名态。"
 }
