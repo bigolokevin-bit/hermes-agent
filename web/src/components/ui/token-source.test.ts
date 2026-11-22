@@ -11,6 +11,8 @@ import { describe, expect, it } from "vitest";
 const SHELL = fileURLToPath(new URL("../../shell/tokens.css", import.meta.url));
 const STYLES = fileURLToPath(new URL("../../styles/tokens.css", import.meta.url));
 const UI = fileURLToPath(new URL("./ui.css", import.meta.url));
+/** 指南在本仓 docs/ 下：从 web/src/components/ui 上跳四级到仓库根。 */
+const GUIDE = fileURLToPath(new URL("../../../../docs/_artifacts/ui-kd/ui-page-migration-guide.md", import.meta.url));
 const read = (path: string): string => readFileSync(path, "utf8");
 
 /** 去掉块注释与行注释后的纯声明文本。 */
@@ -58,5 +60,25 @@ describe("UI-F 令牌单源机检门", () => {
     const tiers = ["--duration-ls-fast", "--duration-ls-base", "--duration-ls-slow"];
     const names = defined(read(STYLES));
     for (const tier of tiers) expect(names, `缺动效档：${tier}`).toContain(tier);
+  });
+
+  // L0 点名的漏网口子：原先只抽查三个名，「令牌加了不写表」不红、
+  // 「表写了令牌没有」也只靠抽查兜。这一条把两头堵成逐项相等。
+  it("戊：契约名表 ⇄ 真值源双向逐项相等（加了不写表 / 写了表没令牌，两头都拦）", () => {
+    const tableNames = new Set(
+      [...read(GUIDE).matchAll(/^\|\s*`(--[\w-]+)`\s*\|/gm)].map((m) => m[1] as string),
+    );
+    expect(tableNames.size, "指南契约名表是空的＝这条腿在空转").toBeGreaterThanOrEqual(60);
+    const tokenLs = new Set(
+      [...strip(read(STYLES)).matchAll(/--[\w-]*-ls[\w-]*\s*:/g)].map((m) =>
+        m[0].replace(/\s*:$/, ""),
+      ),
+    );
+    expect(tokenLs.size, "真值源契约名少于 62＝令牌被删没走并窗").toBeGreaterThanOrEqual(60);
+    const missingInTable = [...tokenLs].filter((name) => !tableNames.has(name));
+    expect(missingInTable, "真值源加了契约名但指南 §1 没登记（三处同改缺一即红）").toEqual([]);
+    const orphanRows = [...tableNames].filter((name) => !tokenLs.has(name));
+    expect(orphanRows, "指南表里的契约名在真值源没有定义＝孤行").toEqual([]);
+    expect(tableNames.size, "契约名数与真值源数不等").toBe(tokenLs.size);
   });
 });
