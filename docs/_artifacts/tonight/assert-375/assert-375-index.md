@@ -130,3 +130,4 @@ matrix(#/employees?tab=matrix) present=true ok=true
 - knowledge：触点/冷链三态/coex 四态全部 viol=0 maxRight=375（a→sources 高亮 owner href 含 panel；b→spaces 保持；c→回退 spaces，url 实测含 panel=spaces 与前脸略异如实）；载入态=state= 参数 pane data-state=loading（main55），瞬态骨架三拍未捕（本地静态过快），如实记不冒充。
 - runs：#/runs 不在 51 路表；直访 rows=0/run-window-* 未命中（fallback duty-range-30d）⇒ 游标行为腿本脸不可复现如实；375 bounds elements=333 viol=0；语义归 e4b4efa545 vitest。
 - 纪律：51 路未重扫；49 首轮保留；sessions/channels 真 NM 维持未改判；375 总 PASS 未宣称；判据不变（376/-1/812/FAIL优先/matrix必产图）。
+- 补账（L0 令 2026-11-22）：entry assets/index-B9avOQha.js sha256 dc13c252faca20d8d8c74c24ad47d5be1c0cf2dfc63c03fd1444f2308d7b5711、172750B；定脸 645e86ef00 提交时刻 2026-11-22 13:52:46 +0800，index.html mtime 13:59:34 ⇒ 构建晚于定脸 6 分 48 秒，构建含全脸无抢跑；端口 9122 served==disk 双 MATCH 已在面（L0 独立双证一致）。
