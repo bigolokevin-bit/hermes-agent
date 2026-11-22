@@ -295,6 +295,26 @@ const GATED_FLAG_INIT = () => {
   window.__HERMES_AUTH_REQUIRED__ = true;
 };
 
+// L0 令 151 牙齿自检：ASSERT375_TEETH=1 时在 body 级注入 600px 宽元素（无任何可滚壳祖先），
+// 走同一 PROBE + 同一判据梯子，必须得 violOutsideShell>=1 且 verdict=FAIL——
+// 用来区分「壳内被正确分流」与「探针丢了判定维度」。正常跑不设此 env 即零影响。
+const TEETH = process.env.ASSERT375_TEETH === '1';
+const TEETH_INIT = () => {
+  const put = () => {
+    if (document.querySelector('[data-selftest="teeth-600"]')) return;
+    const d = document.createElement('div');
+    d.setAttribute('data-selftest', 'teeth-600');
+    d.style.cssText = 'width:600px;height:8px';
+    document.body.appendChild(d);
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', put, { once: true });
+  else put();
+};
+
+// L0 令 151 缺失即 NM 兜底：violOutsideShell 非数字（undefined/null）时禁静默放绿——
+// JS 里 null > 0 === false，字段丢了会假 PASS；一律判 NOT_MEASURED 并记因。
+const criteriaMissing = (probe) => probe !== null && typeof probe.violOutsideShell !== 'number';
+
 const index = [];
 let red = 0;
 let notMeasured = 0;
@@ -305,6 +325,7 @@ for (const row of target) {
     ...(AUTH_STATE ? { storageState: AUTH_STATE } : {}),
   });
   if (!AUTH_STATE) await ctx.addInitScript(GATED_FLAG_INIT);
+  if (TEETH) await ctx.addInitScript(TEETH_INIT);
   const page = await ctx.newPage();
   let consoleErrorsProduct = 0;
   page.on('console', (m) => {
@@ -421,6 +442,11 @@ for (const row of target) {
       // 逐元素违规独立于截图质量：FAIL 优先于 NOT_MEASURED
       verdict = 'FAIL';
       red += 1;
+    } else if (criteriaMissing(probe)) {
+      // L0 令 151：判据字段缺失＝探针丢了维度，禁静默 PASS，判 NOT_MEASURED 并记因
+      verdict = 'NOT_MEASURED';
+      notMeasured += 1;
+      navError = navError || 'criteria-field-missing: violOutsideShell not numeric';
     } else if (!probe || !dims) {
       verdict = 'NOT_MEASURED';
       notMeasured += 1;
@@ -449,6 +475,7 @@ for (const row of target) {
         ...(AUTH_STATE ? { storageState: AUTH_STATE } : {}),
       });
       if (!AUTH_STATE) await fbCtx.addInitScript(GATED_FLAG_INIT);
+      if (TEETH) await fbCtx.addInitScript(TEETH_INIT);
       await fbCtx.route('**/*', (route) => {
         const u = route.request().url();
         if (/\.(?:woff2?|ttf|otf|eot)(?:[?#]|$)/i.test(u)) {
@@ -541,6 +568,11 @@ for (const row of target) {
     if (probe && probe.violOutsideShell > 0) { // wave-150（L0 令）：只判壳外违规；真滚壳内=表格豁免仍记录，滚动壳明细仍入账
       verdict = 'FAIL';
       red += 1;
+    } else if (criteriaMissing(probe)) {
+      // L0 令 151：判据字段缺失＝探针丢了维度，禁静默 PASS，判 NOT_MEASURED 并记因
+      verdict = 'NOT_MEASURED';
+      notMeasured += 1;
+      navError = navError || 'criteria-field-missing: violOutsideShell not numeric';
     } else if (!probe || !dims) {
       verdict = 'NOT_MEASURED';
       notMeasured += 1;
@@ -600,8 +632,9 @@ const summary = {
   base: BASE,
   authState: AUTH_STATE ? 'provided' : 'gated-flag-anon',
   criteria: {
-    perElement: 'right<=376 && left>=-1 for every visible element; inside a genuinely scrollable overflow-x shell recorded as violInsideScrollableShell (rubric table exemption), only violOutsideShell FAILs (wave-150)',
-    scrollContainers: 'scrollWidth<=clientWidth for overflow-x:auto|scroll, reported separately — compliant shell-scroll evidence, does not FAIL (wave-150)',
+    perElement: 'right<=376 && left>=-1 for every visible element; inside a genuinely scrollable overflow-x shell recorded as violInsideScrollableShell, only violOutsideShell FAILs (wave-150); violOutsideShell 非数字判 NOT_MEASURED 禁静默 PASS（151）',
+    scrollContainers: 'scrollWidth<=clientWidth for overflow-x:auto|scroll, reported separately — compliant shell-scroll evidence, does not FAIL; 退出判红依据＝UI-RUBRIC「表格除外且须有容器内滚动」（wave-150/151）',
+    teethSelftest: TEETH ? 'ASSERT375_TEETH=1：body 级注入 width:600px 元素（data-selftest=teeth-600，无可滚壳祖先），同一梯子必须判壳外违规' : null,
     domScrollWidth: 'auxiliary only (domOverflowPx column), never greens a page',
     shot: 'fullPage:true && pngH>812 else NOT_MEASURED',
     matrix: fullScope ? 'required png, nonzero' : 'skipped-scope',
