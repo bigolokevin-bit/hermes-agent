@@ -409,6 +409,20 @@ export interface ApprovalRow {
   /** R65 parity: exactly what the detail reads as 「决定时间」 — same keys,
    * same helper, so the preview and the detail can never disagree. */
   decided: string | null;
+  /**
+   * 批量 P0: the real change kind, honored only from changeKind/binding.changeKind
+   * (R25 口径：顶层 kind/type 是审批类不是变更类型)。缺了就是缺了，raw 为 null，
+   * 门控据此「判不了就不批量」，绝不推断。
+   */
+  changeKind: { label: string; raw: string | null };
+  /**
+   * 批量 P0: remaining seconds under the detail's same rule (P1-A2 ①) — derive
+   * live from a readable deadline, fall back to the service snapshot only when
+   * there is no deadline. Neither present = null, never a fabricated 0.
+   */
+  remainingSeconds: number | null;
+  /** 批量 P0: 已投票审批人的 id 集（与 decisionEntries 的 whoRaw 同键序）。 */
+  decidedByIds: string[];
 }
 
 const ID_KEYS = ["approvalId", "approval_id", "id", "uuid"] as const;
@@ -435,6 +449,21 @@ function rowFrom(item: unknown, index: number): ApprovalRow | null {
     : beijing(pick(rec, DECIDED_KEYS)) ?? beijing(pick(rec, DEADLINE_KEYS));
   // R74: 分桶键与 labels 同源一次解析。
   const ap = approverLabels(rec);
+  // 批量 P0 行级判据三件——变更类型只认真写的 changeKind/binding.changeKind
+  // （与详情的 kind 腿同一键序，R25），缺了不推断；剩余秒与详情同尺（P1-A2 ①：
+  // deadline 现场推导优先，服务端快照仅回退腿，两者皆无 = null 不是 0）；
+  // 已投票人 id 复用 decisionEntries，与决策回放同一解析。
+  const changeKindRaw =
+    pickText(rec, ["changeKind", "change_kind"]) ?? pickText(asRecord(rec.binding) ?? {}, ["changeKind", "change_kind"]);
+  const deadlineRaw = pickText(rec, DEADLINE_KEYS);
+  const deadlineMs = deadlineRaw === null ? null : epochOf(deadlineRaw);
+  const remainingSeconds =
+    deadlineMs !== null
+      ? Math.floor((deadlineMs - Date.now()) / 1000)
+      : pickNumber(rec, ["remainingSeconds", "remaining_seconds", "ttlRemaining"]);
+  const decidedByIds = decisionEntries(rec)
+    .map((entry) => entry.whoRaw)
+    .filter((raw): raw is string => raw !== null);
   return {
     key: rawId ?? `approval-${index}`,
     rawId,
@@ -461,6 +490,9 @@ function rowFrom(item: unknown, index: number): ApprovalRow | null {
     requestId: pickText(rec, ["requestId", "request_id", "consoleRequestId"]),
     decided: beijing(pick(rec, DECIDED_KEYS)),
     decidedAt: pickText(rec, DECIDED_KEYS),
+    changeKind: changeKindView(changeKindRaw),
+    remainingSeconds,
+    decidedByIds,
   };
 }
 

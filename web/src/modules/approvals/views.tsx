@@ -86,6 +86,7 @@ export function ApprovalRowCard({
   onActivate,
   onNavKey,
   onClosePreview,
+  selection,
 }: {
   row: ApprovalRow;
   selected: boolean;
@@ -101,6 +102,17 @@ export function ApprovalRowCard({
   onNavKey: (action: "ArrowUp" | "ArrowDown" | "Home" | "End", fromKey: string) => void;
   /** R73: Esc 收起预览并把焦点还给该行。 */
   onClosePreview: () => void;
+  /**
+   * 批量 P0（仅待办面传入）：行级勾选框。undefined = 不渲染（历史页与未开
+   * 批量区的形态逐字节不变）；禁用原因句由 batch.ts 单点给出，组件不文案。
+   */
+  selection?: {
+    checked: boolean;
+    disabled: boolean;
+    disabledReason: string | null;
+    testId: string;
+    onToggle: (checked: boolean) => void;
+  };
 }): ReactNode {
   const toggleRef = useRef<HTMLButtonElement | null>(null);
   const closeRefocus = (): void => {
@@ -152,6 +164,25 @@ export function ApprovalRowCard({
     >
       <CardContent className="flex min-w-0 flex-col gap-2 px-4 py-3">
         <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+          {selection ? (
+            <input
+              type="checkbox"
+              data-testid={selection.testId}
+              checked={selection.checked}
+              disabled={selection.disabled}
+              title={selection.disabled ? (selection.disabledReason ?? undefined) : undefined}
+              aria-label={`批量选择：${row.title}`}
+              className="h-4 w-4 shrink-0 accent-primary"
+              onClick={(event) => {
+                // 行主体是 role=button 的打开把手；勾选只改选择集，不开详情。
+                event.stopPropagation();
+              }}
+              onChange={(event) => {
+                event.stopPropagation();
+                selection.onToggle(event.target.checked);
+              }}
+            />
+          ) : null}
           <button
             ref={toggleRef}
             type="button"
