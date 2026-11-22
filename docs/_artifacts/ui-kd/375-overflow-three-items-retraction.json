@@ -1,0 +1,405 @@
+[
+  {
+    "leg": "overview-usage",
+    "requestUrl": "http://127.0.0.1:9122/#/overview?tab=usage",
+    "reading": {
+      "vw": 375,
+      "url": "http://127.0.0.1:9122/overview?tab=usage",
+      "entry": "http://127.0.0.1:9122/assets/index-B7MjhP14.js",
+      "tables": [
+        {
+          "tid": "",
+          "cls": "w-full min-w-[520px] text-left text-sm",
+          "minW": "520px",
+          "w": 520,
+          "right": 547,
+          "shell": {
+            "tag": "div",
+            "cls": "overflow-x-auto",
+            "tid": "",
+            "clientW": 310,
+            "scrollW": 520,
+            "canScroll": true,
+            "left": 27,
+            "right": 337,
+            "overflowX": "auto"
+          },
+          "rows": 2
+        }
+      ],
+      "checked": 108,
+      "viol": 14,
+      "violInsideShell": 14,
+      "violOutsideShell": 0,
+      "worstRight": 547,
+      "samples": [
+        {
+          "tag": "table",
+          "cls": "w-full min-w-[520px] text-left text-sm",
+          "tid": "",
+          "txt": "员工账目条数金额（USD）状态员工 · ",
+          "left": 27,
+          "right": 547,
+          "shellTid": "div",
+          "shellCanScroll": true
+        },
+        {
+          "tag": "thead",
+          "cls": "",
+          "tid": "",
+          "txt": "员工账目条数金额（USD）状态",
+          "left": 27,
+          "right": 547,
+          "shellTid": "div",
+          "shellCanScroll": true
+        },
+        {
+          "tag": "tr",
+          "cls": "text-xs text-white/45",
+          "tid": "",
+          "txt": "员工账目条数金额（USD）状态",
+          "left": 27,
+          "right": 547,
+          "shellTid": "div",
+          "shellCanScroll": true
+        },
+        {
+          "tag": "th",
+          "cls": "px-4 py-2 font-normal",
+          "tid": "",
+          "txt": "金额（USD）",
+          "left": 285,
+          "right": 411,
+          "shellTid": "div",
+          "shellCanScroll": true
+        },
+        {
+          "tag": "th",
+          "cls": "px-4 py-2 font-normal",
+          "tid": "",
+          "txt": "状态",
+          "left": 411,
+          "right": 547,
+          "shellTid": "div",
+          "shellCanScroll": true
+        },
+        {
+          "tag": "tbody",
+          "cls": "",
+          "tid": "",
+          "txt": "员工 · 86A81CE883$1.25",
+          "left": 27,
+          "right": 547,
+          "shellTid": "div",
+          "shellCanScroll": true
+        },
+        {
+          "tag": "tr",
+          "cls": "border-t border-white/10",
+          "tid": "",
+          "txt": "员工 · 86A81CE883$1.25",
+          "left": 27,
+          "right": 547,
+          "shellTid": "div",
+          "shellCanScroll": true
+        },
+        {
+          "tag": "td",
+          "cls": "px-4 py-2 font-medium",
+          "tid": "",
+          "txt": "$1.25",
+          "left": 285,
+          "right": 411,
+          "shellTid": "div",
+          "shellCanScroll": true
+        }
+      ],
+      "docOverflowPx": 0,
+      "scrollShells": [
+        {
+          "tag": "div",
+          "tid": "",
+          "cls": "overflow-x-auto",
+          "clientW": 310,
+          "scrollW": 520
+        }
+      ]
+    },
+    "pageErrors": 0
+  },
+  {
+    "leg": "system",
+    "requestUrl": "http://127.0.0.1:9122/#/system",
+    "reading": {
+      "vw": 375,
+      "url": "http://127.0.0.1:9122/system",
+      "entry": "http://127.0.0.1:9122/assets/index-B7MjhP14.js",
+      "tables": [
+        {
+          "tid": "sys3-table",
+          "cls": "sys3-table",
+          "minW": "680px",
+          "w": 680,
+          "right": 707,
+          "shell": {
+            "tag": "div",
+            "cls": "sys3-scroll",
+            "tid": "",
+            "clientW": 310,
+            "scrollW": 680,
+            "canScroll": true,
+            "left": 27,
+            "right": 337,
+            "overflowX": "auto"
+          },
+          "rows": 3
+        },
+        {
+          "tid": "sys6-table",
+          "cls": "sys6-table",
+          "minW": "760px",
+          "w": 0,
+          "right": 0,
+          "shell": {
+            "tag": "div",
+            "cls": "sys6-scroll",
+            "tid": "sys6-scroll",
+            "clientW": 0,
+            "scrollW": 0,
+            "canScroll": false,
+            "left": 0,
+            "right": 0,
+            "overflowX": "auto"
+          },
+          "rows": 4
+        }
+      ],
+      "checked": 221,
+      "viol": 29,
+      "violInsideShell": 29,
+      "violOutsideShell": 0,
+      "worstRight": 707,
+      "samples": [
+        {
+          "tag": "table",
+          "cls": "sys3-table",
+          "tid": "sys3-table",
+          "txt": "服务名状态版本或构建标识最近检查时刻响应",
+          "left": 27,
+          "right": 707,
+          "shellTid": "div",
+          "shellCanScroll": true
+        },
+        {
+          "tag": "thead",
+          "cls": "",
+          "tid": "",
+          "txt": "服务名状态版本或构建标识最近检查时刻响应",
+          "left": 27,
+          "right": 707,
+          "shellTid": "div",
+          "shellCanScroll": true
+        },
+        {
+          "tag": "tr",
+          "cls": "",
+          "tid": "",
+          "txt": "服务名状态版本或构建标识最近检查时刻响应",
+          "left": 27,
+          "right": 707,
+          "shellTid": "div",
+          "shellCanScroll": true
+        },
+        {
+          "tag": "th",
+          "cls": "",
+          "tid": "",
+          "txt": "版本或构建标识",
+          "left": 231,
+          "right": 394,
+          "shellTid": "div",
+          "shellCanScroll": true
+        },
+        {
+          "tag": "th",
+          "cls": "",
+          "tid": "",
+          "txt": "最近检查时刻",
+          "left": 394,
+          "right": 517,
+          "shellTid": "div",
+          "shellCanScroll": true
+        },
+        {
+          "tag": "th",
+          "cls": "",
+          "tid": "",
+          "txt": "响应耗时",
+          "left": 517,
+          "right": 612,
+          "shellTid": "div",
+          "shellCanScroll": true
+        },
+        {
+          "tag": "th",
+          "cls": "sys-row-copy-head",
+          "tid": "",
+          "txt": "复制",
+          "left": 612,
+          "right": 707,
+          "shellTid": "div",
+          "shellCanScroll": true
+        },
+        {
+          "tag": "tbody",
+          "cls": "",
+          "tid": "",
+          "txt": "控制台服务(BFF)正常—2026-11",
+          "left": 27,
+          "right": 707,
+          "shellTid": "div",
+          "shellCanScroll": true
+        }
+      ],
+      "docOverflowPx": 0,
+      "scrollShells": [
+        {
+          "tag": "div",
+          "tid": "",
+          "cls": "sys3-scroll",
+          "clientW": 310,
+          "scrollW": 680
+        }
+      ]
+    },
+    "pageErrors": 0
+  },
+  {
+    "leg": "system-version",
+    "requestUrl": "http://127.0.0.1:9122/#/system?tab=version",
+    "reading": {
+      "vw": 375,
+      "url": "http://127.0.0.1:9122/system?tab=version",
+      "entry": "http://127.0.0.1:9122/assets/index-B7MjhP14.js",
+      "tables": [
+        {
+          "tid": "ver5-table",
+          "cls": "w-full min-w-[560px] text-left text-sm",
+          "minW": "560px",
+          "w": 560,
+          "right": 587,
+          "shell": {
+            "tag": "div",
+            "cls": "min-w-0 overflow-x-auto",
+            "tid": "",
+            "clientW": 310,
+            "scrollW": 560,
+            "canScroll": true,
+            "left": 27,
+            "right": 337,
+            "overflowX": "auto"
+          },
+          "rows": 3
+        }
+      ],
+      "checked": 155,
+      "viol": 18,
+      "violInsideShell": 18,
+      "violOutsideShell": 0,
+      "worstRight": 587,
+      "samples": [
+        {
+          "tag": "table",
+          "cls": "w-full min-w-[560px] text-left text-sm",
+          "tid": "ver5-table",
+          "txt": "组件名版本构建时刻状态控制台服务(BFF",
+          "left": 27,
+          "right": 587,
+          "shellTid": "div",
+          "shellCanScroll": true
+        },
+        {
+          "tag": "thead",
+          "cls": "text-xs text-white/45",
+          "tid": "",
+          "txt": "组件名版本构建时刻状态",
+          "left": 27,
+          "right": 587,
+          "shellTid": "div",
+          "shellCanScroll": true
+        },
+        {
+          "tag": "tr",
+          "cls": "",
+          "tid": "",
+          "txt": "组件名版本构建时刻状态",
+          "left": 27,
+          "right": 587,
+          "shellTid": "div",
+          "shellCanScroll": true
+        },
+        {
+          "tag": "th",
+          "cls": "py-2 pr-3 font-normal",
+          "tid": "",
+          "txt": "构建时刻",
+          "left": 331,
+          "right": 456,
+          "shellTid": "div",
+          "shellCanScroll": true
+        },
+        {
+          "tag": "th",
+          "cls": "py-2 font-normal",
+          "tid": "",
+          "txt": "状态",
+          "left": 456,
+          "right": 587,
+          "shellTid": "div",
+          "shellCanScroll": true
+        },
+        {
+          "tag": "tbody",
+          "cls": "divide-y divide-white/10",
+          "tid": "",
+          "txt": "控制台服务(BFF)——正常Hermes",
+          "left": 27,
+          "right": 587,
+          "shellTid": "div",
+          "shellCanScroll": true
+        },
+        {
+          "tag": "tr",
+          "cls": "",
+          "tid": "ver5-row-console",
+          "txt": "控制台服务(BFF)——正常",
+          "left": 27,
+          "right": 587,
+          "shellTid": "div",
+          "shellCanScroll": true
+        },
+        {
+          "tag": "td",
+          "cls": "py-2 pr-3",
+          "tid": "ver5-built",
+          "txt": "—",
+          "left": 331,
+          "right": 456,
+          "shellTid": "div",
+          "shellCanScroll": true
+        }
+      ],
+      "docOverflowPx": 0,
+      "scrollShells": [
+        {
+          "tag": "div",
+          "tid": "",
+          "cls": "min-w-0 overflow-x-auto",
+          "clientW": 310,
+          "scrollW": 560
+        }
+      ]
+    },
+    "pageErrors": 0
+  }
+]
