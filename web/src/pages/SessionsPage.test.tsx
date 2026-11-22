@@ -56,12 +56,16 @@ function click(el: Element | null) {
 
 const button = (label: string) => document.querySelector(`button[aria-label="${label}"]`);
 
-async function renderSessionsPage(rows: Record<string, unknown>[]) {
+async function renderSessionsPage(
+  rows: Record<string, unknown>[],
+  options?: { overviewRows?: Record<string, unknown>[]; until?: () => boolean },
+) {
   // Page list uses limit 20; the overview tab's recent-cards fetch uses 50 —
   // keep the overview empty so the list view (with row actions) renders.
+  const overviewRows = options?.overviewRows ?? [];
   apiMocks.getSessions.mockImplementation(async (limit: number) => ({
-    sessions: limit >= 50 ? [] : rows,
-    total: limit >= 50 ? 0 : rows.length,
+    sessions: limit >= 50 ? overviewRows : rows,
+    total: limit >= 50 ? overviewRows.length : rows.length,
     limit,
     offset: 0,
   }));
@@ -91,7 +95,7 @@ async function renderSessionsPage(rows: Record<string, unknown>[]) {
       </I18nProvider>,
     ),
   );
-  await waitFor(() => Boolean(button("Delete session")));
+  await waitFor(options?.until ?? (() => Boolean(button("Delete session"))));
 }
 
 beforeEach(() => {
@@ -120,6 +124,68 @@ afterEach(async () => {
   await act(async () => root?.unmount());
   container?.remove();
   vi.unstubAllGlobals();
+});
+
+describe("sessions-nan-fix：缺值不许把 NaN 摊上屏", () => {
+  // 网关可能回 NaN 或干脆缺字段；合法的 0 必须照实显示，不能折成占位。
+  const base = {
+    source: "cli",
+    model: null,
+    started_at: 1_700_000_000,
+    ended_at: null,
+    is_active: false,
+    tool_call_count: 0,
+    input_tokens: 0,
+    output_tokens: 0,
+    preview: null,
+  };
+  const BROKEN = {
+    ...base,
+    id: "s-broken",
+    title: "缺值会话",
+    message_count: Number.NaN,
+    last_active: Number.NaN,
+  };
+  const MISSING = { ...base, id: "s-missing", title: "无时间戳会话" };
+  const ZERO = {
+    ...base,
+    id: "s-zero",
+    title: "空会话",
+    message_count: 0,
+    last_active: 1_700_000_000,
+  };
+
+  it("列表行：缺失或非法只显占位，合法 0 照实显示，全文无 NaN", async () => {
+    await renderSessionsPage([BROKEN, MISSING, ZERO]);
+    const text = document.body.textContent ?? "";
+    expect(text).not.toMatch(/NaN/);
+    expect(text).not.toContain("undefined");
+    const counts = Array.from(
+      document.querySelectorAll<HTMLElement>('[data-testid="session-row-message-count"]'),
+    ).map((el) => (el.textContent ?? "").replace(/\s+/g, " ").trim());
+    expect(counts[0]).toBe("\u2014 msgs");
+    expect(counts[1]).toBe("\u2014 msgs");
+    expect(counts[2]).toBe("0 msgs");
+    const ages = Array.from(
+      document.querySelectorAll<HTMLElement>('[data-testid="session-row-age"]'),
+    ).map((el) => (el.textContent ?? "").trim());
+    expect(ages[0]).toBe("\u2014");
+    expect(ages[1]).toBe("\u2014");
+    expect(ages[2]).not.toBe("\u2014");
+  });
+
+  it("总览卡（buglist 那条『msgs · NaNd ago』）：同一口径且卡副行可被测试命中", async () => {
+    await renderSessionsPage([], {
+      overviewRows: [BROKEN, ZERO],
+      until: () => Boolean(document.querySelector('[data-testid="session-card-meta"]')),
+    });
+    expect(document.body.textContent ?? "").not.toMatch(/NaN/);
+    const metas = Array.from(
+      document.querySelectorAll<HTMLElement>('[data-testid="session-card-meta"]'),
+    ).map((el) => (el.textContent ?? "").replace(/\s+/g, " ").trim());
+    expect(metas.some((m) => m.startsWith("\u2014 msgs"))).toBe(true);
+    expect(metas.some((m) => m.startsWith("0 msgs"))).toBe(true);
+  });
 });
 
 describe("SessionsPage per-row profile routing (#99387)", () => {

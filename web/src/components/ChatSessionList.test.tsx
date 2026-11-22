@@ -61,10 +61,11 @@ vi.mock('@/i18n', () => ({
 
 vi.mock('@/lib/api', () => ({ api: { getSessions } }))
 
-vi.mock('@/lib/utils', () => ({
-  cn: (...classes: Array<string | false | null | undefined>) => classes.filter(Boolean).join(' '),
-  timeAgo: () => 'just now'
-}))
+// 用真实实现而不是桩成固定字符串：NaN/缺值兜底只有跑真的 timeAgo 才测得出来。
+vi.mock('@/lib/utils', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/utils')>()
+  return { cn: actual.cn, timeAgo: actual.timeAgo }
+})
 
 function session(id: string, title: string) {
   return {
@@ -132,6 +133,35 @@ describe('ChatSessionList', () => {
 
     expect(getSessions).toHaveBeenCalledTimes(2)
     expect(container.textContent).toContain('Newly created session')
+  })
+
+  it('缺 last_active 时不再把 NaN 摊上屏，只显可读占位', async () => {
+    getSessions.mockResolvedValue({
+      sessions: [
+        { ...session('s-nan', 'Broken session'), last_active: Number.NaN },
+        { ...session('s-none', 'No timestamp session'), last_active: undefined },
+        session('s-ok', 'Fresh session')
+      ],
+      total: 3,
+      limit: 30,
+      offset: 0
+    })
+
+    await act(async () => {
+      root.render(
+        <MemoryRouter>
+          <ChatSessionList activeSessionId={null} />
+        </MemoryRouter>
+      )
+    })
+
+    expect(container.textContent).toContain('Broken session')
+    expect(container.textContent).not.toMatch(/NaN/)
+    const ages = Array.from(
+      container.querySelectorAll('[data-testid="chat-session-age"]')
+    ).map((el) => (el.textContent ?? '').trim())
+    expect(ages[0]).toBe('\u2014')
+    expect(ages[1]).toBe('\u2014')
   })
 
   it('refreshes immediately when the tab becomes visible', async () => {
