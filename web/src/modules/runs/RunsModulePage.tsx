@@ -563,7 +563,16 @@ function ListRows({
   onSort,
   sortDisabled,
   selectedId,
+  cursorRunId,
+  onCursorChange,
 }: {
+  /**
+   * Backlog runs-16: which run holds the single tab stop. The parent remembers
+   * it across the `key={sinceKey}` remount, so switching the time window keeps
+   * the keyboard cursor instead of dropping it to row zero.
+   */
+  cursorRunId: string | null;
+  onCursorChange: (runId: string | null) => void;
   rows: RunRow[];
   names: Map<string, string>;
   sortKey: RunSortKey | null;
@@ -587,13 +596,21 @@ function ListRows({
   // Roving tabindex: exactly one row is in the tab order, arrows move focus
   // between rows, Enter/Space toggles that row's preview. Inner links and
   // buttons keep their native Tab stops, so nothing becomes unreachable.
-  const [activeIndex, setActiveIndex] = useState(0);
+  // Backlog runs-16: on the window-change remount the cursor re-seeds from the
+  // remembered run; when that run is outside the new window it falls back to
+  // the first row. Nothing steals focus — the chips keep it until the user
+  // tabs back into the list, which now lands on the remembered row.
+  const [activeIndex, setActiveIndex] = useState(() => {
+    const at = cursorRunId === null ? -1 : rows.findIndex((row) => row.runId === cursorRunId);
+    return at < 0 ? 0 : at;
+  });
   const rowRefs = useRef<Array<HTMLLIElement | null>>([]);
   const lastIndex = Math.max(0, rows.length - 1);
   const tabStop = Math.min(activeIndex, lastIndex);
   const focusRow = (next: number) => {
     const target = Math.max(0, Math.min(next, lastIndex));
     setActiveIndex(target);
+    onCursorChange(rows[target]?.runId ?? null);
     rowRefs.current[target]?.focus();
   };
   const close = useCallback((rowId: string) => {
@@ -992,6 +1009,11 @@ export function RunsModulePage() {
   const { pathname, state: locationState } = useLocation();
   const navigate = useNavigate();
   const sinceKey = sinceKeyOf(params.get("window"));
+  // Backlog runs-16: the keyboard cursor (single tab stop) is remembered by run
+  // id at the page level, so the window-change remount of ListRows can re-seed
+  // it instead of starting over at row zero. The server pagination cursor is
+  // untouched — it still drops to page one on any filter change (runs.more).
+  const [runCursor, setRunCursor] = useState<string | null>(null);
   const status = statusFilterOf(params.get("status"));
   // The QA handle. A forced leg paints its panel from the URL and asks the
   // service nothing — not the list, not the detail, not the name side-read.
@@ -1637,6 +1659,8 @@ export function RunsModulePage() {
       {phase === "ready" ? (
         <ListRows
           key={sinceKey}
+          cursorRunId={runCursor}
+          onCursorChange={setRunCursor}
           rows={sortedRows}
           names={names}
           hrefOf={hrefOf}
