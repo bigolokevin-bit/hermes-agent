@@ -533,6 +533,31 @@
         "deadCause": "font-bypass（abort .woff/.ttf/.otf/.eot）之后 page.screenshot 仍在 waiting for fonts 45000ms 超时，png=0B；本轮 main=10 骨架、elementsChecked=87 violCount=0（探针可达，截图腿不可达）",
         "reproCmd": "cd /Users/kevin_studio/Projects/forks/hermes-agent && node web/scripts/assert-375.mjs --base=http://127.0.0.1:9122 --auth-state=$HOME/.local/state/sekoi-ops/ui-qa-auth-state.json --out=/tmp/d-w140-ch --only-routes='#/capabilities?tab=channels'",
         "noMoreRetries": true
+      },
+      "disposition141": {
+        "at": "2026-11-22 08:01",
+        "question": "L0: 同族 401 环？",
+        "verdict": "同族 401 鉴权环：15s 内 api401=2373、api200=0、/auth/whoami aborted=586/587、framenavigated=590、main 在 0/10/113/-1/err 间震荡复位——与 sessions 同一请求风暴族；screenshot 45s waiting-for-fonts 超时是 CPU/CDP 饿死的副作用，非独立字体缺陷。端口 9122 / entry index-DiNZbuB-.js。",
+        "evidence": {
+          "total": 17834,
+          "api401": 2373,
+          "api200": 0,
+          "whoamiReq": 587,
+          "whoamiAborted": 586,
+          "nav": null,
+          "failed": null,
+          "mainUnique": [
+            "0",
+            "10",
+            "113",
+            "-1",
+            "err"
+          ]
+        },
+        "port": 9122,
+        "entry": "assets/index-DiNZbuB-.js",
+        "raw": "capabilities-channels-attribution-2610339d.json",
+        "noMoreRounds": true
       }
     },
     {
@@ -2527,6 +2552,7 @@
   "faceChainNote": "读数脸 4a654bba（构建脸，e808d90e32/2610339ddf 均纯测试未重建）；headHash 对齐盖章脸 2610339ddf",
   "nmDispositions140": {
     "channels": "死因+复现命令已写入行 disposition140；有界单轮，不再刷",
-    "sessions": "归因=渲染门未开（鉴权环+请求风暴），非数据口慢；证据计数入行 attribution140"
+    "sessions": "归因=渲染门未开（鉴权环+请求风暴），非数据口慢；证据计数入行 attribution140",
+    "channelsAttribution141": "同族 401 鉴权环：15s 内 api401=2373、api200=0、/auth/whoami aborted=586/587、framenavigated=590、main 在 0/10/113/-1/err 间震荡复位——与 sessions 同一请求风暴族；screenshot 45s waiting-for-fonts 超时是 CPU/CDP 饿死的副作用，非独立字体缺陷。端口 9122 / entry index-DiNZbuB-.js。"
   }
 }
