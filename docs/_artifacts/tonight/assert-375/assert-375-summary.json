@@ -3225,6 +3225,13 @@
       "lineageDivergence": "L0 来文读数（第一次重建 eb697ca5d2→CQZqo9UW sha 1f978216…/173065B/16:45:42；第二次 B7MjhP14 sha 61c97e51…/173129B/16:54:22）与本道实测不同源：本道同提交 eb697ca5d2 构建实测=B7MjhP14 sha256 2b8081ea9f55…afd45a/172800B/16:40:43；且本次应答前再读盘与 served 仍是该值（sha 再实测一致、mtime 未动、CQZqo9UW 零残留、无 61c97e51 迹象）。同名不同 sha 结构上不成立（vite 内容哈希），故判定双方读到的是不同构建谱系/不同 dist 面，非本道侧缺口。",
       "honestDisposition": "CQZqo9UW 行维持「触发源不可证」+不指认；若 L0 侧 1f978216…/61c97e51… 有独立复现日志，欢迎贴出对账，本道不采未实测值入账（禁造数值）。",
       "discipline": "入账前 cat-file -e 验 sha——本道两行 triggerCommit 均可解析，外道行已标不可证，合规。"
+    },
+    "faceClarify153": {
+      "at": "2026-11-22 应答 L0「撤回两条误判 + H2 定案」",
+      "buildFace": "构建脸=eb697ca5d2（16:40:43 重建的触发提交）+ 实际已含其后 ca36e06cc3（纯测试 diff 仅 EmployeeDetailModulePage.test.tsx +49，不改产物）⇒ 现役构建同时覆盖两脸，无需重建。",
+      "headHashNote": "账本 headHash=ca36e06cc3（carriedFrom=eb697ca5d2，纯测试沿用）；构建触发 sha=eb697ca5d2；两者不矛盾：headHash 记证据所属脸，triggerCommit 记构建来源。",
+      "withdrawal": "L0 撤回「部署根读错树」与「9bf49c08f0 为本道幻象」两条误判；H2 判闭环。",
+      "guard": "请下一任总控按本行读：勿以 buildFace=eb697ca5d2 误判缺 ca36e06cc3。"
     }
   }
 }

@@ -162,3 +162,8 @@ matrix(#/employees?tab=matrix) present=true ok=true
 - 9bf49c08f0e0e7c2 从未写入本道账本（git show 5ef2d465c5 grep=0），本道第二行 triggerCommit=eb697ca5d2（cat-file -e ✓）。
 - L0 来文两枚 entry sha（1f978216…/173065B、61c97e51…/173129B）与本道实测 B7MjhP14 sha256 2b8081ea9f55…afd45a/172800B/16:40:43 不同谱系；本次应答前再读盘与 served 仍是本道值（再实测 MATCH、mtime 未动、CQZqo9UW 零残留）。同名不同 sha 不成立（vite 内容哈希）⇒ 双方读到不同 dist 面，非本道缺口。
 - CQZqo9UW 行维持「触发源不可证」；如 L0 有 1f978216/61c97e51 的复现日志请贴出对账，本道不采未实测值。
+
+### H2 定案补行 153（L0 撤回误判后）
+
+- 构建脸=eb697ca5d2（16:40:43 重建触发）+ 实际已含 ca36e06cc3（纯测试不改产物）⇒ 现役 entry B7MjhP14 同覆盖两脸，无需重建；headHash=ca36e06cc3（carriedFrom=eb697ca5d2）与 triggerCommit 各司其职，勿误读。
+- L0 撤回「部署根读错树」「9bf49c08f0 为本道幻象」两条误判；H2 判闭环。served==disk 三方现算逐位吻合（2b8081ea…/172800B/16:40:43，端口9122）。
