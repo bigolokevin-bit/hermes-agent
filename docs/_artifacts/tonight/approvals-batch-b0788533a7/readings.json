@@ -1,0 +1,94 @@
+{
+  "base": "http://127.0.0.1:9122",
+  "port": 9122,
+  "entry": "assets/index-Cv4DBs--.js",
+  "face": "b0788533a7",
+  "at": "2026-11-22T21:02:39.235Z",
+  "cookieDomainsRewritten": true,
+  "preflightWhoami": {
+    "status": 200,
+    "at": "2026-11-22T21:02:38.293Z"
+  },
+  "shots": [
+    {
+      "viewport": "1440",
+      "whoamiInPage": 200,
+      "whoamiAt": "2026-11-22T21:02:44.213Z",
+      "census": {
+        "batchBar": {
+          "present": false
+        },
+        "selectAll": {
+          "present": false
+        },
+        "rowCheckboxCount": 0,
+        "rowCheckboxDisabledCount": 0,
+        "approve": {
+          "present": false
+        },
+        "reject": {
+          "present": false
+        },
+        "clear": {
+          "present": false
+        },
+        "result": {
+          "present": false
+        },
+        "pendingRows": 0,
+        "mainLen": 694
+      },
+      "afterSelectAll": {
+        "skipped": "apv-select-all 不存在或不可用（写闸/无积极可批量行边界如实）"
+      },
+      "png": "batch-pending-1440.png",
+      "pngDims": {
+        "w": 1440,
+        "h": 900
+      },
+      "verdict": "OK",
+      "jsErrors": [],
+      "res4xx": []
+    },
+    {
+      "viewport": "375",
+      "whoamiInPage": 200,
+      "whoamiAt": "2026-11-22T21:02:47.076Z",
+      "census": {
+        "batchBar": {
+          "present": false
+        },
+        "selectAll": {
+          "present": false
+        },
+        "rowCheckboxCount": 0,
+        "rowCheckboxDisabledCount": 0,
+        "approve": {
+          "present": false
+        },
+        "reject": {
+          "present": false
+        },
+        "clear": {
+          "present": false
+        },
+        "result": {
+          "present": false
+        },
+        "pendingRows": 0,
+        "mainLen": 694
+      },
+      "afterSelectAll": {
+        "skipped": "apv-select-all 不存在或不可用（写闸/无积极可批量行边界如实）"
+      },
+      "png": "batch-pending-375.png",
+      "pngDims": {
+        "w": 375,
+        "h": 812
+      },
+      "verdict": "OK",
+      "jsErrors": [],
+      "res4xx": []
+    }
+  ]
+}

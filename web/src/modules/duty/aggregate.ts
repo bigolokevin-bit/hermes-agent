@@ -322,7 +322,7 @@ export function buildBlockers(
       nextAction: "指派审批人或催办",
       affectsReadiness: true,
       overSLA: Number.isFinite(expires) && expires < now,
-      href: `/approvals/${encodeURIComponent(approval.approvalId)}`,
+      href: `/approvals?id=${encodeURIComponent(approval.approvalId)}`,
     });
   }
   return out.slice(0, 3);

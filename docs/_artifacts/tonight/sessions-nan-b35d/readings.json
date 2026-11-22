@@ -1,0 +1,250 @@
+{
+  "port": 9122,
+  "entry": "assets/index-kWaJfTXV.js",
+  "faceTip": "a675c98a30",
+  "nanCriterion": "DOM 文本中 NaN 出现次数=0（main.innerText 与 document.body.innerText 双计，逐行元素 textContent 含 NaN 计数=0）",
+  "whoami": 200,
+  "shots": [
+    {
+      "route": "sessions",
+      "viewport": "1440",
+      "url": "/sessions",
+      "mainLen": 106,
+      "mainNaN": 0,
+      "bodyNaN": 0,
+      "rowsMessageCount": {
+        "count": 0,
+        "withNaN": 0
+      },
+      "rowsAge": {
+        "count": 0,
+        "withNaN": 0
+      },
+      "cardMeta": {
+        "count": 0,
+        "withNaN": 0
+      },
+      "mainHead": "Chats\nAutomation\nAll\nAny chat source\nImport sessions\n\nNo sessions yet\n\nStart a conversation to see it here",
+      "png": "sessions-1440.png",
+      "pngBytes": 50471,
+      "jsErrors": 6,
+      "jsErrSample": [
+        "console:Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "console:Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "console:Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "console:Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ],
+      "res4xx": 6,
+      "res4Sample": [
+        "401 http://127.0.0.1:9122/auth/whoami",
+        "401 http://127.0.0.1:9122/agent-api/api/sessions?limit=50&offset=0&order=created&exclude_sources=cron%2Ctool%2Coneshot%2Capi",
+        "401 http://127.0.0.1:9122/agent-api/api/sessions?limit=20&offset=0&order=created&exclude_sources=cron%2Ctool%2Coneshot%2Capi",
+        "401 http://127.0.0.1:9122/auth/whoami",
+        "401 http://127.0.0.1:9122/agent-api/api/sessions?limit=20&offset=0&order=created&exclude_sources=cron%2Ctool%2Coneshot%2Capi",
+        "401 http://127.0.0.1:9122/agent-api/api/sessions?limit=50&offset=0&order=created&exclude_sources=cron%2Ctool%2Coneshot%2Capi"
+      ]
+    },
+    {
+      "route": "sessions",
+      "viewport": "375",
+      "url": "/sessions",
+      "mainLen": 106,
+      "mainNaN": 0,
+      "bodyNaN": 0,
+      "rowsMessageCount": {
+        "count": 0,
+        "withNaN": 0
+      },
+      "rowsAge": {
+        "count": 0,
+        "withNaN": 0
+      },
+      "cardMeta": {
+        "count": 0,
+        "withNaN": 0
+      },
+      "mainHead": "Chats\nAutomation\nAll\nAny chat source\nImport sessions\n\nNo sessions yet\n\nStart a conversation to see it here",
+      "png": "sessions-375.png",
+      "pngBytes": 24205,
+      "jsErrors": 6,
+      "jsErrSample": [
+        "console:Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "console:Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "console:Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "console:Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ],
+      "res4xx": 6,
+      "res4Sample": [
+        "401 http://127.0.0.1:9122/auth/whoami",
+        "401 http://127.0.0.1:9122/agent-api/api/sessions?limit=20&offset=0&order=created&exclude_sources=cron%2Ctool%2Coneshot%2Capi",
+        "401 http://127.0.0.1:9122/agent-api/api/sessions?limit=50&offset=0&order=created&exclude_sources=cron%2Ctool%2Coneshot%2Capi",
+        "401 http://127.0.0.1:9122/auth/whoami",
+        "401 http://127.0.0.1:9122/agent-api/api/sessions?limit=20&offset=0&order=created&exclude_sources=cron%2Ctool%2Coneshot%2Capi",
+        "401 http://127.0.0.1:9122/agent-api/api/sessions?limit=50&offset=0&order=created&exclude_sources=cron%2Ctool%2Coneshot%2Capi"
+      ]
+    },
+    {
+      "route": "chat",
+      "viewport": "1440",
+      "url": "/overview",
+      "mainLen": 1074,
+      "mainNaN": 0,
+      "bodyNaN": 0,
+      "rowsMessageCount": {
+        "count": 0,
+        "withNaN": 0
+      },
+      "rowsAge": {
+        "count": 0,
+        "withNaN": 0
+      },
+      "cardMeta": {
+        "count": 0,
+        "withNaN": 0
+      },
+      "mainHead": "运营 · 控制台\n运营总览\n值班台\n用量与成本\n值班台\n运营总览 · 只读\n采集时刻 —（北京时间）\n近 24 小时\n近 7 天\n近 14 天\n近 30 天\n刷新\n可上岗\n去员工列表\n\n数据截至 —（北京时间） · 来源 员工目录与运行统计",
+      "png": "chat-1440.png",
+      "pngBytes": 140683,
+      "jsErrors": 11,
+      "jsErrSample": [
+        "console:Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "console:Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "console:Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "console:Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ],
+      "res4xx": 11,
+      "res4Sample": [
+        "401 http://127.0.0.1:9122/auth/whoami",
+        "401 http://127.0.0.1:9122/agent-api/api/employees?limit=100",
+        "401 http://127.0.0.1:9122/agent-api/api/workbench/summary?range=1d",
+        "401 http://127.0.0.1:9122/agent-api/api/run-activity?weeks=2&tz=Asia%2FShanghai",
+        "401 http://127.0.0.1:9122/agent-api/api/workbench/queue?page_size=100",
+        "401 http://127.0.0.1:9122/agent-api/api/employee-stats"
+      ]
+    },
+    {
+      "route": "chat",
+      "viewport": "375",
+      "url": "/overview",
+      "mainLen": 1074,
+      "mainNaN": 0,
+      "bodyNaN": 0,
+      "rowsMessageCount": {
+        "count": 0,
+        "withNaN": 0
+      },
+      "rowsAge": {
+        "count": 0,
+        "withNaN": 0
+      },
+      "cardMeta": {
+        "count": 0,
+        "withNaN": 0
+      },
+      "mainHead": "运营 · 控制台\n运营总览\n值班台\n用量与成本\n值班台\n运营总览 · 只读\n采集时刻 —（北京时间）\n近 24 小时\n近 7 天\n近 14 天\n近 30 天\n刷新\n可上岗\n去员工列表\n\n数据截至 —（北京时间） · 来源 员工目录与运行统计",
+      "png": "chat-375.png",
+      "pngBytes": 56077,
+      "jsErrors": 11,
+      "jsErrSample": [
+        "console:Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "console:Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "console:Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "console:Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ],
+      "res4xx": 11,
+      "res4Sample": [
+        "401 http://127.0.0.1:9122/auth/whoami",
+        "401 http://127.0.0.1:9122/agent-api/api/employees?limit=100",
+        "401 http://127.0.0.1:9122/agent-api/api/workbench/timeseries?range=30d&bucket=day&metric=runs",
+        "401 http://127.0.0.1:9122/agent-api/api/workbench/summary?range=1d",
+        "401 http://127.0.0.1:9122/agent-api/api/employee-stats",
+        "401 http://127.0.0.1:9122/agent-api/api/runs?since=2026-11-22T16%3A00%3A00.000Z&limit=3"
+      ]
+    },
+    {
+      "route": "/chat(path-form)",
+      "vp": "1440",
+      "finalUrl": "/chat",
+      "mainLen": 15,
+      "mainNaN": 0,
+      "bodyNaN": 0,
+      "sideSel": "ASIDE",
+      "sideNaN": 0,
+      "sideRows": 0,
+      "mainHead": "⠋\nLoading chat…",
+      "res4xxCount": 1,
+      "res4xxSample": [
+        "401 /auth/whoami"
+      ],
+      "jsErrorsCount": 1,
+      "png": "chat-path-1440.png",
+      "pngBytes": 36264,
+      "rerun": true
+    },
+    {
+      "route": "/chat(path-form)",
+      "vp": "375",
+      "finalUrl": "/chat",
+      "mainLen": 15,
+      "mainNaN": 0,
+      "bodyNaN": 0,
+      "sideSel": "ASIDE",
+      "sideNaN": 0,
+      "sideRows": 0,
+      "mainHead": "⠋\nLoading chat…",
+      "res4xxCount": 1,
+      "res4xxSample": [
+        "401 /auth/whoami"
+      ],
+      "jsErrorsCount": 1,
+      "png": "chat-path-375.png",
+      "pngBytes": 7049,
+      "rerun": true
+    }
+  ],
+  "at": "2026-11-22T19:28:17.198Z",
+  "chatPathRerun": {
+    "note": "首拍 '/#/chat' 哈希形未挂 ChatPage（main 落在值班台默认面）——改走 BrowserRouter path 形 /chat 重拍",
+    "at": "2026-11-22T19:30:42.944Z",
+    "shots": [
+      {
+        "route": "/chat(path-form)",
+        "vp": "1440",
+        "finalUrl": "/chat",
+        "mainLen": 15,
+        "mainNaN": 0,
+        "bodyNaN": 0,
+        "sideSel": "ASIDE",
+        "sideNaN": 0,
+        "sideRows": 0,
+        "mainHead": "⠋\nLoading chat…",
+        "res4xxCount": 1,
+        "res4xxSample": [
+          "401 /auth/whoami"
+        ],
+        "jsErrorsCount": 1,
+        "png": "chat-path-1440.png",
+        "pngBytes": 36264
+      },
+      {
+        "route": "/chat(path-form)",
+        "vp": "375",
+        "finalUrl": "/chat",
+        "mainLen": 15,
+        "mainNaN": 0,
+        "bodyNaN": 0,
+        "sideSel": "ASIDE",
+        "sideNaN": 0,
+        "sideRows": 0,
+        "mainHead": "⠋\nLoading chat…",
+        "res4xxCount": 1,
+        "res4xxSample": [
+          "401 /auth/whoami"
+        ],
+        "jsErrorsCount": 1,
+        "png": "chat-path-375.png",
+        "pngBytes": 7049
+      }
+    ]
+  }
+}

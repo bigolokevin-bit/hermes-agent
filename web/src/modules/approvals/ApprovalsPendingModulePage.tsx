@@ -37,6 +37,7 @@ import { approvalSortKeyOf, approvalsRowSearchText, sortApprovalRows, type Appro
 import { DeniedPanel, EmptyPanel, ErrorPanel, InlineFailure, LoadingPanel } from "./states";
 import { useApprovalDetail, useApprovalsList, type ForcedState } from "./useApprovalsData";
 import { actionGates, announcement } from "./gates";
+import { DECISION_GATE } from "./writeGate";
 import { QueueSummaryBar } from "./QueueSummaryBar";
 import { clearFilterParams, hasActiveFilters, resetTitle } from "./FilterReset";
 import { FilterSummary } from "./FilterSummary";
@@ -51,20 +52,11 @@ import { RowDetailCopy } from "./RowDetailCopy";
 import { SinceQuickFilter, isSinceValue, withinSince } from "./SinceQuickFilter";
 import { RiskQuickFilter, isRiskValue, withinRisk, type RiskValue } from "./RiskQuickFilter";
 import { ApprovalDetailBody, ApprovalRowCard } from "./views";
+import { batchCandidate, batchCheckboxReason, batchGate } from "./batch";
 
 const VERDICT_LABEL: Record<Verdict, string> = { approve: "批准", reject: "驳回" };
 
-// P0-1r（wave-126）：控制台写通道在 BFF 层整体关闭，与单据状态无关。L0 于 2026-11-21
-// 用终态单 ap_AEEC078E0C824E749513AFEC9A 一次性实测：POST /agent-api/api/approval/decision?id=
-// → HTTP 405（服务端只允许 GET/HEAD）。批准/驳回若呈现可点，是「必然失败却不提示」的误导。
-// 这里取 runs 页 run5-retry-new 的同源口径：一个对象同时驱动 disabled / aria-disabled /
-// 人话原因，首帧即禁用，不拿用户的点击去撞 405（原因句不裸显服务端 code）。
-// send()、确认弹窗与 405 兜底路径原样保留，供写通道开闸的后代直接复用。
-const DECISION_GATE = {
-  disabled: true,
-  title:
-    "这个环境的控制台只读：实测决定提交一律被拒（服务端当前只允许读请求，写请求没有入口）。所以批准、驳回在这里以禁用态出现，点它不会发起任何请求；要处理这张单，请走它原本产生决定的渠道。",
-} as const;
+// P0-1r 写门控单点见 ./writeGate.ts —— 逐单抽屉与批量条共用同一对象、同一句话。
 
 const FORCED_STATES: readonly string[] = ["loading", "empty", "error", "denied"];
 
@@ -253,6 +245,111 @@ export function ApprovalsPendingModulePage(): ReactNode {
     const byActor = actor ? riskBaseRows.filter((row) => row.approverIds.includes(actor)) : riskBaseRows;
     return sortApprovalRows(byActor, asort, adir);
   }, [riskBaseRows, actor, asort, adir]);
+
+  // ── 批量 P0 ── 选择以 rawId 为键活在本地状态：批量是这一轮的动作，不是可复现
+  // 的视图维度，不进 URL（?id= 的详情语义不被占用）。门控与文案全部出自 ./batch
+  // 单点；组件只消费，不自算原因句。
+  const [batchSelected, setBatchSelected] = useState<ReadonlySet<string>>(() => new Set());
+  const [batchConfirming, setBatchConfirming] = useState<Verdict | null>(null);
+  const [batchRunning, setBatchRunning] = useState(false);
+  const [batchProgress, setBatchProgress] = useState<{ done: number; total: number } | null>(null);
+  const [batchResult, setBatchResult] = useState<{ sentence: string; ok: boolean } | null>(null);
+
+  // 视图一变全清零（选择/进度/结果）：仿页内 firstRowKey 复位焦点锚的形制，
+  // 筛选维度都活在 URL，这里按同一组参数做复位键。
+  const batchScope = useMemo(
+    () => ["q", "actor", "since", "risk", "asort", "adir", "status"].map((k) => `${k}=${params.get(k) ?? ""}`).join("|"),
+    [params],
+  );
+  useEffect(() => {
+    setBatchSelected(new Set());
+    setBatchProgress(null);
+    setBatchResult(null);
+    setBatchConfirming(null);
+  }, [batchScope]);
+
+  // 可勾选行 = 勾选框未被拦的行（全选只选它们）；批量区只在有积极候选行时出现。
+  const batchSelectableRows = useMemo(
+    () => visibleRows.filter((row) => row.rawId !== null && batchCheckboxReason(row) === null),
+    [visibleRows],
+  );
+  const batchVisible = useMemo(
+    () => visibleRows.some((row) => batchCandidate(row, actor)),
+    [visibleRows, actor],
+  );
+  const selectedBatchRows = useMemo(
+    () => visibleRows.filter((row) => row.rawId !== null && batchSelected.has(row.rawId)),
+    [visibleRows, batchSelected],
+  );
+  const batchGateValue = useMemo(() => batchGate(selectedBatchRows, actor), [selectedBatchRows, actor]);
+  const batchEnabled = batchGateValue.key === "ok" && !batchRunning && list.phase === "ready";
+
+  const toggleBatchRow = useCallback((id: string, on: boolean) => {
+    setBatchSelected((prev) => {
+      const next = new Set(prev);
+      if (on) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }, []);
+
+  const toggleBatchAll = useCallback(
+    (on: boolean) => {
+      setBatchSelected(on ? new Set(batchSelectableRows.map((row) => row.rawId as string)) : new Set());
+    },
+    [batchSelectableRows],
+  );
+
+  const clearBatch = useCallback(() => {
+    setBatchSelected(new Set());
+    setBatchProgress(null);
+    setBatchResult(null);
+  }, []);
+
+  /**
+   * 逐单顺序提交，失败即停：后面的单零调用。不做乐观更新——成功数只数真返回，
+   * 已成功的单退出选择集（防再点重复决策），失败行与未提交行保留勾选，
+   * 两分支都重读队列，屏上说的永远是服务说的。
+   */
+  const runBatch = useCallback(
+    async (verdict: Verdict) => {
+      const rows = selectedBatchRows;
+      if (rows.length === 0) return;
+      setBatchRunning(true);
+      setBatchProgress({ done: 0, total: rows.length });
+      setBatchResult(null);
+      let done = 0;
+      let failedAt: { index: number; sentence: string } | null = null;
+      for (let i = 0; i < rows.length; i += 1) {
+        const id = rows[i].rawId as string;
+        try {
+          await postDecision(id, verdict);
+          done += 1;
+          setBatchProgress({ done, total: rows.length });
+        } catch (err) {
+          failedAt = { index: i + 1, sentence: writeFailure(err, verdict, failureInfo(err)).sentence };
+          break;
+        }
+      }
+      setBatchRunning(false);
+      setBatchProgress(null);
+      setBatchConfirming(null);
+      if (failedAt === null) {
+        setBatchSelected(new Set());
+        setBatchResult({ sentence: `批量${VERDICT_LABEL[verdict]}完成：已提交 ${done} 单。`, ok: true });
+      } else {
+        const succeeded = new Set(rows.slice(0, done).map((row) => row.rawId));
+        setBatchSelected((prev) => {
+          const next = new Set(prev);
+          for (const id of succeeded) next.delete(id);
+          return next;
+        });
+        setBatchResult({ sentence: `已成功 ${done} 单；第 ${failedAt.index} 单失败：${failedAt.sentence}`, ok: false });
+      }
+      list.reload();
+    },
+    [list, selectedBatchRows],
+  );
 
   // P0-③: 汇总只此一处——这行读数过去单列在筛选墙里，与 QueueSummaryBar 各说
   // 各话；现在作为汇总条的 detail 上屏，文案逐字不动（含「下面还有更多」与
@@ -685,6 +782,74 @@ export function ApprovalsPendingModulePage(): ReactNode {
                   </CardContent>
                 </Card>
               ) : null}
+              {/* 批量 P0：批量操作条。写开关关闭时两个批量钮以禁用态出现，
+                  与逐单抽屉同一句话（writeGate 单点）；全队列没有一条积极可批量
+                  行时整块不出现，不放永远点不动的死按钮。 */}
+              {batchVisible ? (
+                <div
+                  className="flex min-w-0 flex-wrap items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-xs"
+                  data-testid="apv-batch-bar"
+                >
+                  <label className="flex min-w-0 items-center gap-1.5 text-muted-foreground">
+                    <input
+                      type="checkbox"
+                      data-testid="apv-select-all"
+                      checked={
+                        batchSelectableRows.length > 0 &&
+                        selectedBatchRows.length === batchSelectableRows.length
+                      }
+                      onChange={(event) => toggleBatchAll(event.target.checked)}
+                      title="全选只勾选可批量行；高风险的「对外发送消息」类不会被勾选。"
+                    />
+                    全选可批量行（{batchSelectableRows.length}）
+                  </label>
+                  <span data-testid="apv-batch-count">已选 {selectedBatchRows.length} 单</span>
+                  <Button
+                    size="sm"
+                    data-testid="apv-batch-approve"
+                    disabled={!batchEnabled}
+                    aria-disabled={!batchEnabled}
+                    title={batchGateValue.title}
+                    onClick={() => {
+                      if (batchEnabled) setBatchConfirming("approve");
+                    }}
+                  >
+                    批量批准
+                  </Button>
+                  <Button
+                    size="sm"
+                    destructive
+                    outlined
+                    data-testid="apv-batch-reject"
+                    disabled={!batchEnabled}
+                    aria-disabled={!batchEnabled}
+                    title={batchGateValue.title}
+                    onClick={() => {
+                      if (batchEnabled) setBatchConfirming("reject");
+                    }}
+                  >
+                    批量驳回
+                  </Button>
+                  <Button
+                    size="sm"
+                    outlined
+                    data-testid="apv-batch-clear"
+                    disabled={selectedBatchRows.length === 0 || batchRunning}
+                    onClick={clearBatch}
+                  >
+                    清空选择
+                  </Button>
+                </div>
+              ) : null}
+              {batchResult ? (
+                <p
+                  className={`min-w-0 break-words text-xs ${batchResult.ok ? "text-muted-foreground" : "text-warning"}`}
+                  role="status"
+                  data-testid="apv-batch-result"
+                >
+                  {batchResult.sentence}
+                </p>
+              ) : null}
               {visibleRows.map((row, i) => (
                 <ApprovalRowCard
                   key={row.key}
@@ -700,6 +865,17 @@ export function ApprovalsPendingModulePage(): ReactNode {
                   onActivate={() => setActiveRowKey(row.key)}
                   onNavKey={navigateRows}
                   onClosePreview={() => closePreviewAndRefocus(row.key)}
+                  selection={
+                    batchVisible && row.rawId !== null
+                      ? {
+                          checked: batchSelected.has(row.rawId),
+                          disabled: batchCheckboxReason(row) !== null,
+                          disabledReason: batchCheckboxReason(row),
+                          testId: `apv-select-${row.rawId}`,
+                          onToggle: (on: boolean) => toggleBatchRow(row.rawId as string, on),
+                        }
+                      : undefined
+                  }
                 />
               ))}
 
@@ -791,6 +967,28 @@ export function ApprovalsPendingModulePage(): ReactNode {
         onConfirm={() => {
           const verdict = confirming;
           if (verdict) void send(verdict);
+        }}
+      />
+
+      {/* 批量 P0：与逐单同一只共享确认框形制；批量不带评论输入。 */}
+      <ConfirmDialog
+        open={batchConfirming !== null}
+        title={batchConfirming ? `确认批量${VERDICT_LABEL[batchConfirming]}？` : "确认批量决定？"}
+        description={
+          batchConfirming
+            ? batchProgress
+              ? `正在逐单提交（第 ${Math.min(batchProgress.done + 1, batchProgress.total)} / ${batchProgress.total} 单）：已提交 ${batchProgress.done} 单；任一单失败会立即停止。`
+              : `确认后所选 ${selectedBatchRows.length} 单按列表顺序逐单提交，各记为你的${VERDICT_LABEL[batchConfirming]}并通知申请人；任一单失败立即停止，已经处理过的单不会被覆盖。`
+            : undefined
+        }
+        confirmLabel={batchConfirming ? VERDICT_LABEL[batchConfirming] : "确认"}
+        cancelLabel="取消"
+        destructive={batchConfirming === "reject"}
+        loading={batchRunning}
+        onCancel={() => setBatchConfirming(null)}
+        onConfirm={() => {
+          const verdict = batchConfirming;
+          if (verdict) void runBatch(verdict);
         }}
       />
     </div>

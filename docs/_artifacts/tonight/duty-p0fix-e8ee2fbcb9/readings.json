@@ -1,0 +1,53 @@
+{
+  "port": 9122,
+  "entry": "assets/index-DWq8renW.js",
+  "faceTip": "e8ee2fbcb9",
+  "whoami": {
+    "status": 200,
+    "at": "2026-11-22T18:42:15.866Z"
+  },
+  "shots": {
+    "375": {
+      "mainLen": 1061,
+      "dutyRowLinks": 0,
+      "jsErrors": [],
+      "resErrors": [
+        "401 http://127.0.0.1:9122/auth/whoami",
+        "401 http://127.0.0.1:9122/agent-api/api/employee-stats",
+        "401 http://127.0.0.1:9122/agent-api/api/employees?limit=100",
+        "401 http://127.0.0.1:9122/agent-api/api/workbench/timeseries?range=30d&bucket=day&metric=runs",
+        "401 http://127.0.0.1:9122/agent-api/api/workbench/summary?range=1d",
+        "401 http://127.0.0.1:9122/agent-api/api/run-activity?weeks=2&tz=Asia%2FShanghai",
+        "401 http://127.0.0.1:9122/agent-api/api/workbench/queue?page_size=100",
+        "401 http://127.0.0.1:9122/agent-api/api/runs?since=2026-11-22T16%3A00%3A00.000Z&limit=3",
+        "401 http://127.0.0.1:9122/agent-api/api/runs?since=2026-11-15T18%3A42%3A18.213Z&limit=3",
+        "401 http://127.0.0.1:9122/agent-api/api/runs?since=2026-11-21T18%3A42%3A18.213Z&limit=3&status=failed",
+        "401 http://127.0.0.1:9122/agent-api/api/tasks?status=blocked&limit=3"
+      ]
+    },
+    "1440": {
+      "mainLen": 1061,
+      "dutyRowLinks": 0,
+      "jsErrors": [],
+      "resErrors": [
+        "401 http://127.0.0.1:9122/auth/whoami",
+        "401 http://127.0.0.1:9122/agent-api/api/employee-stats",
+        "401 http://127.0.0.1:9122/agent-api/api/workbench/summary?range=1d",
+        "401 http://127.0.0.1:9122/agent-api/api/employees?limit=100",
+        "401 http://127.0.0.1:9122/agent-api/api/workbench/queue?page_size=100",
+        "401 http://127.0.0.1:9122/agent-api/api/run-activity?weeks=2&tz=Asia%2FShanghai",
+        "401 http://127.0.0.1:9122/agent-api/api/runs?since=2026-11-22T16%3A00%3A00.000Z&limit=3",
+        "401 http://127.0.0.1:9122/agent-api/api/workbench/timeseries?range=30d&bucket=day&metric=runs",
+        "401 http://127.0.0.1:9122/agent-api/api/runs?since=2026-11-15T18%3A42%3A17.131Z&limit=3",
+        "401 http://127.0.0.1:9122/agent-api/api/runs?since=2026-11-21T18%3A42%3A17.131Z&limit=3&status=failed",
+        "401 http://127.0.0.1:9122/agent-api/api/tasks?status=blocked&limit=3"
+      ]
+    }
+  },
+  "spaClick": {
+    "rowHrefs": [],
+    "clicked": null,
+    "jsErrors": []
+  },
+  "doneAt": "2026-11-22T18:42:20.713Z"
+}

@@ -1,0 +1,9 @@
+# duty 筛选控件条 复拍+H2 台账（fix fa8f7f29c7 · face b35bdbeed7 · 端口9122）
+
+- 控件形制：今日运行卡 URL-owned `?status=` chips 全部/在跑/成功/失败（role=group aria-label=运行状态筛选，data-testid=duty-status-<id>，aria-pressed），filterDutyRuns 只作用展示行 slice(0,3)（running⊇pending、completed⊇succeeded），空态 duty-status-empty + duty-status-clear 清空筛选；合计仍以服务端为准不动。形制出处：参考屏 :3053/:3591 chips aria-pressed + 现行 duty-ranges 组式 + RunsModulePage:18 URL-owned 口径。pref「派工前提被证伪不硬造」已回报，L0 二次确认（@1495）关闭出处争议。
+- 红→绿：dutyPage.test.tsx 新 describe 3 its，红 1 failed|47 passed → 绿 **48/48**；duty 目录 6 files/**111** 全绿；eslint 0 errors。fix 章 **fa8f7f29c7** push FF 三一致（远端链 b35bdbeed7 之祖，盘上亲验）。
+- H2 五件@b35bdbeed7：`cd web && vite build` **VITE=0 03:11**；entry **assets/index-kWaJfTXV.js 173255B sha256 42ff9d0081f6858ba2eb3b3ff8de8771ed85421d2dbf75702de2b3fd8e0c68c2 mtime 2026-11-23 03:11**（换代自 C0vHGmxJ，sessions nan-fix 入图）；主 CSS index-BuNLfk0U.css 148943B sha f0741a53… **未换代**；curl :9122/agent-v2/ 引用同名；python urllib /assets/ bit-compare js/css **双 MATCH**；构建晚定脸 ≈3min 无抢跑。
+- 同脸复拍（/tmp/d-w177-filter.mjs → readings.json + 两帧 PNG）：whoami==200 先码 @2026-11-22T19:15:52Z（urllib 带 storageState cookie 侧）；1440x900 与 375x812 fullPage:true 两帧均 census **G4c**（groupPresent=true, chipCount=4, duty-status-all pressed=true 其余 false）；**liveRows=0** ⇒ 生效性边界既有口径：控件存在性实测在场，行过滤不造点击、由 vitest 行级钉测锁定。
+- console 零新增面判定：两 viewport 各 res4xx=11、对应 console 资源错误 11 条（全部 401：10 业务端点 + 1 页内 /auth/whoami 探测——页内 fetch 不注入 authstate cookie，属既有通道差异）；与 themeConsoleErrorAudit166 前脸计数 **11 == 11** 逐条同族（residual401Source156 鉴权外业务端点面，域层归 ui-b/L4）；新 JS 异常 0 ⇒ **零新增面成立**（既有面如实另列，不冒充清零）。
+- 幻影声明：前记录 c07e1f7552（幻影提交）/D69mY8iN（未实证重建）均 cat-file/磁盘证伪，不引入本账；本笔全程读盘核（规矩②④）。
+- 全量 vitest：**487 files/3596 tests 新基线（L0 亲跑，@1583 令「你不用补跑，台账里把新基线数字记一笔就行，我收账时一并核你台账字段」）**；本车道未自跑全量，如实记此引用。duty 目录级实测 111/111 在我账。

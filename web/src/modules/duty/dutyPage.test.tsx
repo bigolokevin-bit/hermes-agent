@@ -1137,3 +1137,85 @@ describe("DutyPage trend window caliber note", () => {
     expect(q('[data-testid="duty-trend-window-note"]')).not.toBeNull();
   });
 });
+
+describe("DutyPage row-level drill links (B1-duty P0#1)", () => {
+  it("sends run rows to the registered query form /runs/?run= — not the unregistered path form", async () => {
+    fetchJSON.mockImplementation((url: string) => Promise.resolve(ok(url)));
+    await render(<DutyPage />);
+    const rows = Array.from(container.querySelectorAll("a.duty-row-title"));
+    expect(rows.length).toBeGreaterThan(0);
+    for (const a of rows) {
+      expect(a.getAttribute("href")).toBe("/runs/?run=run_abcdef123456");
+    }
+  });
+
+  it("sends approval blocker rows to /approvals?id= and keeps no dead path forms", async () => {
+    fetchJSON.mockImplementation((url: string) => Promise.resolve(ok(url)));
+    await render(<DutyPage />);
+    const links = Array.from(container.querySelectorAll("a.duty-link")).map((a) => a.getAttribute("href"));
+    expect(links).toContain("/approvals?id=apr_1");
+    expect(links.some((h) => /^\/approvals\//.test(h ?? ""))).toBe(false);
+    expect(links.some((h) => /^\/runs\/[^?]/.test(h ?? ""))).toBe(false);
+  });
+});
+
+describe("DutyPage runs status filter (B1 筛选控件条)", () => {
+  const b = (testId: string) => container.querySelector(`[data-testid="${testId}"]`) as HTMLButtonElement | null;
+  const card = () => container.querySelector('[data-duty-testid="duty-today-runs"]');
+  const rows = () => card()?.querySelectorAll("li").length ?? 0;
+  const press = (testId: string) => {
+    act(() => {
+      (b(testId) as HTMLButtonElement).click();
+    });
+  };
+
+  it("renders the four state filter chips as an aria-pressed group", async () => {
+    fetchJSON.mockImplementation(async (url: unknown) => ok(String(url)));
+    await render(<DutyPage />);
+    const group = container.querySelector('[role="group"][aria-label="运行状态筛选"]');
+    expect(group, "运行状态筛选 group").not.toBeNull();
+    for (const id of ["all", "running", "completed", "failed"]) {
+      expect(b(`duty-status-${id}`), `chip ${id}`).not.toBeNull();
+    }
+    expect(b("duty-status-all")?.getAttribute("aria-pressed")).toBe("true");
+    expect(b("duty-status-failed")?.getAttribute("aria-pressed")).toBe("false");
+  });
+
+  it("is URL-owned: ?status=failed presses the chip and keeps only failed rows", async () => {
+    fetchJSON.mockImplementation(async (url: unknown) => ok(String(url)));
+    await act(async () => {
+      root.render(<MemoryRouter initialEntries={["/overview?status=failed"]}><DutyPage /></MemoryRouter>);
+    });
+    await act(async () => {});
+    expect(b("duty-status-failed")?.getAttribute("aria-pressed")).toBe("true");
+    expect(b("duty-status-all")?.getAttribute("aria-pressed")).toBe("false");
+    expect(rows()).toBe(1);
+    const href = card()?.querySelector("a.duty-row-title")?.getAttribute("href");
+    expect(href).toBe("/runs/?run=run_abcdef123456");
+  });
+
+  it("filters rows by state and the empty face clears the filter back", async () => {
+    fetchJSON.mockImplementation(async (url: unknown) => {
+      const u = String(url);
+      if (u.includes("/runs") && !u.includes("run-")) {
+        return {
+          items: [
+            { runId: "run_running00001", employeeId: "emp_1", status: "running", startedAt: "2026-11-18T03:00:00Z" },
+            { runId: "run_abcdef123456", employeeId: "emp_1", status: "failed", startedAt: "2026-11-18T02:00:00Z" },
+          ],
+        };
+      }
+      return ok(u);
+    });
+    await render(<DutyPage />);
+    expect(rows()).toBe(2);
+    press("duty-status-completed");
+    expect(b("duty-status-completed")?.getAttribute("aria-pressed")).toBe("true");
+    expect(rows()).toBe(0);
+    expect(container.querySelector('[data-testid="duty-status-empty"]')).not.toBeNull();
+    expect(b("duty-status-clear"), "清空筛选").not.toBeNull();
+    press("duty-status-clear");
+    expect(b("duty-status-all")?.getAttribute("aria-pressed")).toBe("true");
+    expect(rows()).toBe(2);
+  });
+});

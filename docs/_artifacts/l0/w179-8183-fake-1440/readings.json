@@ -1,0 +1,90 @@
+{
+  "face": "8af8ac5f124c59ba02e2b72de0f6a9132b314861",
+  "port": 8183,
+  "target": "http://100.117.184.117:8183/agent-v2/#/overview",
+  "method": "viewport-heightened fullPage (break inner scroll shell, established recipe)",
+  "startedAt": "2026-11-22T22:19:37.886Z",
+  "shots": [
+    {
+      "probe": {
+        "doc": 900,
+        "shell": 1121,
+        "shellSel": "DIV.relative z-2 flex min-w-0 min-h-0 flex-1 flex-col ",
+        "main": 848,
+        "mainClient": 848
+      },
+      "chosenH": 1161,
+      "viewport": "1440x1161",
+      "label": "1440",
+      "entry": "/assets/index-Cv4DBs--.js",
+      "whoamiPreShot": 200,
+      "at": "2026-11-22T22:19:42.863Z",
+      "mainLen": 1074,
+      "jsErrors": 0,
+      "consoleErrors": 10,
+      "res4xx": 10,
+      "res4xxByStatus": {
+        "403": 10
+      },
+      "res4xxEndpoints": [
+        "/agent-api/api/run-activity",
+        "/agent-api/api/employees",
+        "/agent-api/api/workbench/timeseries",
+        "/agent-api/api/employee-stats",
+        "/agent-api/api/workbench/summary",
+        "/agent-api/api/workbench/queue",
+        "/agent-api/api/tasks",
+        "/agent-api/api/runs",
+        "/agent-api/api/runs",
+        "/agent-api/api/runs"
+      ],
+      "screenshot": "/tmp/d-w179-shot/overview-8183-1440.png",
+      "shotMode": "fullPage",
+      "blocked": null,
+      "png": {
+        "bytes": 188939
+      }
+    },
+    {
+      "probe": {
+        "doc": 812,
+        "shell": 2336,
+        "shellSel": "DIV.relative z-2 flex min-w-0 min-h-0 flex-1 flex-col ",
+        "main": 736,
+        "mainClient": 736
+      },
+      "chosenH": 2376,
+      "viewport": "375x2376",
+      "label": "375",
+      "entry": "/assets/index-Cv4DBs--.js",
+      "whoamiPreShot": 200,
+      "at": "2026-11-22T22:19:47.538Z",
+      "mainLen": 1074,
+      "jsErrors": 0,
+      "consoleErrors": 10,
+      "res4xx": 10,
+      "res4xxByStatus": {
+        "403": 10
+      },
+      "res4xxEndpoints": [
+        "/agent-api/api/workbench/queue",
+        "/agent-api/api/runs",
+        "/agent-api/api/runs",
+        "/agent-api/api/runs",
+        "/agent-api/api/tasks",
+        "/agent-api/api/workbench/summary",
+        "/agent-api/api/employees",
+        "/agent-api/api/run-activity",
+        "/agent-api/api/workbench/timeseries",
+        "/agent-api/api/employee-stats"
+      ],
+      "screenshot": "/tmp/d-w179-shot/overview-8183-375.png",
+      "shotMode": "fullPage",
+      "blocked": null,
+      "png": {
+        "bytes": 170896
+      }
+    }
+  ],
+  "finishedAt": "2026-11-22T22:19:47.719Z"
+}

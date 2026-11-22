@@ -5,7 +5,9 @@
  * whoami, logout. A successful login is only announced after /auth/whoami
  * confirms the session; the HttpOnly cookie is set by the bridge and never
  * touched here. Failures map by code to plain Chinese with a copyable request
- * id. ?state= renders the four honest states for acceptance probes.
+ * id. The feishu-callback 302's ?auth=<code> gets the same honest treatment,
+ * with the code itself as the copyable reference (a 302 carries no rid).
+ * ?state= renders the four honest states for acceptance probes.
  */
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useNavigate, useSearchParams } from "react-router";
@@ -49,17 +51,60 @@ const FEISHU_FAIL_COPY: Record<string, string> = {
 const FEISHU_GENERIC = "飞书登录没有成功。可以再试一次，或改用下面的账号密码登录。";
 
 /**
- * 飞书回调失败时认证桥不做裸 JSON 黑屏，而是 302 回 `/login?auth=<code>`
- * （l7-ops/ops/v4_proxy.py 的 `_auth()` AuthError 分支），code 自带 `auth.` 前缀。
- * 句子逐字取自桥自己的 `_AUTH_MSG` 表，页面不再另造一套口径；查不到的码回落到
- * FEISHU_GENERIC，裸码绝不上屏。
+ * L0: the feishu-callback bridge 302s back to /login?auth=<code> (only the
+ * code, no rid), so the code itself becomes the copyable reference users can
+ * quote when reporting. Sentences mirror the bridge's _AUTH_MSG table. The
+ * bridge sends prefixed shapes (auth.sso_sync_rejected); matching is by
+ * suffix, so the bare short code lands too. Unknown codes never render blank.
  */
-const AUTH_CALLBACK_COPY: Record<string, string> = {
-  "auth.state_invalid": "登录请求校验失败或已过期，请重新发起登录。",
-  "auth.sso_sync_rejected": "统一身份同步未通过，请重新发起登录。",
-  "auth.feishu_exchange_failed": "飞书授权校验失败，请重新发起登录。",
-  "auth.upstream_unavailable": "认证上游不可用，请稍后重试。",
+const AUTH_QUERY_COPY: Record<string, string> = {
+  state_invalid: "登录请求校验失败或已过期，请重新发起登录",
+  sso_sync_rejected: "统一身份同步未通过，请重新发起登录",
+  feishu_exchange_failed: "飞书授权校验失败，请重新发起登录",
+  upstream_unavailable: "认证上游不可用，请稍后重试",
 };
+const AUTH_QUERY_GENERIC = "登录没有完成。可以再试一次，或改用下面的账号密码登录。";
+
+function authQuerySentence(code: string): string | null {
+  for (const [short, sentence] of Object.entries(AUTH_QUERY_COPY)) {
+    if (code === short || code.endsWith(`.${short}`)) return sentence;
+  }
+  return null;
+}
+
+/** The 302 carries no request id, so the error code is what gets copied. */
+function ErrorCodeCopy({ code }: { code: string }): ReactNode {
+  const [copied, setCopied] = useState<"idle" | "ok" | "fail">("idle");
+  const copy = () => {
+    const clip = navigator.clipboard;
+    if (!clip?.writeText) {
+      setCopied("fail");
+      return;
+    }
+    clip.writeText(code).then(
+      () => setCopied("ok"),
+      () => setCopied("fail"),
+    );
+  };
+  return (
+    <span className="inline-flex flex-wrap items-center gap-1">
+      错误码：<code className="break-all" data-testid="auth5-auth-code">{code}</code>
+      <button
+        type="button"
+        data-testid="auth5-auth-code-copy"
+        className="rounded-sm border border-border px-1.5 py-0.5 text-[11px]"
+        onClick={copy}
+      >
+        复制
+      </button>
+      {copied === "ok" ? (
+        <span data-testid="auth5-auth-code-state" className="text-[11px]">已复制</span>
+      ) : copied === "fail" ? (
+        <span data-testid="auth5-auth-code-state" className="text-[11px]">复制失败，请手动选择</span>
+      ) : null}
+    </span>
+  );
+}
 
 function forcedState(sp: URLSearchParams): string | null {
   const s = sp.get("state");
@@ -212,16 +257,17 @@ export default function LoginPage(): ReactNode {
     );
   }
 
-  // `?auth=` 是桥 302 回传的主形制；`feishu_error` / `error` 留给旧链接与密码路提示。
-  const feishuErrorCode = sp.get("auth") ?? sp.get("feishu_error") ?? sp.get("error");
+  const feishuErrorCode = sp.get("feishu_error") ?? sp.get("error");
   const feishuFail = feishuErrorCode
     ? {
-        sentence:
-          AUTH_CALLBACK_COPY[feishuErrorCode] ??
-          FEISHU_FAIL_COPY[feishuErrorCode] ??
-          FEISHU_GENERIC,
+        sentence: FEISHU_FAIL_COPY[feishuErrorCode] ?? FEISHU_GENERIC,
         requestId: sp.get("rid") ?? sp.get("request_id"),
       }
+    : null;
+
+  const authCode = sp.get("auth");
+  const authFail = authCode
+    ? { sentence: authQuerySentence(authCode) ?? AUTH_QUERY_GENERIC, code: authCode }
     : null;
 
   const busy = phase === "submitting";
@@ -238,6 +284,23 @@ export default function LoginPage(): ReactNode {
       >
         <h1 className="text-base font-medium">登录控制台</h1>
         <p className="text-xs text-muted-foreground">登录后即可访问数字员工、审批与运行等页面。</p>
+
+        {authFail ? (
+          <div role="alert" className="flex min-w-0 flex-col gap-1 rounded-sm border border-destructive/40 bg-destructive/5 p-2 text-xs" data-testid="auth5-auth-error">
+            <p className="min-w-0 break-words text-destructive">{authFail.sentence}</p>
+            <p className="min-w-0 break-words text-muted-foreground">
+              <ErrorCodeCopy code={authFail.code} />
+            </p>
+            <button
+              type="button"
+              onClick={startFeishuLogin}
+              className="self-start rounded-sm border border-border px-2 py-1"
+              data-testid="auth5-auth-retry"
+            >
+              再用飞书试一次
+            </button>
+          </div>
+        ) : null}
 
         {feishuFail ? (
           <div role="alert" className="flex min-w-0 flex-col gap-1 rounded-sm border border-destructive/40 bg-destructive/5 p-2 text-xs" data-testid="auth5-feishu-error">

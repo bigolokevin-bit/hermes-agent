@@ -1,0 +1,81 @@
+{
+ "port": 9122,
+ "entry": "assets/index-Dzqdzj0R.js",
+ "face": "e8d9295318",
+ "viewport": "375x812",
+ "page": "#/overview",
+ "at": "2026-11-22T16:18:37.607Z",
+ "trigger": {
+  "found": true,
+  "label": "切换主题",
+  "title": "切换主题: Hermes Teal",
+  "rect": {
+   "x": -228.7,
+   "y": 736.4,
+   "w": 28.1,
+   "h": 24.4
+  },
+  "inViewport": false
+ },
+ "panel": {
+  "opened": true,
+  "aria": "主题",
+  "itemCount": 23,
+  "sampleTexts": [
+   "Hermes TealClassic dark ",
+   "Hermes Teal (Large)Herme",
+   "Nous BlueLight mode — vi",
+   "MidnightDeep blue-violet"
+  ],
+  "swatchSample": [
+   {
+    "bg": "rgb(4, 28, 28)",
+    "w": 10.6
+   },
+   {
+    "bg": "rgb(255, 230, 203)",
+    "w": 10.6
+   },
+   {
+    "bg": "rgba(255, 189, 56, 0.35)",
+    "w": 10.6
+   },
+   {
+    "bg": "rgb(4, 28, 28)",
+    "w": 10.6
+   },
+   {
+    "bg": "rgb(255, 230, 203)",
+    "w": 10.6
+   },
+   {
+    "bg": "rgba(255, 189, 56, 0.35)",
+    "w": 10.6
+   }
+  ],
+  "fontPreviewInline": [
+   "system-ui, -apple-system, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+   "Inter, system-ui, -apple-system, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+   "\"IBM Plex Sans\", system-ui, -apple-system, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif"
+  ],
+  "inViewport": true,
+  "lbRect": {
+   "top": 169,
+   "left": 1,
+   "right": 374
+  }
+ },
+ "consoleErrors": [
+  "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+  "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+  "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+  "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+  "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+  "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+  "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+  "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+  "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+  "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+  "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+ ]
+}
