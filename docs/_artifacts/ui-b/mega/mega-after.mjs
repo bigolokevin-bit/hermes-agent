@@ -55,7 +55,7 @@ for (const pg of PAGES) {
         await page.waitForSelector("[data-testid='ev5-page']", { timeout: 15000 }).catch(() => {});
       }
       await page.waitForTimeout(7000);
-      rec = { ...rec, ...(await page.evaluate((vw) => {
+      try { rec = { ...rec, ...(await page.evaluate((vw) => {
         const nodes = [...document.querySelectorAll("a[href],button,[role='button'],select,input,textarea")];
         const clip = [], offcanvas = [];
         for (const el of nodes) {
@@ -84,7 +84,7 @@ for (const pg of PAGES) {
           }
         }
         return { mainTextLen: txt.length, hasNaN, sysCopy, headerTxt, sampled, clipCount: clip.length, clip: clip.slice(0, 8), offCount: offcanvas.length };
-      }, vw)); } catch (e) { rec.error = String(e).slice(0, 200); }
+      }, vw)) }; } catch (e) { rec.error = String(e).slice(0, 200); }
     // 真 fullPage：撑高内部滚动壳
     try {
       const h = await page.evaluate(() => {
@@ -104,6 +104,7 @@ for (const pg of PAGES) {
       rec.png = shot.split("/").pop();
       rec.pngH = await page.evaluate(() => document.body.scrollHeight);
     } catch (e) { rec.shotError = String(e).slice(0, 120); }
+    } catch (e) { rec.error = "outer:" + String(e).slice(0, 150); }
     rec.consoleErrors = errors.length;
     rec.errors = [...new Set(errors)].slice(0, 4);
     results.push(rec);
