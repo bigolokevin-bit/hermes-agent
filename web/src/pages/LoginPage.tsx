@@ -48,6 +48,19 @@ const FEISHU_FAIL_COPY: Record<string, string> = {
 
 const FEISHU_GENERIC = "飞书登录没有成功。可以再试一次，或改用下面的账号密码登录。";
 
+/**
+ * 飞书回调失败时认证桥不做裸 JSON 黑屏，而是 302 回 `/login?auth=<code>`
+ * （l7-ops/ops/v4_proxy.py 的 `_auth()` AuthError 分支），code 自带 `auth.` 前缀。
+ * 句子逐字取自桥自己的 `_AUTH_MSG` 表，页面不再另造一套口径；查不到的码回落到
+ * FEISHU_GENERIC，裸码绝不上屏。
+ */
+const AUTH_CALLBACK_COPY: Record<string, string> = {
+  "auth.state_invalid": "登录请求校验失败或已过期，请重新发起登录。",
+  "auth.sso_sync_rejected": "统一身份同步未通过，请重新发起登录。",
+  "auth.feishu_exchange_failed": "飞书授权校验失败，请重新发起登录。",
+  "auth.upstream_unavailable": "认证上游不可用，请稍后重试。",
+};
+
 function forcedState(sp: URLSearchParams): string | null {
   const s = sp.get("state");
   return s && FORCED.has(s) ? s : null;
@@ -199,10 +212,14 @@ export default function LoginPage(): ReactNode {
     );
   }
 
-  const feishuErrorCode = sp.get("feishu_error") ?? sp.get("error");
+  // `?auth=` 是桥 302 回传的主形制；`feishu_error` / `error` 留给旧链接与密码路提示。
+  const feishuErrorCode = sp.get("auth") ?? sp.get("feishu_error") ?? sp.get("error");
   const feishuFail = feishuErrorCode
     ? {
-        sentence: FEISHU_FAIL_COPY[feishuErrorCode] ?? FEISHU_GENERIC,
+        sentence:
+          AUTH_CALLBACK_COPY[feishuErrorCode] ??
+          FEISHU_FAIL_COPY[feishuErrorCode] ??
+          FEISHU_GENERIC,
         requestId: sp.get("rid") ?? sp.get("request_id"),
       }
     : null;

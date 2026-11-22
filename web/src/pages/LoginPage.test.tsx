@@ -157,6 +157,53 @@ describe("LoginPage (auth5 / R18)", () => {
     expect(container.textContent).toContain("登录控制台");
   });
 
+  // 认证桥在 /auth/feishu/callback 失败时 302 回 /login?auth=<code>（句子口径取自桥的
+  // _AUTH_MSG）。这四个码过去在 web/src 里零消费 ⇒ 用户只看到「静默弹回登录页」。
+  const AUTH_CALLBACK_CASES: [string, string][] = [
+    ["auth.state_invalid", "登录请求校验失败或已过期，请重新发起登录。"],
+    ["auth.sso_sync_rejected", "统一身份同步未通过，请重新发起登录。"],
+    ["auth.feishu_exchange_failed", "飞书授权校验失败，请重新发起登录。"],
+    ["auth.upstream_unavailable", "认证上游不可用，请稍后重试。"],
+  ];
+
+  it.each(AUTH_CALLBACK_CASES)(
+    "回调码 %s 在登录页说人话，裸码不上屏，且给出口",
+    async (code, sentence) => {
+      mountAt(
+        `/login?auth=${encodeURIComponent(code)}&rid=cb-42`,
+        async () => jsonResponse(200, CAPTCHA_A),
+      );
+      await flush();
+      const card = container.querySelector('[data-testid="auth5-feishu-error"]');
+      expect(card?.textContent).toContain(sentence);
+      expect(card?.textContent).not.toContain(code);
+      expect(card?.textContent).toContain("cb-42");
+      expect(card?.querySelector('[data-testid="req-copy"]')).toBeTruthy();
+      expect(container.querySelector('[data-testid="auth5-feishu-retry"]')).toBeTruthy();
+      // 不是整页替换：登录页本体仍在，账号密码这条退路不能消失。
+      expect(container.querySelector('[data-testid="auth5-form"]')).toBeTruthy();
+    },
+  );
+
+  it("回调码没有带 rid 时给可反馈的兜底句，不编一个编号出来", async () => {
+    mountAt("/login?auth=auth.state_invalid", async () => jsonResponse(200, CAPTCHA_A));
+    await flush();
+    const card = container.querySelector('[data-testid="auth5-feishu-error"]');
+    expect(card?.textContent).toContain("登录请求校验失败或已过期");
+    expect(card?.querySelector('[data-testid="req-copy"]')).toBeNull();
+    expect(card?.querySelector('[data-testid="req-copy-fallback"]')?.textContent).toContain(
+      "本次请求未记录编号",
+    );
+  });
+
+  it("未登记的回调码回落到通用句，仍然不静默、不摊裸码", async () => {
+    mountAt("/login?auth=auth.feishu_not_enabled", async () => jsonResponse(200, CAPTCHA_A));
+    await flush();
+    const card = container.querySelector('[data-testid="auth5-feishu-error"]');
+    expect(card?.textContent).toContain("飞书登录没有成功");
+    expect(card?.textContent).not.toContain("auth.feishu_not_enabled");
+  });
+
   it("posts credentials, confirms whoami, marks the session and lands on overview; double clicks send once", async () => {
     const seen: string[] = [];
     const listener = () => seen.push("auth5:session");
