@@ -23,6 +23,19 @@
   gap: 8px;
   align-items: center;
 }
+/* buglist P0-4：整列皆缺的可选列被裁掉后，data-cols 跟实渲染列数走（2–5；
+ * 5=旧满列，模板不变）。只覆 ≥761——≤760 本就是单列堆叠，与列数无关。 */
+@media (min-width: 761px) {
+  .ppl5-grid[data-cols="4"] {
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1.2fr);
+  }
+  .ppl5-grid[data-cols="3"] {
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1.2fr);
+  }
+  .ppl5-grid[data-cols="2"] {
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 0.8fr);
+  }
+}
 .ppl5-thead {
   padding: var(--space-2) var(--space-4);
   border-bottom: 1px solid color-mix(in srgb, var(--color-text) 5%, transparent);
@@ -31,12 +44,6 @@
 }
 .ppl5-row {
   padding: var(--space-2) var(--space-4);
-}
-.ppl5-reason {
-  display: block;
-  margin-top: 2px;
-  color: color-mix(in srgb, var(--color-text) 35%, transparent);
-  font-size: 10px;
 }
 /* UI-B 状态组合（RUBRIC 留白/层级）：区块卡上下留白走 space-8（原 16px 贴边），
  * 标题抬到 14px+medium（Mondwest 只注册 400 face，字号台阶是可靠层级手段），
@@ -137,8 +144,9 @@
   min-height: var(--table-row-h);
 }
 @media (min-width: 761px) {
-  /* Time column: right align plus tabular figures, header included. */
-  .ppl5-thead > span:last-child,
+  /* Time column: right align plus tabular figures, header included.
+   * P0-4：表头按 data-label 命中——裁列后「最后活跃」可能不再是末列。 */
+  .ppl5-thead > span[data-label="最后活跃"],
   .ppl5-row > [data-label="最后活跃"] {
     text-align: right;
   }

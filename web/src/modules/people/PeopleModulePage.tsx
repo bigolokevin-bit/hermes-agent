@@ -5,8 +5,10 @@
  * console.unknown_route. The page falls back to the real digital-employee
  * ledger at `/api/employees`, labels that source on screen, and renders one
  * neutral 未接入 body for 403 and 404 when both are unavailable, with GAP-02
- * only in `title`; it never fabricates a row or a 0. Missing fields are `—`
- * with a reason, status words never expose codes, and raw ids stay in `title`.
+ * only in `title`; it never fabricates a row or a 0. Columns the source
+ * carries no values for are dropped entirely (buglist P0-4); an individual
+ * missing value is `—` with the reason in `title`, status words never expose
+ * codes, and raw ids stay in `title`.
  */
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router";
@@ -282,20 +284,36 @@ export default function PeopleModulePage() {
   const live = usePeople(reload, forced === null || forced === "ready");
   const people = forced && forced !== "ready" ? previewResource(forced) : live;
 
+  // buglist P0-4（#5）：数据源整列皆缺的可选列（账号/部门/最后活跃）连同表头
+  // 一起裁掉，缺列信息由来源注记一行承载；个别行缺值仍渲染该列，格内 `—` +
+  // title 说明（§5 口径），不再把「上游未提供×」长注记撑进单元格。
+  // 在场性按整份名单判定，不按搜索筛后的视图——列的存在与否是数据源属性，
+  // 不随关键词闪变。
+  const roster = useMemo<PersonRow[]>(
+    () => (people.phase === "ready" ? people.data.map(readPerson) : []),
+    [people],
+  );
   const rows = useMemo<PersonRow[]>(() => {
-    if (people.phase !== "ready") return [];
     const q = query.trim().toLowerCase();
-    return people.data
-      .map(readPerson)
-      .filter(
-        (r) =>
-          q === "" ||
-          r.name.toLowerCase().includes(q) ||
-          r.code.toLowerCase().includes(q) ||
-          (r.account ?? "").toLowerCase().includes(q) ||
-          (r.dept ?? "").toLowerCase().includes(q),
-      );
-  }, [people, query]);
+    return roster.filter(
+      (r) =>
+        q === "" ||
+        r.name.toLowerCase().includes(q) ||
+        r.code.toLowerCase().includes(q) ||
+        (r.account ?? "").toLowerCase().includes(q) ||
+        (r.dept ?? "").toLowerCase().includes(q),
+    );
+  }, [roster, query]);
+  const showAccount = roster.some((r) => r.account !== null);
+  const showDept = roster.some((r) => r.dept !== null);
+  const showLastActive = roster.some((r) => r.lastActive !== null);
+  const colLabels = [
+    "姓名",
+    ...(showAccount ? ["账号"] : []),
+    ...(showDept ? ["部门"] : []),
+    "状态",
+    ...(showLastActive ? ["最后活跃"] : []),
+  ];
 
   return (
     <section className="ppl5-page flex min-w-0 flex-col gap-4" data-testid="ppl5-page">
@@ -303,7 +321,9 @@ export default function PeopleModulePage() {
         <div className="min-w-0">
           <h1 className="font-mondwest text-xl text-white/90">人员目录</h1>
           <p className="mt-1 text-xs text-white/40">
-            在册人员名录 · 姓名 / 账号 / 部门 / 状态 / 最后活跃
+            {people.phase === "ready" && people.data.length > 0
+              ? `在册人员名录 · ${colLabels.join(" / ")}`
+              : "在册人员名录"}
             {people.phase === "ready" ? ` · 共 ${people.data.length} 人` : ""}
           </p>
           {people.phase === "ready" && people.data.length > 0 ? (
@@ -404,31 +424,38 @@ export default function PeopleModulePage() {
         ) : (
           <Card className="border-white/5 bg-white/[0.02]">
             <CardContent className="p-0" data-testid="ppl5-list">
-              <div className="ppl5-grid ppl5-thead">
-                <span>姓名</span><span>账号</span><span>部门</span><span>状态</span><span>最后活跃</span>
+              <div className="ppl5-grid ppl5-thead" data-cols={colLabels.length}>
+                <span data-label="姓名">姓名</span>
+                {showAccount ? <span data-label="账号">账号</span> : null}
+                {showDept ? <span data-label="部门">部门</span> : null}
+                <span data-label="状态">状态</span>
+                {showLastActive ? <span data-label="最后活跃">最后活跃</span> : null}
               </div>
               <ul className="divide-y divide-white/5">
                 {rows.map((r) => (
-                  <li key={r.key} className="ppl5-grid ppl5-row" data-testid="ppl5-row" title={r.rawId ? `记录号 ${r.rawId}` : undefined}>
+                  <li key={r.key} className="ppl5-grid ppl5-row" data-cols={colLabels.length} data-testid="ppl5-row" title={r.rawId ? `记录号 ${r.rawId}` : undefined}>
                     <span className="flex min-w-0 items-center gap-2 text-sm text-white/85">
                       <Users className="h-3.5 w-3.5 shrink-0 text-white/25" aria-hidden />
                       <span className="min-w-0 break-words" data-label="姓名" data-testid="ppl5-name">
                         {r.name}{r.code !== "未指派" ? ` · ${r.code}` : ""}
                       </span>
                     </span>
-                    <span className="min-w-0 break-all text-xs text-white/55 md:text-sm md:text-white/60" data-label="账号" data-testid="ppl5-account">
-                      {r.account ?? "—"}
-                      {r.account ? null : <span className="ppl5-reason">上游未提供账号</span>}
-                    </span>
-                    <span className="min-w-0 break-words text-xs text-white/55 md:text-sm md:text-white/60" data-label="部门" data-testid="ppl5-dept">
-                      {r.dept ?? "—"}
-                      {r.dept ? null : <span className="ppl5-reason">上游未提供部门</span>}
-                    </span>
+                    {showAccount ? (
+                      <span className="min-w-0 break-all text-xs text-white/55 md:text-sm md:text-white/60" data-label="账号" data-testid="ppl5-account" title={r.account ? undefined : "上游未提供账号"}>
+                        {r.account ?? "—"}
+                      </span>
+                    ) : null}
+                    {showDept ? (
+                      <span className="min-w-0 break-words text-xs text-white/55 md:text-sm md:text-white/60" data-label="部门" data-testid="ppl5-dept" title={r.dept ? undefined : "上游未提供部门"}>
+                        {r.dept ?? "—"}
+                      </span>
+                    ) : null}
                     <span data-label="状态" data-testid="ppl5-status"><Badge tone={r.status.tone}>{r.status.text}</Badge></span>
-                    <span className="min-w-0 break-words text-xs text-white/55 md:text-sm md:text-white/60" data-label="最后活跃" data-testid="ppl5-last-active">
-                      {r.lastActive ?? "—"}
-                      {r.lastActiveReason ? <span className="ppl5-reason">{r.lastActiveReason}</span> : null}
-                    </span>
+                    {showLastActive ? (
+                      <span className="min-w-0 break-words text-xs text-white/55 md:text-sm md:text-white/60" data-label="最后活跃" data-testid="ppl5-last-active" title={r.lastActive ? undefined : r.lastActiveReason ?? "上游未提供最后活跃时间"}>
+                        {r.lastActive ?? "—"}
+                      </span>
+                    ) : null}
                   </li>
                 ))}
               </ul>

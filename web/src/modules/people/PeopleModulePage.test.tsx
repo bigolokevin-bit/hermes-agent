@@ -89,17 +89,40 @@ describe("people directory ppl5", () => {
     expect(container.textContent).not.toContain("u_1234567890abcdef");
     expect(container.textContent).not.toContain("u_0099887766554433");
     expect(container.querySelector('[data-testid="ppl5-row"]')?.getAttribute("title")).toContain("u_1234567890abcdef");
+
+    // P0-4 ②：数据源 backing 得住的列一律在场——五列表头与标题列名串维持现状。
+    expect(Array.from(container.querySelectorAll(".ppl5-thead > span")).map((el) => el.textContent))
+      .toEqual(["姓名", "账号", "部门", "状态", "最后活跃"]);
+    expect(container.querySelector(".ppl5-thead")?.getAttribute("data-cols")).toBe("5");
+    expect(container.textContent).toContain("在册人员名录 · 姓名 / 账号 / 部门 / 状态 / 最后活跃");
+
+    // P0-4 ③：混合缺值（阿澜无部门、无活跃时刻）列保留，格内只剩 `—`，
+    // 长说明退进 title，不再撑爆单元格。
+    expect(list?.textContent).not.toContain("上游未提供");
+    const deptCells = container.querySelectorAll('[data-testid="ppl5-dept"]');
+    expect(deptCells[0]?.textContent).toBe("客服中心");
+    expect(deptCells[1]?.textContent).toBe("—");
+    expect(deptCells[1]?.getAttribute("title")).toBe("上游未提供部门");
+    const activeCells = container.querySelectorAll('[data-testid="ppl5-last-active"]');
+    expect(activeCells[1]?.textContent).toBe("—");
+    expect(activeCells[1]?.getAttribute("title")).toContain("上游未提供最后活跃时间");
   });
 
-  it("missing account, dept and last active use — with visible reasons; unknown status 待核实", async () => {
+  it("P0-4 ①: columns the source carries no values for drop out entirely", async () => {
     mockApi(() => Promise.resolve({ items: [{ user_id: "u_7", realname: "测试", status: 99 }] }));
     await render();
+    // 三根可选列全缺 → 表头与单元格一起消失，不留「—+长注记」占位。
+    expect(Array.from(container.querySelectorAll(".ppl5-thead > span")).map((el) => el.textContent))
+      .toEqual(["姓名", "状态"]);
+    expect(container.querySelector(".ppl5-thead")?.getAttribute("data-cols")).toBe("2");
+    expect(container.textContent).toContain("在册人员名录 · 姓名 / 状态");
+    expect(container.querySelector('[data-testid="ppl5-account"]')).toBeNull();
+    expect(container.querySelector('[data-testid="ppl5-dept"]')).toBeNull();
+    expect(container.querySelector('[data-testid="ppl5-last-active"]')).toBeNull();
     const row = container.querySelector('[data-testid="ppl5-row"]');
-    expect(row?.textContent).toContain("—");
-    expect(row?.textContent).toContain("上游未提供账号");
-    expect(row?.textContent).toContain("上游未提供部门");
-    expect(row?.textContent).toContain("上游未提供最后活跃时间");
+    expect(row?.textContent).toContain("测试");
     expect(row?.textContent).toContain("待核实");
+    expect(row?.textContent).not.toContain("上游未提供");
     expect(row?.textContent).not.toContain("status");
   });
 
@@ -152,13 +175,34 @@ describe("people directory ppl5", () => {
     const list = container.querySelector('[data-testid="ppl5-list"]');
     expect(list?.textContent).toContain("AgentOS 产品助理 · 3E2E940B");
     expect(list?.textContent).toContain("在岗");
-    expect(list?.textContent).toContain("—");
-    expect(list?.textContent).toContain("上游未提供账号");
-    expect(list?.textContent).toContain("上游未提供部门");
-    expect(list?.textContent).toContain("上游未提供最后活跃时间（最后更新 2026-11-17 13:52）");
-    expect(container.querySelector('[data-testid="ppl5-source"]')?.textContent).toContain("数字员工台账");
+    // P0-4：台账给不出账号/部门/最后活跃——整列裁掉，不再逐格挂长注记，
+    // 「—」占位也随之消失；裁列信息由下面这句来源注记一行承载。
+    expect(list?.textContent).not.toContain("—");
+    expect(list?.textContent).not.toContain("上游未提供");
+    expect(Array.from(container.querySelectorAll(".ppl5-thead > span")).map((el) => el.textContent))
+      .toEqual(["姓名", "状态"]);
+    expect(container.textContent).toContain("在册人员名录 · 姓名 / 状态");
+    const source = container.querySelector('[data-testid="ppl5-source"]')?.textContent ?? "";
+    expect(source).toContain("数字员工台账");
+    expect(source).toContain("真人用户中心接口尚未接入");
+    expect(source).toContain("这里不冒充真人名单");
     expect(container.textContent).not.toContain("emp_217A91BA995044DFBB3E2E940B");
     expect(container.textContent).not.toContain("示例员工");
+  });
+
+  it("column presence is a property of the source, not of the search filter", async () => {
+    mockApi((url) => (url.includes("/user/list") ? Promise.resolve(ROWS) : missing(url)));
+    await render();
+    // 阿澜没有部门，但李鲤有——筛到只剩阿澜时部门列也必须在场。
+    await act(async () => {
+      const input = container.querySelector<HTMLInputElement>('[data-testid="ppl5-search"]')!;
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, "阿澜");
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    expect(Array.from(container.querySelectorAll(".ppl5-thead > span")).map((el) => el.textContent))
+      .toEqual(["姓名", "账号", "部门", "状态", "最后活跃"]);
+    expect(container.querySelectorAll('[data-testid="ppl5-dept"]')).toHaveLength(1);
+    expect(container.querySelector('[data-testid="ppl5-dept"]')?.textContent).toBe("—");
   });
 
   it("live view is not marked as a fixture", async () => {
