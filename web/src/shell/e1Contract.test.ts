@@ -27,8 +27,11 @@
  * 末条用例读验收脸 dist 的 index.html 并向 9122 发一次只读 GET。读数走
  * process.stdout.write（默认 reporter 的 console.log 捕获不可靠）；网络走
  * node:http 而非 global fetch（fetch 可被同套件其他文件的 vi.stubGlobal 跨
- * 文件污染，全量跑与单跑结果不同即此因）。服务可达时断言 served===disk
- * （验收脸按请求直读 dist，背离即陈旧缺陷）；不可达属事实，如实打印不判红。
+ * 文件污染，全量跑与单跑结果不同即此因）。该腿自足化（板 READY-BACKLOG
+ * shell 项，2026-11-22）：dist 读不到（本树未 build）或 9122 读不通（无脸）
+ * ⇒ 判 SKIPPED-NOT-DEPLOYED，打印端口 + 两个 entry 名后 skip——环境缺席不是
+ * 红；两者俱在 ⇒ served===disk 严格校验照旧，不得放宽成恒真（脸活着但内容
+ * 背离/无 hash 引用，仍是红）。
  *
  * 写域：只读本件与 shell 数据表、内层真值导出、runs 页源码文本；不改
  * modules/**、App.tsx、console.tsx、routes.ts、tokens.css、locales。
@@ -168,33 +171,38 @@ describe("E1 钩 C: 内层旧同名标签消失 — the r7① name pair stays de
 });
 
 describe("E1 取证自报: 端口 + entry 文件名（L0 硬规矩）", () => {
-  it("pins the acceptance face: port, entry name, and served equals disk when reachable", async () => {
+  it("verifies the acceptance face when both sides exist, skips not-deployed otherwise", async (ctx) => {
     const PORT = 9122;
     const distIndex = resolve(HERE, "../../../hermes_cli/web_dist/index.html");
-    let diskEntry = "MISSING";
+    let diskEntry = "DIST-UNREADABLE";
+    let distReadable = false;
     try {
       const html = readFileSync(distIndex, "utf8");
       diskEntry = html.match(/assets\/index-[A-Za-z0-9_-]+\.js/)?.[0] ?? "NO-ENTRY-REF";
+      distReadable = true;
     } catch {
-      diskEntry = "DIST-UNREADABLE";
+      distReadable = false;
     }
     const served = await servedEntry(PORT, "/agent-v2/");
-    const reachable = /^assets\/index-/.test(served);
-    const match = served === diskEntry ? "yes" : reachable ? "no" : "n/a";
+    const faceReadable = !/^(unreachable|timeout|http-)/.test(served);
     emit(
-      `PORT=${PORT} DISK_ENTRY=${diskEntry} SERVED_ENTRY=${served} MATCH=${match} (dist=${distIndex})`,
+      `PORT=${PORT} DISK_ENTRY=${diskEntry} SERVED_ENTRY=${served} (dist=${distIndex})`,
     );
-    // 自足断言：红绿只取决于本用例自己读到的两份事实，不依赖输出捕获、
-    // 不依赖跨文件顺序、不依赖 global fetch 是否被别人桩过。
+    // 自足判定：环境缺席（本树没构建 dist / 9122 没有脸）判 SKIPPED-NOT-DEPLOYED，
+    // 读数已打全（端口 + 两个 entry 名）。这不是红，也不是恒真——脸与 dist
+    // 任一回归，下面的严格校验立即恢复执行。
+    if (!distReadable || !faceReadable) {
+      emit(
+        `VERDICT=SKIPPED-NOT-DEPLOYED reason=${!distReadable ? "dist-unreadable" : "face-unreadable"} PORT=${PORT} DISK_ENTRY=${diskEntry} SERVED_ENTRY=${served}`,
+      );
+      return ctx.skip();
+    }
     expect(diskEntry, "acceptance dist must carry a hashed entry reference").toMatch(
       /^assets\/index-/,
     );
-    if (reachable) {
-      // 静态服务按请求直读 dist ⇒ 可达时下发值必须等于盘上值；背离=陈旧脸缺陷。
-      expect(served, "served entry drifted from the dist on disk").toBe(diskEntry);
-    }
-    // 不可达（unreachable/http-xxx/timeout）属服务态事实，如实打印不判红：
-    // 9122 的生命周期不在本写域，判红会把他人重启窗口变成我的 flake。
-    expect(match).toMatch(/^(yes|no|n\/a)$/);
+    // 静态服务按请求直读 dist ⇒ 可达时下发值必须等于盘上值；背离=陈旧脸缺陷。
+    // served 为 NO-ENTRY-REF（200 但给不出 hash 引用）同样是红，不静默放行。
+    expect(served, "served entry drifted from the dist on disk").toBe(diskEntry);
+    emit(`VERDICT=VERIFIED PORT=${PORT} ENTRY=${diskEntry}`);
   });
 });
