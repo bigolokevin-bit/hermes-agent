@@ -45,7 +45,7 @@ vi.mock("@nous-research/ui", () => ({
 
 import { MatrixModulePage } from "./MatrixModulePage";
 
-import { MATRIX_FIXTURE, readMatrixPayload } from "./matrix";
+import { MATRIX_FIXTURE, employeeLabel, readMatrixPayload } from "./matrix";
 
 let container: HTMLDivElement;
 let root: Root;
@@ -416,5 +416,72 @@ describe("MatrixModulePage (R272 — the 375 layout pins the identity column ins
       expect(shell?.contains(row)).toBe(true);
       expect(row.firstElementChild?.classList.contains("mtx5-pin")).toBe(true);
     }
+  });
+});
+
+describe("MatrixModulePage (R273 — the row owner is the exit, the cells stay read-only)", () => {
+  async function renderAt(entry: string): Promise<void> {
+    // A fresh root per read: re-rendering the same root reconciles instead of
+    // mounting, so the load effect would not re-run.
+    await act(async () => {
+      root.unmount();
+    });
+    container.replaceChildren();
+    root = createRoot(container);
+    await act(async () => {
+      root.render(
+        <MemoryRouter initialEntries={[entry]}>
+          <MatrixModulePage />
+        </MemoryRouter>,
+      );
+    });
+    for (let step = 0; step < 8; step += 1) {
+      await act(async () => {
+        await Promise.resolve();
+      });
+    }
+  }
+
+  function rows(): Element[] {
+    return [...container.querySelectorAll('[data-testid^="mtx5-row-"]')];
+  }
+
+  it("links every row to the employee that row is about", async () => {
+    fetchJSON.mockRejectedValue(missing("req-77"));
+    await renderAt("/matrix");
+    expect(rows()).toHaveLength(MATRIX_FIXTURE.employees.length);
+    // The link carries its own testid namespace: a `mtx5-row-` prefix here would
+    // have been counted as a second row by the selector above.
+    for (const employee of MATRIX_FIXTURE.employees) {
+      const owner = container.querySelector(`[data-testid="mtx5-owner-${employee.employeeId}"]`);
+      expect(owner).not.toBeNull();
+      expect((owner as HTMLElement).tagName).toBe("A");
+      expect(owner?.getAttribute("href")).toBe(`/employees/${encodeURIComponent(employee.employeeId)}`);
+      expect((owner?.textContent ?? "").trim()).toBe(employeeLabel(employee));
+    }
+  });
+
+  it("points the resource view at the capability page without inventing a row locator", async () => {
+    fetchJSON.mockRejectedValue(missing("req-77"));
+    await renderAt("/matrix?view=resource");
+    const owners = [...container.querySelectorAll('[data-testid^="mtx5-owner-"]')];
+    expect(owners.length).toBeGreaterThan(0);
+    for (const owner of owners) {
+      expect(owner.getAttribute("href")).toBe("/capabilities");
+      expect(owner.getAttribute("href") ?? "").not.toContain("row=");
+    }
+  });
+
+  it("keeps the cells read-only: no link and no button inside a cell", async () => {
+    fetchJSON.mockRejectedValue(missing("req-77"));
+    await renderAt("/matrix");
+    const cells = [...container.querySelectorAll('[data-testid^="mtx5-cell-"]')];
+    expect(cells).toHaveLength(MATRIX_FIXTURE.employees.length * MATRIX_FIXTURE.capabilities.length);
+    for (const cell of cells) {
+      expect(cell.querySelector("a")).toBeNull();
+      expect(cell.querySelector("button")).toBeNull();
+    }
+    // the sample door still says what it is, with the new links inside it
+    expect(container.querySelector('[data-testid="mtx5-module"]')?.getAttribute("data-fixture")).toBe("1");
   });
 });
