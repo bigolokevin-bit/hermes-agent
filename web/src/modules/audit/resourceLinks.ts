@@ -78,6 +78,12 @@ const RESOURCE_PAGES: Record<string, ResourcePage> = {
     needsId: true,
     proof: "看板读地址里的 task（App.tsx:1193 / TasksBoardModulePage.tsx:236）",
   },
+  employee: {
+    where: "员工详情",
+    href: (id) => `/employees/${encodeURIComponent(id)}`,
+    needsId: true,
+    proof: "详情路由 /employees/:employeeId 由员工页读路径里的 employeeId（App.tsx:339 / routes.ts:201）",
+  },
   // 假定：知识类落点按页面读，本环境没有可定位单条知识的地址参数，所以不带 id。
   knowledge: {
     where: "知识库",
