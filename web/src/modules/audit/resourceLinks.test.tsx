@@ -35,7 +35,7 @@ describe("audW - one table, the hrefs it promises", () => {
   it("offers exactly the four resource types this console can open", () => {
     // The table is the single source: these keys, and nothing else, get a link.
     expect(RESOURCE_LINK_TYPES.slice().sort()).toEqual(
-      ["approval", "knowledge", "knowledge_source", "run", "task"].sort(),
+      ["approval", "employee", "knowledge", "knowledge_source", "run", "task"].sort(),
     );
   });
 
@@ -47,6 +47,7 @@ describe("audW - one table, the hrefs it promises", () => {
     });
     expect(hrefOf({ type: "run", id: "run_01M7VXG3" })).toBe("/runs?run=run_01M7VXG3");
     expect(hrefOf({ type: "task", id: "tsk_9F8E7D6C" })).toBe("/work?tab=board&task=tsk_9F8E7D6C");
+    expect(hrefOf({ type: "employee", id: "emp_9f3a4b7c" })).toBe("/employees/emp_9f3a4b7c");
   });
 
   it("knowledge needs no identifier, because its page takes none", () => {
@@ -59,10 +60,11 @@ describe("audW - one table, the hrefs it promises", () => {
 
   it("encodes an id that would otherwise become someone else's query", () => {
     expect(hrefOf({ type: "task", id: "a b&c" })).toBe("/work?tab=board&task=a%20b%26c");
+    expect(hrefOf({ type: "employee", id: "emp 9F3A" })).toBe("/employees/emp%209F3A");
   });
 
   it("a type with no page says so, in words and in the reason", () => {
-    for (const type of ["channel_event", "policy_decision", "employee", "webhook", null]) {
+    for (const type of ["channel_event", "policy_decision", "webhook", null]) {
       const link = resourceLinkOf({ type, id: "x_1" });
       expect(link.kind).toBe("no-link");
       expect(link.title).toContain("没有对应页面");

@@ -344,7 +344,7 @@ describe("R271 - the resource way out, reachable on every face", () => {
   });
 
   it("points only inside the closed set of proven routes — 禁臆造 destinations", () => {
-    const proven = ["/approvals?tab=history", "/runs?run=", "/work?tab=board", "/knowledge"];
+    const proven = ["/approvals?tab=history", "/employees/", "/runs?run=", "/work?tab=board", "/knowledge"];
     const landed: string[] = [];
     for (const type of RESOURCE_LINK_TYPES) {
       const link = resourceLinkOf({ type, id: "id_probe_000000000001" });
@@ -358,8 +358,8 @@ describe("R271 - the resource way out, reachable on every face", () => {
       const carriesId = link.href !== "/knowledge"; // 落点不带条目参数 ⇒ 不承诺编号
       expect(link.title.includes("编号 id_probe_000000000001")).toBe(carriesId);
     }
-    // all five table keys land: approval / run / task carry the id, knowledge
-    // and knowledge_source share the bare /knowledge landing
+    // all six table keys land: approval / run / task / employee carry the id,
+    // knowledge and knowledge_source share the bare /knowledge landing
     expect(landed).toHaveLength(RESOURCE_LINK_TYPES.length);
   });
 });
