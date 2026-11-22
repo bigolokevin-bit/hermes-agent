@@ -20,6 +20,13 @@ import {
 } from "./aggregate";
 import { beijing, beijingHour, beijingWeekday, dashed, duration, shortId, usd } from "./format";
 import { runsCaliber } from "./runsCaliber";
+import {
+  DUTY_STATUS_FILTERS,
+  DUTY_STATUS_PARAM,
+  filterDutyRuns,
+  parseDutyStatusFilter,
+  type DutyStatusFilterId,
+} from "./dutyStatusFilter";
 import { DUTY_NOTES } from "./dutyNotes";
 import type {
   ActivityBody,
@@ -352,7 +359,20 @@ function RunStatusBadge({ status }: { status?: string }) {
   return <Badge tone={hit?.tone ?? "outline"}>{hit?.text ?? "—"}</Badge>;
 }
 
-function TodayRunsCard({ stats, runs, onRetry }: { stats: Loadable<RunStatsBody>; runs: Loadable<RunRow[]>; onRetry: () => void }) {
+function TodayRunsCard({
+  stats,
+  runs,
+  onRetry,
+  statusFilterId,
+  onChooseStatus,
+}: {
+  stats: Loadable<RunStatsBody>;
+  runs: Loadable<RunRow[]>;
+  onRetry: () => void;
+  statusFilterId: DutyStatusFilterId;
+  onChooseStatus: (next: DutyStatusFilterId) => void;
+}) {
+  const shownRuns = runs.k === "ready" ? filterDutyRuns(runs.data, statusFilterId) : runs.data;
   const totals = stats.k === "ready" ? runTotals(stats.data) : null;
   const caliberAsOf = stats.k === "ready" ? asOfOf(stats.data) : null;
   const caliber = runsCaliber({
@@ -371,6 +391,20 @@ function TodayRunsCard({ stats, runs, onRetry }: { stats: Loadable<RunStatsBody>
         </Link>
       }
     >
+      <div className="duty-ranges duty-status-filters" role="group" aria-label="运行状态筛选">
+        {DUTY_STATUS_FILTERS.map((f) => (
+          <button
+            key={f.id}
+            type="button"
+            className="duty-range"
+            data-testid={`duty-status-${f.id}`}
+            aria-pressed={f.id === statusFilterId}
+            onClick={() => onChooseStatus(f.id)}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
       <StateLine state={stats} onRetry={onRetry}>
         <p className="duty-num" data-testid="ov6-kpi-runs" data-duty-testid="duty-kpi-runs">
           {totals ? totals.runs : "—"}
@@ -382,17 +416,31 @@ function TodayRunsCard({ stats, runs, onRetry }: { stats: Loadable<RunStatsBody>
             : "服务端未返回窗口合计，暂不展示分项。"}
         </p>
         {runs.k === "ready" && runs.data.length > 0 ? (
-          <ul className="duty-list">
-            {runs.data.slice(0, 3).map((run) => (
-              <li key={run.runId}>
-                <RunStatusBadge status={run.status} />
-                <Link className="duty-row-title" to={`/runs/?run=${encodeURIComponent(run.runId)}`}>
-                  {shortId(run.runId)}
-                </Link>
-                <span className="duty-row-time">{beijing(run.startedAt)}</span>
-              </li>
-            ))}
-          </ul>
+          shownRuns.length > 0 ? (
+            <ul className="duty-list">
+              {shownRuns.slice(0, 3).map((run) => (
+                <li key={run.runId}>
+                  <RunStatusBadge status={run.status} />
+                  <Link className="duty-row-title" to={`/runs/?run=${encodeURIComponent(run.runId)}`}>
+                    {shortId(run.runId)}
+                  </Link>
+                  <span className="duty-row-time">{beijing(run.startedAt)}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="duty-note" data-testid="duty-status-empty">
+              该状态下没有最近运行。
+              <button
+                type="button"
+                className="duty-range"
+                data-testid="duty-status-clear"
+                onClick={() => onChooseStatus("all")}
+              >
+                清空筛选
+              </button>
+            </p>
+          )
         ) : (
           <p className="duty-note">最近运行明细尚未返回，合计仍以服务端为准。</p>
         )}
@@ -929,12 +977,19 @@ function DutyNotes() {
 export default function DutyPage() {
   const [params, setParams] = useSearchParams();
   const rangeId = parseDutyRange(params.get(DUTY_RANGE_PARAM));
+  const statusFilterId = parseDutyStatusFilter(params.get(DUTY_STATUS_PARAM));
   const range = dutyRange(rangeId);
   const { data, reload, loading, refreshState } = useDutyData(rangeId);
   const chooseRange = (next: string) => {
     const query = new URLSearchParams(params);
     if (next === DEFAULT_DUTY_RANGE) query.delete(DUTY_RANGE_PARAM);
     else query.set(DUTY_RANGE_PARAM, next);
+    setParams(query, { replace: true });
+  };
+  const chooseStatus = (next: DutyStatusFilterId) => {
+    const query = new URLSearchParams(params);
+    if (next === "all") query.delete(DUTY_STATUS_PARAM);
+    else query.set(DUTY_STATUS_PARAM, next);
     setParams(query, { replace: true });
   };
   // One derivation for refresh / retry / copy / links. Every block failed in
@@ -1114,7 +1169,13 @@ export default function DutyPage() {
 
       <div className="duty-grid duty-grid-3">
         <ReadinessCard employees={data.employees} stats={data.stats} onRetry={reload} />
-        <TodayRunsCard stats={data.todayStats} runs={data.todayRuns} onRetry={reload} />
+        <TodayRunsCard
+          stats={data.todayStats}
+          runs={data.todayRuns}
+          onRetry={reload}
+          statusFilterId={statusFilterId}
+          onChooseStatus={chooseStatus}
+        />
         <CostCard
           day={data.budgetDay}
           month={data.budgetMonth}
