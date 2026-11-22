@@ -235,3 +235,10 @@ matrix(#/employees?tab=matrix) present=true ok=true
 - **首批可见改动实证（用户 12h 节拍第一笔）**：同一现役页 #/approvals、同 cookie（whoami==200 显式码+时刻前后各一次）：7 个 *-ls 契约名 **before 0/7 全空 → after 7/7 全取到值**（--color-primary-ls ""→#ffe6cb、--color-bg-ls ""→#041c1c、--color-border-ls ""→#ffe6cb4d），与 UI-KD 自证方向一致且为本车道 9122 现役脸独立复现。RAW=w157-token-{before,after}.json + 2 帧。
 - 补证引用：whoamiProof156（200@20:57:09+0800）与 residual401Source156（鉴权外业务端点面）已随 293b705994 在 remote，未重做。
 - counts 维持 51/51/0/NM0 exitCode0（未重扫 51 路）；375 总 PASS 放行权在 UX 总审；判据项闭合 web/scripts/** 未动。
+
+## wave-158 全表 51 路重扫固化 @0cc5818aba（端口9122/entry index-Cm_kToHo.js）
+
+- L0 @1310@ 非阻塞项顺手完成：21:09:44 起跑全表重扫，**routes 51 / pass 51 / fail 0 / NM 0 / matrixOk=true / exitCode 0**；lowMainPass158=[]（无骨架空壳签绿）。
+- 脸注记：0cc5818aba=wave-157 #2 纯 docs（UI-F 迁移指南 65 行），产品同 7ce5c5fdee，Cm_kToHo 现役未重建；逐行 prevFaceSnapshots 全链保留（含 155 活会话两路与更早 NM 史）。
+- token-source.test.ts 把关：截至本拍**尚未入脸**（web/src/components/ui/ 下无此文件）；已按 L0 形制硬约束盯——若落地版含读 web_dist/启服务/网络腿，当场点名，纯源码断言则放行。
+- 总 PASS 放行权在 UX 总审，本车道只固化读数不自签。
