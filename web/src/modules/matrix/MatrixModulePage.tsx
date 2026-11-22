@@ -382,9 +382,17 @@ export function MatrixModulePage() {
                       data-testid={`mtx5-row-${row.key}`}
                     >
                       <span className="min-w-0 mtx5-pin">
-                        <span className="block truncate text-sm text-white/85" title={row.rawTitle ?? undefined}>
+                        // R273 (READY-BACKLOG console-ui2 16:17): the row owner is the exit.
+                        // The page still writes nothing -- the cells stay pills -- but the
+                        // 「去员工详情页」 instruction became a link instead of a sentence.
+                        <Link
+                          className="block truncate text-sm text-white/85 hover:underline"
+                          title={row.rawTitle ?? undefined}
+                          data-testid={`mtx5-owner-${row.key}`}
+                          to={view === "people" ? `/employees/${encodeURIComponent(row.key)}` : "/capabilities"}
+                        >
                           {row.label}
-                        </span>
+                        </Link>
                         <span className="block truncate text-xs text-white/40">{row.meta || "—"}</span>
                       </span>
                       {row.cells.map((cell) => (
@@ -402,7 +410,7 @@ export function MatrixModulePage() {
       </Card>
 
       <p className="text-xs text-white/40">
-        矩阵只读：这里不改授权。要改某位员工的职权，去员工详情页的授权区；这一页只负责把「谁有什么」摊开看。
+        矩阵只读：这里不改授权。行首的名字就是入口——员工视角点进那位员工的详情页，资源视角点进能力页；这一页只负责把「谁有什么」摊开看。
       </p>
     </section>
   );
