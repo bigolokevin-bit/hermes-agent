@@ -1,0 +1,133 @@
+{
+  "probedAt": "2026-11-22T04:16:37.711Z",
+  "port": 9122,
+  "entry": "index-Dm2Mt71f.js",
+  "face": "939852e620 (lane/console-aud atop, docs-only merges since ed5527e7 build face)",
+  "viewport": "375x812",
+  "criteria": "per-element boundingRect right<=376 && left>=-1 (offscreen-left right<=1 exempt); fullPage shots",
+  "rows": [
+    {
+      "url": "/approvals",
+      "checked": 186,
+      "violCount": 0,
+      "viol": [],
+      "toggle": {
+        "present": true,
+        "visible": true,
+        "right": 122,
+        "left": 11,
+        "text": "筛选条件（无）"
+      },
+      "summaryRow": {
+        "present": true,
+        "visible": true,
+        "right": 353,
+        "left": 11,
+        "text": "汇总（与列表同源）：待办 —已批 —已拒 —高风险 —中风险 —低风险 —审批申"
+      },
+      "resetBtn": {
+        "present": true,
+        "visible": true,
+        "right": 73,
+        "left": 11,
+        "text": "重置筛选"
+      },
+      "searchEmpty": {
+        "present": false
+      },
+      "riskEmpty": {
+        "present": false
+      },
+      "panel": {
+        "present": false
+      },
+      "mainLen": 344,
+      "label": "v1-collapsed"
+    },
+    {
+      "url": "/approvals?q=nomatch-xyz",
+      "checked": 186,
+      "violCount": 0,
+      "viol": [],
+      "toggle": {
+        "present": true,
+        "visible": true,
+        "right": 116,
+        "left": 11,
+        "text": "筛选条件（1）"
+      },
+      "summaryRow": {
+        "present": true,
+        "visible": true,
+        "right": 353,
+        "left": 11,
+        "text": "汇总（与列表同源）：待办 —已批 —已拒 —高风险 —中风险 —低风险 —审批申"
+      },
+      "resetBtn": {
+        "present": true,
+        "visible": true,
+        "right": 101,
+        "left": 11,
+        "text": "重置筛选（1）"
+      },
+      "searchEmpty": {
+        "present": false
+      },
+      "riskEmpty": {
+        "present": false
+      },
+      "panel": {
+        "present": false
+      },
+      "mainLen": 347,
+      "label": "v2-search-empty"
+    },
+    {
+      "url": "/approvals",
+      "violCount": 0,
+      "viol": [],
+      "panelOpen": true,
+      "panelRight": 353,
+      "expanded": "true",
+      "label": "v3-expanded"
+    },
+    {
+      "url": "/approvals?risk=high",
+      "checked": 186,
+      "violCount": 0,
+      "viol": [],
+      "toggle": {
+        "present": true,
+        "visible": true,
+        "right": 116,
+        "left": 11,
+        "text": "筛选条件（1）"
+      },
+      "summaryRow": {
+        "present": true,
+        "visible": true,
+        "right": 353,
+        "left": 11,
+        "text": "汇总（与列表同源）：待办 —已批 —已拒 —高风险 —中风险 —低风险 —审批申"
+      },
+      "resetBtn": {
+        "present": true,
+        "visible": true,
+        "right": 101,
+        "left": 11,
+        "text": "重置筛选（1）"
+      },
+      "searchEmpty": {
+        "present": false
+      },
+      "riskEmpty": {
+        "present": false
+      },
+      "panel": {
+        "present": false
+      },
+      "mainLen": 347,
+      "label": "v4-risk-empty"
+    }
+  ]
+}
