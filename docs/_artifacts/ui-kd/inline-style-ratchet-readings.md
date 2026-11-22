@@ -1,6 +1,6 @@
 # 内联 style 棘轮门：读数是这份（A 车道，L0 令 §5 正向牙齿）
 
-- 判据：`grep -rn 'style={' web/src --include='*.tsx' | grep -v '\.test\.tsx'`，逐行计数。
+- 判据：`grep -rn 'style={{' web/src --include='*.tsx' | grep -v '\.test\.tsx'`，逐行计数。
 - 本笔现算总数：**65 处**（基线常量 65，来源脸 `1f078a8aed`）；`web/src/shell/console.tsx` = **0 处**（L4 已清，棘轮恒 0）。
 - 扫描面：`web/src` 下非测试 `.tsx` 共 **153** 个（含测试 525 个）；机检门 `web/src/components/ui/inline-style-ratchet.test.ts` 断言扫描面 >120 防走树失效假绿。
 
