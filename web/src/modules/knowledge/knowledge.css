@@ -1399,6 +1399,9 @@
   .knw5-seg button,
   button[data-testid$="-clear"] {
     position: relative;
+    /* 最小触控高兜底（L0 点单：375 下小触点 26-30px）。字号与内距一个像素都不动，
+       只补最小高；44 走 A 层令牌 --touch-target-ls，未接上时回落 rubric 的 44px。 */
+    min-block-size: var(--touch-target-ls, 44px);
   }
 
   .knw5-drill::after,

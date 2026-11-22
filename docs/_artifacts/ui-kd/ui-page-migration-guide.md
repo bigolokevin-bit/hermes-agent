@@ -9,22 +9,99 @@
 - 计算样式自证（同一 `#/knowledge`，登录态）：改前 9122（entry `index-DuhonhGE.js`）7 个 `-ls` 名全为空串；改后我的构建 9126（entry `index-Cm_kToHo.js`）`--space-ls-3=12px`、`--color-text-muted-ls=#ffe6cbad`、`--table-row-h-ls=40px`、`--focus-ring-ls=2px solid #ffe6cb`、`--font-size-ls-2=13px`、`--tabular-ls=tabular-nums`、`--z-ls-dropdown=60`，逐项等于其壳层同义值。
 
 ## 1. 页面只用 `-ls` 语义名（骨架原名禁止上页面）
-| 用途 | 用这个 | 不要再写 |
-|---|---|---|
-| 面色/面色抬升/凹陷 | `--color-bg-ls --color-surface-ls --color-surface-raised-ls --color-sunken-ls` | `#041c1c` 等十六进制、`--panel` |
-| 文字三级 | `--color-text-ls --color-text-muted-ls --color-text-subtle-ls`（更弱 `--color-text-faint-ls`） | `rgba(255,230,203,.68)`、`--fg-2` |
-| 描边三级 | `--color-border-subtle-ls --color-border-ls --color-border-strong-ls`、`--border-ls-1` | `1px solid rgba(…)` |
-| 语义色 | `--color-primary-ls --color-success-ls --color-warning-ls --color-danger-ls --color-info-ls` | `#4ade80`/`#ffbd38`/`#fb2c36` |
-| 间距 4-8-12-16-24-32 | `--space-ls-1/2/3/4/6/8` | 裸 px 间距 |
-| 字号阶梯 | `--font-size-ls-1..6`（表格正文 = `-2` 13px） | `0.76rem` 之类自造档 |
-| 行高/字重 | `--line-height-ls-1/2/3`、`--font-weight-ls-regular/medium`（600 禁） | `bold`、`1.45` |
-| 表格行高 | `--table-row-h-ls` 40 / `--table-row-h-compact-ls` 36（仅嵌入子表） | 自定义行高 |
-| 控件高度/命中区 | `--control-h-ls` 32 / `--control-h-inline-ls` 28 / `--control-h-dialog-ls` 36 / `--hit-min-ls` | 给钮补高（rubric E4） |
-| 数字对齐 | `font-variant-numeric: var(--tabular-ls)` | 只右对齐不等宽 |
-| 层级 | `--z-ls-sticky/dropdown/overlay/dialog` = 1/60/70/80 | 裸 `z-index: 9999` |
-| 动效 | `--duration-ls-fast/base/slow` + `--ease-ls-standard`（`prefers-reduced-motion` 已归零） | 写死 0.3s |
-| 焦点 | `outline: var(--focus-ring-ls); outline-offset: var(--focus-ring-offset-ls)` | `outline: none` |
-| 禁用 | `opacity: var(--opacity-disabled-ls)` | 改颜色假装禁用 |
+
+用法映射（先读这张，再查下面的全量令牌表）：
+
+
+
+> 下面这张表是机检门 `web/src/components/ui/token-source.test.ts` 的比对对象：左列必须与 `web/src/styles/tokens.css` 的 `-ls` 定义**逐项双向相等**，令牌加了不写表、或表里写了令牌没有，都会红。
+
+**面色、描边、焦点与禁用**
+
+| 令牌 | 真值 |
+|---|---|
+| `--border-ls-1` | `1px solid var(--color-border-subtle-ls)` |
+| `--border-strong-ls` | `1px solid var(--color-border-ls)` |
+| `--color-bg-ls` | `--bg`（=#041c1c） |
+| `--color-border-ls` | `--line-2`（=rgba(255,230,203,.30)） |
+| `--color-border-strong-ls` | `--line-strong`（=rgba(255,230,203,.40)） |
+| `--color-border-subtle-ls` | `--line`（=rgba(255,230,203,.14)） |
+| `--color-danger-ls` | `--bad`（=#fb2c36） |
+| `--color-info-ls` | `--info`（=#7fb3c8） |
+| `--color-primary-inactive-ls` | `--fg-3`（=#9aa49e） |
+| `--color-primary-ls` | `--fg`（=#ffe6cb） |
+| `--color-success-ls` | `--ok`（=#4ade80） |
+| `--color-sunken-ls` | `--sunk`（=#03181a） |
+| `--color-surface-ls` | `--panel`（=#061f1f） |
+| `--color-surface-raised-ls` | `--panel-2`（=#082424） |
+| `--color-text-faint-ls` | `--fg-4`（=#8d9791） |
+| `--color-text-ls` | `--fg`（=#ffe6cb） |
+| `--color-text-muted-ls` | `--fg-2`（=rgba(255,230,203,.68)） |
+| `--color-text-subtle-ls` | `--fg-3`（=#9aa49e） |
+| `--color-warning-ls` | `--warn`（=#ffbd38） |
+| `--focus-ring-ls` | `2px solid var(--color-primary-ls)` |
+| `--focus-ring-offset-ls` | `2px` |
+| `--opacity-disabled-ls` | `0.56` |
+
+**字体与排版**
+
+| 令牌 | 真值 |
+|---|---|
+| `--font-family-mono-ls` | `--mono`（=ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace） |
+| `--font-family-sans-ls` | `--sans`（=-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,"Segoe UI",sans-serif） |
+| `--font-size-ls-1` | `12px` |
+| `--font-size-ls-2` | `13px` |
+| `--font-size-ls-3` | `14px` |
+| `--font-size-ls-4` | `16px` |
+| `--font-size-ls-5` | `20px` |
+| `--font-size-ls-6` | `24px` |
+| `--font-weight-ls-medium` | `500` |
+| `--font-weight-ls-regular` | `400` |
+| `--line-height-ls-1` | `1.25` |
+| `--line-height-ls-2` | `1.4` |
+| `--line-height-ls-3` | `1.5` |
+| `--tabular-ls` | `tabular-nums` |
+
+**间距、控件尺寸与表格行高**
+
+| 令牌 | 真值 |
+|---|---|
+| `--control-h-dialog-ls` | `36px` |
+| `--control-h-inline-ls` | `28px` |
+| `--control-h-ls` | `32px` |
+| `--hit-min-ls` | `32px` |
+| `--radius-ls-1` | `4px` |
+| `--radius-ls-2` | `8px` |
+| `--radius-ls-3` | `12px` |
+| `--space-ls-1` | `4px` |
+| `--space-ls-2` | `8px` |
+| `--space-ls-3` | `12px` |
+| `--space-ls-4` | `16px` |
+| `--space-ls-6` | `24px` |
+| `--space-ls-8` | `32px` |
+| `--table-row-h-compact-ls` | `36px` |
+| `--table-row-h-ls` | `40px` |
+
+**层级与动效**
+
+| 令牌 | 真值 |
+|---|---|
+| `--duration-ls-base` | `200ms` |
+| `--duration-ls-fast` | `120ms` |
+| `--duration-ls-none` | `0ms` |
+| `--duration-ls-slow` | `320ms` |
+| `--ease-ls-standard` | `cubic-bezier(0.2, 0.8, 0.2, 1)` |
+| `--z-ls-dialog` | `80` |
+| `--z-ls-dropdown` | `60` |
+| `--z-ls-overlay` | `70` |
+| `--z-ls-sticky` | `1` |
+
+**阴影**
+
+| 令牌 | 真值 |
+|---|---|
+| `--shadow-ls-1` | `0 1px 2px rgb(0 0 0 / 40%)` |
+| `--shadow-ls-2` | `0 12px 32px rgb(0 0 0 / 55%)` |
 
 ## 2. 四类脏写法的替换映射（L0 盘上现查计数）
 | 旧写法 | 计数 | 换成 |

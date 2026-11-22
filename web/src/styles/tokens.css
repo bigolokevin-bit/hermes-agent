@@ -50,6 +50,8 @@
   /* 层级：此前 60/70/80 以魔法数散落在页面 CSS */
   --z-ls-sticky: 1; --z-ls-dropdown: 60; --z-ls-overlay: 70; --z-ls-dialog: 80;
   /* 动效 */
+  /* 零动效档：页面要「关掉过渡」时用它，禁在页面里写裸 0ms。 */
+  --duration-ls-none: 0ms;
   --duration-ls-fast: 120ms; --duration-ls-base: 200ms; --duration-ls-slow: 320ms;
   --ease-ls-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
   /* 焦点：2px 主色 + 2px 偏移，禁 outline:none */
@@ -58,7 +60,7 @@
 }
 /* 减少动效偏好：只把时长归零，颜色与几何不动。 */
 @media (prefers-reduced-motion: reduce) {
-  :root { --duration-ls-fast: 0ms; --duration-ls-base: 0ms; --duration-ls-slow: 0ms; }
+  :root { --duration-ls-none: 0ms; --duration-ls-fast: 0ms; --duration-ls-base: 0ms; --duration-ls-slow: 0ms; }
 }
 
 /* ============================================================================
