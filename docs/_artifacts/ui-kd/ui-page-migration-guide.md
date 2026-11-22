@@ -140,3 +140,42 @@ import { UiButton, UiInput, UiTextarea, UiSelect, UiTable, StateBlock,
 
 ## 6. 谁迁哪些页（裁决③：我不改页面）
 基元与令牌由我维护；页面 owner 在各自写域迁移，一次一页一笔，迁完贴 branch+sha+一行读数。迁移后门禁必须跑：该模块 vitest 腿 + `vite build` rc=0 + 375 逐元素 `boundingRect.right<=376 && left>=-1` 自证。**页面撞到基元缺能力 = A 的缺口**，报我按 ① 的写域补 `web/src/components/ui/**`，不要在页面里手搓绕过。
+
+### 6.1 屏面 16 进制色现查清单（脸 `facff767e0`，2026-11-23 重测）
+
+判据：`grep -rlE '#[0-9a-fA-F]{6}\b' web/src --include='*.tsx'` → **11 文件 / 36 处**。
+关键事实：**`web/src/modules/**` 命中 0** —— 32 个控制台模块页已经不含 6 位裸色；
+剩下的全在旧聊天/外壳面与主题注册表，所以「按模块页派 owner」这一刀其实没有活，
+真正要派的是下面这几处。
+
+| 文件 | 处数 | 迁移归属与写法 |
+|---|---|---|
+| `web/src/components/HermesConsoleModal.tsx` | 19 | 控制台外壳弹窗（非模块页），单列一刀，换 `--color-*-ls` |
+| `web/src/pages/ChatPage.tsx` | 3 | 旧聊天面，随聊天壳一起迁 |
+| `web/src/components/ChatSidebar.test.tsx` | 3 | 断言里写死了色值，须与源文件同笔改 |
+| `web/src/themes/context.tsx` | 2 | 主题注册表：色值的合法出口，改这里而不是各页面 |
+| `web/src/pages/ModelsPage.tsx` | 2 | 旧模型面 |
+| `web/src/components/ChatSidebar.tsx` | 2 | 旧聊天侧栏 |
+| `web/src/pages/SystemPage.tsx` | 1 | 旧系统面 |
+| `web/src/pages/ChannelsPage.tsx` | 1 | 旧渠道面 |
+| `web/src/pages/ChannelsRelayLink.tsx` | 1 | 旧渠道中继 |
+| `web/src/pages/ChatPage.test.tsx` | 1 | 同 ChatPage 的测试断言 |
+| `web/src/pages/ChatPage.a11y.test.tsx` | 1 | 同 ChatPage 的无障碍断言 |
+
+更正（担责）：我早前一轮给过一份以 `modules/…` 为主的 11 文件清单，那份计数取自被并窗打断的中间态，
+**作废**，以本表为准。另注：`8 位 #RRGGBBAA` 另有 2 处，其中 1 处在
+`web/src/modules/employees/EmployeesModulePage.tsx`，不算本判据命中，但同属待清硬编码色。
+
+## 7. 冻结线后的令牌变更（硬流程，L0 令）
+
+冻结线：**2026-11-23T20:57+08:00**（= 接线笔 `b2905d5dfc` 提交时刻 +24h）。此后：
+
+1. **任何令牌增名 / 改名 / 改真值**：页面 owner 不得自改 `web/src/styles/tokens.css`，也不得自改本文件的契约名表；
+   先提 L0，由 L0 并窗评审后统一落笔（写域仍只 `web/src/styles/**` + `web/src/components/ui/**`）。
+2. 落笔固定三处同改，缺一即红：`web/src/styles/tokens.css` 定义 → 本文件 §1 契约名表补一行（含真值）
+   → 引用它的 `ui.css` / 基元。机检门 `web/src/components/ui/token-source.test.ts` 戊 项做双向核对：
+   令牌加了不写表 → 红（计数不等）；表写了令牌没有 → 红（孤行清单非空）。
+3. 改名视同一删一增：先加新名并把引用迁完，下一次并窗再删旧名。禁一次性改名——32 页并行必撞。
+4. 拿不准命名就贴用例给 L0 定名；**不要**在页面里写 `var(--x, 兜底值)` 造私有名，
+   兜底值正是机检门要消灭的「页面自造尺寸」。
+5. 冻结线前的唯一例外是 `--duration-ls-none`（L0 点单补的零动效档），走的也是同一条并窗路径。
