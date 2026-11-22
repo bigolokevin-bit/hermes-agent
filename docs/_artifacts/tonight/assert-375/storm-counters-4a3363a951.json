@@ -1,0 +1,58 @@
+{
+  "port": 9122,
+  "entry": "assets/index-CCLAG-mZ.js",
+  "face": "4a3363a951",
+  "at": "2026-11-22T10:54:07.271Z",
+  "windows": "6s/12s domcontentloaded+no networkidle",
+  "baselineWave140": "sessions 401x1308 nav x2488 total 79453 req/15s",
+  "routes": {
+    "#/sessions": {
+      "w1": {
+        "nav": 267,
+        "http401": 789,
+        "whoamiAborted": 263,
+        "failed": 263,
+        "total": 8324
+      },
+      "w2": {
+        "nav": 527,
+        "http401": 1570,
+        "whoamiAborted": 523,
+        "failed": 523,
+        "total": 16597
+      },
+      "delta": {
+        "nav": 260,
+        "http401": 781,
+        "whoamiAborted": 260,
+        "failed": 260,
+        "total": 8273
+      },
+      "mainLen": 1
+    },
+    "#/capabilities?tab=channels": {
+      "w1": {
+        "nav": 247,
+        "http401": 1225,
+        "whoamiAborted": 243,
+        "failed": 573,
+        "total": 7159
+      },
+      "w2": {
+        "nav": 484,
+        "http401": 2411,
+        "whoamiAborted": 480,
+        "failed": 1134,
+        "total": 14103
+      },
+      "delta": {
+        "nav": 237,
+        "http401": 1186,
+        "whoamiAborted": 237,
+        "failed": 561,
+        "total": 6944
+      },
+      "mainLen": 10
+    }
+  }
+}

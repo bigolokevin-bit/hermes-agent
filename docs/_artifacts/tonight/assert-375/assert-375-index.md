@@ -185,3 +185,11 @@ matrix(#/employees?tab=matrix) present=true ok=true
 - #/system 对账：UI-KD 221/29(sys3+sys6) vs 本道 255/0——sys3-table 现脸已不在 #/system 渲染路径（280620158d 密度重构；HealthPage 单测仍钉其选择器），sys6-scroll 默认折叠 display:none ⇒ 对象不在场而非分流吞判；在场地证=matrix 门 in38/out0 + 牙齿 out1/FAIL。RAW=system-census-151.json。
 - criteria 已写明 scrollOverflowCount 退出判红依据＝UI-RUBRIC「表格除外且须有容器内滚动」。
 - 纪律：375 判据项维持 claimed 不销账；375 总 PASS 禁（51/49/0/NM2，channels 新面反成 45s 旁路超时失分页 main=10 如实）；判据阈值未动。
+
+## wave-152 重建+两路首次读数+缺失反证+风暴计数复验 @4a3363a951（端口9122/entry index-CCLAG-mZ.js）
+
+- 重建：vite build VITE=0 18:47:20（晚定脸 18:43:30 3分50秒，无抢跑）；entry index-CCLAG-mZ.js 172800B sha256 0ac0f3322e58956ef2a1ce61e8c815d180ae3e9dec1137a8d3dfd5fc0ce9868f served==disk MATCH；主 css index-DLpXaUuB.css 未换代 MATCH；静态 v4_proxy 按请求读盘无需重启。
+- ②(a) 点名两路首次逐元素读数：#/capabilities?tab=channels PASS viol=0（out0/in0 elems=87 main=10）；#/sessions PASS viol=0（out0/in0 elems=86 main=10）；main=10=骨架/门控壳面如实；RAW=w152-nm-reroll-summary.json/-index.md+2帧。
+- ②(b) 风暴计数复验判据未达（如实，禁粉饰）：sessions 6s 窗 401=789/framenavigated=267/total=8324，12s 窗 delta 401=781/nav=260/total=8273——线性增长未止；channels delta 401=1186/nav=237/total=6944。401 三闸后截图/读数腿通了，环本身未闸住，归 L0/ui-b 复处；本轮不再刷。RAW=storm-counters-4a3363a951.json。
+- ③ 缺失反证：ASSERT375_BREAK_FIELD=1 下 #/knowledge 族 7/7 行落 NOT_MEASURED+navError=criteria-field-missing: violOutsideShell not numeric（两梯子同口径），禁静默 PASS 实证。RAW=crit152-breakfield-proof.json（其 NM 行不并入台账行）。
+- 纪律：counts 重算 51/0/0（exitCode=0 仅行算术），375 总 PASS 宣称仍归 L0 销账；sessions/channels 改判 PASS 仅限逐元素维度；判据阈值未动；51 路其余行未重扫沿用历面。
