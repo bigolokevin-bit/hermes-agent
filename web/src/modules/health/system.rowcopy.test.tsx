@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { act } from "react";
+import { readFileSync } from "node:fs";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -234,5 +235,44 @@ describe("sys row copy on the health table", () => {
       "控制台服务(BFF) · 12 ms · 2026-11-19 23:17 · 正常",
     );
     expect(calls()).toBe(before);
+  });
+});
+
+describe("sys row copy sticky rail (buglist P0-5)", () => {
+  beforeEach(() => {
+    fetchJSON.mockImplementation((url: string) => {
+      const key = keyOf(url);
+      return Promise.resolve(key === "health" ? HEALTH_STAMPED : PROBES[key]);
+    });
+  });
+
+  it("keeps the copy cells on the classes the css pins to the scroll shell", async () => {
+    await render();
+    await waitFor(() => !!q("sys3-table"), "table");
+
+    // Header corner cell: the 6th th, carrying the class the sticky rule hooks.
+    const heads = Array.from(container.querySelectorAll(".sys3-table thead th"));
+    expect(heads).toHaveLength(6);
+    expect(heads[5]?.className).toContain("sys-row-copy-head");
+
+    // Every data row's final cell carries the rail class and holds the copy button.
+    const rows = Array.from(container.querySelectorAll("tbody tr.sys3-row"));
+    expect(rows).toHaveLength(3);
+    for (const [index, row] of rows.entries()) {
+      const cells = row.querySelectorAll("td");
+      const last = cells[cells.length - 1];
+      expect(last?.className).toContain("sys-row-copy-cell");
+      expect(last?.querySelector(`[data-testid="sys-row-copy-${index}"]`)).not.toBeNull();
+    }
+  });
+
+  it("pins that rail to the right edge of the scroll shell in health.css", () => {
+    const css = readFileSync(`${process.cwd()}/src/modules/health/health.css`, "utf8");
+    // Opaque cell pinned right so sliding columns never show through.
+    expect(css).toMatch(/\.sys-row-copy-cell\s*\{[^}]*position: sticky;[^}]*right: 0;[^}]*z-index: 1;[^}]*background: var\(--color-card\);/);
+    // Corner cell stacks above both sticky axes (thead th sticks at z-index 0).
+    expect(css).toMatch(/\.sys3-table thead \.sys-row-copy-head\s*\{[^}]*position: sticky;[^}]*right: 0;[^}]*z-index: 2;/);
+    // The ≤720 right-edge fade would mask the pinned rail itself — it must stay gone.
+    expect(css).not.toMatch(/\.sys3-scroll\s*\{[^}]*mask-image/);
   });
 });
