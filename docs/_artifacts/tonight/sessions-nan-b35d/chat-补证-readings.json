@@ -1,0 +1,48 @@
+{
+  "port": 9122,
+  "entry": "index-kWaJfTXV",
+  "face": "21c276dd0b",
+  "method": "浏览器内 whoami==200 紧贴截帧前断言；storageState cookie 域改写 127.0.0.1 注入（urllib 先证 token 活）；live 不成则 VG 桩（route 拦截 /agent-api/api/sessions 喂缺值行）",
+  "at": "2026-11-22T19:41:25.296Z",
+  "urllibWhoami": 200,
+  "shots": [
+    {
+      "name": "1440",
+      "viewport": "1440x900",
+      "mode": "live",
+      "whoamiPre": 200,
+      "whoamiAtShot": 200,
+      "mainNaN": 0,
+      "bodyNaN": 0,
+      "ageCount": 0,
+      "ageNaN": 0,
+      "agesWithDash": 0,
+      "rowTextNaN": 0,
+      "loadingSkeleton": false,
+      "mainLen": 225,
+      "png": "chat-1440.png",
+      "jsErrors": [],
+      "res4xx": [],
+      "at": "2026-11-22T19:41:26.422Z"
+    },
+    {
+      "name": "375",
+      "viewport": "375x812",
+      "mode": "live",
+      "whoamiPre": 200,
+      "whoamiAtShot": 200,
+      "mainNaN": 0,
+      "bodyNaN": 0,
+      "ageCount": 1,
+      "ageNaN": 0,
+      "agesWithDash": 1,
+      "rowTextNaN": 0,
+      "loadingSkeleton": false,
+      "mainLen": 0,
+      "png": "chat-375.png",
+      "jsErrors": [],
+      "res4xx": [],
+      "at": "2026-11-22T19:41:27.200Z"
+    }
+  ]
+}

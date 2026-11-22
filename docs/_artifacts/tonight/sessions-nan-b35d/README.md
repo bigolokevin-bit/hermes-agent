@@ -16,3 +16,11 @@
 - 缺值行可现性（L0 条款「若此刻无缺值行可现，如实记 rows 读数与不可现原因即闭」）：sessions 页与聊天侧栏 rows=0 均因数据端点 401（jsErrors/res4xx=6/6 与 11/11，全部 401 Failed-to-load-resource，属既有「鉴权外业务端点面」residual401Source156/themeConsoleErrorAudit166 归因，非新增面）；无缺值行可现，判据在可见文本范围内 NaN=0 成立。
 - 幻影纪律：本文件所有数字均为当拍磁盘/浏览器实测序列化（readings.json 同目录），无引用任何未经磁盘证实的历史 sha/读数。
 - 全量 vitest 归 L0 亲验基线（487 files/3596 tests），本车道未自跑。
+
+## 补证轮（L0 wave-171 判定后，chat 腿）
+- 根因：storageState cookie 域=100.117.184.117，浏览器打 127.0.0.1 页面不带 cookie ⇒ 旧 chat-path 拍（mainLen=15『⠋ Loading chat…』、res4xxSample=[401 /auth/whoami]）=未登录伪像，**作废不作数**（原帧仍在册仅供对照）。
+- 正解形制：token 不动、仅把 cookie 域改写为 127.0.0.1 注入浏览器（urllib 带 cookie 头 whoami=200 先证 token 活）；每次截帧前在浏览器内 `await fetch('/auth/whoami').then(r=>r.status)` 紧贴断言。
+- 读数（chat-补证-readings.json + chat-1440.png / chat-375.png）：
+  - 1440x900：whoamiPre=200、whoamiAtShot=200、mode=live、实渲非骨架（loadingSkeleton=false）、jsErrors=0、4xx=0；ageCount=0（侧栏无行）⇒ 按『空态平凡真、覆盖不足』如实记，main/body/row NaN=0。
+  - 375x812：whoamiPre=200、whoamiAtShot=200、mode=live、**ChatSessionList 真渲 1 行且 last_active 缺值落「—」**（ageCount=1、agesWithDash=1）、ageNaN=0、main/body/row NaN 全 0、jsErrors=0、4xx=0 ⇒ 缺值行上屏路径拿到真证据，无需 VG 桩。
+- 判据串沿用：『DOM 文本中 NaN 出现次数=0（main.innerText 与 document.body.innerText 双计，逐行元素 textContent 含 NaN 计数=0）』；端口 9122 / entry index-kWaJfTXV.js / 脸 21c276dd0b。
