@@ -54,6 +54,18 @@ const KNOWLEDGE_PANEL_TO_TAB: Record<KnowledgePanel, KnowledgeTabId> = {
 const FOREIGN_TAB = 'evidence';
 
 /**
+ * 只读访问器（L0 裁定：壳侧需要同一张表时从本模块取，不再复制 KNOWLEDGE_PANELS 与
+ * KNOWLEDGE_PANEL_TO_TAB）。传地址上的原始值即可——`panel=` 或 `tab=` 的别名都认；
+ * 不是本模块的面板就返回 null。纯函数：不读不写 history。
+ */
+export function knowledgeOuterTab(raw: string | null | undefined): KnowledgeTabId | null {
+  const panel = panelOf(null, raw ?? null);
+  return panel !== null && Object.prototype.hasOwnProperty.call(KNOWLEDGE_PANEL_TO_TAB, panel)
+    ? KNOWLEDGE_PANEL_TO_TAB[panel]
+    : null;
+}
+
+/**
  * rewrite the address without ever risking the boot. A document that is still
  * settling its own history entry can reject `replaceState` carrying the previous
  * entry's state; that must not take the app down, because the page itself also

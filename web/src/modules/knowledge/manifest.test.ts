@@ -107,3 +107,35 @@ describe('knowledge deep-link boot normalisation', () => {
     expect(window.location.hash).toBe('#/employees?tab=matrix');
   });
 });
+
+describe('knowledge panel truth table accessors', () => {
+  // L0 裁定：壳侧要同一张表时从本模块取，不再复制 KNOWLEDGE_PANEL_TO_TAB。
+  it('answers the owning outer tab for a raw address value', async () => {
+    const { knowledgeOuterTab } = await import('./manifest');
+    expect(knowledgeOuterTab('ingest')).toBe('sources');
+    expect(knowledgeOuterTab('sources')).toBe('sources');
+    expect(knowledgeOuterTab('spaces')).toBe('spaces');
+    expect(knowledgeOuterTab('scope')).toBe('spaces');
+    expect(knowledgeOuterTab('retrieval')).toBe('spaces');
+    expect(knowledgeOuterTab('search')).toBe('spaces');
+    expect(knowledgeOuterTab('evidence')).toBe('spaces');
+    expect(knowledgeOuterTab('citations')).toBe('spaces');
+  });
+
+  it('answers null for anything that is not this module panel', async () => {
+    const { knowledgeOuterTab } = await import('./manifest');
+    expect(knowledgeOuterTab('approvals')).toBeNull();
+    expect(knowledgeOuterTab('')).toBeNull();
+    expect(knowledgeOuterTab(null)).toBeNull();
+    expect(knowledgeOuterTab(undefined)).toBeNull();
+    // 原型链上的键不算面板（constructor 会取到 Object 构造函数）
+    expect(knowledgeOuterTab('constructor')).toBeNull();
+  });
+
+  it('is read-only: it never rewrites the address', async () => {
+    const { knowledgeOuterTab } = await import('./manifest');
+    const before = window.location.search;
+    knowledgeOuterTab('ingest');
+    expect(window.location.search).toBe(before);
+  });
+});
