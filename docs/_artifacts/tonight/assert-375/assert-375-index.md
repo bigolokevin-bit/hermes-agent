@@ -105,3 +105,13 @@ matrix(#/employees?tab=matrix) present=true ok=true
 ## wave-139 点名 @4a654bba/e808d90e 面（端口 9122 / entry index-DiNZbuB-.js）
 - 员工详情 zone 链接：z1 ?zone=tasks&panel=retrieval&state=error&rid → 五枚 zone 链接全剥 panel、state/rid 保留、tab/view 零泄漏、tasks 高亮、viol=0（直访 URL 本身保留 panel，剥离在链接生成侧）；z2 config 同判干净；z3 仅 panel → 链接全剥、不强加 state/rid。RAW=highlight-zone-4a654bba.json + 帧 z1/z2/z3-*.png。
 - counts 保持 49/0/2（51 路未重扫）；构建脸 4a654bba，tip e808d90e32 纯测试未重建；375 总 PASS 禁宣称。
+
+## wave-141 channels 归因 @2610339ddf（端口 9122 / entry index-DiNZbuB-.js）
+- 判定：同族 401 鉴权环（api401=2373、api200=0、whoami aborted=586、framenavigated=590、main 震荡复位），与 sessions 同一请求风暴族；screenshot 45s waiting-for-fonts 为 CPU/CDP 饿死副作用，非独立字体缺陷。
+- 有界：未再试第三轮截图（per L0 令）；counts 维持 49/0/2；RAW=capabilities-channels-attribution-2610339d.json。
+
+## wave-142 定脸 @ed5527e718（端口 9122 / entry index-Dm2Mt71f.js）
+- H2 重建读数：entry Dm2Mt71f 172750B sha256 6446ec8c…，mtime 08:58:18，served==disk 双 MATCH；CSS DLpXaUuB 未换代。取证时 tip=3dd9ffb754（wave-138 #3 纯 docs，产品与定脸一致）。
+- matrix real-gate（7aed14a6）点名重跑：PASS viol=0 main=213 pngH=812（rerollFace=ed5527e7，历面链保留）。
+- knowledge 冷链三态+四态共存：全 viol=0、panel 只留属主 href、state/rid 保留（RAW=highlight-tristate-ed5527e7.json/coex-ed5527e7.json+8 帧）。
+- 纪律：51 路未重扫，49 首轮保留；sessions/channels 两路 NM 未改判；375 总 PASS 未宣称。

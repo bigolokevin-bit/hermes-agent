@@ -526,6 +526,38 @@
         "targetHeight": null,
         "fontBypass": false,
         "verdict": "NOT_MEASURED"
+      },
+      "disposition140": {
+        "at": "2026-11-22 07:51-07:54 @2610339ddf 面 有界单轮点名重跑",
+        "result": "NOT_MEASURED 再现（pass=0 fail=0 notMeasured=1）",
+        "deadCause": "font-bypass（abort .woff/.ttf/.otf/.eot）之后 page.screenshot 仍在 waiting for fonts 45000ms 超时，png=0B；本轮 main=10 骨架、elementsChecked=87 violCount=0（探针可达，截图腿不可达）",
+        "reproCmd": "cd /Users/kevin_studio/Projects/forks/hermes-agent && node web/scripts/assert-375.mjs --base=http://127.0.0.1:9122 --auth-state=$HOME/.local/state/sekoi-ops/ui-qa-auth-state.json --out=/tmp/d-w140-ch --only-routes='#/capabilities?tab=channels'",
+        "noMoreRetries": true
+      },
+      "disposition141": {
+        "at": "2026-11-22 08:01",
+        "question": "L0: 同族 401 环？",
+        "verdict": "同族 401 鉴权环：15s 内 api401=2373、api200=0、/auth/whoami aborted=586/587、framenavigated=590、main 在 0/10/113/-1/err 间震荡复位——与 sessions 同一请求风暴族；screenshot 45s waiting-for-fonts 超时是 CPU/CDP 饿死的副作用，非独立字体缺陷。端口 9122 / entry index-DiNZbuB-.js。",
+        "evidence": {
+          "total": 17834,
+          "api401": 2373,
+          "api200": 0,
+          "whoamiReq": 587,
+          "whoamiAborted": 586,
+          "nav": null,
+          "failed": null,
+          "mainUnique": [
+            "0",
+            "10",
+            "113",
+            "-1",
+            "err"
+          ]
+        },
+        "port": 9122,
+        "entry": "assets/index-DiNZbuB-.js",
+        "raw": "capabilities-channels-attribution-2610339d.json",
+        "noMoreRounds": true
       }
     },
     {
@@ -673,7 +705,7 @@
       "domOverflowPx": 0,
       "fontBypass": false,
       "consoleErrorsProduct": 0,
-      "rerollFace": "4a654bba",
+      "rerollFace": "ed5527e7",
       "prevFaceSnapshot": {
         "verdict": "PASS",
         "violCount": 0,
@@ -682,11 +714,19 @@
         "pngBytes": 52807,
         "rerollFace": "6edcba4d"
       },
-      "faceNote": "4a654bba 点名重跑（manifest 冷链归一入面后复测）PASS viol=0 main=213；历面读数按 firstRunRow/链保留",
+      "faceNote": "ed5527e718 matrix real-gate markers（7aed14a6）点名重跑：PASS viol=0 main=213 pngH=812；历面链保留",
       "faceSnapshotChain": [
         {
           "face": "a382334c",
           "verdict": "PASS"
+        }
+      ],
+      "prevMatrixSnapshots": [
+        {
+          "rerollFace": "4a654bba",
+          "pngH": 812,
+          "mainTextLen": 213,
+          "violCount": 0
         }
       ]
     },
@@ -1672,6 +1712,39 @@
           "fontBypass": true,
           "contentFit": true
         }
+      },
+      "attribution140": {
+        "at": "2026-11-22 07:55-07:56 @2610339ddf 面 单轮归因探针（端口9122 entry index-DiNZbuB-.js）",
+        "verdict": "渲染门未开（鉴权重定向环），不是数据口慢：api/sessions 请求确实发出并回 401 共 1308 次，/auth/whoami 被导航打断 ERR_ABORTED 2484 次、framenavigated 2488 次、15s 内总请求 79453（约 5300/s）；main 在 10/1 字符间反复复位=骨架被环重置",
+        "screenshotSideEffect": "page.screenshot 45s 超时是该请求风暴饿死 CPU/CDP 的副作用（fullPage 尝试仍败）",
+        "evidence": {
+          "apiSessionsStatusCounts": [
+            [
+              [
+                "api/sessions",
+                401
+              ],
+              1308
+            ]
+          ],
+          "whoamiAborted": 2484,
+          "sessionsApiAborted": 2,
+          "navigations": 2488,
+          "totalRequests": 79453,
+          "finalMainLen": 10,
+          "mainSamplesHead": [
+            10,
+            10,
+            10,
+            10,
+            10,
+            10,
+            -2,
+            10
+          ]
+        },
+        "rawFullPath": "/tmp/d-w140-sessions.json",
+        "noMoreRetries": true
       }
     },
     {
@@ -2082,14 +2155,14 @@
     }
   ],
   "rerollNote": "点名重跑 sessions/channels/models @d2cc49fe 面（L0②）：sessions 转 PASS（fb+fit，PNG 入账）、models PASS；channels 新面反成失分页（45s 旁路超时、main=10、viol 数据不可得）记 NOT_MEASURED 逐条 navError 入账，首轮 6586df6b 读数存 firstRunRow（L0①其余 48 路保留首轮）",
-  "headHash": "2610339d",
-  "entry": "assets/index-DiNZbuB-.js",
-  "entrySha256": "2f6c6c38b92f321eb058077ccb719a2a7b139a4a0c4351ae20ddd821475c657b",
-  "entryBytes": 172616,
+  "headHash": "ed5527e7",
+  "entry": "assets/index-Dm2Mt71f.js",
+  "entrySha256": "6446ec8c290a71e2ccd0c16c9a0983d1eac08c16146f61a44ef5ad255c0bf114",
+  "entryBytes": 172750,
   "css": "assets/index-DLpXaUuB.css",
   "cssSha256": "13a111877909a0a34aa08f54c6635f795fb77351f3ebef339d42d5926fd0a0dc",
   "cssBytes": 146491,
-  "servedEntryAfter": "index-DiNZbuB-.js",
+  "servedEntryAfter": "index-Dm2Mt71f.js",
   "servedCssAfter": "index-DLpXaUuB.css",
   "criteriaNote": "旧 document 级 375 全绿作废不入账（L0③）；本代 375 承者=assert-375 逐元素判据+视口加高取图腿+字体等待旁路复测；channels=点名重跑合入 PASS（首轮读数存 firstRunRow）；sessions=真 NOT MEASURED：45s 旁路仍 screenshot 超时，逐条 navError 入账",
   "stampNote": "wave-129 6586df6b 本代新跑（非沿用）",
@@ -2107,7 +2180,7 @@
     "6edcba4d",
     "947db917"
   ],
-  "entryGenChain": "BuZxlyEv(03fcc769)→DJUfcxXn(196f19fd)→CBCiEYq3(0a258f7b)→3Opmhawd(35115d74/6edcba4d)→DyjS0EIp(01c52e91)→D7HvX3yl(a382334c, 947db917 门入面实测换代)→D7HvX3yl(a382334c)→6BxjN-jw(4705edea)",
+  "entryGenChain": "BuZxlyEv(03fcc769)→DJUfcxXn(196f19fd)→CBCiEYq3(0a258f7b)→3Opmhawd(35115d74/6edcba4d)→DyjS0EIp(01c52e91)→D7HvX3yl(a382334c, 947db917 门入面实测换代)→D7HvX3yl(a382334c)→6BxjN-jw(4705edea)→Dm2Mt71f(ed5527e718, manifest+matrix 产品码入面, 构建 08:58:18 VITE=0, served==disk 双 MATCH)",
   "pureTestCommitVerdicts": {
     "01c52e91": "refactor(shell) 改 console.tsx 代码→entry 换代 DyjS0EIp 已实测；非纯测试",
     "d2646540": "test(shell) 单文件 217+ 纯测试→不改 entry 字节，明确判词",
@@ -2122,7 +2195,7 @@
     "raw": "coex-4a654bba.json",
     "priorFace": "coex-4705edea.json"
   },
-  "entryMtime": "2026-11-22 06:56:17",
+  "entryMtime": "2026-11-22 08:58:18",
   "outerTabHighlightTriState": {
     "face": "4a654bba",
     "panelIngest": "pane+selected=sources，selected href 含 panel=ingest+state+rid，其余 tab href 无 panel=（viol0 main74）",
@@ -2484,5 +2557,98 @@
     ]
   },
   "waveNote139": "wave-139 点名员工详情 zone 链接（01c52e91 一保留律属主裁决）+ shots 腿；51 路未重扫 counts 保持；构建脸 4a654bba，tip e808d90e32 纯测试未重建（L0 认定，diff 仅 routeContract.test.ts）",
-  "faceChainNote": "读数脸 4a654bba（构建脸，e808d90e32/2610339ddf 均纯测试未重建）；headHash 对齐盖章脸 2610339ddf"
+  "faceChainNote": "读数脸 4a654bba（构建脸，e808d90e32/2610339ddf 均纯测试未重建）；headHash 对齐盖章脸 2610339ddf",
+  "nmDispositions140": {
+    "channels": "死因+复现命令已写入行 disposition140；有界单轮，不再刷",
+    "sessions": "归因=渲染门未开（鉴权环+请求风暴），非数据口慢；证据计数入行 attribution140",
+    "channelsAttribution141": "同族 401 鉴权环：15s 内 api401=2373、api200=0、/auth/whoami aborted=586/587、framenavigated=590、main 在 0/10/113/-1/err 间震荡复位——与 sessions 同一请求风暴族；screenshot 45s waiting-for-fonts 超时是 CPU/CDP 饿死的副作用，非独立字体缺陷。端口 9122 / entry index-DiNZbuB-.js。"
+  },
+  "faceNote142": "定脸 ed5527e718（wave-138 #1 bb6e038d62 knowledgeOuterTab+manifest / #2 7aed14a6 matrix real-gate）；取证时远端 tip=3dd9ffb754（wave-138 #3 纯 docs bundle，产品码与 ed5527e718 一致，diff 仅 docs/_artifacts/gates/**），构建于 HEAD=3dd9ffb754 同产物脸",
+  "knowledgeColdChain142": {
+    "face": "ed5527e7",
+    "port": 9122,
+    "entry": "index-Dm2Mt71f.js",
+    "raw": "highlight-tristate-ed5527e7.json",
+    "readings": {
+      "a-panel-ingest": {
+        "url": "/knowledge?panel=ingest&state=error&rid=abc12345",
+        "viol": 0,
+        "mainLen": 74,
+        "selectedOwner": [
+          [
+            "sources",
+            "/knowledge?tab=sources&state=error&rid=abc12345&panel=ingest"
+          ]
+        ]
+      },
+      "b-panel-retrieval": {
+        "url": "/knowledge?panel=retrieval&state=error",
+        "viol": 0,
+        "mainLen": 79,
+        "selectedOwner": [
+          [
+            "spaces",
+            "/knowledge?state=error&panel=retrieval"
+          ]
+        ]
+      },
+      "c-no-panel": {
+        "url": "/knowledge?state=ready",
+        "viol": 0,
+        "mainLen": 533,
+        "selectedOwner": [
+          [
+            "spaces",
+            "/knowledge?state=ready"
+          ]
+        ]
+      },
+      "coex-loading": {
+        "url": "/knowledge?panel=retrieval&state=loading&rid=abc12345",
+        "viol": 0,
+        "mainLen": 55,
+        "selectedOwner": [
+          [
+            "spaces",
+            "/knowledge?state=loading&rid=abc12345&panel=retrieval"
+          ]
+        ]
+      },
+      "coex-empty": {
+        "url": "/knowledge?panel=retrieval&state=empty&rid=abc12345",
+        "viol": 0,
+        "mainLen": 62,
+        "selectedOwner": [
+          [
+            "spaces",
+            "/knowledge?state=empty&rid=abc12345&panel=retrieval"
+          ]
+        ]
+      },
+      "coex-error": {
+        "url": "/knowledge?panel=retrieval&state=error&rid=abc12345",
+        "viol": 0,
+        "mainLen": 74,
+        "selectedOwner": [
+          [
+            "spaces",
+            "/knowledge?state=error&rid=abc12345&panel=retrieval"
+          ]
+        ]
+      },
+      "coex-ready": {
+        "url": "/knowledge?panel=retrieval&state=ready&rid=abc12345",
+        "viol": 0,
+        "mainLen": 526,
+        "selectedOwner": [
+          [
+            "spaces",
+            "/knowledge?state=ready&rid=abc12345&panel=retrieval"
+          ]
+        ]
+      }
+    },
+    "verdict": "三态+四态共存全部 viol=0、panel 只留属主 href、state/rid 保留，与前脸逐项一致；NM 行未改判"
+  },
+  "waveNote142": "wave-142：定脸 ed5527e718 重建 H2（entry Dm2Mt71f 换代）+点名两路（matrix real-gate reroll PASS、knowledge 冷链三态/共存）；51 路未重扫，49 首轮保留；两路 NM 未改判；375 总 PASS 禁"
 }

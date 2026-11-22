@@ -1,0 +1,33 @@
+{
+  "at": "2026-11-22 07:55-07:56 @2610339ddf 面 单轮归因探针（端口9122 entry index-DiNZbuB-.js）",
+  "verdict": "渲染门未开（鉴权重定向环），不是数据口慢：api/sessions 请求确实发出并回 401 共 1308 次，/auth/whoami 被导航打断 ERR_ABORTED 2484 次、framenavigated 2488 次、15s 内总请求 79453（约 5300/s）；main 在 10/1 字符间反复复位=骨架被环重置",
+  "screenshotSideEffect": "page.screenshot 45s 超时是该请求风暴饿死 CPU/CDP 的副作用（fullPage 尝试仍败）",
+  "evidence": {
+    "apiSessionsStatusCounts": [
+      [
+        [
+          "api/sessions",
+          401
+        ],
+        1308
+      ]
+    ],
+    "whoamiAborted": 2484,
+    "sessionsApiAborted": 2,
+    "navigations": 2488,
+    "totalRequests": 79453,
+    "finalMainLen": 10,
+    "mainSamplesHead": [
+      10,
+      10,
+      10,
+      10,
+      10,
+      10,
+      -2,
+      10
+    ]
+  },
+  "rawFullPath": "/tmp/d-w140-sessions.json",
+  "noMoreRetries": true
+}

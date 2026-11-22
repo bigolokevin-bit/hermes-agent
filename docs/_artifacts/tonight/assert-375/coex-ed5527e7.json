@@ -1,0 +1,391 @@
+{
+ "a-panel-ingest": {
+  "url": "/knowledge?panel=ingest&state=error&rid=abc12345",
+  "tabs": [
+   {
+    "tag": "A",
+    "dataTab": "spaces",
+    "ariaSelected": "false",
+    "role": "tab",
+    "href": "/knowledge?state=error&rid=abc12345",
+    "visible": true
+   },
+   {
+    "tag": "A",
+    "dataTab": "sources",
+    "ariaSelected": "true",
+    "role": "tab",
+    "href": "/knowledge?tab=sources&state=error&rid=abc12345&panel=ingest",
+    "visible": true
+   },
+   {
+    "tag": "A",
+    "dataTab": "evidence",
+    "ariaSelected": "false",
+    "role": "tab",
+    "href": "/knowledge?tab=evidence&state=error&rid=abc12345",
+    "visible": true
+   },
+   {
+    "tag": "DIV",
+    "dataTab": "sources",
+    "ariaSelected": null,
+    "role": null,
+    "href": null,
+    "visible": true
+   }
+  ],
+  "panes": [
+   {
+    "tag": "DIV",
+    "classes": "pane min-w-0 flex-1",
+    "dataTab": "sources",
+    "dataState": "error"
+   }
+  ],
+  "ridText": "abc12345",
+  "viol": 0,
+  "maxRight": 375,
+  "mainLen": 74
+ },
+ "b-panel-retrieval": {
+  "url": "/knowledge?panel=retrieval&state=error",
+  "tabs": [
+   {
+    "tag": "A",
+    "dataTab": "spaces",
+    "ariaSelected": "true",
+    "role": "tab",
+    "href": "/knowledge?state=error&panel=retrieval",
+    "visible": true
+   },
+   {
+    "tag": "A",
+    "dataTab": "sources",
+    "ariaSelected": "false",
+    "role": "tab",
+    "href": "/knowledge?tab=sources&state=error",
+    "visible": true
+   },
+   {
+    "tag": "A",
+    "dataTab": "evidence",
+    "ariaSelected": "false",
+    "role": "tab",
+    "href": "/knowledge?tab=evidence&state=error",
+    "visible": true
+   },
+   {
+    "tag": "DIV",
+    "dataTab": "spaces",
+    "ariaSelected": null,
+    "role": null,
+    "href": null,
+    "visible": true
+   }
+  ],
+  "panes": [
+   {
+    "tag": "DIV",
+    "classes": "pane min-w-0 flex-1",
+    "dataTab": "spaces",
+    "dataState": "error"
+   }
+  ],
+  "ridText": null,
+  "viol": 0,
+  "maxRight": 375,
+  "mainLen": 79
+ },
+ "c-no-panel": {
+  "url": "/knowledge?state=ready",
+  "tabs": [
+   {
+    "tag": "A",
+    "dataTab": "spaces",
+    "ariaSelected": "true",
+    "role": "tab",
+    "href": "/knowledge?state=ready",
+    "visible": true
+   },
+   {
+    "tag": "A",
+    "dataTab": "sources",
+    "ariaSelected": "false",
+    "role": "tab",
+    "href": "/knowledge?tab=sources&state=ready",
+    "visible": true
+   },
+   {
+    "tag": "A",
+    "dataTab": "evidence",
+    "ariaSelected": "false",
+    "role": "tab",
+    "href": "/knowledge?tab=evidence&state=ready",
+    "visible": true
+   },
+   {
+    "tag": "DIV",
+    "dataTab": "spaces",
+    "ariaSelected": null,
+    "role": null,
+    "href": null,
+    "visible": true
+   },
+   {
+    "tag": "DIV",
+    "dataTab": "spaces",
+    "ariaSelected": null,
+    "role": null,
+    "href": null,
+    "visible": true
+   }
+  ],
+  "panes": [
+   {
+    "tag": "DIV",
+    "classes": "pane min-w-0 flex-1",
+    "dataTab": "spaces",
+    "dataState": "ready"
+   },
+   {
+    "tag": "SECTION",
+    "classes": "knw5-surface",
+    "dataTab": null,
+    "dataState": "login"
+   },
+   {
+    "tag": "SECTION",
+    "classes": "knw5-surface",
+    "dataTab": null,
+    "dataState": "login"
+   }
+  ],
+  "ridText": null,
+  "viol": 0,
+  "maxRight": 375,
+  "mainLen": 533
+ },
+ "coex-loading": {
+  "url": "/knowledge?panel=retrieval&state=loading&rid=abc12345",
+  "tabs": [
+   {
+    "tag": "A",
+    "dataTab": "spaces",
+    "ariaSelected": "true",
+    "role": "tab",
+    "href": "/knowledge?state=loading&rid=abc12345&panel=retrieval",
+    "visible": true
+   },
+   {
+    "tag": "A",
+    "dataTab": "sources",
+    "ariaSelected": "false",
+    "role": "tab",
+    "href": "/knowledge?tab=sources&state=loading&rid=abc12345",
+    "visible": true
+   },
+   {
+    "tag": "A",
+    "dataTab": "evidence",
+    "ariaSelected": "false",
+    "role": "tab",
+    "href": "/knowledge?tab=evidence&state=loading&rid=abc12345",
+    "visible": true
+   },
+   {
+    "tag": "DIV",
+    "dataTab": "spaces",
+    "ariaSelected": null,
+    "role": null,
+    "href": null,
+    "visible": true
+   }
+  ],
+  "panes": [
+   {
+    "tag": "DIV",
+    "classes": "pane min-w-0 flex-1",
+    "dataTab": "spaces",
+    "dataState": "loading"
+   }
+  ],
+  "ridText": null,
+  "viol": 0,
+  "maxRight": 375,
+  "mainLen": 55
+ },
+ "coex-empty": {
+  "url": "/knowledge?panel=retrieval&state=empty&rid=abc12345",
+  "tabs": [
+   {
+    "tag": "A",
+    "dataTab": "spaces",
+    "ariaSelected": "true",
+    "role": "tab",
+    "href": "/knowledge?state=empty&rid=abc12345&panel=retrieval",
+    "visible": true
+   },
+   {
+    "tag": "A",
+    "dataTab": "sources",
+    "ariaSelected": "false",
+    "role": "tab",
+    "href": "/knowledge?tab=sources&state=empty&rid=abc12345",
+    "visible": true
+   },
+   {
+    "tag": "A",
+    "dataTab": "evidence",
+    "ariaSelected": "false",
+    "role": "tab",
+    "href": "/knowledge?tab=evidence&state=empty&rid=abc12345",
+    "visible": true
+   },
+   {
+    "tag": "DIV",
+    "dataTab": "spaces",
+    "ariaSelected": null,
+    "role": null,
+    "href": null,
+    "visible": true
+   }
+  ],
+  "panes": [
+   {
+    "tag": "DIV",
+    "classes": "pane min-w-0 flex-1",
+    "dataTab": "spaces",
+    "dataState": "empty"
+   }
+  ],
+  "ridText": null,
+  "viol": 0,
+  "maxRight": 375,
+  "mainLen": 62
+ },
+ "coex-error": {
+  "url": "/knowledge?panel=retrieval&state=error&rid=abc12345",
+  "tabs": [
+   {
+    "tag": "A",
+    "dataTab": "spaces",
+    "ariaSelected": "true",
+    "role": "tab",
+    "href": "/knowledge?state=error&rid=abc12345&panel=retrieval",
+    "visible": true
+   },
+   {
+    "tag": "A",
+    "dataTab": "sources",
+    "ariaSelected": "false",
+    "role": "tab",
+    "href": "/knowledge?tab=sources&state=error&rid=abc12345",
+    "visible": true
+   },
+   {
+    "tag": "A",
+    "dataTab": "evidence",
+    "ariaSelected": "false",
+    "role": "tab",
+    "href": "/knowledge?tab=evidence&state=error&rid=abc12345",
+    "visible": true
+   },
+   {
+    "tag": "DIV",
+    "dataTab": "spaces",
+    "ariaSelected": null,
+    "role": null,
+    "href": null,
+    "visible": true
+   }
+  ],
+  "panes": [
+   {
+    "tag": "DIV",
+    "classes": "pane min-w-0 flex-1",
+    "dataTab": "spaces",
+    "dataState": "error"
+   }
+  ],
+  "ridText": "abc12345",
+  "viol": 0,
+  "maxRight": 375,
+  "mainLen": 74
+ },
+ "coex-ready": {
+  "url": "/knowledge?panel=retrieval&state=ready&rid=abc12345",
+  "tabs": [
+   {
+    "tag": "A",
+    "dataTab": "spaces",
+    "ariaSelected": "true",
+    "role": "tab",
+    "href": "/knowledge?state=ready&rid=abc12345&panel=retrieval",
+    "visible": true
+   },
+   {
+    "tag": "A",
+    "dataTab": "sources",
+    "ariaSelected": "false",
+    "role": "tab",
+    "href": "/knowledge?tab=sources&state=ready&rid=abc12345",
+    "visible": true
+   },
+   {
+    "tag": "A",
+    "dataTab": "evidence",
+    "ariaSelected": "false",
+    "role": "tab",
+    "href": "/knowledge?tab=evidence&state=ready&rid=abc12345",
+    "visible": true
+   },
+   {
+    "tag": "DIV",
+    "dataTab": "spaces",
+    "ariaSelected": null,
+    "role": null,
+    "href": null,
+    "visible": true
+   },
+   {
+    "tag": "DIV",
+    "dataTab": "retrieval",
+    "ariaSelected": null,
+    "role": null,
+    "href": null,
+    "visible": true
+   }
+  ],
+  "panes": [
+   {
+    "tag": "DIV",
+    "classes": "pane min-w-0 flex-1",
+    "dataTab": "spaces",
+    "dataState": "ready"
+   },
+   {
+    "tag": "SECTION",
+    "classes": "knw5-surface",
+    "dataTab": null,
+    "dataState": "login"
+   },
+   {
+    "tag": "SECTION",
+    "classes": "knw5-surface",
+    "dataTab": null,
+    "dataState": "login"
+   },
+   {
+    "tag": "SECTION",
+    "classes": "knw5-surface",
+    "dataTab": null,
+    "dataState": "login"
+   }
+  ],
+  "ridText": null,
+  "viol": 0,
+  "maxRight": 375,
+  "mainLen": 526
+ }
+}
