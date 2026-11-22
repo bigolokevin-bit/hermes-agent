@@ -26,6 +26,17 @@
   color: var(--color-text-ls);
 }
 
+/* Textarea 形制档位（配合 TextareaVariants；包根未导出 textareaVariants，本层自定）：
+   只动内距与最小高，字号与颜色仍走同一套令牌，禁内联 style。 */
+.ui-textarea-sm {
+  padding: var(--space-ls-2);
+  min-block-size: var(--control-h-inline-ls);
+}
+
+.ui-textarea-lg {
+  padding: var(--space-ls-4);
+}
+
 .ui-textarea {
   display: block;
   width: 100%;
