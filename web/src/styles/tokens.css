@@ -2,7 +2,7 @@
    页面代码只用带 -ls 后缀的名字，禁止直接抓 shell 冻结骨架变量（--bg/--panel/--fg …）。
    浅色主题落地时只改这些别名的「指向」，名字一律不动，页面零改动。
    本次真补的缺口：--tabular-ls（数字等宽）、--z-ls-*（层级此前散落为魔法数）、
-   --duration-ls-*/--ease-ls-standard（动效时长）、--control-h-*（控件档位）、
+   --duration-ls 系列与 --ease-ls-standard（动效时长）、--control-h-*（控件档位）、
    --color-text-subtle-ls/--color-text-faint-ls（--fg-3/--fg-4 此前没有语义名）。 */
 :root {
   /* 面色（全部指向 shell 冻结骨架层，不改值） */
@@ -59,4 +59,106 @@
 /* 减少动效偏好：只把时长归零，颜色与几何不动。 */
 @media (prefers-reduced-motion: reduce) {
   :root { --duration-ls-fast: 0ms; --duration-ls-base: 0ms; --duration-ls-slow: 0ms; }
+}
+
+/* ============================================================================
+ * 单一真值源合并（UI-F A，L0 授权①）：以下两段原样来自 web/src/shell/tokens.css
+ * （骨架原名 + UI-A 语义层），自本笔起 shell/tokens.css 只剩 @import。
+ * ========================================================================== */
+/*
+ * Console shell visual tokens — copied VERBATIM from the frozen skeleton:
+ *   ~/Projects/seakoi-console-web/docs/console-v4-skeleton.html, lines 59-83
+ *   (the `:root` block under the "tokens" comment; PRD v4.1 B8: the skeleton
+ *   is the single source of truth — numbers disagree, fix the PRD not the
+ *   skeleton; do not hand-edit values here, re-copy instead).
+ *
+ * THEME NOTE (verified 2026-11-18 by probe): the skeleton defines ONE token
+ * block only — the dark theme. There is no light-theme override anywhere
+ * (no `[data-theme]` selector, no second `--bg:` definition, no case-
+ * insensitive 'light' match in the file). The only other `:root` rule is a
+ * responsive layout tweak inside @media(max-width:900px) (`--side:0px`),
+ * which is shell geometry, not a visual token — deliberately excluded.
+ * A light theme, when it ships, will be added as a [data-theme="light"]
+ * block here; until then this file is dark-only by source of truth.
+ *
+ * Stage 1: intentionally NOT imported by app code yet (stage 2 wires it in
+ * App/main entry). An orphan CSS file does not affect the Vite build.
+ * No selectors in this file beyond the :root token block.
+ */
+
+:root{
+  --bg:#041c1c;
+  --panel:#061f1f;
+  --panel-2:#082424;
+  --sunk:#03181a;
+  --line:rgba(255,230,203,.14);
+  --line-2:rgba(255,230,203,.30);
+  --line-3:rgba(255,230,203,.07);
+  --line-strong:rgba(255,230,203,.40);   /* 虚线控件边，≥3:1 */
+  --fg:#ffe6cb;
+  --fg-2:rgba(255,230,203,.68);
+  --fg-3:#9aa49e;   /* 三级灰 ≥4.5:1（实测 6.5:1） */
+  --fg-4:#8d9791;   /* 四级灰 ≥4.5:1（实测 5.9:1），层级靠字号/字重 */
+  --ok:#4ade80;
+  --warn:#ffbd38;
+  --bad:#fb2c36;
+  --info:#7fb3c8;
+  --r:6px;
+  --r-sm:4px;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,"Segoe UI",sans-serif;
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,"Songti SC","Noto Serif SC",Georgia,serif;
+  --side:208px;
+  --bar:27px;
+}
+
+/*
+ * UI-A semantic token layer — UI-RUBRIC v1 (2026-11-20).
+ * This block is the ONLY token interface for page code: pages consume the
+ * --space, --font-size, --radius, --color, --table, --btn, --border and
+ * --shadow names below. The skeleton block above stays the single value source
+ * (PRD v4.1 B8) — every --color-* here is a var() reference, never a new
+ * literal. Skeleton original names (--bg/--fg/--line/--r/...) remain only
+ * for existing pre-rubric pages; new code must not use them.
+ * Exceptions registered in docs/design/UI-RUBRIC.md §一·例外登记.
+ * A light theme will override THIS layer's mappings, not the names.
+ */
+:root{
+  /* 1 spacing — multiples of 4, the only allowed values */
+  --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-6:24px; --space-8:32px;
+
+  /* 2 type ladder — 6 fixed steps; weights 400/500/600 only (700 banned) */
+  --font-size-1:12px; --font-size-2:13px; --font-size-3:14px;
+  --font-size-4:16px; --font-size-5:20px; --font-size-6:24px;
+  --line-height-1:1.25; --line-height-2:1.4; --line-height-3:1.5;
+  --font-weight-regular:400; --font-weight-medium:500; --font-weight-semibold:600;
+
+  /* 3 table — 40px rows; 36px only for embedded sub-tables */
+  --table-row-h:40px; --table-row-h-compact:36px;
+
+  /* 4 radius / stroke / shadow — two shadow levels, no stacking */
+  --radius-1:4px; --radius-2:8px; --radius-3:12px;
+  --border-1:1px solid var(--color-border-subtle);
+  --border-strong:1px solid var(--color-border);
+  --shadow-1:0 1px 2px rgba(0,0,0,.4);    /* card lift */
+  --shadow-2:0 12px 32px rgba(0,0,0,.55); /* dialog / dropdown */
+
+  /* 5 colour semantics — mapped onto skeleton values, names stable across themes */
+  --color-bg:var(--bg);
+  --color-surface:var(--panel);
+  --color-surface-raised:var(--panel-2);
+  --color-text:var(--fg);
+  --color-text-muted:var(--fg-2);
+  --color-border-subtle:var(--line);
+  --color-border:var(--line-2);
+  --color-primary:var(--fg);   /* exception E1, see rubric registry */
+  --color-success:var(--ok);
+  --color-warning:var(--warn);
+  --color-danger:var(--bad);
+  --color-info:var(--info);
+
+  /* 7 button tiers — heights, hit area, focus ring */
+  --btn-h-inline:28px; --btn-h:32px; --btn-h-dialog:36px;
+  --btn-hit-min:32px;
+  --focus-ring:2px solid var(--color-primary);
 }
