@@ -291,3 +291,10 @@ matrix(#/employees?tab=matrix) present=true ok=true
 - 166 本轮逐 URL 本体：10 条业务端点（employee-stats/employees?limit=100/run-activity/runs×3/tasks/workbench queue|summary|timeseries）各 1 条 + 1 条 /auth/whoami（本轮 cookie 再度早衰，如实注记；总数 11 与 165 等量）。
 - 无风暴线性增长、无页面 JS error ⇒ 归属 residual401Source156「鉴权外业务端点面」同族（域层凭据缺口归 ui-b/L4）；console 门未假绿——错误真实入账非抹平。
 - RAW=w166-console-errors-166.json + assert375/ce-overview-375-166.png。
+
+## wave-167 H2 五件+假通道 1440 取证 @5263ede612（端口9122/entry index-BTEOkxNJ.js）
+
+- H2 五件：entry assets/index-BTEOkxNJ.js 173255B sha256 c185ca695931e5796398da1abe3c3ffc1cd4a28e0910bae8296c922da1bd4cbf mtime 01:44；curl /agent-v2/ 同名 + /assets/ bit js/css 双 MATCH；主 CSS BuNLfk0U 未换代；构建晚定脸（01:18:56）约 25 分钟无抢跑；换代判词=LoginPage.tsx in-graph（171123→173255）。
+- 假通道取证：9123 临时实例 start 302 取 state → callback 302→/overview 种 Cookie → whoami==200 前置 → /overview 登录成功 1440 帧（main=588）+ /login?auth=auth.sso_sync_rejected 错误态帧（人话文案+可复制错误码）；两页 JS error 0；用毕实例已杀、LaunchAgents plist 未碰。证据=docs/_artifacts/l0/w167-fake-bridge-1440/。
+- ③ consoleErrors 逐 URL 本体复核：已交付 b00b96595a（themeConsoleErrorAudit166），本波不重做。
+- 纪律：vitest 基线 486/3590 已记；51 路未重扫 counts 维持；375 总 PASS 归 UX 总审不自签；headHash 5263ede612（carriedFrom e8d9295318）。

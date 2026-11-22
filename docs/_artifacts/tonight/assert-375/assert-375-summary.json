@@ -5058,14 +5058,14 @@
     }
   ],
   "rerollNote": "点名重跑 sessions/channels/models @d2cc49fe 面（L0②）：sessions 转 PASS（fb+fit，PNG 入账）、models PASS；channels 新面反成失分页（45s 旁路超时、main=10、viol 数据不可得）记 NOT_MEASURED 逐条 navError 入账，首轮 6586df6b 读数存 firstRunRow（L0①其余 48 路保留首轮）",
-  "headHash": "e8d9295318",
-  "entry": "assets/index-Dzqdzj0R.js",
-  "entrySha256": "0885e8e3e3ac1197107878e81179d23a3405f28f6ed11f894c0aeb7dc4b8b6e0",
-  "entryBytes": 171123,
+  "headHash": "5263ede612",
+  "entry": "assets/index-BTEOkxNJ.js",
+  "entrySha256": "c185ca695931e5796398da1abe3c3ffc1cd4a28e0910bae8296c922da1bd4cbf",
+  "entryBytes": 173255,
   "css": "assets/index-BuNLfk0U.css",
   "cssSha256": "f0741a533da49d5ec63de8673c82d413cf541515bd5c032ab0b6303f836bf992",
   "cssBytes": 148943,
-  "servedEntryAfter": "index-Dzqdzj0R.js",
+  "servedEntryAfter": "index-BTEOkxNJ.js",
   "servedCssAfter": "index-BuNLfk0U.css",
   "criteriaNote": "旧 document 级 375 全绿作废不入账（L0③）；本代 375 承者=assert-375 逐元素判据+视口加高取图腿+字体等待旁路复测；channels=点名重跑合入 PASS（首轮读数存 firstRunRow）；sessions=真 NOT MEASURED：45s 旁路仍 screenshot 超时，逐条 navError 入账",
   "stampNote": "wave-129 6586df6b 本代新跑（非沿用）",
@@ -5098,7 +5098,7 @@
     "raw": "coex-4a654bba.json",
     "priorFace": "coex-4705edea.json"
   },
-  "entryMtime": "2026-11-23 00:14",
+  "entryMtime": "2026-11-23 01:44",
   "outerTabHighlightTriState": {
     "face": "4a654bba",
     "panelIngest": "pane+selected=sources，selected href 含 panel=ingest+state+rid，其余 tab href 无 panel=（viol0 main74）",
@@ -6753,5 +6753,29 @@
     },
     "verdict": "10 条业务端点 401（employee-stats/employees/run-activity/runs×3/tasks/workbench×3）+ 1 条 /auth/whoami，各一条无风暴线性增长 ⇒ 属既有 residual401Source156「鉴权外业务端点面」同族（域层凭据缺口归 ui-b/L4），非 console 门假绿：错误真实存在且逐 URL 入账，本页版式无 JS error",
     "raw": "w166-console-errors-166.json"
+  },
+  "carriedFrom167": "e8d9295318",
+  "h2Rebuild167": {
+    "face": "5263ede612ddb1a072f64bc8079460c096313fc0",
+    "faceAt": "2026-11-23 01:18:56 +0800",
+    "rebuiltAt": "2026-11-23 01:44",
+    "viteExit": 0,
+    "generation": "登录页四码笔（LoginPage.tsx +82/-1 in-graph）⇒ entry 换代 171123B→173255B；主 CSS index-BuNLfk0U 未换代",
+    "fivePiece": "entry 名+shasum256+bytes+mtime+curl /agent-v2/ 同名 全对上；/assets/ urllib bit-compare js/css MATCH×2",
+    "noRush": "构建晚于定脸约 25 分钟，无抢跑",
+    "vitestBaseline167": "486 files/3590 tests (L0 亲验全绿，本波免重跑)"
+  },
+  "fakeBridgeShots167": {
+    "purpose": "参谋登录单③ 1440 截图取证（假通道仅临时实例，plist 未碰）",
+    "port": 9123,
+    "face": "5263ede612",
+    "entry": "index-BTEOkxNJ.js",
+    "flow": "/auth/feishu/start 302 取 state → /auth/feishu/callback 302→/overview 种 access_token_cookie → whoami 前置断言 200 @2026-11-22T17:47:49.004Z",
+    "overviewMainLen": 588,
+    "errState": "auth5-auth-error=「统一身份同步未通过，请重新发起登录」 错误码 auth5-auth-code=auth.sso_sync_rejected 可复制钮在位",
+    "jsErrors": "两页均 0",
+    "evidence": "docs/_artifacts/l0/w167-fake-bridge-1440/{readings.json, overview-logged-in-1440.png, login-sso-sync-rejected-1440.png}",
+    "instanceKilled": true,
+    "item3Review": "consoleErrors 逐 URL 本体已由 b00b96595a 交付（themeConsoleErrorAudit166 在位：10 业务端点+1 whoami 各 1 条、无风暴、JS error 0，归属 156 鉴权外端点面），本波复核不重做"
   }
 }
