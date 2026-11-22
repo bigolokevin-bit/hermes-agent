@@ -1387,3 +1387,32 @@
     gap: var(--space-1);
   }
 }
+
+/* ── UX r1 P1-5：手机小触点扩命中区（队列 line 22 · knowledge 子集）──
+   UI-RUBRIC E4 明确：28px 行内档不强行补高（补高会破坏三档比例），
+   所以这里视觉尺寸一个像素都不动，改用伪元素把可点区向四周外扩，
+   命中区 ≈ 44px，容器与栅格不被撑开，375 版式零变化。
+   .knw5-seg 的左右内缩保持 0：2×2 相邻钮不允许命中区互相盖住。 */
+@media (max-width: 767.98px) {
+  .knw5-drill,
+  .knw5-copy,
+  .knw5-seg button,
+  button[data-testid$="-clear"] {
+    position: relative;
+  }
+
+  .knw5-drill::after,
+  .knw5-copy::after,
+  button[data-testid$="-clear"]::after {
+    content: "";
+    position: absolute;
+    inset: -10px -6px;
+    border-radius: inherit;
+  }
+
+  .knw5-seg button::after {
+    content: "";
+    position: absolute;
+    inset: -10px 0;
+  }
+}

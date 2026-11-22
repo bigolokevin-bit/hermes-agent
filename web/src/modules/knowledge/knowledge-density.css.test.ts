@@ -55,4 +55,21 @@ describe("knowledge density contract", () => {
     expect(css).not.toMatch(/grid-template-columns:\s*84px/);
     expect(css).toMatch(/grid-template-columns:\s*minmax\(0,\s*5\.25rem\)\s+minmax\(0,\s*1fr\)/);
   });
+
+  // UX r1 P1-5（队列 line 22 · knowledge 子集）：小触点命中区。
+  // rubric E4 禁止把 28px 行内档强行补高，所以契约断言的是「靠伪元素外扩、
+  // 不改钮自身高度」这条路子，被改回 padding/min-height 补高时这里先红。
+  it("手机小触点用伪元素扩命中区，不给钮本身补高", () => {
+    const phone = css.slice(css.lastIndexOf("@media (max-width: 767.98px)"));
+    expect(phone, "手机档命中区规则必须在 knowledge.css 末尾").toContain("position: relative");
+    for (const sel of [".knw5-drill", ".knw5-copy", ".knw5-seg button"]) {
+      expect(phone, `命中区必须覆盖 ${sel}`).toContain(`${sel}::after`);
+    }
+    expect(phone).toMatch(/inset:\s*-10px\s*-6px/);
+    // 相邻钮的命中区不许互相盖住：分段列左右内缩必须为 0
+    expect(phone).toMatch(/\.knw5-seg button::after[\s\S]{0,120}inset:\s*-10px 0/);
+    // E4：不许用 min-height/padding 把行内档补高
+    expect(phone).not.toMatch(/min-height:\s*44px/);
+    expect(phone).not.toMatch(/padding-block:/);
+  });
 });
