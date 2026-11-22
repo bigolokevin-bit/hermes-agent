@@ -24,3 +24,7 @@
   - 1440x900：whoamiPre=200、whoamiAtShot=200、mode=live、实渲非骨架（loadingSkeleton=false）、jsErrors=0、4xx=0；ageCount=0（侧栏无行）⇒ 按『空态平凡真、覆盖不足』如实记，main/body/row NaN=0。
   - 375x812：whoamiPre=200、whoamiAtShot=200、mode=live、**ChatSessionList 真渲 1 行且 last_active 缺值落「—」**（ageCount=1、agesWithDash=1）、ageNaN=0、main/body/row NaN 全 0、jsErrors=0、4xx=0 ⇒ 缺值行上屏路径拿到真证据，无需 VG 桩。
 - 判据串沿用：『DOM 文本中 NaN 出现次数=0（main.innerText 与 document.body.innerText 双计，逐行元素 textContent 含 NaN 计数=0）』；端口 9122 / entry index-kWaJfTXV.js / 脸 21c276dd0b。
+
+## 更正附注（L0 wave-172 判定，追加形制，不回改写已闭环帧段）
+- ①容器口径：readings 的 age 计数 selector=[data-testid=chat-session-age] 只覆盖 ChatSessionList 左 ASIDE 侧栏；1440 ageCount=0 是该口径，而图中右侧 SESSIONS 面板可见一行 age=「—」未被计入（右侧文本由 main/body 全页 innerText 双计覆盖 NaN=0，未做右面板行级单独计数）；375 ageCount=1 为左 ASIDE DOM 背书、帧内裁切不可见。口径详见同目录 chat-补证-readings.json 的 containerNotes173（append-only 键，原字段未动）。
+- ②基线数字更正：本文件第 18 行「全量 vitest 归 L0 亲验基线（487 files/3596 tests）」系我方误引；L0 实值基线为 **486 files/3598 tests**（板 baefbfd8「wave-169 全量 vitest 绿＝基线 486/3598」）。第 18 行原文不回改，以此附注为准。

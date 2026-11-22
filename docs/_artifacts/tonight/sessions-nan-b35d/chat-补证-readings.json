@@ -44,5 +44,12 @@
       "res4xx": [],
       "at": "2026-11-22T19:41:27.200Z"
     }
-  ]
+  ],
+  "containerNotes173": {
+    "writtenAt": "append-style per L0 wave-172 判定 (no rewrite of closed fields)",
+    "selector": "[data-testid=chat-session-age]",
+    "container": "ChatSessionList 左 ASIDE 侧栏",
+    "note1440": "1440 ageCount=0 仅为左 ASIDE/此 selector 口径；该帧右 SESSIONS 面板可见一行 age=「—」未被此 selector 计数——右侧文本由 main/body 全页 innerText 双计覆盖且 NaN=0，但未对右面板行级单独 NaN 计数，容器口径此前未写明，本键补齐",
+    "note375": "375 ageCount=1 出自左 ASIDE 侧栏 DOM 背书，帧内因移动头栏裁切不可见，按 DOM 背书接受"
+  }
 }
