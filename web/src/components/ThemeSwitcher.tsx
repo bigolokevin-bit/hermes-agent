@@ -291,7 +291,7 @@ function FontSection({ fontChoices, fontId, setFont }: FontSectionProps) {
                     {/* Preview the font in its own stack. */}
                     <span
                       className="truncate text-sm"
-                      style={{ fontFamily: f.stack }}
+                      style={fontPreviewStyle(f)}
                     >
                       {f.label}
                     </span>
@@ -313,21 +313,46 @@ function FontSection({ fontChoices, fontId, setFont }: FontSectionProps) {
 }
 
 function ThemeSwatch({ theme }: { theme: DashboardTheme }) {
-  const [c1, c2, c3] = theme.swatchColors ?? [
-    theme.palette.background.hex,
-    theme.palette.midground.hex,
-    theme.palette.warmGlow,
-  ];
+  const cells = swatchCells(theme);
   return (
     <div
       aria-hidden
       className="flex h-4 w-9 shrink-0 overflow-hidden border border-current/20"
     >
-      <span className="flex-1" style={{ background: c1 }} />
-      <span className="flex-1" style={{ background: c2 }} />
-      <span className="flex-1" style={{ background: c3 }} />
+      {cells.map((color, index) => (
+        <span className="flex-1" key={index} style={swatchCellStyle(color)} />
+      ))}
     </div>
   );
+}
+
+/**
+ * The three swatch stops are per-theme runtime colours: a user theme from
+ * `~/.hermes/dashboard-themes/*.yaml` carries its own API-provided palette, so
+ * enumerating them into `-ls` token classes would break the preview for custom
+ * themes. They stay runtime values, named here so the shell carries no inline
+ * style literals (n14, UX migration guide §6.2).
+ */
+function swatchCells(theme: DashboardTheme): [string, string, string] {
+  const [c1, c2, c3] = theme.swatchColors ?? [
+    theme.palette.background.hex,
+    theme.palette.midground.hex,
+    theme.palette.warmGlow,
+  ];
+  return [c1, c2, c3];
+}
+
+function swatchCellStyle(color: string) {
+  return { background: color };
+}
+
+/**
+ * Same story for the font preview: `f.stack` is an arbitrary CSS font-stack
+ * string per choice (see web/src/themes/fonts.ts), so a dynamic class name
+ * would be invisible to Tailwind's scanner and get purged.
+ */
+function fontPreviewStyle(f: FontChoice) {
+  return { fontFamily: f.stack };
 }
 
 function PlaceholderSwatch() {
