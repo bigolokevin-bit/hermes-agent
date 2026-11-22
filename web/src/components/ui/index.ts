@@ -30,4 +30,4 @@ export { UiInput } from "./Input";
 export { UiSelect, type UiSelectOption, type UiSelectProps } from "./Select";
 export { StateBlock, type UiStateTone } from "./StateBlock";
 export { UiTable, type UiTableColumn, type UiTableProps } from "./Table";
-export { UiTextarea } from "./Textarea";
+export { UiTextarea, TextareaVariants, type TextareaProps, type UiTextareaSize } from "./Textarea";
