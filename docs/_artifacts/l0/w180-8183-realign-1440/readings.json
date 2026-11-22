@@ -1,0 +1,114 @@
+{
+  "face": "0f94f5cf204ee85312ad604743a70ca8f6da5bc5",
+  "port": 8183,
+  "target": "http://100.117.184.117:8183/agent-v2/#/overview",
+  "shotMode": "fullPage (viewport-heightened, break inner scroll shell)",
+  "startedAt": "2026-11-22T23:14:51.146Z",
+  "shots": [
+    {
+      "probe": {
+        "doc": 900,
+        "shell": 1121,
+        "shellSel": "DIV.relative z-2 flex min-w-0 min-h-0 flex-1 flex-col ",
+        "main": 848,
+        "mainClient": 848
+      },
+      "chosenH": 1161,
+      "viewport": "1440x1161",
+      "label": "1440",
+      "entry": "/assets/index-Cv4DBs--.js",
+      "whoamiPreShot": 200,
+      "at": "2026-11-22T23:14:56.173Z",
+      "mainLen": 1074,
+      "jsErrors": 0,
+      "consoleErrors": 10,
+      "res4xx": 10,
+      "res4xxByStatus": {
+        "403": 10
+      },
+      "res4xxFullUrls": [
+        "/agent-api/api/employees?limit=100",
+        "/agent-api/api/workbench/summary?range=1d",
+        "/agent-api/api/workbench/timeseries?range=30d&bucket=day&metric=runs",
+        "/agent-api/api/employee-stats",
+        "/agent-api/api/run-activity?weeks=2&tz=Asia%2FShanghai",
+        "/agent-api/api/workbench/queue?page_size=100",
+        "/agent-api/api/runs?since=2026-11-15T23%3A14%3A54.810Z&limit=3",
+        "/agent-api/api/runs?since=2026-11-22T16%3A00%3A00.000Z&limit=3",
+        "/agent-api/api/tasks?status=blocked&limit=3",
+        "/agent-api/api/runs?since=2026-11-21T23%3A14%3A54.810Z&limit=3&status=failed"
+      ],
+      "res4xxEndpoints": [
+        "/agent-api/api/employees",
+        "/agent-api/api/workbench/summary",
+        "/agent-api/api/workbench/timeseries",
+        "/agent-api/api/employee-stats",
+        "/agent-api/api/run-activity",
+        "/agent-api/api/workbench/queue",
+        "/agent-api/api/runs",
+        "/agent-api/api/runs",
+        "/agent-api/api/tasks",
+        "/agent-api/api/runs"
+      ],
+      "screenshot": "/tmp/d-w180-shot/overview-8183-1440.png",
+      "shotMode": "fullPage",
+      "blocked": null,
+      "png": {
+        "bytes": 189158
+      }
+    },
+    {
+      "probe": {
+        "doc": 812,
+        "shell": 2336,
+        "shellSel": "DIV.relative z-2 flex min-w-0 min-h-0 flex-1 flex-col ",
+        "main": 736,
+        "mainClient": 736
+      },
+      "chosenH": 2376,
+      "viewport": "375x2376",
+      "label": "375",
+      "entry": "/assets/index-Cv4DBs--.js",
+      "whoamiPreShot": 200,
+      "at": "2026-11-22T23:15:00.820Z",
+      "mainLen": 1074,
+      "jsErrors": 0,
+      "consoleErrors": 10,
+      "res4xx": 10,
+      "res4xxByStatus": {
+        "403": 10
+      },
+      "res4xxFullUrls": [
+        "/agent-api/api/workbench/queue?page_size=100",
+        "/agent-api/api/runs?since=2026-11-22T16%3A00%3A00.000Z&limit=3",
+        "/agent-api/api/runs?since=2026-11-15T23%3A14%3A59.033Z&limit=3",
+        "/agent-api/api/runs?since=2026-11-21T23%3A14%3A59.033Z&limit=3&status=failed",
+        "/agent-api/api/tasks?status=blocked&limit=3",
+        "/agent-api/api/employees?limit=100",
+        "/agent-api/api/run-activity?weeks=2&tz=Asia%2FShanghai",
+        "/agent-api/api/workbench/summary?range=1d",
+        "/agent-api/api/employee-stats",
+        "/agent-api/api/workbench/timeseries?range=30d&bucket=day&metric=runs"
+      ],
+      "res4xxEndpoints": [
+        "/agent-api/api/workbench/queue",
+        "/agent-api/api/runs",
+        "/agent-api/api/runs",
+        "/agent-api/api/runs",
+        "/agent-api/api/tasks",
+        "/agent-api/api/employees",
+        "/agent-api/api/run-activity",
+        "/agent-api/api/workbench/summary",
+        "/agent-api/api/employee-stats",
+        "/agent-api/api/workbench/timeseries"
+      ],
+      "screenshot": "/tmp/d-w180-shot/overview-8183-375.png",
+      "shotMode": "fullPage",
+      "blocked": null,
+      "png": {
+        "bytes": 170602
+      }
+    }
+  ],
+  "finishedAt": "2026-11-22T23:15:00.980Z"
+}
