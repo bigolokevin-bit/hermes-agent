@@ -35,3 +35,6 @@ export { UiTextarea, TextareaVariants, type TextareaProps, type UiTextareaSize }
 // 不接方向键、并把 value 解构后弃用（盘上 dist/ui/components/tabs.js 为证）。
 // 新页面请一律用下面的 UiTabs（键盘与 ARIA 由基元层补齐）。
 export { UiTabs, type UiTabItem, type UiTabsProps } from "./Tabs";
+
+export { UiCard, UiCardRow } from "./Card";
+export type { UiCardProps, UiCardRowProps } from "./Card";

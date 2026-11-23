@@ -301,3 +301,118 @@
   /* 44px 是移动端触控下限的字面值：令牌层暂无该档，新增令牌名须走冻结线并窗。 */
   .ui-hint-trigger { inline-size: 44px; block-size: 44px; }
 }
+
+/* ── UI-F 固定槽位卡片（用户直令：Card 固定槽位 + 同排等高唯一实现源）──
+   字号只准取六档 var(--font-size-ls-*)，间距/圆角/描边同理；
+   卡片高度由槽位数决定，明细一律走 .ui-card-foot 的深链，不进卡片。 */
+.ui-card-row {
+  display: grid;
+  align-items: stretch;
+  gap: var(--space-ls-4);
+  min-width: 0;
+}
+.ui-card-row[data-cols="2"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.ui-card-row[data-cols="3"] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.ui-card-row[data-cols="4"] { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+.ui-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-ls-2);
+  min-width: 0;
+  padding: var(--space-ls-4);
+  border: var(--border-ls-1);
+  border-radius: var(--radius-ls-2);
+  background: var(--color-surface-ls);
+}
+.ui-card.is-raised {
+  background: var(--color-surface-raised-ls);
+  box-shadow: var(--shadow-ls-1);
+}
+
+.ui-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-ls-2);
+  min-width: 0;
+}
+.ui-card-title {
+  margin: 0;
+  font-size: var(--font-size-ls-3);
+  font-weight: var(--font-weight-ls-medium);
+  line-height: var(--line-height-ls-2);
+  color: var(--color-text-ls);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.ui-card-subtitle {
+  flex: none;
+  font-size: var(--font-size-ls-1);
+  line-height: var(--line-height-ls-1);
+  color: var(--color-text-muted-ls);
+}
+
+.ui-card-metric {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-ls-2);
+  margin: 0;
+  font-variant-numeric: var(--tabular-ls);
+}
+.ui-card-metric-value {
+  font-size: var(--font-size-ls-6);
+  font-weight: var(--font-weight-ls-medium);
+  line-height: var(--line-height-ls-1);
+  color: var(--color-text-ls);
+}
+.ui-card-metric-label {
+  font-size: var(--font-size-ls-1);
+  line-height: var(--line-height-ls-1);
+  color: var(--color-text-muted-ls);
+}
+
+/* 超限截断到槽位：状态句最多两行，多了走底部深链，卡片不跟着长高。 */
+.ui-card-note {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin: 0;
+  font-size: var(--font-size-ls-2);
+  line-height: var(--line-height-ls-2);
+  color: var(--color-text-muted-ls);
+}
+.ui-card-body {
+  min-width: 0;
+  overflow: hidden;
+}
+/* 底部出口永远贴卡片下缘——这就是同排等高的唯一机制。 */
+.ui-card-foot {
+  display: flex;
+  align-items: center;
+  gap: var(--space-ls-2);
+  margin-block-start: auto;
+  padding-block-start: var(--space-ls-2);
+  font-size: var(--font-size-ls-2);
+  line-height: var(--line-height-ls-2);
+}
+.ui-card-foot a,
+.ui-card-foot button {
+  min-block-size: var(--control-h-ls);
+}
+
+@media (max-width: 767.98px) {
+  .ui-card-row,
+  .ui-card-row[data-cols="2"],
+  .ui-card-row[data-cols="3"],
+  .ui-card-row[data-cols="4"] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  /* 手机档最小触控高：令牌层暂无 44 档，新增令牌名要走冻结线并窗，故此处写字面值。 */
+  .ui-card-foot a,
+  .ui-card-foot button {
+    min-block-size: 44px;
+  }
+}
