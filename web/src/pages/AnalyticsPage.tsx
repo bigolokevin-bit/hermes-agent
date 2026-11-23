@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState, type CSSProperties } from "react";
 import {
   ArrowDown,
   ArrowUp,
@@ -33,6 +33,13 @@ const PERIODS = [
 ] as const;
 
 const CHART_HEIGHT_PX = 160;
+
+/** 逐柱高度是运行时数据，Tailwind 编译期扫不到，几何只能走 style——这是本图
+ *  仅存的 inline 通道（UI-Quality §6.2 点名的 10 处内联 style 对象已归零；颜色
+ *  全部进了类，这里只剩纯像素高度）。 */
+function chartPxHeight(px: number): CSSProperties {
+  return { height: px };
+}
 
 function formatTokens(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -148,26 +155,17 @@ function TokenBarChart({ daily }: { daily: AnalyticsDailyEntry[] }) {
         </div>
         <div className="flex items-center gap-4 font-mondwest normal-case text-xs text-muted-foreground">
           <div className="flex items-center gap-1.5">
-            <div
-              className="h-2.5 w-2.5"
-              style={{ backgroundColor: "var(--series-input-token)" }}
-            />
+            <div className="h-2.5 w-2.5 bg-[var(--series-input-token)]" />
             {t.analytics.input}
           </div>
           <div className="flex items-center gap-1.5">
-            <div
-              className="h-2.5 w-2.5"
-              style={{ backgroundColor: "var(--series-output-token)" }}
-            />
+            <div className="h-2.5 w-2.5 bg-[var(--series-output-token)]" />
             {t.analytics.output}
           </div>
         </div>
       </CardHeader>
       <CardContent>
-        <div
-          className="flex items-end gap-[2px]"
-          style={{ height: CHART_HEIGHT_PX }}
-        >
+        <div className="flex items-end gap-[2px]" style={chartPxHeight(CHART_HEIGHT_PX)}>
           {daily.map((d) => {
             const total = d.input_tokens + d.output_tokens;
             const inputH = Math.round(
@@ -180,7 +178,7 @@ function TokenBarChart({ daily }: { daily: AnalyticsDailyEntry[] }) {
               <div
                 key={d.day}
                 className="flex-1 min-w-0 group relative flex flex-col justify-end"
-                style={{ height: CHART_HEIGHT_PX }}
+                style={chartPxHeight(CHART_HEIGHT_PX)}
               >
                 <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-10 pointer-events-none">
                   <div className="font-mondwest normal-case bg-card border border-border px-2.5 py-1.5 text-xs text-foreground shadow-lg whitespace-nowrap">
@@ -198,21 +196,13 @@ function TokenBarChart({ daily }: { daily: AnalyticsDailyEntry[] }) {
                 </div>
 
                 <div
-                  className="w-full"
-                  style={{
-                    backgroundColor:
-                      "color-mix(in srgb, var(--series-input-token) 70%, transparent)",
-                    height: Math.max(inputH, total > 0 ? 1 : 0),
-                  }}
+                  className="w-full bg-[var(--series-input-token)] opacity-70"
+                  style={chartPxHeight(Math.max(inputH, total > 0 ? 1 : 0))}
                 />
 
                 <div
-                  className="w-full"
-                  style={{
-                    backgroundColor:
-                      "color-mix(in srgb, var(--series-output-token) 70%, transparent)",
-                    height: Math.max(outputH, d.output_tokens > 0 ? 1 : 0),
-                  }}
+                  className="w-full bg-[var(--series-output-token)] opacity-70"
+                  style={chartPxHeight(Math.max(outputH, d.output_tokens > 0 ? 1 : 0))}
                 />
               </div>
             );
@@ -273,12 +263,12 @@ function DailyTable({ daily }: { daily: AnalyticsDailyEntry[] }) {
                       {d.sessions}
                     </td>
                   <td className="text-right py-2 px-4">
-                    <span style={{ color: "var(--series-input-token)" }}>
+                    <span className="text-[var(--series-input-token)]">
                         {formatTokens(d.input_tokens)}
                       </span>
                   </td>
                   <td className="text-right py-2 pl-4">
-                    <span style={{ color: "var(--series-output-token)" }}>
+                    <span className="text-[var(--series-output-token)]">
                         {formatTokens(d.output_tokens)}
                       </span>
                   </td>
@@ -331,11 +321,11 @@ function ModelTable({ models }: { models: AnalyticsModelEntry[] }) {
                     {m.sessions}
                   </td>
                   <td className="text-right py-2 pl-4">
-                    <span style={{ color: "var(--series-input-token)" }}>
+                    <span className="text-[var(--series-input-token)]">
                       {formatTokens(m.input_tokens)}
                     </span>
                     {" / "}
-                    <span style={{ color: "var(--series-output-token)" }}>
+                    <span className="text-[var(--series-output-token)]">
                       {formatTokens(m.output_tokens)}
                     </span>
                   </td>

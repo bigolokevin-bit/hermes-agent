@@ -361,9 +361,8 @@
   .sys3-scrollhint {
     display: block;
   }
-  .sys3-scroll {
-    mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 18px), transparent 100%);
-  }
+  /* buglist P0-5：撤壳右缘 fade 遮罩。复制列 sticky 钉右后，这层遮罩会盖在
+   * 钉住列自身上（钮右缘发虚）；横滑提示改由上方 .sys3-scrollhint 文案承担。 */
 }
 
 /* sys4 — row detail */
@@ -827,4 +826,24 @@
   text-align: right;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+
+/* buglist P0-5（#8）：375 档复制列整格藏进 .sys3-scroll 横滚壳右缘外 ~250px。
+ * 沿 metrics metW/metAF 粘性列先例把操作列钉在滚动壳右缘——无横滚（1440）时
+ * sticky 不产生位移，桌面视觉零差；z 层用最小平移：td(1) 压在滑过的正文列上，
+ * 表头角格(2) 同时压过粘顶表头(0)与粘右 td(1)。底色与粘顶表头同 --color-card
+ * 配方（不透明，防穿列）；行展开时更高特异度的 .sys3-row[data-open="1"] td
+ * 规则接管整行底色，粘性列不例外。 */
+.sys-row-copy-cell {
+  position: sticky;
+  right: 0;
+  z-index: 1;
+  background: var(--color-card);
+}
+
+.sys3-table thead .sys-row-copy-head {
+  position: sticky;
+  right: 0;
+  z-index: 2;
+  background: var(--color-card);
 }

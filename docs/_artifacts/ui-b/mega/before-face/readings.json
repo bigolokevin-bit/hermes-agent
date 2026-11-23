@@ -1,0 +1,354 @@
+[
+  {
+    "slug": "sessions",
+    "vw": 1440,
+    "mainTextLen": 116,
+    "hasNaN": true,
+    "sysCopy": [],
+    "headerTxt": [],
+    "sampled": [
+      {
+        "t": "ChatsAutomationAllAny ch",
+        "color": "color(srgb 1 0.901961 0.796078)",
+        "cls": "relative z-2 flex min-w-0 min-h-0 flex-1 flex-col overflow-x"
+      },
+      {
+        "t": "ChatsAutomationAllAny ch",
+        "color": "color(srgb 1 0.901961 0.796078)",
+        "cls": "w-full min-w-0 pb-[calc(2rem+env(safe-area-inset-bottom,0px)"
+      }
+    ],
+    "clipCount": 0,
+    "clip": [],
+    "offCount": 0,
+    "png": "sessions@1440.png",
+    "pngH": 960,
+    "consoleErrors": 0,
+    "errors": []
+  },
+  {
+    "slug": "sessions",
+    "vw": 375,
+    "mainTextLen": 116,
+    "hasNaN": true,
+    "sysCopy": [],
+    "headerTxt": [],
+    "sampled": [
+      {
+        "t": "ChatsAutomationAllAny ch",
+        "color": "color(srgb 1 0.901961 0.796078)",
+        "cls": "relative z-2 flex min-w-0 min-h-0 flex-1 flex-col overflow-x"
+      },
+      {
+        "t": "ChatsAutomationAllAny ch",
+        "color": "color(srgb 1 0.901961 0.796078)",
+        "cls": "w-full min-w-0 pb-[calc(2rem+env(safe-area-inset-bottom,0px)"
+      }
+    ],
+    "clipCount": 0,
+    "clip": [],
+    "offCount": 14,
+    "png": "sessions@375.png",
+    "pngH": 960,
+    "consoleErrors": 0,
+    "errors": []
+  },
+  {
+    "slug": "system",
+    "vw": 1440,
+    "mainTextLen": 1145,
+    "hasNaN": false,
+    "sysCopy": [
+      {
+        "id": "sys-row-copy-0",
+        "left": 1242,
+        "right": 1301
+      },
+      {
+        "id": "sys-row-copy-1",
+        "left": 1242,
+        "right": 1301
+      },
+      {
+        "id": "sys-row-copy-2",
+        "left": 1242,
+        "right": 1301
+      }
+    ],
+    "headerTxt": [
+      "服务名 状态 版本或构建标识 最近检查时刻 响应耗时 复制",
+      "上次成功",
+      "上次失败",
+      "连续成功",
+      "采集时间",
+      "上次成功",
+      "上次失败",
+      "连续成功",
+      "采集时间",
+      "上次成功",
+      "上次失败",
+      "连续成功"
+    ],
+    "sampled": [
+      {
+        "t": "系统 · 控制台系统设置系统健康默认设置版本审计",
+        "color": "color(srgb 1 0.901961 0.796078)",
+        "cls": "relative z-2 flex min-w-0 min-h-0 flex-1 flex-col overflow-x"
+      },
+      {
+        "t": "系统 · 控制台系统设置系统健康默认设置版本审计",
+        "color": "color(srgb 1 0.901961 0.796078)",
+        "cls": "w-full min-w-0 pb-[calc(2rem+env(safe-area-inset-bottom,0px)"
+      }
+    ],
+    "clipCount": 0,
+    "clip": [],
+    "offCount": 0,
+    "png": "system@1440.png",
+    "pngH": 1506,
+    "consoleErrors": 0,
+    "errors": []
+  },
+  {
+    "slug": "system",
+    "vw": 375,
+    "mainTextLen": 1155,
+    "hasNaN": false,
+    "sysCopy": [
+      {
+        "id": "sys-row-copy-0",
+        "left": 624,
+        "right": 683
+      },
+      {
+        "id": "sys-row-copy-1",
+        "left": 624,
+        "right": 683
+      },
+      {
+        "id": "sys-row-copy-2",
+        "left": 624,
+        "right": 683
+      }
+    ],
+    "headerTxt": [
+      "服务名 状态 版本或构建标识 最近检查时刻 响应耗时 复制",
+      "上次成功",
+      "上次失败",
+      "连续成功",
+      "采集时间",
+      "上次成功",
+      "上次失败",
+      "连续成功",
+      "采集时间",
+      "上次成功",
+      "上次失败",
+      "连续成功"
+    ],
+    "sampled": [
+      {
+        "t": "系统 · 控制台系统设置系统健康默认设置版本审计",
+        "color": "color(srgb 1 0.901961 0.796078)",
+        "cls": "relative z-2 flex min-w-0 min-h-0 flex-1 flex-col overflow-x"
+      },
+      {
+        "t": "系统 · 控制台系统设置系统健康默认设置版本审计",
+        "color": "color(srgb 1 0.901961 0.796078)",
+        "cls": "w-full min-w-0 pb-[calc(2rem+env(safe-area-inset-bottom,0px)"
+      }
+    ],
+    "clipCount": 3,
+    "clip": [
+      {
+        "id": "sys-row-copy-0",
+        "right": 683,
+        "left": 624
+      },
+      {
+        "id": "sys-row-copy-1",
+        "right": 683,
+        "left": 624
+      },
+      {
+        "id": "sys-row-copy-2",
+        "right": 683,
+        "left": 624
+      }
+    ],
+    "offCount": 14,
+    "png": "system@375.png",
+    "pngH": 2457,
+    "consoleErrors": 0,
+    "errors": []
+  },
+  {
+    "slug": "identity",
+    "vw": 1440,
+    "mainTextLen": 385,
+    "hasNaN": false,
+    "sysCopy": [],
+    "headerTxt": [],
+    "sampled": [
+      {
+        "t": "治理 · 控制台人员与访问人员目录组织与部门角色",
+        "color": "color(srgb 1 0.901961 0.796078)",
+        "cls": "relative z-2 flex min-w-0 min-h-0 flex-1 flex-col overflow-x"
+      },
+      {
+        "t": "治理 · 控制台人员与访问人员目录组织与部门角色",
+        "color": "color(srgb 1 0.901961 0.796078)",
+        "cls": "w-full min-w-0 pb-[calc(2rem+env(safe-area-inset-bottom,0px)"
+      }
+    ],
+    "clipCount": 0,
+    "clip": [],
+    "offCount": 0,
+    "png": "identity@1440.png",
+    "pngH": 960,
+    "consoleErrors": 2,
+    "errors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ]
+  },
+  {
+    "slug": "identity",
+    "vw": 375,
+    "mainTextLen": 368,
+    "hasNaN": false,
+    "sysCopy": [],
+    "headerTxt": [],
+    "sampled": [
+      {
+        "t": "治理 · 控制台人员与访问人员目录组织与部门角色",
+        "color": "color(srgb 1 0.901961 0.796078)",
+        "cls": "relative z-2 flex min-w-0 min-h-0 flex-1 flex-col overflow-x"
+      },
+      {
+        "t": "治理 · 控制台人员与访问人员目录组织与部门角色",
+        "color": "color(srgb 1 0.901961 0.796078)",
+        "cls": "w-full min-w-0 pb-[calc(2rem+env(safe-area-inset-bottom,0px)"
+      }
+    ],
+    "clipCount": 0,
+    "clip": [],
+    "offCount": 14,
+    "png": "identity@375.png",
+    "pngH": 960,
+    "consoleErrors": 2,
+    "errors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ]
+  },
+  {
+    "slug": "evidence",
+    "vw": 1440,
+    "mainTextLen": 4628,
+    "hasNaN": false,
+    "sysCopy": [],
+    "headerTxt": [],
+    "sampled": [
+      {
+        "t": "治理 · 控制台知识与数据知识空间数据源审计证据",
+        "color": "color(srgb 1 0.901961 0.796078)",
+        "cls": "relative z-2 flex min-w-0 min-h-0 flex-1 flex-col overflow-x"
+      },
+      {
+        "t": "治理 · 控制台知识与数据知识空间数据源审计证据",
+        "color": "color(srgb 1 0.901961 0.796078)",
+        "cls": "w-full min-w-0 pb-[calc(2rem+env(safe-area-inset-bottom,0px)"
+      }
+    ],
+    "clipCount": 0,
+    "clip": [],
+    "offCount": 0,
+    "png": "evidence@1440.png",
+    "pngH": 3869,
+    "consoleErrors": 2,
+    "errors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ]
+  },
+  {
+    "slug": "evidence",
+    "vw": 375,
+    "mainTextLen": 4628,
+    "hasNaN": false,
+    "sysCopy": [],
+    "headerTxt": [],
+    "sampled": [
+      {
+        "t": "治理 · 控制台知识与数据知识空间数据源审计证据",
+        "color": "color(srgb 1 0.901961 0.796078)",
+        "cls": "relative z-2 flex min-w-0 min-h-0 flex-1 flex-col overflow-x"
+      },
+      {
+        "t": "治理 · 控制台知识与数据知识空间数据源审计证据",
+        "color": "color(srgb 1 0.901961 0.796078)",
+        "cls": "w-full min-w-0 pb-[calc(2rem+env(safe-area-inset-bottom,0px)"
+      }
+    ],
+    "clipCount": 0,
+    "clip": [],
+    "offCount": 14,
+    "png": "evidence@375.png",
+    "pngH": 6691,
+    "consoleErrors": 2,
+    "errors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ]
+  },
+  {
+    "slug": "analytics",
+    "vw": 1440,
+    "mainTextLen": 815,
+    "hasNaN": false,
+    "sysCopy": [],
+    "headerTxt": [],
+    "sampled": [
+      {
+        "t": "Token analytics hiddenTh",
+        "color": "color(srgb 1 0.901961 0.796078)",
+        "cls": "relative z-2 flex min-w-0 min-h-0 flex-1 flex-col overflow-x"
+      },
+      {
+        "t": "Token analytics hiddenTh",
+        "color": "color(srgb 1 0.901961 0.796078)",
+        "cls": "w-full min-w-0 pb-[calc(2rem+env(safe-area-inset-bottom,0px)"
+      }
+    ],
+    "clipCount": 0,
+    "clip": [],
+    "offCount": 0,
+    "png": "analytics@1440.png",
+    "pngH": 960,
+    "consoleErrors": 0,
+    "errors": []
+  },
+  {
+    "slug": "analytics",
+    "vw": 375,
+    "mainTextLen": 815,
+    "hasNaN": false,
+    "sysCopy": [],
+    "headerTxt": [],
+    "sampled": [
+      {
+        "t": "Token analytics hiddenTh",
+        "color": "color(srgb 1 0.901961 0.796078)",
+        "cls": "relative z-2 flex min-w-0 min-h-0 flex-1 flex-col overflow-x"
+      },
+      {
+        "t": "Token analytics hiddenTh",
+        "color": "color(srgb 1 0.901961 0.796078)",
+        "cls": "w-full min-w-0 pb-[calc(2rem+env(safe-area-inset-bottom,0px)"
+      }
+    ],
+    "clipCount": 0,
+    "clip": [],
+    "offCount": 14,
+    "png": "analytics@375.png",
+    "pngH": 960,
+    "consoleErrors": 0,
+    "errors": []
+  }
+]
