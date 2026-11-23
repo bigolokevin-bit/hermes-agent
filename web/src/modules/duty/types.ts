@@ -11,7 +11,17 @@ export const EMPLOYEES_PAGE_LIMIT = 100;
 export type Loadable<T> =
   | { k: "loading" }
   | { k: "ready"; data: T }
-  | { k: "error"; status: number; message: string; requestId: string | null };
+  | {
+      k: "error";
+      status: number;
+      message: string;
+      requestId: string | null;
+      /**
+       * DU-05①：404/503 + `not_wired` 信封是正当的「未接入」，不是取数失败
+       * （fetchKnowledgeProbe 同口径，api.ts `isNotWiredError` 判定）。缺省 false。
+       */
+      notWired?: boolean;
+    };
 
 export function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v);

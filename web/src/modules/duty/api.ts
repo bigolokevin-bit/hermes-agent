@@ -77,11 +77,26 @@ export function statusOf(err: unknown): number {
   return err instanceof ApiError ? err.status : 0;
 }
 
+/**
+ * 「未接入」判定（DU-05①）：与 fetchKnowledgeProbe 同一口径——404/503 且信封带
+ * `not_wired`。这一形制归「未接入」，绝不进「读取失败」的文案；其余错误才是失败。
+ */
+export function isNotWiredError(err: unknown): boolean {
+  return (
+    err instanceof ApiError &&
+    (err.status === 404 || err.status === 503) &&
+    err.body.includes("not_wired")
+  );
+}
+
 /** Chinese, actionable error line. Never includes HTTP codes or raw bodies. */
 export function humanError(err: unknown): string {
   const status = statusOf(err);
   if (status === 401) return "登录状态已过期，请重新登录后再刷新。";
-  if (status === 403 || status === 404) return "你没有查看这块数据的权限，或该数据尚未接入。";
+  // DU-05① 口径不混用：403 是没有权限（失败类），404 是没接这个口（未接入类），
+  // 一句只说一件事，不再「权限或尚未接入」二义并列。
+  if (status === 403) return "你没有查看这块数据的权限。";
+  if (status === 404) return "这块数据的来源尚未接入。";
   if (status === 0) return "当前网络不可达，请检查连接后重试。";
   if (status === 429) return "请求太频繁，请稍后再重试。";
   if (status >= 500) return "数据服务暂时没有响应，请稍后重试。";
@@ -291,6 +306,8 @@ export async function load<T>(fn: () => Promise<T>): Promise<Loadable<T>> {
       status: statusOf(err),
       message: humanError(err),
       requestId: requestIdOf(err),
+      // 页头 health chip 靠这个标把「未接入」和「读取失败」分开画（DU-05①）。
+      notWired: isNotWiredError(err),
     };
   }
 }

@@ -44,7 +44,9 @@ import type {
   TaskRow,
 } from "./types";
 import type { ReadinessEvidence } from "./readiness";
-import { useDutyData } from "./useDutyData";
+import { useDutyData, type DutyData, type DutyLegKey } from "./useDutyData";
+import { deriveDutyHealth, healthChipText, healthChipTitle } from "./health";
+import { forcedStateOf } from "./usage";
 import {
   DEFAULT_DUTY_RANGE,
   DUTY_RANGES,
@@ -123,10 +125,16 @@ function StateLine({
   if (state.k === "error") {
     /* UI-B 错误态组合：人话标题在外，技术句（HTTP 语义的 message）折叠进「详情」；
      * rid 复制入口保持可见可复制；重试=卡内唯一实心主操作（刷新条的「再试」
-     * 不在卡内、且两错误腿不同层，不与之争主操作位）。 */
+     * 不在卡内、且两错误腿不同层，不与之争主操作位）。
+     * DU-05① 标题分档：未接入 / 无权限 / 读取失败三套词各说各的，互不混用。 */
+    const title = state.notWired
+      ? "这一块的数据源未接入"
+      : state.status === 401 || state.status === 403
+        ? "这一块你没有权限查看"
+        : "这一块没有读取成功";
     return (
       <div className="duty-error" role="alert">
-        <p className="duty-error-title">这一块没有读取成功</p>
+        <p className="duty-error-title">{title}</p>
         <p className="duty-req">
           {state.requestId ? (
             <>
@@ -250,16 +258,18 @@ function asOfOf(x: unknown): string | null {
   return null;
 }
 
-function legReason(legs: readonly { k: string }[]): string {
+function legReason(legs: readonly Loadable<unknown>[]): string {
   if (legs.some((l) => l.k === "loading")) return "数据还在读取";
-  if (legs.some((l) => l.k === "error")) return "本次读取失败，取不到采集时间";
+  // DU-05① 口径不混用：not_wired 形制的腿缺采集时间是因为「未接入」，不是「失败」。
+  if (legs.some((l) => l.k === "error" && !l.notWired)) return "本次读取失败，取不到采集时间";
+  if (legs.some((l) => l.k === "error")) return "数据来源未接入，取不到采集时间";
   return "上游响应没有带采集时间";
 }
 
 function stampOf(
   raw: string | null,
   source: string,
-  legs: readonly { k: string }[],
+  legs: readonly Loadable<unknown>[],
 ): { shown: string | null; source: string; reason?: string } {
   return { shown: raw ? beijing(raw) : null, source, reason: raw ? undefined : legReason(legs) };
 }
@@ -1296,12 +1306,56 @@ function DutyNotes() {
   );
 }
 
+/**
+ * DU-05①：页头 health chip。三态词表按主仓 `_overview` 真形制钉死（见 health.ts）：
+ * ok=正常 / degraded=降级（列「读取失败」的腿名）/ 未接入（列 not_wired 的腿名）。
+ * 「未接入」永不写进失败清单，「读取失败」永不借用「未接入」的说法；缺读数画「—」。
+ */
+function DutyHealthChip({ data }: { data: DutyData }) {
+  const view = deriveDutyHealth(data);
+  const tone =
+    view.level === "ok" ? "success" : view.level === "degraded" ? "warning" : "default";
+  return (
+    <span
+      className="duty-health-chip"
+      data-testid="duty-health-chip"
+      data-duty-testid="duty-health-chip"
+      data-state={view.level}
+      title={healthChipTitle(view)}
+    >
+      <Badge tone={tone as Tone}>{healthChipText(view)}</Badge>
+    </span>
+  );
+}
+
+/** DU-05③：`?state=` 复现说明——形制是复现的，不是服务的回答；去掉参数即真读。 */
+function DutyReproNote({ state }: { state: string }) {
+  return (
+    <p className="duty-note" data-testid="duty-repro-note" title="复现腿不发起真实请求，去掉 ?state= 即为真实读取">
+      {`强制态：?state=${state} — 这是用地址参数复现出来的界面形制，不是服务此刻的回答；复现腿不发起真实请求，去掉 ?state= 即为真实读取。`}
+    </p>
+  );
+}
+
 export default function DutyPage() {
   const [params, setParams] = useSearchParams();
   const rangeId = parseDutyRange(params.get(DUTY_RANGE_PARAM));
   const statusFilterId = parseDutyStatusFilter(params.get(DUTY_STATUS_PARAM));
   const range = dutyRange(rangeId);
-  const { data, counts, reload, loading, refreshState } = useDutyData(rangeId);
+  // DU-05③：四态强制读**查询串**（BrowserRouter 下这才是真接线；旧实现只看
+  // window.location.hash，现网 `/overview?state=…` 根本进不了分支）。hash 形制
+  // 保留兼容（壳侧 bridge 的 in-hash 写法）。非法值=忽略，回到真实读取。
+  const forced = (() => {
+    const fromSearch = params.get("state");
+    if (fromSearch) return forcedStateOf(fromSearch.trim().toLowerCase());
+    const hash = typeof window === "undefined" ? "" : window.location.hash;
+    const match = hash.match(/[?&]state=([^&]+)/);
+    return match ? forcedStateOf(decodeURIComponent(match[1]).trim().toLowerCase()) : null;
+  })();
+  // OM-04 的读取开关占位为默认档：值班台要渲染活动热力，activity 照常请求。
+  const { data, counts, reload, loading, refreshState } = useDutyData(rangeId, {}, forced);
+  // DU-05②：单腿重试的入口在 hook 上；复现态时它是空操作（不发请求）。
+  const retry = (keys: readonly DutyLegKey[]) => () => refreshState.retryLegs(keys);
   const chooseRange = (next: string) => {
     const query = new URLSearchParams(params);
     if (next === DEFAULT_DUTY_RANGE) query.delete(DUTY_RANGE_PARAM);
@@ -1320,43 +1374,6 @@ export default function DutyPage() {
   const allFailed =
     !loading && loadableValues.length > 0 && loadableValues.every((v) => v.k === "error");
   const gates = dutyGates({ loading, refreshing: refreshState.refreshing, allFailed });
-
-  const forced = (() => {
-    const match = window.location.hash.match(/[?&]state=([^&]+)/);
-    return match ? decodeURIComponent(match[1]) : "";
-  })();
-  if (forced === "loading") {
-    return (
-      <div className="duty-page" data-testid="ov6-page" data-duty-testid="duty-page">
-        <p className="duty-note">正在读取值班数据…</p>
-        <p className="duty-note" data-testid="ov6-asof" title="取不到采集时间：数据还在读取；不用本机时间顶替">采集时刻 —（北京时间）</p>
-      </div>
-    );
-  }
-  if (forced === "empty") {
-    return (
-      <div className="duty-page" data-testid="ov6-page" data-duty-testid="duty-page">
-        <div className="duty-empty">
-          <p>当前没有可显示的值班数据。</p>
-          <p>数据源返回为空，可能尚未接入。</p>
-          <p className="duty-note" data-testid="ov6-asof" title="取不到采集时间：上游响应没有带采集时间；不用本机时间顶替">采集时刻 —（北京时间）</p>
-          <Link className="duty-link" to="/employees">去员工列表</Link>
-        </div>
-      </div>
-    );
-  }
-  if (forced === "error") {
-    return (
-      <div className="duty-page" data-testid="ov6-page" data-duty-testid="duty-page">
-        <div className="duty-empty">
-          <p>值班数据暂时不可用。</p>
-          <p>请求编号：未提供</p>
-          <p className="duty-note" data-testid="ov6-asof" title="取不到采集时间：本次读取失败；不用本机时间顶替">采集时刻 —（北京时间）</p>
-          <Button outlined onClick={reload}>重试</Button>
-        </div>
-      </div>
-    );
-  }
   const totalEmployees =
     data.stats.k === "ready" ? lifecycleTotal(data.stats.data) : null;
 
@@ -1364,11 +1381,13 @@ export default function DutyPage() {
     <DutyGatesContext.Provider value={gates}>
     <div className="duty-page" data-testid="ov6-page" data-duty-testid="duty-page">
       <span data-testid="duty-gates-scope" data-gates="refresh,retry,copy,link,exportDaily" hidden />
+      {forced !== null ? <DutyReproNote state={forced} /> : null}
       <header className="duty-head">
         <div className="duty-title">
           <ShieldCheck className="h-5 w-5" aria-hidden />
           <span className="duty-title-name">值班台</span>
           <span>运营总览 · 只读</span>
+          <DutyHealthChip data={data} />
           {(() => {
             // R41: ANY source that carries its own collection stamp counts;
             // the newest (maximum) stamp goes on screen. Only when every
@@ -1521,7 +1540,7 @@ export default function DutyPage() {
           stats={data.todayStats}
           runs={data.todayRuns}
           count={counts.todayRuns}
-          onRetry={reload}
+          onRetry={retry(["todayStats"])}
           statusFilterId={statusFilterId}
           onChooseStatus={chooseStatus}
         />
@@ -1530,7 +1549,7 @@ export default function DutyPage() {
           month={data.budgetMonth}
           employees={data.employees}
           totalEmployees={totalEmployees}
-          onRetry={reload}
+          onRetry={retry(["budgetDay", "budgetMonth"])}
         />
       </div>
 
@@ -1562,7 +1581,7 @@ export default function DutyPage() {
       <div className="duty-grid duty-grid-2">
         <TrendCard
           stats={data.stats14}
-          onRetry={reload}
+          onRetry={retry(["stats14"])}
           label={range.label}
           windowNote={
             range.tsRange === "30d" && range.days < 30
@@ -1570,13 +1589,13 @@ export default function DutyPage() {
               : null
           }
         />
-        <ActivityCard activity={data.activity} onRetry={reload} label={range.label} />
+        <ActivityCard activity={data.activity} onRetry={retry(["activity"])} label={range.label} />
       </div>
 
       <div className="duty-grid duty-grid-3">
         <BlockersCard runs={data.failedRuns} tasks={data.blockedTasks} approvals={data.approvals} onRetry={reload} />
-        <PendingCard stats={data.approvalStats} approvals={data.approvals} onRetry={reload} />
-        <RecentCard runs={data.recentRuns} onRetry={reload} />
+        <PendingCard stats={data.approvalStats} approvals={data.approvals} onRetry={retry(["approvalStats"])} />
+        <RecentCard runs={data.recentRuns} onRetry={retry(["recentRuns"])} />
       </div>
 
       <DutyNotes />

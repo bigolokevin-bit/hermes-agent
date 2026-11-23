@@ -25,6 +25,7 @@ import { NO_COUNT, type ServerRowCount } from "./dutySlots";
 import type { RowPage } from "./api";
 import { diffDuty, type DutyDelta } from "./dutyDelta";
 import { DEFAULT_DUTY_RANGE, dutyRange, type DutyRangeId } from "./dutyRange";
+import type { ForcedState } from "./usage";
 import type {
   ActivityBody,
   ApprovalRow,
@@ -57,6 +58,40 @@ export interface DutyData {
   readiness?: Loadable<ReadinessEvidence>;
 }
 
+/** 页面上每一条可独立重试的卡腿。retryLeg 与 health chip 都按这个名单点名。 */
+export type DutyLegKey = keyof DutyData;
+
+/**
+ * OM-04④：本页读取的消费者开关。activity 只在有活动热力可渲染的消费面上
+ * 才请求；默认（不传）为请求，DutyPage 因此保持原行为逐字不变。
+ */
+export interface DutyReadOpts {
+  activity?: boolean;
+}
+
+const LEG_KEYS: readonly DutyLegKey[] = [
+  "employees",
+  "stats",
+  "todayStats",
+  "stats14",
+  "activity",
+  "budgetDay",
+  "budgetMonth",
+  "approvalStats",
+  "approvals",
+  "todayRuns",
+  "recentRuns",
+  "failedRuns",
+  "blockedTasks",
+  "readiness",
+];
+
+/**
+ * 依赖员工目录先回答的腿：目录本身没回答时「原请求」根本不存在，
+ * 这时单卡重试如实退成整批重读（重试的不是一个没发过的请求）。
+ */
+const DEPENDENT_LEGS: readonly DutyLegKey[] = ["budgetDay", "budgetMonth", "readiness"];
+
 /**
  * DU-02①：三卡「查看全部 (N)」的 N 只来自这里——服务端响应真带回的行数。
  * 走 hook 的旁路返回值而不是 DutyData：overview 等消费面对 DutyData 做
@@ -81,6 +116,14 @@ export interface DutyRefresh {
   refreshDelta: DutyDelta | null;
   refresh: () => void;
   cancelRefresh: () => void;
+  /**
+   * DU-05②：单卡错误重试＝重发这些腿的**原请求**（同 URL、同参数），只更新
+   * 点名的卡，其余卡保留既有读数。队列一次请求喂两卡：重试任一格都重发那
+   * 一条 queue 请求并同时回填两卡（与首读同一形状，不多发一条）。
+   */
+  retryLegs: (keys: readonly DutyLegKey[]) => void;
+  /** 本页此刻是 `?state=` 复现腿：不发起任何真实请求（与 usage 同纪律）。 */
+  forced: boolean;
 }
 
 const loading = <T,>(): Loadable<T> => ({ k: "loading" });
@@ -105,7 +148,7 @@ function initial(): DutyData {
 }
 
 function asError<T>(leg: Extract<Loadable<unknown>, { k: "error" }>): Loadable<T> {
-  return { k: "error", status: leg.status, message: leg.message, requestId: leg.requestId };
+  return { k: "error", status: leg.status, message: leg.message, requestId: leg.requestId, notWired: leg.notWired };
 }
 
 /** 行页 → 卡用的行数组（消费面形状不变）；错误腿原样透传，不降级成空数组。 */
@@ -118,59 +161,140 @@ function countOf<T>(leg: Loadable<RowPage<T>>): ServerRowCount {
   return leg.k === "ready" ? leg.data.count : NO_COUNT;
 }
 
+/** 首读相：还没人回答目录时的空依赖（budget/readiness 这一相不会被调用）。 */
+interface LegDeps {
+  employeeIds: string[];
+  denominatorIds: string[];
+}
+
 /**
- * One read of every card, started together and returned as one batch.
- * Cards are independent: a failed endpoint yields an error for that card only.
+ * 单腿「原请求」的唯一出处：collect 首读与 retryLegs 重试都从这张表取闭包，
+ * 保证重试重发的就是原请求（同 URL、同参数、同窗口推导），不存在第二套拼法。
+ * OM-04④：activity 的消费者开关也挂在这张表上，于是首读与单卡重试走的是
+ * 同一条受开关约束的路，不会出现「首读不发、重试却发」的第二套口径。
  */
-/**
- * 一次性读取本页所有卡片。OM-04④：activity 腿加消费者开关——总览没有
- * 活动热力可渲染，默认不请求；关掉时 data.activity 停在「loading」这个
- * 未发起请求的中性占位上（总览的空态/错误态/截至行只数 coreStates 与
- * stats14，从不消费它），DutyPage 走默认档行为逐字不变。
- * DU-02：返回 { batch, counts }，counts 为三卡服务端真数（N 只从这里来）。
- */
-async function collect(rangeId: DutyRangeId, opts: { activity?: boolean } = {}): Promise<{ batch: DutyData; counts: DutyCounts }> {
+function legRequests(rangeId: DutyRangeId, deps: LegDeps, opts: DutyReadOpts = {}) {
   const range = dutyRange(rangeId);
   const wantActivity = opts.activity !== false;
   const day = beijingDayWindow();
   const month = day.date.slice(0, 7);
   const w7 = daysAgoWindow(7);
   const w1 = daysAgoWindow(1);
+  return {
+    employees: () => load(fetchEmployees),
+    stats: () => load(fetchEmployeeStats),
+    // 统计与趋势改吃 workbench 读模型：KPI 与时间序列由 BFF 聚合。
+    todayStats: () => load(async () => summaryStats(await fetchWorkbenchSummary("1d"))),
+    stats14: () =>
+      load(async () =>
+        timeseriesStats(trimTimeseries(await fetchWorkbenchTimeseries({ range: range.tsRange, bucket: "day" }), range.days)),
+      ),
+    // OM-04④：关掉时不发请求，停在「loading」这个未发起的中性占位上。
+    activity: () =>
+      wantActivity
+        ? load(() => fetchActivity(range.weeks))
+        : Promise.resolve({ k: "loading" } as Loadable<ActivityBody>),
+    budgetDay: () => load(() => fetchBudget(deps.employeeIds, "day", day.date)),
+    budgetMonth: () => load(() => fetchBudget(deps.employeeIds, "month", month)),
+    readiness: () => load(() => fetchReadinessEvidence(deps.denominatorIds)),
+    todayRuns: () => load(() => fetchRuns(DUTY_RUNS_PAGE_LIMIT, day.from)),
+    recentRuns: () => load(() => fetchRuns(DUTY_RUNS_PAGE_LIMIT, w7.from)),
+    failedRuns: () => load(() => fetchRuns(DUTY_RUNS_PAGE_LIMIT, w1.from, "failed")),
+    blockedTasks: () => load(() => fetchBlockedTasks(3)),
+  };
+}
 
-  const employeesPageP = load(fetchEmployees);
-  const statsP = load(fetchEmployeeStats);
-  // 统计与趋势改吃 workbench 读模型：KPI 与时间序列由 BFF 聚合。
-  const todayStatsP = load(async () => summaryStats(await fetchWorkbenchSummary("1d")));
-  const stats14P = load(async () =>
-    timeseriesStats(trimTimeseries(await fetchWorkbenchTimeseries({ range: range.tsRange, bucket: "day" }), range.days)),
-  );
-  const activityP = wantActivity
-    ? load(() => fetchActivity(range.weeks))
-    : Promise.resolve({ k: "loading" } as Loadable<ActivityBody>);
+const NO_DEPS: LegDeps = { employeeIds: [], denominatorIds: [] };
+
+/** 行页腿（重试时要顺带回填服务端真行数）：目录与今日运行。 */
+function isRowsCountLeg(key: DutyLegKey): boolean {
+  return key === "employees" || key === "todayRuns";
+}
+
+const emptyEvidence = (knowledgeWired: boolean): ReadinessEvidence => ({
+  stations: {},
+  configs: {},
+  approvals: { k: "ready", data: [] },
+  knowledge: {
+    k: "ready",
+    data: knowledgeWired ? { wired: true, count: 0, asOf: null } : { wired: false, count: null, asOf: null },
+  },
+  coverage: { covered: 0, requested: 0 },
+});
+
+/**
+ * DU-05③：`?state=` 四态复现批。只画形制，不发真实请求（与 usage 的复现腿
+ * 同纪律）；error/denied 的措辞分开钉——denied 是「无权限」，不是「失败」，
+ * 更不是「未接入」；请求号一律 null（复现腿没发过请求，不能假装有编号）。
+ */
+function forcedBatch(state: ForcedState): DutyData {
+  if (state === "loading") return initial();
+  if (state === "empty") {
+    return {
+      employees: { k: "ready", data: [] },
+      stats: { k: "ready", data: {} },
+      todayStats: { k: "ready", data: {} },
+      stats14: { k: "ready", data: {} },
+      activity: { k: "ready", data: {} },
+      budgetDay: { k: "ready", data: { items: [], missingEmployeeIds: [] } },
+      budgetMonth: { k: "ready", data: { items: [], missingEmployeeIds: [] } },
+      approvalStats: { k: "ready", data: {} },
+      approvals: { k: "ready", data: [] },
+      todayRuns: { k: "ready", data: [] },
+      recentRuns: { k: "ready", data: [] },
+      failedRuns: { k: "ready", data: [] },
+      blockedTasks: { k: "ready", data: [] },
+      readiness: { k: "ready", data: emptyEvidence(false) },
+    };
+  }
+  const leg: Loadable<unknown> =
+    state === "error"
+      ? {
+          k: "error",
+          status: 500,
+          message: "这条腿是用 ?state=error 复现的，服务此刻没有回答过；复现腿不发起真实请求。",
+          requestId: null,
+        }
+      : {
+          k: "error",
+          status: 403,
+          message: "你没有查看这块数据的权限（这条腿是用 ?state=denied 复现的，服务此刻没有回答过）。",
+          requestId: null,
+        };
+  return Object.fromEntries(LEG_KEYS.map((k) => [k, leg])) as unknown as DutyData;
+}
+
+/**
+ * One read of every card, started together and returned as one batch.
+ * Cards are independent: a failed endpoint yields an error for that card only.
+ * OM-04④：activity 腿加消费者开关——总览没有活动热力可渲染，默认不请求；
+ * 关掉时 data.activity 停在「loading」这个未发起请求的中性占位上（总览的
+ * 空态/错误态/截至行只数 coreStates 与 stats14，从不消费它），DutyPage 走
+ * 默认档行为逐字不变。开关经 legRequests 同一张表生效，重试与首读同路。
+ * DU-02：返回 { batch, counts }，counts 为三卡服务端真数（N 只从这里来）。
+ */
+async function collect(rangeId: DutyRangeId, opts: DutyReadOpts = {}): Promise<{ batch: DutyData; counts: DutyCounts }> {
+  const reqs = legRequests(rangeId, NO_DEPS, opts);
+
+  const employeesPageP = reqs.employees();
+  const statsP = reqs.stats();
+  const todayStatsP = reqs.todayStats();
+  const stats14P = reqs.stats14();
+  const activityP = reqs.activity();
   // 待审队列一次取数给两张卡：计数与前三行同源。
   const queue = fetchWorkbenchQueue();
   const approvalStatsP = load(() => queue.then(queueStats));
   const approvalsP = load(() => queue.then(queueApprovals));
-  const todayRunsPageP = load(() => fetchRuns(DUTY_RUNS_PAGE_LIMIT, day.from));
-  const recentRunsPageP = load(() => fetchRuns(DUTY_RUNS_PAGE_LIMIT, w7.from));
-  const failedRunsPageP = load(() => fetchRuns(DUTY_RUNS_PAGE_LIMIT, w1.from, "failed"));
-  const blockedTasksP = load(() => fetchBlockedTasks(3));
+  const todayRunsPageP = reqs.todayRuns();
+  const recentRunsPageP = reqs.recentRuns();
+  const failedRunsPageP = reqs.failedRuns();
+  const blockedTasksP = reqs.blockedTasks();
 
   const employeesPage = await employeesPageP;
   const employees = rowsLeg(employeesPage);
   let budgetDay: Loadable<BudgetBody>;
   let budgetMonth: Loadable<BudgetBody>;
   let readiness: Loadable<ReadinessEvidence>;
-  const emptyEvidence = (knowledgeWired: boolean): ReadinessEvidence => ({
-    stations: {},
-    configs: {},
-    approvals: { k: "ready", data: [] },
-    knowledge: {
-      k: "ready",
-      data: knowledgeWired ? { wired: true, count: 0, asOf: null } : { wired: false, count: null, asOf: null },
-    },
-    coverage: { covered: 0, requested: 0 },
-  });
   if (employees.k === "error") {
     budgetDay = asError<BudgetBody>(employees);
     budgetMonth = asError<BudgetBody>(employees);
@@ -189,10 +313,11 @@ async function collect(rangeId: DutyRangeId, opts: { activity?: boolean } = {}):
     const denomIds = employees.data
       .filter((e) => DENOMINATOR_STATES.has(e.lifecycleState ?? "active"))
       .map((e) => e.employeeId);
+    const withIds = legRequests(rangeId, { employeeIds: ids, denominatorIds: denomIds }, opts);
     [budgetDay, budgetMonth, readiness] = await Promise.all([
-      load(() => fetchBudget(ids, "day", day.date)),
-      load(() => fetchBudget(ids, "month", month)),
-      load(() => fetchReadinessEvidence(denomIds)),
+      withIds.budgetDay(),
+      withIds.budgetMonth(),
+      withIds.readiness(),
     ]);
   }
 
@@ -250,7 +375,8 @@ async function collect(rangeId: DutyRangeId, opts: { activity?: boolean } = {}):
  */
 export function useDutyData(
   rangeId: DutyRangeId = DEFAULT_DUTY_RANGE,
-  opts: { activity?: boolean } = {},
+  opts: DutyReadOpts = {},
+  forced: ForcedState | null = null,
 ): {
   data: DutyData;
   counts: DutyCounts;
@@ -259,13 +385,13 @@ export function useDutyData(
   refreshState: DutyRefresh;
 } {
   const [nonce, setNonce] = useState(0);
-  const [data, setData] = useState<DutyData>(initial);
+  const [data, setData] = useState<DutyData>(() => (forced !== null ? forcedBatch(forced) : initial()));
   const [counts, setCounts] = useState<DutyCounts>(EMPTY_DUTY_COUNTS);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshAt, setRefreshAt] = useState<string | null>(null);
   const [refreshError, setRefreshError] = useState<DutyRefresh["refreshError"]>(null);
   const [refreshDelta, setRefreshDelta] = useState<DutyDelta | null>(null);
-  const dataRef = useRef<DutyData>(initial());
+  const dataRef = useRef<DutyData>(forced !== null ? forcedBatch(forced) : initial());
   const busyRef = useRef(false);
   const versionRef = useRef(0);
   // Range changes bring their own generation counter: a late answer from the
@@ -273,8 +399,12 @@ export function useDutyData(
   const rangeRef = useRef<DutyRangeId>(rangeId);
   const rangeVersionRef = useRef(0);
   const mountedRef = useRef(false);
-  rangeRef.current = rangeId;
+  // DU-05②：正在单腿重试的卡名。同一腿的重试不叠加，批次刷新在飞时也不另发。
+  const retryingRef = useRef<Set<DutyLegKey>>(new Set());
+  const forcedRef = useRef(forced);
   const wantActivityRef = useRef(opts.activity !== false);
+  rangeRef.current = rangeId;
+  forcedRef.current = forced;
   wantActivityRef.current = opts.activity !== false;
 
   useEffect(() => {
@@ -283,6 +413,17 @@ export function useDutyData(
 
   useEffect(() => {
     let alive = true;
+    setRefreshAt(null);
+    setRefreshError(null);
+    if (forced !== null) {
+      // 复现腿：不读服务，形制直接落屏（真实请求一条都不发）。
+      setData(forcedBatch(forced));
+      setCounts(EMPTY_DUTY_COUNTS);
+      setRefreshDelta(null);
+      return () => {
+        alive = false;
+      };
+    }
     setData(initial());
     setCounts(EMPTY_DUTY_COUNTS);
     setRefreshDelta(null);
@@ -295,7 +436,7 @@ export function useDutyData(
     return () => {
       alive = false;
     };
-  }, [nonce]);
+  }, [nonce, forced]);
 
   // Switching the range re-reads only the two readers whose answer depends on
   // it. Everything else in the batch (directory, staff stats, queue, month
@@ -303,6 +444,11 @@ export function useDutyData(
   useEffect(() => {
     if (!mountedRef.current) {
       mountedRef.current = true;
+      return;
+    }
+    if (forced !== null) {
+      // 复现态下切窗口只重画形制，不发真实请求。
+      setData(forcedBatch(forced));
       return;
     }
     const version = ++rangeVersionRef.current;
@@ -327,9 +473,10 @@ export function useDutyData(
       // 关掉的腿不重画：上一次的值（或占位）原样留在原处。
       setData((prev) => ({ ...prev, stats14, ...(activity ? { activity } : {}) }));
     });
-  }, [rangeId]);
+  }, [rangeId, forced]);
 
   const refresh = useCallback(() => {
+    if (forcedRef.current !== null) return; // 复现腿不发真实请求
     if (busyRef.current) return;
     busyRef.current = true;
     setRefreshing(true);
@@ -371,12 +518,106 @@ export function useDutyData(
     setNonce((n) => n + 1);
   }, [cancelRefresh]);
 
+  /**
+   * DU-05②：单卡错误重试＝重发这些腿的原请求（legRequests 同一张表），只回写
+   * 点名卡，其余卡保留既有读数。约定：
+   * - 队列腿（approvalStats/approvals）一次请求喂两卡，重试整对重发那一条；
+   * - 依赖目录的腿（budget/readiness）在目录没回答时「原请求」本就不存在，
+   *   如实退成整批重读，不假装发过一条没发过的请求；
+   * - 复现腿与在飞批次期间一律不发（刷新已经涵盖重试）。
+   */
+  const retryLegs = useCallback(
+    (keys: readonly DutyLegKey[]) => {
+      if (forcedRef.current !== null) return;
+      if (busyRef.current) return;
+      const prev = dataRef.current;
+      const queuePair = keys.includes("approvalStats") || keys.includes("approvals");
+      const targets = new Set<DutyLegKey>(queuePair ? ["approvalStats", "approvals"] : keys);
+      for (const k of [...targets]) if (retryingRef.current.has(k)) targets.delete(k);
+      if (queuePair && (retryingRef.current.has("approvalStats") || retryingRef.current.has("approvals"))) {
+        targets.delete("approvalStats");
+        targets.delete("approvals");
+      }
+      if (targets.size === 0) return;
+      if ([...targets].some((k) => DEPENDENT_LEGS.includes(k)) && prev.employees.k !== "ready") {
+        reload();
+        return;
+      }
+      const version = rangeVersionRef.current;
+      for (const k of targets) retryingRef.current.add(k);
+      setData((p) => {
+        const next = { ...p } as Record<DutyLegKey, unknown>;
+        for (const k of targets) next[k] = loading();
+        return next as unknown as DutyData;
+      });
+      const ids = prev.employees.k === "ready" ? prev.employees.data.map((e) => e.employeeId) : [];
+      const denomIds =
+        prev.employees.k === "ready"
+          ? prev.employees.data
+              .filter((e) => DENOMINATOR_STATES.has(e.lifecycleState ?? "active"))
+              .map((e) => e.employeeId)
+          : [];
+      // OM-04④：重试与首读共用同一张受开关约束的表，关掉的腿不会被重试点亮。
+      const reqs = legRequests(rangeRef.current, { employeeIds: ids, denominatorIds: denomIds }, {
+        activity: wantActivityRef.current,
+      });
+      const done = () => {
+        for (const k of targets) retryingRef.current.delete(k);
+      };
+      void (async () => {
+        const patch: Record<string, Loadable<unknown>> = {};
+        const rowCounts: Partial<DutyCounts> = {};
+        const queue = targets.has("approvalStats") ? fetchWorkbenchQueue() : null;
+        const jobs: Array<Promise<void>> = [];
+        for (const k of targets) {
+          if (k === "approvals") {
+            if (queue) jobs.push(load(() => queue.then(queueApprovals)).then((leg) => void (patch[k] = leg)));
+            continue;
+          }
+          if (k === "approvalStats") {
+            if (queue) jobs.push(load(() => queue.then(queueStats)).then((leg) => void (patch[k] = leg)));
+            continue;
+          }
+          jobs.push(
+            (reqs[k as Exclude<DutyLegKey, "approvalStats" | "approvals">] as () => Promise<Loadable<unknown>>)().then(
+              (raw) => {
+                if (isRowsCountLeg(k)) {
+                  patch[k] = rowsLeg(raw as Loadable<RowPage<never>>);
+                  rowCounts[k as keyof DutyCounts] = countOf(raw as Loadable<RowPage<never>>);
+                } else {
+                  patch[k] = raw;
+                }
+              },
+            ),
+          );
+        }
+        await Promise.all(jobs);
+        done();
+        if (version !== rangeVersionRef.current) return;
+        setData((p) => ({ ...p, ...patch }) as DutyData);
+        if (rowCounts.employees !== undefined || rowCounts.todayRuns !== undefined) {
+          setCounts((c) => ({ ...c, ...rowCounts }));
+        }
+      })();
+    },
+    [reload],
+  );
+
   const loadingAny = Object.values(data).some((v) => v.k === "loading");
   return {
     data,
     counts,
     reload,
     loading: loadingAny,
-    refreshState: { refreshing, refreshAt, refreshError, refreshDelta, refresh, cancelRefresh },
+    refreshState: {
+      refreshing,
+      refreshAt,
+      refreshError,
+      refreshDelta,
+      refresh,
+      cancelRefresh,
+      retryLegs,
+      forced: forced !== null,
+    },
   };
 }
