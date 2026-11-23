@@ -52,6 +52,9 @@ import {
 
 // ── 详情对象 + 单区块状态机 ───────────────────────────────────────────────
 
+/** 护栏文案：数据归属对不上时的唯一说法，测试与页面共用一条。 */
+const MISMATCH_MESSAGE = "返回数据不属于该员工，已停止显示以防串数据。";
+
 type EmployeeState = BlockState<Rec>;
 
 function failedState(err: unknown): EmployeeState {
@@ -98,8 +101,37 @@ function useEmployeeDetail(rawId: string): { state: EmployeeState; reload: () =>
   return { state, reload: () => setNonce((n) => n + 1) };
 }
 
-/** 单个 Tab 列表端点（带 employee 过滤），各 Tab 独立加载。 */
-function useEmployeeList(url: string): { state: BlockState<Rec[]>; reload: () => void } {
+/** 引用字段的两种形制：现网 tasks/audit 给 `{type:"employee", id}` 对象，旧形制给
+ *  字符串。refLabel 只认字符串，所以先摊平成 id，否则有指派的行会显示「未指派」。 */
+function refValue(value: unknown): unknown {
+  if (isRecord(value)) return value.id;
+  return value;
+}
+
+/**
+ * 行的归属员工 id。BFF 三种形制（现网实测）：
+ *   - sessions / runs → `employeeId`
+ *   - tasks           → `assignee` 对象 `{type:"employee", id}`（旧形制也可能是字符串 `employee:xxx`）
+ *   - audit           → `resource.id`
+ * 取不到归属键时返回 ""，交给调用方判为「不属于该员工」——宁可不显示，不可串数据。
+ */
+function rowOwner(row: Rec): string {
+  const direct = row.employeeId;
+  if (typeof direct === "string" || typeof direct === "number") return String(direct);
+  const ref = row.assignee ?? row.resource;
+  if (isRecord(ref)) {
+    const id = ref.id;
+    return typeof id === "string" || typeof id === "number" ? String(id) : "";
+  }
+  if (typeof ref === "string") return ref.startsWith("employee:") ? ref.slice("employee:".length) : ref;
+  return "";
+}
+
+/** 单个 Tab 列表端点（带员工过滤），各 Tab 独立加载。 */
+function useEmployeeList(
+  url: string,
+  employeeId: string,
+): { state: BlockState<Rec[]>; reload: () => void } {
   const [nonce, setNonce] = useState(0);
   const [state, setState] = useState<BlockState<Rec[]>>({ k: "loading" });
 
@@ -107,7 +139,20 @@ function useEmployeeList(url: string): { state: BlockState<Rec[]>; reload: () =>
     let alive = true;
     setState({ k: "loading" });
     fetchJSON<unknown>(url)
-      .then((raw) => alive && setState({ k: "ready", data: asRows(raw) }))
+      .then((raw) => {
+        if (!alive) return;
+        const rows = asRows(raw);
+        // 防串数据护栏：BFF 会忽略它不认识的过滤参数并返回未过滤列表（现网实证
+        // tasks 20 条里 10 条是别人的）。归属对不上就整块转错误态，绝不部分渲染、
+        // 绝不显示别人的行，也不拿假空态冒充「没有数据」。
+        if (!rows.every((row) => rowOwner(row) === employeeId)) {
+          // status 0 = 没有 HTTP 状态可用：请求本身是 200，坏的是数据归属，
+          // 走通用错误呈现（非 403/404 的「未开放」话术）。
+          setState({ k: "error", status: 0, message: MISMATCH_MESSAGE, requestId: null });
+          return;
+        }
+        setState({ k: "ready", data: rows });
+      })
       .catch((err: unknown) => {
         if (alive)
           setState({
@@ -120,7 +165,7 @@ function useEmployeeList(url: string): { state: BlockState<Rec[]>; reload: () =>
     return () => {
       alive = false;
     };
-  }, [url, nonce]);
+  }, [url, employeeId, nonce]);
 
   return { state, reload: () => setNonce((n) => n + 1) };
 }
@@ -156,6 +201,7 @@ export default function EmployeeDetailPage() {
   const params = useParams<{ employeeId?: string; id?: string }>();
   const rawParam = params.employeeId ?? params.id ?? "";
   const rawId = rawParam !== "" ? decodeURIComponent(rawParam) : "";
+  const enc = encodeURIComponent(rawId);
   const { state, reload } = useEmployeeDetail(rawId);
 
   const detail = state.k === "ready" ? state.data : null;
@@ -238,7 +284,8 @@ export default function EmployeeDetailPage() {
                   {active === "overview" && <OverviewPanel detail={detail} rawId={rawId} />}
                   {active === "chat" && (
                     <Section
-                      url={`/agent-api/api/sessions?employee=${encodeURIComponent(rawId)}`}
+                      url={`/agent-api/api/sessions?employeeId=${enc}`}
+                      employeeId={rawId}
                       icon={<MessageSquare className="h-4 w-4 shrink-0" />}
                       title="聊天"
                       emptyText="暂无聊天"
@@ -250,7 +297,8 @@ export default function EmployeeDetailPage() {
                   )}
                   {active === "tasks" && (
                     <Section
-                      url={`/agent-api/api/tasks?employee=${encodeURIComponent(rawId)}`}
+                      url={`/agent-api/api/tasks?assignee=employee:${enc}&limit=20`}
+                      employeeId={rawId}
                       icon={<ListChecks className="h-4 w-4 shrink-0" />}
                       title="任务"
                       emptyText="暂无任务"
@@ -262,7 +310,8 @@ export default function EmployeeDetailPage() {
                   )}
                   {active === "runs" && (
                     <Section
-                      url={`/agent-api/api/runs?employee=${encodeURIComponent(rawId)}`}
+                      url={`/agent-api/api/runs?employeeId=${enc}&limit=20`}
+                      employeeId={rawId}
                       icon={<Activity className="h-4 w-4 shrink-0" />}
                       title="运行"
                       emptyText="暂无运行"
@@ -274,7 +323,8 @@ export default function EmployeeDetailPage() {
                   )}
                   {active === "audit" && (
                     <Section
-                      url={`/agent-api/api/audit?employee=${encodeURIComponent(rawId)}`}
+                      url={`/agent-api/api/audit?resourceId=${enc}&limit=50`}
+                      employeeId={rawId}
                       icon={<ScrollText className="h-4 w-4 shrink-0" />}
                       title="审计"
                       emptyText="暂无审计记录"
@@ -401,6 +451,7 @@ function Kpi({ label, value }: { label: string; value: string | null }) {
 
 function Section({
   url,
+  employeeId,
   icon,
   title,
   emptyText,
@@ -410,6 +461,7 @@ function Section({
   renderItem,
 }: {
   url: string;
+  employeeId: string;
   icon: ReactNode;
   title: string;
   emptyText: string;
@@ -418,7 +470,7 @@ function Section({
   errorTitle: string;
   renderItem: (row: Rec) => ReactNode;
 }) {
-  const { state, reload } = useEmployeeList(url);
+  const { state, reload } = useEmployeeList(url, employeeId);
 
   return (
     <div className="flex flex-col gap-3">
@@ -480,7 +532,8 @@ function ChatRow({ s }: { s: Rec }) {
 
 function TaskRow({ t }: { t: Rec }) {
   const dn = displayName(pickStr(t, ["title", "name", "subject", "summary"]), idOf(t));
-  const assignee = refLabel(t.assignee ?? t.owner ?? t.assigned_to ?? t.assignedTo);
+  const assigneeRef = refValue(t.assignee ?? t.owner ?? t.assigned_to ?? t.assignedTo);
+  const assignee = refLabel(assigneeRef);
   const when = beijing(t.updated_at ?? t.due_at ?? t.created_at);
   return (
     <RowShell>
@@ -489,7 +542,7 @@ function TaskRow({ t }: { t: Rec }) {
         <StatusBadge value={t.status ?? t.state} table={WORK} />
       </div>
       <div className="flex items-center gap-3 text-xs text-muted-foreground">
-        <span title={typeof t.assignee === "string" ? t.assignee : undefined}>指派：{assignee ?? "未指派"}</span>
+        <span title={typeof assigneeRef === "string" ? assigneeRef : undefined}>指派：{assignee ?? "未指派"}</span>
         <span className="ml-auto">{when}</span>
       </div>
     </RowShell>
@@ -521,7 +574,8 @@ function RunRow({ r }: { r: Rec }) {
 
 function AuditRow({ a }: { a: Rec }) {
   const when = beijing(a.created_at ?? a.timestamp ?? a.at ?? a.time ?? a.occurred_at);
-  const actor = refLabel(a.actor ?? a.by ?? a.user ?? a.principal ?? a.who);
+  const actorRef = refValue(a.actor ?? a.by ?? a.user ?? a.principal ?? a.who);
+  const actor = refLabel(actorRef);
   const action = pickStr(a, ["action", "event", "type", "operation", "name", "summary", "message"]);
   return (
     <RowShell>
@@ -529,7 +583,7 @@ function AuditRow({ a }: { a: Rec }) {
         <span className="min-w-0 truncate font-medium">{action ?? "—"}</span>
         <span className="shrink-0 text-xs text-muted-foreground">{when}</span>
       </div>
-      <div className="text-xs text-muted-foreground" title={typeof a.actor === "string" ? a.actor : undefined}>
+      <div className="text-xs text-muted-foreground" title={typeof actorRef === "string" ? actorRef : undefined}>
         操作者：{actor ?? "未指派"}
       </div>
     </RowShell>
