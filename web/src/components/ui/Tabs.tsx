@@ -23,7 +23,7 @@
  *   </UiTabs>
  */
 import { useRef, useState, type KeyboardEvent, type ReactNode } from "react";
-import { TabsList as DsTabsList, TabsTrigger as DsTabsTrigger } from "@nous-research/ui";
+import { TabsList as DsTabsList, TabsTrigger as DsTabsTrigger } from "@nous-research/ui/ui/components/tabs";
 
 export interface UiTabItem {
   value: string;
