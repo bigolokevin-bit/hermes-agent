@@ -187,6 +187,15 @@ OM-02 可径直标 VERIFIED（腿已在）。P-OM-3 的「workbench 0 命中」�
 - 测试 5 例：纯函数形制（整串全等断言）、函数体零 fetch、复制成功内容含五卡行+采集时刻+成本句、复制失败兜底、空读数不造 0 不造金额。
 - 取证：1440/375/375-lower/range7d/range24h 五图刷新（OM04_SHOTS_OK + OM375_SHOTS_OK）；vitest **53/53**；vite build 通过。
 
+## OM-14 响应式总闸（2026-11-23 收口）
+
+- **assert-375 真跑通过**：`node scripts/assert-375.mjs --base=http://127.0.0.1:9131 --auth-state=/tmp/om14-auth.json --only-routes='#/overview' --out=docs/_artifacts/OM-01-overview-kpi/375`
+  读数（逐字）：`ASSERT375 routes=2 pass=2 fail=0 notMeasured=0`；`#/overview` 行：mainTextLen=844、elementsChecked=89、**violOutsideShell=0、violInsideScrollableShell=0、domOverflowPx=0**、fullPage png 375×1203（>812 判据满足）。
+  第二轮曾 notMeasured=2 的根因如实记录：取证 harness 此前没有 `<main>` 壳，脚本骨架闸（main 文本<30 判 NOT_MEASURED）拒签——**补 `<main>` 包装后真跑绿，不是改判据**（storageState cookie 域 127.0.0.1 注入按记忆坑单独立核对）。`#/overview?tab=usage` 行在 harness 上渲染同一页（MemoryRouter 不响应 hash 变化），usage 页 375 判据归 duty 车道台账，本行不代替。
+- **测试面闸**：`src/modules/overview` 下 **9 个测试文件 / 53 用例**（≥6 文件、≥30 用例达标），全绿。
+- **375 单列**：媒体查询断点实装（1100 两列 / 560 单列）；overview-375.png 与 overview-375-lower.png 复核 KPI/趋势/最近运行/阻塞/摘要复制/原文面板无溢出。
+- **轻微遗留（不阻塞，沿 observer 判定）**：趋势柱首末贴容器左右缘（容器 padding 层面）；来源长串中文在卡内中间换行。属跨页家族遗留，另卡治理，不在本件偷改。
+
 ## 已知边界（如实上报，非缺陷隐瞒）
 
 1. `/overview` 路由现仍渲染旧 `modules/duty/DutyPage`：路由在 `App.tsx`（本单写域外），
