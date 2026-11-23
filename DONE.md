@@ -551,3 +551,47 @@ $ git status --porcelain
 - `tsc -b . --noEmit`：全仓 49 错（= 基线 49，duty/employees 模块 **0** 错）。
 - `vite build`：**EXIT=0**（5.64s）。
 - 环境注：期间邻居车道回收了 `forks/console-ui2` 检出；本 worktree node_modules 符号链接已改指主 fork（`pnpm-lock.yaml` blob 两侧同为 `5b993274a3432863665378a898e04bc9c05e9e3e`，依赖等价，未做任何 install）。
+
+---
+
+# DONE — SE-02 挂载修复（/sessions 换挂 modules/sessions 面入线）
+
+分支：`task/SE-02-mountfix`（基线 `lane/hermes-console` @ `fbf3e513f57e52e56bc31dde0252c9b13fccc28e`）
+日期：2026-11-24 ｜ 专用 worktree：`/Users/kevin_studio/Projects/forks/hermes-agent-mountfix`（禁碰共享检出，本段为原 DONE.md 之上的并集追加，历史段零删改）
+
+## 0. 基线新鲜度自证
+
+```
+$ git ls-remote origin refs/heads/lane/hermes-console
+fbf3e513f57e52e56bc31dde0252c9b13fccc28e	refs/heads/lane/hermes-console
+```
+
+当拍现读与总控定版读数一致，未超拍。
+
+## 1. 工单前提偏差（如实直呈，方向未动）
+
+- 工单点名挂 `modules/sessions` 的 `SessionsModulePage`，但该导出**在基线与 fork 全部 ref/worktree 中不存在**：`git grep -l SessionsModulePage`（lane@fbf3e513、task/SE-02-sessions-list、hermes-agent-merge-se02 树）全零命中。SE-02 实际交付的页面级单元是 `SessionsList`（props `{employeeId: string, pageSize?}`，named+default 双导出，真 BFF 读口 `/agent-api/api/console-sessions`），`docs/_artifacts/se02-rootcause/rootcause.md` §结论 点名的三个文件即 `SessionsList.tsx / sessionsApi.ts / index.ts`。
+- 处置（最小接线，= rootcause 建议 A 的「App.tsx 把 /sessions 指向 SE-02 面」腿）：挂载改挂以模块现有导出 `SessionsList` 为页面单元；`employeeId` 由 App.tsx 薄壳按既有 `ConsoleChatMount` 同形制从 `?employeeId=` 绑定，空值透传、落模块自带「缺少员工编号」诚实态，**不猜归属、不造数据**。`modules/sessions/**` 写域零改动、零新文件。
+
+## 2. 改动面（仅 web/src/App.tsx，+27/−2）
+
+1. `:207` `const SessionsPage = lazy(() => import("@/pages/SessionsPage"))` → `const SessionsModulePage = lazy(() => import("@/modules/sessions/SessionsList").then(m => ({ default: m.SessionsList })))`（named-export `.then` 形制，对齐 :194–203 approvals 挂载先例）。
+2. `ConsoleChatMount` 之后新增 `function ConsoleSessionsMount()`：`useSearchParams` 读 `employeeId`，渲染 `<SessionsModulePage employeeId={...} />`。
+3. `:329`（改后 ≈:341）路由表 `"/sessions": SessionsPage` → `"/sessions": ConsoleSessionsMount`。
+4. `pages/SessionsPage.tsx` 磁盘原样保留（Hermes 直连面），仅不再挂载；`shell/routes.ts` compat precedence 未动（本单按总控定版：App 路由挂模块，`/sessions` 本就在 `consoleAuthority` 集合内，hash 桥不改道）。除此之外无任何行为改动。
+
+## 3. 验证门（原始读数；node = ~/.nvm/versions/node/v26.13.1/bin/node）
+
+- 依赖：`pnpm install --frozen-lockfile` exit 0（新 worktree 全量安装，无符号链接借道）。
+- typecheck：`tsc -b . --noEmit`（web/）→ **exit 0**。
+- 全量 vitest：`vitest run`（web/）→ **Test Files 529 passed (529)；Tests 4008 passed | 1 skipped (4009)；exit 0** —— 与基线恒等，0 fail 不回退；他域（DU/Q10/OM-04 族）无红，无需只报不修项。
+- pre-commit 门：`just eslint web/src/App.tsx` → **0 errors**（4 warnings 均为既有站点：:306/:314 fast-refresh 导出、:795/:1721 存量 effect setState，本单未新增）。lefthook pre-commit 实际执行通过，未用 `--no-verify`。
+- 构建：`node scripts/build/web.mjs`（无参）→ **exit 0**，产物 `hermes_cli/web_dist/`。
+- **dist 判据①**：`grep -rho 'se2-[a-z0-9-]*' assets/ | sort -u | wc -l` = **14 ≥ 9** ✓。清单：`se2-sessions, se2-sessions-, se2-sessions-count-, se2-sessions-empty, se2-sessions-id-, se2-sessions-list, se2-sessions-loading, se2-sessions-more, se2-sessions-note, se2-sessions-partial-warning, se2-sessions-request-id, se2-sessions-retry, se2-sessions-row-, se2-sessions-time-`。
+- **dist 判据②（chunk 引用链）**：`index.html` 现读 entry = `assets/index-BI1dECzl.js`，该 entry 直接引用 `assets/SessionsList-CltKbvhR.js` ✓（模块 chunk 入线）。旧 `SessionsPage-*.js` chunk 已从 assets 消失（摘挂后预期，`ls assets | grep -i session` 只剩 SessionsList chunk）。
+- **形制注记（给 D 道偿验口径）**：`se2-sessions-{error,denied,unwired,login}` 四枚是源码 `` `se2-sessions-${phase}` `` 动态拼接 token，产物内为 `se2-sessions-` 前缀 + 运行期 phase，**完整字面量不会静态出现**（`grep -lF <tok> *.js` 命中 0 —— SE-02 源码既有形制，非挂载失败）。若 D 道按 rootcause evidence[3] 的九枚逐字面量 grep，预期读数为 5 命中/4 零命中；结构性可达已由判据①②证明。
+
+## 4. 交付与边界
+
+- commit：本笔（`task/SE-02-mountfix` 头）；push：非 force → `refs/heads/task/SE-02-mountfix`；`ls-remote` 定向回读原文落 `/private/var/folders/2b/bnpsyz450pn98w375q_803yw0000gn/T/opencode/lsrem-mountfix.txt`。
+- 产物部署（web_dist 换物 / 9122 重启）与运行期偿验：**不在本单**，归 D 道；本单只证源码+构建面可达。
