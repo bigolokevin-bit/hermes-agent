@@ -1161,7 +1161,8 @@ describe("DutyPage row-level drill links (B1-duty P0#1)", () => {
 
 describe("DutyPage runs status filter (B1 筛选控件条)", () => {
   const b = (testId: string) => container.querySelector(`[data-testid="${testId}"]`) as HTMLButtonElement | null;
-  const card = () => container.querySelector('[data-duty-testid="duty-today-runs"]');
+  // 三卡返工：最近运行明细不再进卡片，挪到卡外折叠区，所以取样范围跟着挪。
+  const card = () => container.querySelector('[data-testid="duty-details-runs"]');
   const rows = () => card()?.querySelectorAll("li").length ?? 0;
   const press = (testId: string) => {
     act(() => {

@@ -264,9 +264,10 @@ describe("duty caliber — staff card source decision (workbench/agents)", () =>
     expect(urls.some((u) => u.includes("/employees"))).toBe(true);
     // The card stays on the two sources that carry the lifecycle totals.
     expect(urls.some((u) => u.includes("/workbench/agents"))).toBe(false);
-    const card = container.querySelector('[data-testid="ov6-ready"]');
+    // 三卡返工：来源取舍的理由不再挂在卡片 tooltip 上，随明细一起收进卡外折叠区。
+    const card = container.querySelector('[data-testid="duty-details-readiness"]');
     const hint = card?.getAttribute("title") ?? "";
-    expect(hint).toContain("workbench/agents 缺");
+    expect(hint, "来源取舍理由必须留在卡外明细").toContain("workbench/agents 缺");
     expect(hint).toContain("本卡仍取");
     expect(container.querySelector("[data-fixture]")).toBeNull();
     expect(container.textContent ?? "").not.toContain("样例");
