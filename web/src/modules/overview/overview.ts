@@ -318,3 +318,36 @@ export function blockerCounts(
     l.k === 'ready' && Array.isArray(l.data.items) ? l.data.items.length : null;
   return { failed: count(failed), blocked: count(blocked), queue: count(queue) };
 }
+
+/*
+ * OM-13 摘要复制：把当前批次读数拼成纯文本。
+ * 只吃调用方给好的字符串——函数体不发请求、不做金额反推；
+ * 成本口径句由调用方传入 costCaliberNote 原文，两页逐字同。
+ */
+export interface OverviewSummaryCard {
+  label: string;
+  /** 已按本页口径格式化好的值文本；缺值传「—」，不传空串。 */
+  value: string;
+  source: string | null;
+  /** 采集时刻（北京时间文本）；未知传 null → 上屏「—」。 */
+  stamp: string | null;
+}
+
+export function overviewSummaryText(input: {
+  asOf: string | null;
+  cards: OverviewSummaryCard[];
+  costCaliber?: string;
+}): string {
+  const lines = [
+    '运营总览摘要',
+    input.asOf
+      ? `数据截至 ${input.asOf}（北京时间）`
+      : '数据截至 —（只认上游采集时间，前端时钟不顶替）',
+    ...input.cards.map(
+      (c) =>
+        `- ${c.label}：${c.value}｜来源 ${c.source ?? '—'}｜采集时刻 ${c.stamp ?? '—'}`,
+    ),
+  ];
+  if (input.costCaliber) lines.push(`成本口径：${input.costCaliber}`);
+  return lines.join('\n');
+}

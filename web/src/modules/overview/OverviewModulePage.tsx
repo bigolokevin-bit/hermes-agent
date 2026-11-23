@@ -16,6 +16,7 @@ import { fetchRunStats, load } from '../duty/api';
 import { DEFAULT_DUTY_RANGE, DUTY_RANGES, parseDutyRange, type DutyRangeId } from '../duty/dutyRange';
 import { beijing, beijingDayWindow, daysAgoWindow, usd } from '../duty/format';
 import type { Loadable, RunStatsBody } from '../duty/types';
+import { COST_CALIBER_TEXT } from '../metrics/costCaliberNote';
 import {
   fetchBlockedTasks,
   fetchFailedRuns,
@@ -36,6 +37,7 @@ import {
   blockerRows,
   buildKpis,
   last24hWindow,
+  overviewSummaryText,
   sourceStamp,
   todayBucketRun,
   trendPoints,
@@ -233,14 +235,17 @@ export function OverviewView({
     probeGateway && typeof probeGateway.updated_at === 'string' && probeGateway.updated_at
       ? probeGateway.updated_at
       : null;
-  const probeStamp: SourceStamp =
-    probe.k === 'loading'
-      ? { shown: null, reason: '数据还在读取' }
-      : probe.k === 'error'
-        ? { shown: null, reason: '本次读取失败，取不到采集时间' }
-        : probeUpdatedAt
-          ? { shown: beijing(probeUpdatedAt), reason: null }
-          : { shown: null, reason: '服务探针响应没有带采集时间' };
+  const probeStamp: SourceStamp = useMemo(
+    () =>
+      probe.k === 'loading'
+        ? { shown: null, reason: '数据还在读取' }
+        : probe.k === 'error'
+          ? { shown: null, reason: '本次读取失败，取不到采集时间' }
+          : probeUpdatedAt
+            ? { shown: beijing(probeUpdatedAt), reason: null }
+            : { shown: null, reason: '服务探针响应没有带采集时间' },
+    [probe, probeUpdatedAt],
+  );
 
   const asof = useMemo(() => {
     const candidates = [summaryStamp.shown, todayStamp.shown, trendStamp.shown]
@@ -263,6 +268,62 @@ export function OverviewView({
     if (probe.k === 'ready') ready.push({ name: 'GET /api/hermes-summary', body: probe.data });
     return ready;
   }, [state.summary, state.today, act, fail, blockedL, queueL, probe]);
+
+  // OM-13：摘要只吃当前批次读数拼文本，不发新请求、不做金额反推；
+  // 成本句逐字引用 metrics 口径单源（costCaliberNote），禁近义改写。
+  const summaryText = useMemo(() => {
+    const dash = (v: number | string | null): string => (v === null ? '—' : String(v));
+    return overviewSummaryText({
+      asOf: asof,
+      cards: [
+        {
+          label: '员工',
+          value: `在岗 ${dash(kpis.active.value)} / 在编 ${dash(kpis.employees.value)}`,
+          source: kpis.employees.source,
+          stamp: summaryStamp.shown,
+        },
+        {
+          label: '今日运行',
+          value: dash(kpis.todayRuns.value),
+          source: kpis.todayRuns.source,
+          stamp: summaryStamp.shown,
+        },
+        {
+          label: '待审批',
+          value: dash(kpis.pending.value),
+          source: kpis.pending.source,
+          stamp: summaryStamp.shown,
+        },
+        {
+          label: '今日成本',
+          value: kpis.costUsd.value === null ? '—' : usd(Number(kpis.costUsd.value)),
+          source: kpis.costUsd.source,
+          stamp: summaryStamp.shown,
+        },
+        {
+          label: '整体健康（服务探针）',
+          value: probeStatus ? HEALTH_LABEL[probeStatus] ?? probeStatus : '—',
+          source: probeStatus ? 'GET /api/hermes-summary' : null,
+          stamp: probeStamp.shown,
+        },
+      ],
+      costCaliber: COST_CALIBER_TEXT,
+    });
+  }, [asof, kpis, summaryStamp, probeStatus, probeStamp]);
+
+  const [copyState, setCopyState] = useState<'idle' | 'ok' | 'fail'>('idle');
+  const fallbackRef = useRef<HTMLTextAreaElement>(null);
+  const copySummary = useCallback(async () => {
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error('no clipboard');
+      await navigator.clipboard.writeText(summaryText);
+      setCopyState('ok');
+    } catch {
+      // 复制失败兜底（仿 met-row-copy-fallback）：留可选中文本，不假装成功。
+      setCopyState('fail');
+      fallbackRef.current?.select();
+    }
+  }, [summaryText]);
 
   return (
     <div className="ov5-page" data-testid="overview-page">
@@ -287,6 +348,34 @@ export function OverviewView({
             </button>
           ))}
         </nav>
+        <div className="ov5-copy" data-testid="ov6-summary-copy-wrap">
+          <button
+            type="button"
+            data-testid="ov6-summary-copy"
+            onClick={() => void copySummary()}
+            aria-label="复制运营总览摘要"
+          >
+            复制摘要
+          </button>
+          {copyState === 'ok' ? (
+            <span role="status" data-testid="ov6-summary-copy-ok">已复制到剪贴板</span>
+          ) : null}
+          {copyState === 'fail' ? (
+            <>
+              <span role="status" data-testid="ov6-summary-copy-fail">
+                复制失败：已选中下方摘要文本，可手动复制。
+              </span>
+              <textarea
+                ref={fallbackRef}
+                readOnly
+                rows={6}
+                value={summaryText}
+                data-testid="ov6-summary-fallback"
+                aria-label="总览摘要文本（可选手动复制）"
+              />
+            </>
+          ) : null}
+        </div>
         {rangeFallback ? (
           <p className="ov5-note" data-testid="ov6-range-fallback">
             时间窗「{rangeFallback}」不是可用档位，已按默认档（{rangeDef.label}）显示。

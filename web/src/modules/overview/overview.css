@@ -390,3 +390,18 @@
   color: var(--accent, #5b7cfa);
   font-weight: 600;
 }
+
+/* OM-13 摘要复制 */
+.ov5-copy {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.ov5-copy textarea {
+  width: 100%;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  white-space: pre;
+}

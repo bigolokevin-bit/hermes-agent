@@ -65,7 +65,7 @@ observer 第三轮（OM-03 五列网格）判定 PASS，另记 1440 五列变窄
 
 ## 测试与构建
 
-- `cd web && node_modules/.bin/vitest run src/modules/overview` → **48 passed / 48**（OverviewModulePage.test 11 + overview.window.test 6 + overview.trend.test 4 + overview.gaps.test 5 + overview.feeds.test 6 + overview.asof.test 5 + overview.health.test 5 + overview.cost.test 6）
+- `cd web && node_modules/.bin/vitest run src/modules/overview` → **53 passed / 53**（OverviewModulePage.test 11 + overview.window.test 6 + overview.trend.test 4 + overview.gaps.test 5 + overview.feeds.test 6 + overview.asof.test 5 + overview.health.test 5 + overview.cost.test 6 + overview.summary.test 5）
   （OverviewModulePage.test 11 + overview.window.test 6 + overview.trend.test 4 + overview.gaps.test 5）
   （合同：forced 态零请求；只打两端口且 bucket=day；真 0 带来源原文；失败率同源 20%；
   summary 挂→各卡未接入+编号+重试；今日窗挂只影响运行卡；全挂整页错误声明不编造；
@@ -177,6 +177,15 @@ OM-02 可径直标 VERIFIED（腿已在）。P-OM-3 的「workbench 0 命中」�
 - **状态矩阵去处**：由 OM-05 测试面（gaps/trend/health/cost）在 OverviewView 层承接，覆盖面不减。
 - **范围外债（另立卡，不动他人写域）**：`web/src/modules/duty/UsagePage.tsx` L105 仍有 `?state=` 演示参数（backlog 原文「同批或另立卡」）——duty 模块不在本车道写域，建议 L0 派给 duty 车道。
 - 验证：vitest **48 passed / 48**（撤除+改写后全量重跑）；`vite build` 通过。
+
+## OM-13 摘要复制（对齐 metrics 口径单源，2026-11-23 续跑，同分支）
+
+- **纯函数**：`overviewSummaryText`（overview.ts）只吃调用方给好的字符串——函数体 grep `fetch|loadJson` = 0（DoD），不发新请求、不做金额反推；缺值上屏「—」（与 DOM 的「未接」话术分开：摘要面向复制文本，统一破折号）。
+- **形制**：六段式对齐 metrics `metricsSummaryText`——标题行 / 数据截至行（只认上游采集时间）/ 五卡行（`- 标签：值｜来源 X｜采集时刻 Y`）/ 成本口径行。
+- **成本句逐字同**：不复制文案，直接 `import { COST_CALIBER_TEXT } from '../metrics/costCaliberNote'`——单源保证两页 diff 零差异；parity 由测试断言剪贴板文本 `toContain(成本口径：${COST_CALIBER_TEXT})`。
+- **交互**：头部「复制摘要」按钮（ov6-summary-copy）；成功 → role=status「已复制到剪贴板」；失败（无剪贴板 API 或 reject）→ 明说复制失败并渲染只读 textarea（ov6-summary-fallback）自动 select()，仿 met-row-copy-fallback，**不假装成功**。
+- 测试 5 例：纯函数形制（整串全等断言）、函数体零 fetch、复制成功内容含五卡行+采集时刻+成本句、复制失败兜底、空读数不造 0 不造金额。
+- 取证：1440/375/375-lower/range7d/range24h 五图刷新（OM04_SHOTS_OK + OM375_SHOTS_OK）；vitest **53/53**；vite build 通过。
 
 ## 已知边界（如实上报，非缺陷隐瞒）
 
