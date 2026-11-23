@@ -1,0 +1,154 @@
+{
+ "ticket": "w191 FleetRail 真数据腿（催办单：现网真实员工渲染，非桩）",
+ "face": "cdeea11257391084188aaf853ff6be8d94f7da4a",
+ "faceSource": "定向 ls-remote lane/hermes-console @12:54 落文件（tip cdeea11257 含我链 a98d657788/7b4c44ba03/beb1cfe6a5 三重 RC=0）",
+ "deployedEntry": "index-BLhDxkaC.js（主树 dist @12:01 换代，grep 判据 duty-title-name=1 duty-fleet=1 flex-shrink:0=1 ⇒ 部署脸已含我 h1 降格+375 轨修）",
+ "tokenSource": "keep-jar 只读（whoami curl 200@12:54 granted:false; employees curl 200@12:54），未代登未碰 plist",
+ "disclosures": [
+  "本腿＝现网 8183 根路径 /overview 实拍，无任何桩数据（fixture 腿在 w190 已另行披露）",
+  "readings 不落员工真名（仅卡数与矩形）；真名只存在于 PNG 像素（现网实拍允许）",
+  "playwright 经 sibling createRequire(seakoi-console-web)，chromium-1255；截图=视口加高破内部滚动壳；禁 networkidle，domcontentloaded+settle 1.8s",
+  "本机根字号 15px，几何读数一律 px 实测；375 可见比按滑轨边界（track bound）口径",
+  "修 w190 读数守卫 bug：visibleRatio 用 fleetCards 数值判空 + track bound 计算（w190 版用 .length 恒 null）"
+ ],
+ "legs": [
+  {
+   "label": "1440",
+   "viewport": "1440x1411",
+   "shotMode": "heightened-viewport(现网实拍，无桩)",
+   "whoamiPre": {
+    "status": 200,
+    "at": "2026-11-23T04:55:54.380Z"
+   },
+   "whoamiTight": {
+    "status": 200,
+    "at": "2026-11-23T04:56:10.986Z"
+   },
+   "blocked": null,
+   "png": "/tmp/d-w191-shot/fleet-real-1440.png",
+   "pngBytes": 212840,
+   "entry": "/assets/index-BLhDxkaC.js",
+   "h1Count": 1,
+   "h1Texts": [
+    "运营总览"
+   ],
+   "progressbars": 0,
+   "fleetCards": 3,
+   "fleetRects": [
+    {
+     "w": 320,
+     "h": 176,
+     "left": 231,
+     "right": 551
+    },
+    {
+     "w": 320,
+     "h": 176,
+     "left": 559,
+     "right": 879
+    },
+    {
+     "w": 320,
+     "h": 176,
+     "left": 887,
+     "right": 1207
+    }
+   ],
+   "metricSample": [
+    "—",
+    "—"
+   ],
+   "bodyTextLen": 1325,
+   "trackW": 976,
+   "visibleRatio375": null,
+   "heightDiffMax": 0,
+   "rects1280": [
+    {
+     "w": 288,
+     "h": 168,
+     "left": 231,
+     "right": 519
+    },
+    {
+     "w": 288,
+     "h": 168,
+     "left": 527,
+     "right": 815
+    }
+   ],
+   "carousel": {
+    "t0": 0,
+    "t6500": 0,
+    "hoverHoldAfter8s": 0
+   },
+   "overflow375Count": null,
+   "overflow375Samples": null,
+   "jsErrors": 0,
+   "jsErrorSample": [],
+   "consoleErrors": 0,
+   "res4xxCount": 0,
+   "res4xxFullUrls": []
+  },
+  {
+   "label": "375",
+   "viewport": "375x2551",
+   "shotMode": "heightened-viewport(现网实拍，无桩)",
+   "whoamiPre": {
+    "status": 200,
+    "at": "2026-11-23T04:56:13.341Z"
+   },
+   "whoamiTight": {
+    "status": 200,
+    "at": "2026-11-23T04:56:14.130Z"
+   },
+   "blocked": null,
+   "png": "/tmp/d-w191-shot/fleet-real-375.png",
+   "pngBytes": 178999,
+   "entry": "/assets/index-BLhDxkaC.js",
+   "h1Count": 1,
+   "h1Texts": [
+    "运营总览"
+   ],
+   "progressbars": 0,
+   "fleetCards": 3,
+   "fleetRects": [
+    {
+     "w": 260,
+     "h": 160,
+     "left": 11,
+     "right": 271
+    },
+    {
+     "w": 260,
+     "h": 160,
+     "left": 279,
+     "right": 539
+    },
+    {
+     "w": 260,
+     "h": 160,
+     "left": 547,
+     "right": 807
+    }
+   ],
+   "metricSample": [
+    "—",
+    "—"
+   ],
+   "bodyTextLen": 1330,
+   "trackW": 324,
+   "visibleRatio375": 0.4,
+   "heightDiffMax": 0,
+   "rects1280": null,
+   "carousel": null,
+   "overflow375Count": 0,
+   "overflow375Samples": [],
+   "jsErrors": 0,
+   "jsErrorSample": [],
+   "consoleErrors": 0,
+   "res4xxCount": 0,
+   "res4xxFullUrls": []
+  }
+ ],
+ "finishedAt": "2026-11-23T04:56:14.265Z"
+}
