@@ -1,0 +1,1731 @@
+{
+  "375": {
+    "tag": "375",
+    "rootFont": "15px",
+    "doc": {
+      "scrollWidth": 375,
+      "bodyScrollWidth": 375,
+      "innerWidth": 375,
+      "clientWidth": 375
+    },
+    "cards": [
+      {
+        "label": "header.duty-head",
+        "scrollWidth": 344,
+        "clientWidth": 342,
+        "rectWidth": 341.5,
+        "right": 352.8,
+        "docBreach": false,
+        "worst": {
+          "over": 2,
+          "node": "div.duty-head-actions",
+          "testid": "",
+          "scrollWidth": 344,
+          "clientWidth": 342,
+          "right": 352.8,
+          "overflowX": "visible",
+          "intentionalScroller": false
+        }
+      },
+      {
+        "label": "duty-refresh-bar",
+        "scrollWidth": 342,
+        "clientWidth": 342,
+        "rectWidth": 341.5,
+        "right": 352.8,
+        "docBreach": false,
+        "worst": null
+      },
+      {
+        "label": "duty-ready",
+        "scrollWidth": 340,
+        "clientWidth": 340,
+        "rectWidth": 341.5,
+        "right": 352.8,
+        "docBreach": false,
+        "worst": null
+      },
+      {
+        "label": "duty-today-runs",
+        "scrollWidth": 340,
+        "clientWidth": 340,
+        "rectWidth": 341.5,
+        "right": 352.8,
+        "docBreach": false,
+        "worst": null
+      },
+      {
+        "label": "duty-today-cost",
+        "scrollWidth": 340,
+        "clientWidth": 340,
+        "rectWidth": 341.5,
+        "right": 352.8,
+        "docBreach": false,
+        "worst": null
+      },
+      {
+        "label": "duty-trend",
+        "scrollWidth": 340,
+        "clientWidth": 340,
+        "rectWidth": 341.5,
+        "right": 352.8,
+        "docBreach": false,
+        "worst": {
+          "over": 2,
+          "node": "button.font-mono",
+          "testid": "duty-trend-table-toggle",
+          "scrollWidth": 318,
+          "clientWidth": 316,
+          "right": 339.8,
+          "overflowX": "visible",
+          "intentionalScroller": false
+        }
+      },
+      {
+        "label": "duty-activity",
+        "scrollWidth": 340,
+        "clientWidth": 340,
+        "rectWidth": 341.5,
+        "right": 352.8,
+        "docBreach": false,
+        "worst": {
+          "over": 2,
+          "node": "button.font-mono",
+          "testid": "duty-activity-text-toggle",
+          "scrollWidth": 318,
+          "clientWidth": 316,
+          "right": 339.8,
+          "overflowX": "visible",
+          "intentionalScroller": false
+        }
+      },
+      {
+        "label": "duty-blockers",
+        "scrollWidth": 340,
+        "clientWidth": 340,
+        "rectWidth": 341.5,
+        "right": 352.8,
+        "docBreach": false,
+        "worst": null
+      },
+      {
+        "label": "duty-pending",
+        "scrollWidth": 340,
+        "clientWidth": 340,
+        "rectWidth": 341.5,
+        "right": 352.8,
+        "docBreach": false,
+        "worst": null
+      },
+      {
+        "label": "duty-recent",
+        "scrollWidth": 340,
+        "clientWidth": 340,
+        "rectWidth": 341.5,
+        "right": 352.8,
+        "docBreach": false,
+        "worst": null
+      },
+      {
+        "label": "duty-health",
+        "scrollWidth": 342,
+        "clientWidth": 342,
+        "rectWidth": 341.5,
+        "right": 352.8,
+        "docBreach": false,
+        "worst": null
+      },
+      {
+        "label": "duty-fleet-rail",
+        "scrollWidth": 342,
+        "clientWidth": 342,
+        "rectWidth": 341.5,
+        "right": 352.8,
+        "docBreach": false,
+        "worst": {
+          "over": 472,
+          "node": "div.duty-fleet-viewport",
+          "testid": "",
+          "scrollWidth": 796,
+          "clientWidth": 324,
+          "right": 335.3,
+          "overflowX": "auto",
+          "intentionalScroller": true
+        }
+      },
+      {
+        "label": "duty-details",
+        "scrollWidth": 340,
+        "clientWidth": 340,
+        "rectWidth": 341.5,
+        "right": 352.8,
+        "docBreach": false,
+        "worst": null
+      },
+      {
+        "label": "duty-notes",
+        "scrollWidth": 342,
+        "clientWidth": 342,
+        "rectWidth": 341.5,
+        "right": 352.8,
+        "docBreach": false,
+        "worst": null
+      }
+    ],
+    "targets": [
+      {
+        "name": "刷新钮",
+        "sel": "[data-testid=\"duty-refresh\"]",
+        "present": true,
+        "rect": {
+          "x": 11.3,
+          "y": -3060.9,
+          "w": 341.5,
+          "h": 44
+        },
+        "gap": 47.5,
+        "nearest": "duty-range-7d"
+      },
+      {
+        "name": "窗口 24h",
+        "sel": "[data-testid=\"duty-range-24h\"]",
+        "present": true,
+        "rect": {
+          "x": 11.3,
+          "y": -3112.9,
+          "w": 93.6,
+          "h": 44
+        },
+        "gap": 46.4,
+        "nearest": "duty-range-7d"
+      },
+      {
+        "name": "窗口 7d",
+        "sel": "[data-testid=\"duty-range-7d\"]",
+        "present": true,
+        "rect": {
+          "x": 108.8,
+          "y": -3112.9,
+          "w": 73.7,
+          "h": 44
+        },
+        "gap": 46.4,
+        "nearest": "duty-range-24h"
+      },
+      {
+        "name": "窗口 14d",
+        "sel": "[data-testid=\"duty-range-14d\"]",
+        "present": true,
+        "rect": {
+          "x": 186.6,
+          "y": -3112.9,
+          "w": 80.2,
+          "h": 44
+        },
+        "gap": 46.4,
+        "nearest": "duty-range-7d"
+      },
+      {
+        "name": "窗口 30d",
+        "sel": "[data-testid=\"duty-range-30d\"]",
+        "present": true,
+        "rect": {
+          "x": 270.8,
+          "y": -3112.9,
+          "w": 82,
+          "h": 44
+        },
+        "gap": 49.3,
+        "nearest": "duty-range-14d"
+      },
+      {
+        "name": "卡外折叠区开关",
+        "sel": "[data-testid=\"duty-details-toggle\"]",
+        "present": true,
+        "rect": {
+          "x": 28.3,
+          "y": -2014.8,
+          "w": 307.5,
+          "h": 44
+        },
+        "gap": 160.8,
+        "nearest": "duty-fleet-pause"
+      },
+      {
+        "name": "口径说明折叠开关",
+        "sel": "[data-testid=\"duty-notes-toggle\"]",
+        "present": true,
+        "rect": {
+          "x": 11.3,
+          "y": 1638.6,
+          "w": 341.5,
+          "h": 44
+        },
+        "gap": 158.8,
+        "nearest": "duty-route-recent"
+      },
+      {
+        "name": "趋势表格开关",
+        "sel": "[data-testid=\"duty-trend-table-toggle\"]",
+        "present": true,
+        "rect": {
+          "x": 24.3,
+          "y": 137.2,
+          "w": 315.5,
+          "h": 44
+        },
+        "gap": 97.1,
+        "nearest": "打开导航"
+      },
+      {
+        "name": "逐时文字开关",
+        "sel": "[data-testid=\"duty-activity-text-toggle\"]",
+        "present": true,
+        "rect": {
+          "x": 24.3,
+          "y": 686,
+          "w": 315.5,
+          "h": 44
+        },
+        "gap": 111,
+        "nearest": "font-sans text-xs tracking-[0."
+      },
+      {
+        "name": "状态筛选 全部",
+        "sel": "[data-testid=\"duty-status-all\"]",
+        "present": true,
+        "rect": {
+          "x": 28.3,
+          "y": -1334,
+          "w": 73.9,
+          "h": 44
+        },
+        "gap": 46.5,
+        "nearest": "duty-status-running"
+      },
+      {
+        "name": "状态筛选 失败",
+        "sel": "[data-testid=\"duty-status-failed\"]",
+        "present": true,
+        "rect": {
+          "x": 261.9,
+          "y": -1334,
+          "w": 73.9,
+          "h": 44
+        },
+        "gap": 46.5,
+        "nearest": "duty-status-completed"
+      },
+      {
+        "name": "可上岗深链",
+        "sel": "[data-testid=\"duty-route-readiness\"]",
+        "present": true,
+        "rect": {
+          "x": 255.9,
+          "y": -2971.9,
+          "w": 83.9,
+          "h": 44
+        },
+        "gap": 79,
+        "nearest": "duty-refresh"
+      },
+      {
+        "name": "今日运行深链",
+        "sel": "[data-testid=\"duty-route-today-runs\"]",
+        "present": true,
+        "rect": {
+          "x": 255.8,
+          "y": -2735.6,
+          "w": 83.9,
+          "h": 44
+        },
+        "gap": 167.5,
+        "nearest": "duty-route-cost"
+      },
+      {
+        "name": "成本深链",
+        "sel": "[data-testid=\"duty-route-cost\"]",
+        "present": true,
+        "rect": {
+          "x": 255.8,
+          "y": -2551.4,
+          "w": 83.9,
+          "h": 44
+        },
+        "gap": 167.5,
+        "nearest": "duty-route-today-runs"
+      },
+      {
+        "name": "趋势深链",
+        "sel": "[data-testid=\"duty-route-trend\"]",
+        "present": true,
+        "rect": {
+          "x": 275.9,
+          "y": -219.1,
+          "w": 63.8,
+          "h": 44
+        },
+        "gap": 301.2,
+        "nearest": "打开导航"
+      },
+      {
+        "name": "活跃深链",
+        "sel": "[data-testid=\"duty-route-activity\"]",
+        "present": true,
+        "rect": {
+          "x": 275.9,
+          "y": 459.6,
+          "w": 63.8,
+          "h": 44
+        },
+        "gap": 206.8,
+        "nearest": "duty-activity-text-toggle"
+      },
+      {
+        "name": "阻塞深链",
+        "sel": "[data-testid=\"duty-route-blockers\"]",
+        "present": true,
+        "rect": {
+          "x": 275.9,
+          "y": 1029.1,
+          "w": 63.8,
+          "h": 44
+        },
+        "gap": 220.1,
+        "nearest": "duty-route-pending"
+      },
+      {
+        "name": "待审深链",
+        "sel": "[data-testid=\"duty-route-pending\"]",
+        "present": true,
+        "rect": {
+          "x": 275.9,
+          "y": 1268.8,
+          "w": 63.8,
+          "h": 44
+        },
+        "gap": 173.1,
+        "nearest": "duty-route-recent"
+      },
+      {
+        "name": "最近运行深链",
+        "sel": "[data-testid=\"duty-route-recent\"]",
+        "present": true,
+        "rect": {
+          "x": 275.9,
+          "y": 1461,
+          "w": 63.8,
+          "h": 44
+        },
+        "gap": 158.8,
+        "nearest": "duty-notes-toggle"
+      },
+      {
+        "name": "明细行深链",
+        "sel": "[data-testid=\"duty-details-run-list\"] a",
+        "present": false
+      },
+      {
+        "name": "检查项来源深链",
+        "sel": "[data-testid=\"duty-gates-scope\"] ~ .duty-details a",
+        "present": true,
+        "rect": {
+          "x": 34.3,
+          "y": -1888.2,
+          "w": 295.5,
+          "h": 37.2
+        },
+        "gap": 162.6,
+        "nearest": "duty-gate-source"
+      },
+      {
+        "name": "舰队轨暂停",
+        "sel": "[data-testid=\"duty-fleet-pause\"]",
+        "present": true,
+        "rect": {
+          "x": 11.3,
+          "y": -2083.8,
+          "w": 341.5,
+          "h": 44
+        },
+        "gap": 160.8,
+        "nearest": "duty-details-toggle"
+      },
+      {
+        "name": "舰队轨前一张",
+        "sel": "[data-testid=\"duty-fleet-prev\"]",
+        "present": false
+      },
+      {
+        "name": "舰队轨后一张",
+        "sel": "[data-testid=\"duty-fleet-next\"]",
+        "present": false
+      }
+    ],
+    "hoverAudit": {
+      "count": 74,
+      "rows": [
+        {
+          "node": "button.font-mono",
+          "testid": "",
+          "title": "切换主题: Hermes Teal",
+          "parts": 1,
+          "missingParts": 1,
+          "missing": [
+            "切换主题: Hermes Teal"
+          ]
+        },
+        {
+          "node": "button.font-mono",
+          "testid": "",
+          "title": "切换语言",
+          "parts": 1,
+          "missingParts": 1,
+          "missing": [
+            "切换语言"
+          ]
+        },
+        {
+          "node": "span.duty-health-chip",
+          "testid": "duty-health-chip",
+          "title": "汇总本页各读取腿的回答，非独立健康端点 · 未接入：知识检索",
+          "parts": 1,
+          "missingParts": 1,
+          "missing": [
+            "汇总本页各读取腿的回答，非独立健康端点 · 未接入：知识检索"
+          ]
+        },
+        {
+          "node": "span.duty-meta",
+          "testid": "ov6-asof",
+          "title": "取各来源响应自带的采集时间，最新的一个上屏",
+          "parts": 1,
+          "missingParts": 1,
+          "missing": [
+            "取各来源响应自带的采集时间，最新的一个上屏"
+          ]
+        },
+        {
+          "node": "p.duty-note",
+          "testid": "ov6-ready-stamp",
+          "title": "取不到采集时间：上游响应没有带采集时间；不用本机时间顶替",
+          "parts": 1,
+          "missingParts": 1,
+          "missing": [
+            "取不到采集时间：上游响应没有带采集时间；不用本机时间顶替"
+          ]
+        },
+        {
+          "node": "p.duty-note",
+          "testid": "ov6-today-runs-stamp",
+          "title": "来源：运行窗口统计；采集时间取自上游响应",
+          "parts": 1,
+          "missingParts": 1,
+          "missing": [
+            "来源：运行窗口统计；采集时间取自上游响应"
+          ]
+        },
+        {
+          "node": "p.duty-note",
+          "testid": "ov6-today-cost-stamp",
+          "title": "来源：当日成本账本；采集时间取自上游响应",
+          "parts": 1,
+          "missingParts": 1,
+          "missing": [
+            "来源：当日成本账本；采集时间取自上游响应"
+          ]
+        },
+        {
+          "node": "section.duty-details-block",
+          "testid": "duty-details-readiness",
+          "title": "workbench/agents 缺 byLifecycle 聚合计数（active/paused/offboardin",
+          "parts": 1,
+          "missingParts": 1,
+          "missing": [
+            "workbench/agents 缺 byLifecycle 聚合计数（active/paused/offboarding）、缺分页之外的完整名单（翻页时 total 为 null），逐行 today* 也恒为 null；本卡仍取员工目录 + 员工统计，换成该读口会丢掉总分母，故不换。"
+          ]
+        },
+        {
+          "node": "div.duty-gate",
+          "testid": "ov6-gate-V1",
+          "title": "V1 · 群@",
+          "parts": 1,
+          "missingParts": 1,
+          "missing": [
+            "V1 · 群@"
+          ]
+        },
+        {
+          "node": "span.duty-gate-asof",
+          "testid": "",
+          "title": "来源回答未携带采集时间",
+          "parts": 1,
+          "missingParts": 1,
+          "missing": [
+            "来源回答未携带采集时间"
+          ]
+        },
+        {
+          "node": "i.duty-dot",
+          "testid": "",
+          "title": "1 人未达",
+          "parts": 1,
+          "missingParts": 1,
+          "missing": [
+            "1 人未达"
+          ]
+        },
+        {
+          "node": "div.duty-gate",
+          "testid": "ov6-gate-V2",
+          "title": "V2 · ReBAC",
+          "parts": 1,
+          "missingParts": 1,
+          "missing": [
+            "V2 · ReBAC"
+          ]
+        },
+        {
+          "node": "div.duty-gate",
+          "testid": "ov6-gate-V3",
+          "title": "V3 · 引用",
+          "parts": 1,
+          "missingParts": 1,
+          "missing": [
+            "V3 · 引用"
+          ]
+        },
+        {
+          "node": "span.duty-gate-asof",
+          "testid": "",
+          "title": "E_NO_CITATION：该数据源尚未接入，没有采集时间",
+          "parts": 1,
+          "missingParts": 1,
+          "missing": [
+            "E_NO_CITATION：该数据源尚未接入，没有采集时间"
+          ]
+        },
+        {
+          "node": "i.duty-dot",
+          "testid": "",
+          "title": "证据源缺失，暂不计入可上岗人数",
+          "parts": 1,
+          "missingParts": 1,
+          "missing": [
+            "证据源缺失，暂不计入可上岗人数"
+          ]
+        },
+        {
+          "node": "div.duty-gate",
+          "testid": "ov6-gate-V6",
+          "title": "V6 · 审批",
+          "parts": 1,
+          "missingParts": 1,
+          "missing": [
+            "V6 · 审批"
+          ]
+        },
+        {
+          "node": "span.duty-gate-asof",
+          "testid": "",
+          "title": "来源回答未携带采集时间",
+          "parts": 1,
+          "missingParts": 1,
+          "missing": [
+            "来源回答未携带采集时间"
+          ]
+        },
+        {
+          "node": "i.duty-dot",
+          "testid": "",
+          "title": "2 人未达",
+          "parts": 1,
+          "missingParts": 1,
+          "missing": [
+            "2 人未达"
+          ]
+        },
+        {
+          "node": "p.duty-runs-caliber",
+          "testid": "duty-runs-caliber",
+          "title": "本卡读 workbench/summary?range=1d（BFF 聚合一日的运行数 KPI），采集时刻 2026-1",
+          "parts": 1,
+          "missingParts": 1,
+          "missing": [
+            "本卡读 workbench/summary?range=1d（BFF 聚合一日的运行数 KPI），采集时刻 2026-11-24 01:40；/metrics 读 /api/run-stats 当前时间窗（totals.runs）。两页各读自己的口，本页不另发请求去取对方的数：只有当两侧读数出自同一读模型时才写「同源一致」，否则按口径不同处理，不为了对上而改任何一侧的取数。"
+          ]
+        },
+        {
+          "node": "p.duty-note",
+          "testid": "ov6-trend-stamp",
+          "title": "来源：近 14 天运行统计；采集时间取自上游响应",
+          "parts": 1,
+          "missingParts": 1,
+          "missing": [
+            "来源：近 14 天运行统计；采集时间取自上游响应"
+          ]
+        },
+        {
+          "node": "p.duty-note",
+          "testid": "ov6-activity-stamp",
+          "title": "取不到采集时间：上游响应没有带采集时间；不用本机时间顶替",
+          "parts": 1,
+          "missingParts": 1,
+          "missing": [
+            "取不到采集时间：上游响应没有带采集时间；不用本机时间顶替"
+          ]
+        },
+        {
+          "node": "p.duty-note",
+          "testid": "ov6-blockers-stamp",
+          "title": "取不到采集时间：上游响应没有带采集时间；不用本机时间顶替",
+          "parts": 1,
+          "missingParts": 1,
+          "missing": [
+            "取不到采集时间：上游响应没有带采集时间；不用本机时间顶替"
+          ]
+        },
+        {
+          "node": "p.duty-note",
+          "testid": "ov6-pending-stamp",
+          "title": "来源：审批统计；采集时间取自上游响应",
+          "parts": 1,
+          "missingParts": 1,
+          "missing": [
+            "来源：审批统计；采集时间取自上游响应"
+          ]
+        },
+        {
+          "node": "p.duty-note",
+          "testid": "ov6-recent-stamp",
+          "title": "取不到采集时间：上游响应没有带采集时间；不用本机时间顶替",
+          "parts": 1,
+          "missingParts": 1,
+          "missing": [
+            "取不到采集时间：上游响应没有带采集时间；不用本机时间顶替"
+          ]
+        }
+      ],
+      "hoverRules": [],
+      "clipped": [
+        {
+          "node": "span.duty-fleet-name",
+          "testid": "",
+          "cutPx": 104,
+          "text": "QA2 契约验证 1794894768"
+        },
+        {
+          "node": "span.duty-fleet-role",
+          "testid": "",
+          "cutPx": 109,
+          "text": "QA2 契约验证（dev 库，可清理）"
+        },
+        {
+          "node": "span.duty-fleet-state",
+          "testid": "",
+          "cutPx": 14,
+          "text": "草稿"
+        },
+        {
+          "node": "span.duty-fleet-name",
+          "testid": "",
+          "cutPx": 56,
+          "text": "AgentOS 产品助理"
+        },
+        {
+          "node": "span.duty-fleet-role",
+          "testid": "",
+          "cutPx": 74,
+          "text": "产品助理（数字员工 · Pilot）"
+        },
+        {
+          "node": "span.duty-fleet-state",
+          "testid": "",
+          "cutPx": 12,
+          "text": "在岗"
+        },
+        {
+          "node": "span.duty-fleet-name",
+          "testid": "",
+          "cutPx": 56,
+          "text": "AgentOS 产品助理"
+        },
+        {
+          "node": "span.duty-fleet-role",
+          "testid": "",
+          "cutPx": 74,
+          "text": "产品助理（数字员工 · Pilot）"
+        },
+        {
+          "node": "span.duty-fleet-state",
+          "testid": "",
+          "cutPx": 12,
+          "text": "在岗"
+        }
+      ]
+    },
+    "zeroProbe": [
+      {
+        "testid": "duty-kpi-failed",
+        "text": "0",
+        "inCard": "duty-details",
+        "label": "0失败"
+      }
+    ],
+    "columns": {
+      "blocks": 14,
+      "overlaps": 0,
+      "xs": [
+        11.3
+      ]
+    },
+    "alt": {
+      "trendSummary": "近 14 天：首日 11/12 1 次 · 末日 11/22 4 次 · 峰值 11/20 44 次 · 最低 11/12 1 次 · 合计 86 次",
+      "heatCells": 24,
+      "heatTextAltRows": 24,
+      "heatTextToggleAria": "true",
+      "fleetMetricNote": "今日处理还没有可用的逐人数据；接入后会自动显示。 成功率要等逐人日聚合接入；零分母或未齐时不显示，也不画进度条。",
+      "fleetIdRows": 4,
+      "blockersLinkNote": "任务页不接受 status 筛选参数，这里去任务板；阻塞项已在本卡逐条列出。",
+      "stampMissingReasonOnScreen": [
+        "数据截至 —（北京时间） · 来源 员工目录与运行统计 · 原因：上游响应没有带采集时间",
+        "数据截至 —（北京时间） · 来源 近 14 天活跃统计 · 原因：上游响应没有带采集时间",
+        "数据截至 —（北京时间） · 来源 运行·任务·审批明细 · 原因：上游响应没有带采集时间",
+        "数据截至 —（北京时间） · 来源 运行明细 · 原因：上游响应没有带采集时间"
+      ]
+    },
+    "folds": {
+      "before": {
+        "details": false,
+        "notes": "false",
+        "heat": "false",
+        "trendTable": "false"
+      },
+      "after": {
+        "details": true,
+        "notes": "true",
+        "heat": "true",
+        "trendTable": "true"
+      }
+    },
+    "tap": [
+      {
+        "name": "刷新",
+        "ok": true,
+        "changed": false,
+        "before": "null|null|na",
+        "after": "null|null|na"
+      },
+      {
+        "name": "切窗 7d",
+        "ok": true,
+        "changed": true,
+        "before": "null|false|na",
+        "after": "null|true|na"
+      },
+      {
+        "name": "逐时文字开关",
+        "ok": true,
+        "changed": true,
+        "before": "true|null|na",
+        "after": "false|null|na"
+      },
+      {
+        "name": "趋势表格开关",
+        "ok": true,
+        "changed": true,
+        "before": "true|null|na",
+        "after": "false|null|na"
+      },
+      {
+        "name": "状态筛选 失败",
+        "ok": true,
+        "changed": true,
+        "before": "null|false|true",
+        "after": "null|true|true"
+      },
+      {
+        "name": "卡外折叠区",
+        "ok": true,
+        "changed": true,
+        "before": "null|null|true",
+        "after": "null|null|false"
+      },
+      {
+        "name": "口径说明折叠",
+        "ok": true,
+        "changed": true,
+        "before": "true|null|na",
+        "after": "false|null|na"
+      }
+    ],
+    "foldEnd": {
+      "details": false,
+      "notes": "false",
+      "heat": "false",
+      "trendTable": "false"
+    }
+  },
+  "1440": {
+    "tag": "1440",
+    "rootFont": "15px",
+    "doc": {
+      "scrollWidth": 1440,
+      "bodyScrollWidth": 1440,
+      "innerWidth": 1440,
+      "clientWidth": 1440
+    },
+    "cards": [
+      {
+        "label": "header.duty-head",
+        "scrollWidth": 1178,
+        "clientWidth": 1176,
+        "rectWidth": 1176,
+        "right": 1406.5,
+        "docBreach": false,
+        "worst": {
+          "over": 2,
+          "node": "div.duty-head-actions",
+          "testid": "",
+          "scrollWidth": 344,
+          "clientWidth": 342,
+          "right": 1406.5,
+          "overflowX": "visible",
+          "intentionalScroller": false
+        }
+      },
+      {
+        "label": "duty-refresh-bar",
+        "scrollWidth": 1176,
+        "clientWidth": 1176,
+        "rectWidth": 1176,
+        "right": 1406.5,
+        "docBreach": false,
+        "worst": null
+      },
+      {
+        "label": "duty-ready",
+        "scrollWidth": 379,
+        "clientWidth": 379,
+        "rectWidth": 381.3,
+        "right": 611.8,
+        "docBreach": false,
+        "worst": null
+      },
+      {
+        "label": "duty-today-runs",
+        "scrollWidth": 379,
+        "clientWidth": 379,
+        "rectWidth": 381.3,
+        "right": 1009.2,
+        "docBreach": false,
+        "worst": null
+      },
+      {
+        "label": "duty-today-cost",
+        "scrollWidth": 379,
+        "clientWidth": 379,
+        "rectWidth": 381.3,
+        "right": 1406.5,
+        "docBreach": false,
+        "worst": null
+      },
+      {
+        "label": "duty-trend",
+        "scrollWidth": 578,
+        "clientWidth": 578,
+        "rectWidth": 580,
+        "right": 810.5,
+        "docBreach": false,
+        "worst": {
+          "over": 2,
+          "node": "button.font-mono",
+          "testid": "duty-trend-table-toggle",
+          "scrollWidth": 548,
+          "clientWidth": 546,
+          "right": 793.5,
+          "overflowX": "visible",
+          "intentionalScroller": false
+        }
+      },
+      {
+        "label": "duty-activity",
+        "scrollWidth": 578,
+        "clientWidth": 578,
+        "rectWidth": 580,
+        "right": 1406.5,
+        "docBreach": false,
+        "worst": {
+          "over": 2,
+          "node": "button.font-mono",
+          "testid": "duty-activity-text-toggle",
+          "scrollWidth": 548,
+          "clientWidth": 546,
+          "right": 1389.5,
+          "overflowX": "visible",
+          "intentionalScroller": false
+        }
+      },
+      {
+        "label": "duty-blockers",
+        "scrollWidth": 379,
+        "clientWidth": 379,
+        "rectWidth": 381.3,
+        "right": 611.8,
+        "docBreach": false,
+        "worst": null
+      },
+      {
+        "label": "duty-pending",
+        "scrollWidth": 379,
+        "clientWidth": 379,
+        "rectWidth": 381.3,
+        "right": 1009.2,
+        "docBreach": false,
+        "worst": null
+      },
+      {
+        "label": "duty-recent",
+        "scrollWidth": 379,
+        "clientWidth": 379,
+        "rectWidth": 381.3,
+        "right": 1406.5,
+        "docBreach": false,
+        "worst": null
+      },
+      {
+        "label": "duty-health",
+        "scrollWidth": 1176,
+        "clientWidth": 1176,
+        "rectWidth": 1176,
+        "right": 1406.5,
+        "docBreach": false,
+        "worst": null
+      },
+      {
+        "label": "duty-fleet-rail",
+        "scrollWidth": 1176,
+        "clientWidth": 1176,
+        "rectWidth": 1176,
+        "right": 1406.5,
+        "docBreach": false,
+        "worst": {
+          "over": 80,
+          "node": "span.duty-fleet-role",
+          "testid": "",
+          "scrollWidth": 183,
+          "clientWidth": 103,
+          "right": 496.1,
+          "overflowX": "hidden",
+          "intentionalScroller": false
+        }
+      },
+      {
+        "label": "duty-details",
+        "scrollWidth": 1174,
+        "clientWidth": 1174,
+        "rectWidth": 1176,
+        "right": 1406.5,
+        "docBreach": false,
+        "worst": null
+      },
+      {
+        "label": "duty-notes",
+        "scrollWidth": 1176,
+        "clientWidth": 1176,
+        "rectWidth": 1176,
+        "right": 1406.5,
+        "docBreach": false,
+        "worst": null
+      }
+    ],
+    "targets": [
+      {
+        "name": "刷新钮",
+        "sel": "[data-testid=\"duty-refresh\"]",
+        "present": true,
+        "rect": {
+          "x": 1340.7,
+          "y": -1633.2,
+          "w": 65.8,
+          "h": 29.8
+        },
+        "gap": 42.5,
+        "nearest": "duty-range-30d"
+      },
+      {
+        "name": "窗口 24h",
+        "sel": "[data-testid=\"duty-range-24h\"]",
+        "present": true,
+        "rect": {
+          "x": 1064.5,
+          "y": -1633.2,
+          "w": 75.3,
+          "h": 29.8
+        },
+        "gap": 35,
+        "nearest": "duty-range-7d"
+      },
+      {
+        "name": "窗口 7d",
+        "sel": "[data-testid=\"duty-range-7d\"]",
+        "present": true,
+        "rect": {
+          "x": 1143.8,
+          "y": -1633.2,
+          "w": 55.4,
+          "h": 29.8
+        },
+        "gap": 35,
+        "nearest": "duty-range-24h"
+      },
+      {
+        "name": "窗口 14d",
+        "sel": "[data-testid=\"duty-range-14d\"]",
+        "present": true,
+        "rect": {
+          "x": 1203.2,
+          "y": -1633.2,
+          "w": 61.9,
+          "h": 29.8
+        },
+        "gap": 35,
+        "nearest": "duty-range-7d"
+      },
+      {
+        "name": "窗口 30d",
+        "sel": "[data-testid=\"duty-range-30d\"]",
+        "present": true,
+        "rect": {
+          "x": 1269.1,
+          "y": -1633.2,
+          "w": 63.7,
+          "h": 29.8
+        },
+        "gap": 38,
+        "nearest": "duty-range-14d"
+      },
+      {
+        "name": "卡外折叠区开关",
+        "sel": "[data-testid=\"duty-details-toggle\"]",
+        "present": true,
+        "rect": {
+          "x": 247.5,
+          "y": -1090.5,
+          "w": 1142,
+          "h": 40
+        },
+        "gap": 456.6,
+        "nearest": "duty-route-readiness"
+      },
+      {
+        "name": "口径说明折叠开关",
+        "sel": "[data-testid=\"duty-notes-toggle\"]",
+        "present": true,
+        "rect": {
+          "x": 230.5,
+          "y": 1076.5,
+          "w": 1176,
+          "h": 30.6
+        },
+        "gap": 209.5,
+        "nearest": "duty-route-blockers"
+      },
+      {
+        "name": "趋势表格开关",
+        "sel": "[data-testid=\"duty-trend-table-toggle\"]",
+        "present": true,
+        "rect": {
+          "x": 247.5,
+          "y": 543.9,
+          "w": 546,
+          "h": 29.8
+        },
+        "gap": 160.1,
+        "nearest": "console-nav-link relative flex"
+      },
+      {
+        "name": "逐时文字开关",
+        "sel": "[data-testid=\"duty-activity-text-toggle\"]",
+        "present": true,
+        "rect": {
+          "x": 843.5,
+          "y": 422.5,
+          "w": 546,
+          "h": 29.8
+        },
+        "gap": 190,
+        "nearest": "duty-route-activity"
+      },
+      {
+        "name": "状态筛选 全部",
+        "sel": "[data-testid=\"duty-status-all\"]",
+        "present": true,
+        "rect": {
+          "x": 247.5,
+          "y": -537.4,
+          "w": 41.8,
+          "h": 25.2
+        },
+        "gap": 27.9,
+        "nearest": "duty-status-running"
+      },
+      {
+        "name": "状态筛选 失败",
+        "sel": "[data-testid=\"duty-status-failed\"]",
+        "present": true,
+        "rect": {
+          "x": 385,
+          "y": -537.4,
+          "w": 41.8,
+          "h": 25.2
+        },
+        "gap": 27.9,
+        "nearest": "duty-status-completed"
+      },
+      {
+        "name": "可上岗深链",
+        "sel": "[data-testid=\"duty-route-readiness\"]",
+        "present": true,
+        "rect": {
+          "x": 511,
+          "y": -1554.4,
+          "w": 83.9,
+          "h": 18.6
+        },
+        "gap": 195.5,
+        "nearest": "console-tab rounded-t-[var(--r"
+      },
+      {
+        "name": "今日运行深链",
+        "sel": "[data-testid=\"duty-route-today-runs\"]",
+        "present": true,
+        "rect": {
+          "x": 908.3,
+          "y": -1554.4,
+          "w": 83.9,
+          "h": 18.6
+        },
+        "gap": 124.4,
+        "nearest": "duty-range-24h"
+      },
+      {
+        "name": "成本深链",
+        "sel": "[data-testid=\"duty-route-cost\"]",
+        "present": true,
+        "rect": {
+          "x": 1305.6,
+          "y": -1554.4,
+          "w": 83.9,
+          "h": 18.6
+        },
+        "gap": 66.4,
+        "nearest": "duty-range-30d"
+      },
+      {
+        "name": "趋势深链",
+        "sel": "[data-testid=\"duty-route-trend\"]",
+        "present": true,
+        "rect": {
+          "x": 729.7,
+          "y": 226,
+          "w": 63.8,
+          "h": 18.6
+        },
+        "gap": 204.4,
+        "nearest": "duty-activity-text-toggle"
+      },
+      {
+        "name": "活跃深链",
+        "sel": "[data-testid=\"duty-route-activity\"]",
+        "present": true,
+        "rect": {
+          "x": 1325.7,
+          "y": 226,
+          "w": 63.8,
+          "h": 18.6
+        },
+        "gap": 190,
+        "nearest": "duty-activity-text-toggle"
+      },
+      {
+        "name": "阻塞深链",
+        "sel": "[data-testid=\"duty-route-blockers\"]",
+        "present": true,
+        "rect": {
+          "x": 531,
+          "y": 860.1,
+          "w": 63.8,
+          "h": 18.6
+        },
+        "gap": 209.5,
+        "nearest": "duty-notes-toggle"
+      },
+      {
+        "name": "待审深链",
+        "sel": "[data-testid=\"duty-route-pending\"]",
+        "present": true,
+        "rect": {
+          "x": 928.3,
+          "y": 860.1,
+          "w": 63.8,
+          "h": 18.6
+        },
+        "gap": 209.5,
+        "nearest": "duty-notes-toggle"
+      },
+      {
+        "name": "最近运行深链",
+        "sel": "[data-testid=\"duty-route-recent\"]",
+        "present": true,
+        "rect": {
+          "x": 1325.7,
+          "y": 860.1,
+          "w": 63.8,
+          "h": 18.6
+        },
+        "gap": 209.5,
+        "nearest": "duty-notes-toggle"
+      },
+      {
+        "name": "明细行深链",
+        "sel": "[data-testid=\"duty-details-run-list\"] a",
+        "present": false
+      },
+      {
+        "name": "检查项来源深链",
+        "sel": "[data-testid=\"duty-gates-scope\"] ~ .duty-details a",
+        "present": true,
+        "rect": {
+          "x": 253.5,
+          "y": -967.9,
+          "w": 1130,
+          "h": 18.6
+        },
+        "gap": 421.8,
+        "nearest": "duty-status-all"
+      },
+      {
+        "name": "舰队轨暂停",
+        "sel": "[data-testid=\"duty-fleet-pause\"]",
+        "present": false
+      },
+      {
+        "name": "舰队轨前一张",
+        "sel": "[data-testid=\"duty-fleet-prev\"]",
+        "present": false
+      },
+      {
+        "name": "舰队轨后一张",
+        "sel": "[data-testid=\"duty-fleet-next\"]",
+        "present": false
+      }
+    ],
+    "hoverAudit": {
+      "count": 74,
+      "rows": [
+        {
+          "node": "button.font-mono",
+          "testid": "",
+          "title": "切换主题: Hermes Teal",
+          "parts": 1,
+          "missingParts": 1,
+          "missing": [
+            "切换主题: Hermes Teal"
+          ]
+        },
+        {
+          "node": "button.font-mono",
+          "testid": "",
+          "title": "切换语言",
+          "parts": 1,
+          "missingParts": 1,
+          "missing": [
+            "切换语言"
+          ]
+        },
+        {
+          "node": "span.duty-health-chip",
+          "testid": "duty-health-chip",
+          "title": "汇总本页各读取腿的回答，非独立健康端点 · 未接入：知识检索",
+          "parts": 1,
+          "missingParts": 1,
+          "missing": [
+            "汇总本页各读取腿的回答，非独立健康端点 · 未接入：知识检索"
+          ]
+        },
+        {
+          "node": "span.duty-meta",
+          "testid": "ov6-asof",
+          "title": "取各来源响应自带的采集时间，最新的一个上屏",
+          "parts": 1,
+          "missingParts": 1,
+          "missing": [
+            "取各来源响应自带的采集时间，最新的一个上屏"
+          ]
+        },
+        {
+          "node": "p.duty-note",
+          "testid": "ov6-ready-stamp",
+          "title": "取不到采集时间：上游响应没有带采集时间；不用本机时间顶替",
+          "parts": 1,
+          "missingParts": 1,
+          "missing": [
+            "取不到采集时间：上游响应没有带采集时间；不用本机时间顶替"
+          ]
+        },
+        {
+          "node": "p.duty-note",
+          "testid": "ov6-today-runs-stamp",
+          "title": "来源：运行窗口统计；采集时间取自上游响应",
+          "parts": 1,
+          "missingParts": 1,
+          "missing": [
+            "来源：运行窗口统计；采集时间取自上游响应"
+          ]
+        },
+        {
+          "node": "p.duty-note",
+          "testid": "ov6-today-cost-stamp",
+          "title": "来源：当日成本账本；采集时间取自上游响应",
+          "parts": 1,
+          "missingParts": 1,
+          "missing": [
+            "来源：当日成本账本；采集时间取自上游响应"
+          ]
+        },
+        {
+          "node": "section.duty-details-block",
+          "testid": "duty-details-readiness",
+          "title": "workbench/agents 缺 byLifecycle 聚合计数（active/paused/offboardin",
+          "parts": 1,
+          "missingParts": 1,
+          "missing": [
+            "workbench/agents 缺 byLifecycle 聚合计数（active/paused/offboarding）、缺分页之外的完整名单（翻页时 total 为 null），逐行 today* 也恒为 null；本卡仍取员工目录 + 员工统计，换成该读口会丢掉总分母，故不换。"
+          ]
+        },
+        {
+          "node": "div.duty-gate",
+          "testid": "ov6-gate-V1",
+          "title": "V1 · 群@",
+          "parts": 1,
+          "missingParts": 1,
+          "missing": [
+            "V1 · 群@"
+          ]
+        },
+        {
+          "node": "span.duty-gate-asof",
+          "testid": "",
+          "title": "来源回答未携带采集时间",
+          "parts": 1,
+          "missingParts": 1,
+          "missing": [
+            "来源回答未携带采集时间"
+          ]
+        },
+        {
+          "node": "i.duty-dot",
+          "testid": "",
+          "title": "1 人未达",
+          "parts": 1,
+          "missingParts": 1,
+          "missing": [
+            "1 人未达"
+          ]
+        },
+        {
+          "node": "div.duty-gate",
+          "testid": "ov6-gate-V2",
+          "title": "V2 · ReBAC",
+          "parts": 1,
+          "missingParts": 1,
+          "missing": [
+            "V2 · ReBAC"
+          ]
+        },
+        {
+          "node": "div.duty-gate",
+          "testid": "ov6-gate-V3",
+          "title": "V3 · 引用",
+          "parts": 1,
+          "missingParts": 1,
+          "missing": [
+            "V3 · 引用"
+          ]
+        },
+        {
+          "node": "span.duty-gate-asof",
+          "testid": "",
+          "title": "E_NO_CITATION：该数据源尚未接入，没有采集时间",
+          "parts": 1,
+          "missingParts": 1,
+          "missing": [
+            "E_NO_CITATION：该数据源尚未接入，没有采集时间"
+          ]
+        },
+        {
+          "node": "i.duty-dot",
+          "testid": "",
+          "title": "证据源缺失，暂不计入可上岗人数",
+          "parts": 1,
+          "missingParts": 1,
+          "missing": [
+            "证据源缺失，暂不计入可上岗人数"
+          ]
+        },
+        {
+          "node": "div.duty-gate",
+          "testid": "ov6-gate-V6",
+          "title": "V6 · 审批",
+          "parts": 1,
+          "missingParts": 1,
+          "missing": [
+            "V6 · 审批"
+          ]
+        },
+        {
+          "node": "span.duty-gate-asof",
+          "testid": "",
+          "title": "来源回答未携带采集时间",
+          "parts": 1,
+          "missingParts": 1,
+          "missing": [
+            "来源回答未携带采集时间"
+          ]
+        },
+        {
+          "node": "i.duty-dot",
+          "testid": "",
+          "title": "2 人未达",
+          "parts": 1,
+          "missingParts": 1,
+          "missing": [
+            "2 人未达"
+          ]
+        },
+        {
+          "node": "p.duty-runs-caliber",
+          "testid": "duty-runs-caliber",
+          "title": "本卡读 workbench/summary?range=1d（BFF 聚合一日的运行数 KPI），采集时刻 2026-1",
+          "parts": 1,
+          "missingParts": 1,
+          "missing": [
+            "本卡读 workbench/summary?range=1d（BFF 聚合一日的运行数 KPI），采集时刻 2026-11-24 01:41；/metrics 读 /api/run-stats 当前时间窗（totals.runs）。两页各读自己的口，本页不另发请求去取对方的数：只有当两侧读数出自同一读模型时才写「同源一致」，否则按口径不同处理，不为了对上而改任何一侧的取数。"
+          ]
+        },
+        {
+          "node": "p.duty-note",
+          "testid": "ov6-trend-stamp",
+          "title": "来源：近 14 天运行统计；采集时间取自上游响应",
+          "parts": 1,
+          "missingParts": 1,
+          "missing": [
+            "来源：近 14 天运行统计；采集时间取自上游响应"
+          ]
+        },
+        {
+          "node": "p.duty-note",
+          "testid": "ov6-activity-stamp",
+          "title": "取不到采集时间：上游响应没有带采集时间；不用本机时间顶替",
+          "parts": 1,
+          "missingParts": 1,
+          "missing": [
+            "取不到采集时间：上游响应没有带采集时间；不用本机时间顶替"
+          ]
+        },
+        {
+          "node": "p.duty-note",
+          "testid": "ov6-blockers-stamp",
+          "title": "取不到采集时间：上游响应没有带采集时间；不用本机时间顶替",
+          "parts": 1,
+          "missingParts": 1,
+          "missing": [
+            "取不到采集时间：上游响应没有带采集时间；不用本机时间顶替"
+          ]
+        },
+        {
+          "node": "p.duty-note",
+          "testid": "ov6-pending-stamp",
+          "title": "来源：审批统计；采集时间取自上游响应",
+          "parts": 1,
+          "missingParts": 1,
+          "missing": [
+            "来源：审批统计；采集时间取自上游响应"
+          ]
+        },
+        {
+          "node": "p.duty-note",
+          "testid": "ov6-recent-stamp",
+          "title": "取不到采集时间：上游响应没有带采集时间；不用本机时间顶替",
+          "parts": 1,
+          "missingParts": 1,
+          "missing": [
+            "取不到采集时间：上游响应没有带采集时间；不用本机时间顶替"
+          ]
+        }
+      ],
+      "hoverRules": [],
+      "clipped": [
+        {
+          "node": "span.duty-fleet-name",
+          "testid": "",
+          "cutPx": 76,
+          "text": "QA2 契约验证 1794894768"
+        },
+        {
+          "node": "span.duty-fleet-role",
+          "testid": "",
+          "cutPx": 80,
+          "text": "QA2 契约验证（dev 库，可清理）"
+        },
+        {
+          "node": "span.duty-fleet-state",
+          "testid": "",
+          "cutPx": 11,
+          "text": "草稿"
+        },
+        {
+          "node": "span.duty-fleet-name",
+          "testid": "",
+          "cutPx": 32,
+          "text": "AgentOS 产品助理"
+        },
+        {
+          "node": "span.duty-fleet-role",
+          "testid": "",
+          "cutPx": 43,
+          "text": "产品助理（数字员工 · Pilot）"
+        },
+        {
+          "node": "span.duty-fleet-state",
+          "testid": "",
+          "cutPx": 7,
+          "text": "在岗"
+        },
+        {
+          "node": "span.duty-fleet-name",
+          "testid": "",
+          "cutPx": 32,
+          "text": "AgentOS 产品助理"
+        },
+        {
+          "node": "span.duty-fleet-role",
+          "testid": "",
+          "cutPx": 43,
+          "text": "产品助理（数字员工 · Pilot）"
+        },
+        {
+          "node": "span.duty-fleet-state",
+          "testid": "",
+          "cutPx": 7,
+          "text": "在岗"
+        }
+      ]
+    },
+    "zeroProbe": [
+      {
+        "testid": "duty-kpi-failed",
+        "text": "0",
+        "inCard": "duty-details",
+        "label": "0失败"
+      }
+    ],
+    "columns": {
+      "blocks": 14,
+      "overlaps": 0,
+      "xs": [
+        230.5,
+        627.8,
+        1025.2,
+        826.5
+      ]
+    },
+    "alt": {
+      "trendSummary": "近 14 天：首日 11/12 1 次 · 末日 11/22 4 次 · 峰值 11/20 44 次 · 最低 11/12 1 次 · 合计 86 次",
+      "heatCells": 24,
+      "heatTextAltRows": 24,
+      "heatTextToggleAria": "true",
+      "fleetMetricNote": "今日处理还没有可用的逐人数据；接入后会自动显示。 成功率要等逐人日聚合接入；零分母或未齐时不显示，也不画进度条。",
+      "fleetIdRows": 4,
+      "blockersLinkNote": "任务页不接受 status 筛选参数，这里去任务板；阻塞项已在本卡逐条列出。",
+      "stampMissingReasonOnScreen": [
+        "数据截至 —（北京时间） · 来源 员工目录与运行统计 · 原因：上游响应没有带采集时间",
+        "数据截至 —（北京时间） · 来源 近 14 天活跃统计 · 原因：上游响应没有带采集时间",
+        "数据截至 —（北京时间） · 来源 运行·任务·审批明细 · 原因：上游响应没有带采集时间",
+        "数据截至 —（北京时间） · 来源 运行明细 · 原因：上游响应没有带采集时间"
+      ]
+    },
+    "folds": {
+      "before": {
+        "details": false,
+        "notes": "false",
+        "heat": "false",
+        "trendTable": "false"
+      },
+      "after": {
+        "details": true,
+        "notes": "true",
+        "heat": "true",
+        "trendTable": "true"
+      }
+    },
+    "tap": [
+      {
+        "name": "刷新",
+        "ok": true,
+        "changed": false,
+        "before": "null|null|na",
+        "after": "null|null|na"
+      },
+      {
+        "name": "切窗 7d",
+        "ok": true,
+        "changed": true,
+        "before": "null|false|na",
+        "after": "null|true|na"
+      },
+      {
+        "name": "逐时文字开关",
+        "ok": true,
+        "changed": true,
+        "before": "true|null|na",
+        "after": "false|null|na"
+      },
+      {
+        "name": "趋势表格开关",
+        "ok": true,
+        "changed": true,
+        "before": "true|null|na",
+        "after": "false|null|na"
+      },
+      {
+        "name": "状态筛选 失败",
+        "ok": true,
+        "changed": true,
+        "before": "null|false|true",
+        "after": "null|true|true"
+      },
+      {
+        "name": "卡外折叠区",
+        "ok": true,
+        "changed": true,
+        "before": "null|null|true",
+        "after": "null|null|false"
+      },
+      {
+        "name": "口径说明折叠",
+        "ok": true,
+        "changed": true,
+        "before": "true|null|na",
+        "after": "false|null|na"
+      }
+    ],
+    "foldEnd": {
+      "details": false,
+      "notes": "false",
+      "heat": "false",
+      "trendTable": "false"
+    }
+  }
+}

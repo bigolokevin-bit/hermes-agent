@@ -190,6 +190,17 @@
   white-space: nowrap;
 }
 
+/* DU-07①③：窄屏不许用省略号把「读哪个口」裁掉——被裁的那半句原文只活在 title（悬停）里。
+   375 实测本行 scrollWidth=367 vs 可视 296（裁掉 71px），改成换行：整句上屏、零裁切。 */
+@media (max-width: 420px) {
+  .duty-gate-source {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}
+
 .duty-dot {
   width: 7px;
   height: 7px;
@@ -289,6 +300,21 @@
 .duty-cell.is-l3 { background: color-mix(in srgb, var(--color-primary) 62%, transparent); }
 .duty-cell.is-l4 { background: var(--color-primary); }
 .duty-cell.is-future { background: transparent; box-shadow: inset 0 0 0 1px var(--color-border); }
+
+/* DU-07①：逐时读数文字替代（「以文字查看逐时」点开）。两列短文本，
+   窄屏不横溢；数字与色块共用同一份 heatCellText 字符串。 */
+.duty-heat-text {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px 12px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--color-muted-foreground);
+  font-size: var(--font-size-1);
+  font-variant-numeric: tabular-nums;
+}
+.duty-heat-text li { min-width: 0; overflow-wrap: anywhere; }
 
 .duty-axis-row {
   display: flex;
@@ -849,12 +875,33 @@
 }
 
 /* 手机档：单列、触控高不低于 44px（rubric 触达底线，暂无对应令牌，用字面值并注明） */
+/* DU-07②：刷新钮/折叠钮（口径说明・以表格查看・以文字查看）/舰队控件/卡头与行内
+   深链/检查项行同档补 44px。选择器插在原四者的相对次序之间，保持钉形断言
+   （dutyPage.test「手机档」取本文件最后一个 820px 块、要求 .duty-range 紧贴 {）不破。 */
 @media (max-width: 820px) {
   .duty-kpi,
+  .duty-refresh-btn,
+  .duty-notes-toggle,
   .duty-card-foot,
+  .duty-disclosure-toggle,
   .duty-details-summary,
+  .duty-fleet-arrow,
+  .duty-fleet-pause,
+  .duty-card-hd .duty-link,
+  .duty-gate,
+  .duty-list > li,
+  .duty-list > li .duty-row-title,
   .duty-range {
     min-block-size: 44px;
+  }
+  /* 行内深链本体只有文字宽：整行 44px＋行内仅此一个可点目标，
+     相邻目标中心距 ≥44+gap，走判据的「间距 ≥44」腿。 */
+  .duty-list > li .duty-row-title {
+    display: inline-flex;
+    align-items: center;
+  }
+  .duty-fleet-arrow {
+    min-inline-size: 44px;
   }
 }
 

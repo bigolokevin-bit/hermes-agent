@@ -33,12 +33,14 @@ export function runsCaliber(input: {
     (duty === null ? "本次没有读到本卡的运行数，不当作 0。" : "");
 
   if (duty === null) {
-    return { verdict: "missing", compare: "本卡这次没读到运行数｜见 title", title };
+    // DU-07③：判据不许把结论挂在 title（悬停）上——「见 title」三处改成自足句，
+    // 屏上直接读得懂；相遇条件的完整句仍留在 title 作为补充，但不再是唯一载体。
+    return { verdict: "missing", compare: "本卡这次没读到运行数｜缺数不当 0，对照无从谈起", title };
   }
   if (metrics === null) {
     return {
       verdict: "unread",
-      compare: "/metrics 的读数不在本页取｜口径见 title",
+      compare: "读数不在本页取｜两页各读各的口，对不上就不写",
       title,
     };
   }
@@ -47,7 +49,7 @@ export function runsCaliber(input: {
   }
   return {
     verdict: "different",
-    compare: `本卡 ${duty} · /metrics ${metrics}｜口径不同，见 title`,
+    compare: `本卡 ${duty} · /metrics ${metrics}｜两条读口不同，不为对上改任一侧取数`,
     title,
   };
 }
