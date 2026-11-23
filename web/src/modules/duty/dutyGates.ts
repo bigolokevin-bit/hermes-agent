@@ -25,6 +25,8 @@ export interface DutyGates {
   retry: DutyGate;
   copy: DutyGate;
   link: DutyGate;
+  /** Q10 条目6：日报导出没有后端写接口——恒占位（goto 型），可辨不可点。 */
+  exportDaily: DutyGate;
 }
 
 const ALL: DutyGates = {
@@ -32,6 +34,7 @@ const ALL: DutyGates = {
   retry: { enabled: true, title: null },
   copy: { enabled: true, title: null },
   link: { enabled: true, title: null },
+  exportDaily: { enabled: false, title: "计划中：日报导出需要后端写接口，现在还没就绪；这不是故障，刷新也不会让它变亮。" },
 };
 
 export function dutyGates(input: DutyGatesInput): DutyGates {
@@ -63,7 +66,7 @@ export function dutyGates(input: DutyGatesInput): DutyGates {
   // Links only navigate; nothing on this read-only page blocks them.
   const link: DutyGate = { enabled: true, title: null };
 
-  return { refresh, retry, copy, link };
+  return { refresh, retry, copy, link, exportDaily: ALL.exportDaily };
 }
 
 export const DUTY_GATES_OPEN: DutyGates = ALL;
