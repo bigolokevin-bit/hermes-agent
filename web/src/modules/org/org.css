@@ -258,10 +258,69 @@
     letter-spacing: 0.04em;
   }
 
-  .org5-head-row > button {
+  .org5-head-row > button,
+  .org5-tools > button {
     width: 100%;
   }
 }
+/* PE-10 ② · 部门树按名搜索：命中片段由 <mark class="org5-hit"> 承载（文本节点
+ * 拼接，无 innerHTML 注入），高亮只吃主题令牌，暗/亮主题都不写死颜色。 */
+.org5-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.org5-search {
+  min-width: 0;
+  width: 168px;
+  height: 32px;
+  padding: 0 10px;
+  color: var(--color-foreground);
+  font-size: 12px;
+  background: color-mix(in srgb, var(--color-muted) 55%, transparent);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-2);
+}
+
+.org5-search::placeholder {
+  color: var(--color-muted-foreground);
+}
+
+.org5-search:focus-visible {
+  outline: 2px solid var(--color-ring, var(--color-primary));
+  outline-offset: 1px;
+}
+
+.org5-search-note {
+  margin: 0;
+  color: var(--color-muted-foreground);
+  font-size: 12px;
+}
+
+mark.org5-hit {
+  padding: 0 2px;
+  border-radius: var(--radius-1);
+  color: inherit;
+  background: color-mix(in srgb, var(--color-warning) 34%, transparent);
+}
+
+.org5-node-hit {
+  background: color-mix(in srgb, var(--color-warning) 8%, transparent);
+}
+
+@media (max-width: 720px) {
+  .org5-tools {
+    width: 100%;
+  }
+
+  .org5-search {
+    flex: 1 1 auto;
+    width: auto;
+  }
+}
+
 /* UI-A table density (docs/design/UI-RUBRIC.md). /identity org tree is an li
  * grid row shell, not an HTML table: 40 maps to min-height so wrapped tree
  * rows still grow. No sub-surface, so the 36 tier is not applicable. Zebra

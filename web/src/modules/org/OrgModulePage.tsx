@@ -382,6 +382,45 @@ function StateShell({
 
 const MAX_DEPTH = 12;
 
+/**
+ * PE-10 ②：按名搜索的命中集与要展开的路径。命中节点自身也展开，
+ * DoD 的「命中节点 aria-expanded=true」由此成立；祖先一律展开。
+ */
+function locateHits(nodes: TreeNode[], needle: string, trail: string[], hits: Set<string>, expand: Set<string>): void {
+  if (!needle) return;
+  for (const node of nodes) {
+    const name = (node.name ?? "").toLowerCase();
+    if (name.includes(needle)) {
+      hits.add(node.key);
+      expand.add(node.key);
+      for (const ancestor of trail) expand.add(ancestor);
+    }
+    if (node.children.length > 0) locateHits(node.children, needle, [...trail, node.key], hits, expand);
+  }
+}
+
+/** 关键词分段只用 React 文本节点渲染（禁 innerHTML 注入），命中片段进 <mark class="org5-hit">。 */
+function highlightName(text: string, needle: string): ReactNode {
+  if (!needle) return text;
+  const lower = text.toLowerCase();
+  const parts: ReactNode[] = [];
+  let at = 0;
+  let index = lower.indexOf(needle, at);
+  let key = 0;
+  while (index >= 0) {
+    if (index > at) parts.push(text.slice(at, index));
+    parts.push(
+      <mark key={key++} className="org5-hit" data-testid="org5-hit">
+        {text.slice(index, index + needle.length)}
+      </mark>,
+    );
+    at = index + needle.length;
+    index = lower.indexOf(needle, at);
+  }
+  if (at < text.length) parts.push(text.slice(at));
+  return parts;
+}
+
 function ownerText(dept: Dept): string {
   if (dept.ownerName && dept.ownerCode) return `${dept.ownerName} · ${dept.ownerCode}`;
   if (dept.ownerName) return `${dept.ownerName} · —`;
@@ -394,21 +433,27 @@ function DeptRow({
   depth,
   collapsed,
   onToggle,
+  needle,
+  hits,
 }: {
   node: TreeNode;
   depth: number;
   collapsed: Set<string>;
   onToggle: (key: string) => void;
+  needle: string;
+  hits: Set<string>;
 }) {
   const hasChildren = node.children.length > 0 && depth < MAX_DEPTH;
   const isCollapsed = collapsed.has(node.key);
+  const isHit = hits.has(node.key);
   const indent = 8 + Math.min(depth, 4) * 14;
 
   return (
     <>
       <li
         data-testid="org5-node"
-        className="org5-node"
+        className={`org5-node${isHit ? " org5-node-hit" : ""}`}
+        data-hit={isHit ? "true" : undefined}
         title={node.rawId ? `记录号 ${node.rawId}` : undefined}
       >
         <div className="org5-namecell" style={{ paddingLeft: indent }}>
@@ -431,7 +476,7 @@ function DeptRow({
           )}
           <Building2 className="org5-dept-icon" aria-hidden />
           <span className="org5-name" data-testid="org5-name">
-            {node.name ?? "待核实"}
+            {node.name ? highlightName(node.name, needle) : "待核实"}
             {node.nameReason ? <span className="org5-reason">{node.nameReason}</span> : null}
           </span>
         </div>
@@ -464,6 +509,8 @@ function DeptRow({
               depth={depth + 1}
               collapsed={collapsed}
               onToggle={onToggle}
+              needle={needle}
+              hits={hits}
             />
           ))
         : null}
@@ -518,6 +565,7 @@ function leavePreview(): void {
 export default function OrgModulePage() {
   const [reload, setReload] = useState(0);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [term, setTerm] = useState("");
   const forced = forcedState();
   const org = useOrg(reload, forced === null);
   const refresh = () => {
@@ -531,6 +579,21 @@ export default function OrgModulePage() {
   }, [org]);
 
   const total = org.phase === "ready" ? org.data.length : 0;
+
+  // PE-10 ②：树搜索是已加载树上的一次本地定位（部门树本身没有检索读口），
+  // 因此键入零请求；命中节点与祖先自动展开，展开态与 aria-expanded 同源。
+  const needle = term.trim().toLowerCase();
+  const { hits, expand } = useMemo(() => {
+    const hitSet = new Set<string>();
+    const expandSet = new Set<string>();
+    locateHits(roots, needle, [], hitSet, expandSet);
+    return { hits: hitSet, expand: expandSet };
+  }, [roots, needle]);
+
+  const visibleCollapsed = useMemo(() => {
+    if (needle === "" || expand.size === 0) return collapsed;
+    return new Set([...collapsed].filter((key) => !expand.has(key)));
+  }, [collapsed, expand, needle]);
 
   const toggle = (key: string) =>
     setCollapsed((prev) => {
@@ -550,10 +613,23 @@ export default function OrgModulePage() {
             {org.phase === "ready" && !forced ? ` · 共 ${total} 个部门` : ""}
           </p>
         </div>
-        <Button size="sm" outlined onClick={refresh} data-testid="org5-refresh">
-          <RefreshCw className="h-3.5 w-3.5" aria-hidden />
-          刷新
-        </Button>
+        <div className="org5-tools">
+          {org.phase === "ready" && !forced ? (
+            <input
+              data-testid="org5-search"
+              className="org5-search"
+              type="search"
+              aria-label="按部门名搜索"
+              placeholder="搜索部门名"
+              value={term}
+              onChange={(event) => setTerm(event.target.value)}
+            />
+          ) : null}
+          <Button size="sm" outlined onClick={refresh} data-testid="org5-refresh">
+            <RefreshCw className="h-3.5 w-3.5" aria-hidden />
+            刷新
+          </Button>
+        </div>
       </header>
       {children}
     </section>
@@ -571,7 +647,15 @@ export default function OrgModulePage() {
         </div>
         <ul className="org5-tree">
           {rows.map((node) => (
-            <DeptRow key={node.key} node={node} depth={0} collapsed={collapsed} onToggle={toggle} />
+            <DeptRow
+              key={node.key}
+              node={node}
+              depth={0}
+              collapsed={visibleCollapsed}
+              onToggle={toggle}
+              needle={needle}
+              hits={hits}
+            />
           ))}
         </ul>
       </CardContent>
@@ -694,5 +778,31 @@ export default function OrgModulePage() {
     );
   }
 
-  return shell(tree(roots));
+  // PE-10 ③：org 三态之「检索空」——树已加载但关键词没命中，与未接入/真为空互斥。
+  if (needle !== "" && hits.size === 0) {
+    return shell(
+      <StateShell
+        testid="org5-nomatch"
+        icon={<Inbox className="h-4 w-4 text-white/30" aria-hidden />}
+        title={`没有匹配「${term.trim()}」的部门`}
+        body="部门树里没有这个名字；不是没加载完，而是这棵树里确实没有。换个关键词，或清除搜索看全部部门。"
+        extra={
+          <Button size="sm" onClick={() => setTerm("")} data-testid="org5-search-clear">
+            清除搜索
+          </Button>
+        }
+      />,
+    );
+  }
+
+  return shell(
+    <>
+      {needle !== "" && hits.size > 0 ? (
+        <p className="org5-search-note" data-testid="org5-search-note">
+          命中 {hits.size} 个部门，已自动展开所在路径。
+        </p>
+      ) : null}
+      {tree(roots)}
+    </>,
+  );
 }
