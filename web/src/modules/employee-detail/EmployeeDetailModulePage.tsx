@@ -773,7 +773,7 @@ function SessionsZone({ resource, empId, onRetry }: { resource: Resource<ChatRow
         </ul>
         <p className="px-4 py-2 text-xs text-white/45">
           只读列表 · 本页不提供会话创建或消息写入；要继续聊天请前往“对话”页（全站唯一承载）。
-          点行内「详情」读取该会话的全量消息流与引用（SE-03，只读）。
+          点行内「详情」读取该会话的全量消息流与引用，并在抽屉底部续跑下一轮（SE-03 读 / SE-05 写）。
         </p>
       </CardContent>
     </Card>

@@ -1,5 +1,16 @@
 /**
  * SE-03 · 会话详情抽屉 — GET /agent-api/api/console-sessions/{sessionId}
+ * SE-05 · 底部续跑表单 — POST …/{sessionId}/messages（写口形制见 sessionContinuation.ts）
+ *
+ * 续跑纪律（工单 SE-05 步骤①②④ 原文口径）：
+ *  - 表单只有 content 一个输入：角色词汇恒为 user/assistant 两个，由服务端
+ *    成对落库决定（requestId 幂等），前端不提供第三个角色、也不写 role；
+ *  - 幂等凭据 = 请求体 requestId（≤200）；同一条消息重试必须复用同一把，
+ *    改体即换把（另一条消息）；
+ *  - 发送后**重取详情**收敛到服务端 seq——乐观上屏只是占位气泡，绝不本地
+ *    拼最终状态、绝不本地折 seq（防漂移，工单②）；
+ *  - 403/405/409 各有专句（sessionContinuation.sendFailureCopy 单点）；
+ *  - 后端补 status/压缩字段之前，本抽屉**零处**自造「活跃/已压缩」徽章。
  *
  * 契约（CONSOLE-SESSIONS-SHAPE.md §3，2026-11-22 现网 BFF 实测原文见
  * worktree evidence/raw-sessions-detail-real.json）：
@@ -17,14 +28,20 @@
  * `Markdown`，props { content, highlightTerms?, streaming? }，2026-11-24
  * 读源码确认导出面）。
  */
-import { useEffect, useState } from "react";
-import { Inbox, RefreshCw, ShieldAlert, TriangleAlert, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Inbox, RefreshCw, Send, ShieldAlert, TriangleAlert, X } from "lucide-react";
 import { Badge, Button, Card, CardContent } from "@nous-research/ui";
 
 import { Markdown } from "@/components/Markdown";
 import { RequestIdCopy } from "@/components/RequestIdCopy";
 import { fetchJSON } from "@/lib/api";
 import { ApiError, SESSION_REQUIRED_GUIDANCE } from "@/lib/api-error";
+import {
+  CONTENT_MAX,
+  newRequestId,
+  sendSessionMessage,
+  type SendOutcome,
+} from "@/modules/employee-detail/sessionContinuation";
 
 /* ------------------------------------------------------------------ *
  * readers — 严格但不脆：形状不符契约即抛（交错误态），字段缺值显「—」
@@ -187,6 +204,58 @@ export default function SessionDrawer({ sessionId, onClose }: { sessionId: strin
   const [nonce, setNonce] = useState(0);
   const [shown, setShown] = useState(RENDER_WINDOW);
 
+  /* SE-05 续跑表单态 ———————————————————————————————— */
+  const [draft, setDraft] = useState("");
+  /** 乐观占位气泡（发送中才存在；落库与否一律以重取的详情为准）。 */
+  const [pending, setPending] = useState<{ requestId: string; content: string } | null>(null);
+  const [sendError, setSendError] = useState<{ sentence: string; requestId: string | null } | null>(null);
+  /** 服务端回执 seq 的口径句（重取详情完成后换成上屏行的真 seq 说话）。 */
+  const [sendNote, setSendNote] = useState<string | null>(null);
+  /** 这条草稿当前绑定的幂等凭据；重试复用、改体换新（工单①）。 */
+  const keyRef = useRef<{ requestId: string; content: string } | null>(null);
+  const inflightRef = useRef(false);
+  const aliveRef = useRef(true);
+  useEffect(() => {
+    aliveRef.current = true;
+    return () => {
+      aliveRef.current = false;
+    };
+  }, []);
+
+  async function submitContinuation(): Promise<void> {
+    if (inflightRef.current) return;
+    const content = draft.trim();
+    if (!content || content.length > CONTENT_MAX) return;
+    const held = keyRef.current;
+    const requestId = held && held.content === content ? held.requestId : newRequestId();
+    keyRef.current = { requestId, content };
+    inflightRef.current = true;
+    setPending({ requestId, content });
+    setSendError(null);
+    setSendNote(null);
+    const outcome: SendOutcome = await sendSessionMessage(sessionId, { requestId, content });
+    if (!aliveRef.current) return;
+    inflightRef.current = false;
+    if (outcome.ok) {
+      // 工单②：以服务端返回 seq 收敛——重取详情，不在本地拼状态。
+      const { userSeq, assistantSeq } = outcome.turn;
+      setPending(null);
+      keyRef.current = null;
+      setDraft("");
+      setSendNote(
+        userSeq !== null && assistantSeq !== null
+          ? `服务端已落库并回执 seq：user #${userSeq}、assistant #${assistantSeq}。详情读口已重取，上屏行以服务端回传为准。`
+          : "服务端回执这一轮已落库，但载荷里没带可解析的 seq；屏上不猜，以重取的详情为准。",
+      );
+      setNonce((n) => n + 1);
+      return;
+    }
+    // 失败/未知：占位气泡撤下（它从不代表已落库），草稿留在输入框里。
+    // 同一条消息重试沿用同一把 requestId（keyRef 未清）；改动内容自动换新的一把。
+    setPending(null);
+    setSendError({ sentence: outcome.sentence, requestId: outcome.requestId });
+  }
+
   useEffect(() => {
     let cancelled = false;
     setState({ phase: "loading" });
@@ -246,7 +315,7 @@ export default function SessionDrawer({ sessionId, onClose }: { sessionId: strin
                 会话详情 · {shortCode(sessionId)}
               </h2>
               <p data-testid="sd-scope" className="mt-0.5 text-xs text-white/45">
-                只读消息流 · 详情读口一次全量返回（无服务端分页）
+                消息流只读上屏 · 详情读口一次全量返回（无服务端分页）· 续跑走 /messages 写口
               </p>
             </div>
             <button
@@ -259,6 +328,34 @@ export default function SessionDrawer({ sessionId, onClose }: { sessionId: strin
               <X className="h-4 w-4" />
             </button>
           </div>
+
+          {/* SE-05 · 续跑回执横幅：成功句与拒答句都常驻（重取详情失败时仍在，
+              这样「已落库」与「详情没读到」两件事分得开，谁也不冒充谁）。 */}
+          {sendNote || sendError ? (
+            <div className="border-b border-white/10 px-4 py-2" data-testid="se05-banner">
+              {sendNote ? (
+                <p className="text-xs text-emerald-300/80" data-testid="se05-send-note">
+                  {sendNote}
+                </p>
+              ) : null}
+              {sendError ? (
+                <div
+                  className="flex flex-col gap-1 rounded-sm border border-amber-400/30 bg-amber-400/5 px-3 py-2"
+                  data-testid="se05-send-error"
+                >
+                  <p className="text-xs" data-testid="se05-send-error-sentence">
+                    {sendError.sentence}
+                  </p>
+                  <p className="font-mono text-xs text-white/45">
+                    <RequestIdCopy
+                      requestId={sendError.requestId}
+                      fallback="本次写请求没有带回编号；可复制时间与页面路径反馈。"
+                    />
+                  </p>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
 
           <CardContent className="min-h-0 flex-1 overflow-y-auto p-0">
             {state.phase === "loading" ? (
@@ -414,7 +511,72 @@ export default function SessionDrawer({ sessionId, onClose }: { sessionId: strin
                 </div>
               </>
             ) : null}
+
+            {/* SE-05 · 乐观占位气泡：发送中才有；seq 一律显「待服务端回执」，
+                绝不在本地预填序号（工单②防 seq 漂移）。 */}
+            {state.phase === "ready" && pending ? (
+              <div className="border-t border-white/5 px-4 py-3" data-testid="se05-pending">
+                <div className="mb-1 flex flex-wrap items-center gap-2 text-xs text-white/50">
+                  <Badge>用户</Badge>
+                  <span className="font-mono" data-testid="se05-pending-seq">
+                    seq 待服务端回执
+                  </span>
+                  <span className="break-all font-mono text-white/45" data-testid="se05-pending-rid" title={pending.requestId}>
+                    {pending.requestId}
+                  </span>
+                  <RefreshCw className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                </div>
+                <p className="whitespace-pre-wrap text-sm leading-relaxed" data-testid="se05-pending-content">
+                  {pending.content}
+                </p>
+                <p className="mt-1 text-xs text-white/45">
+                  这条是本地占位（乐观上屏），还没有拿到服务端 seq；落库与配对行以详情读口重取为准。
+                </p>
+              </div>
+            ) : null}
           </CardContent>
+
+          {/* SE-05 · 续跑表单。契约只认 user/assistant 两个角色词汇：这一轮以
+              用户身份发言，服务端成对落 user+assistant——表单因此不给第三个
+              角色入口，也不让手填 role（工单①）。 */}
+          {state.phase === "ready" ? (
+            <form
+              className="border-t border-white/10 px-4 py-3"
+              data-testid="se05-form"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void submitContinuation();
+              }}
+            >
+              <label htmlFor="se05-draft" className="text-xs text-white/55">
+                续跑这条会话（以用户身份发一轮 · 服务端成对落 user/assistant，别无第三种角色）
+              </label>
+              <textarea
+                id="se05-draft"
+                data-testid="se05-draft"
+                className="mt-1 w-full resize-y rounded-sm border border-white/15 bg-white/5 px-2 py-1.5 text-sm outline-none placeholder:text-white/30"
+                rows={2}
+                value={draft}
+                maxLength={CONTENT_MAX}
+                onChange={(event) => setDraft(event.target.value)}
+                placeholder="例如：接着上面那条，补一句结论。"
+              />
+              <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs text-white/40" data-testid="se05-limit">
+                  {draft.trim().length}/{CONTENT_MAX} 字 · 幂等凭据 requestId 绑定这条草稿（重试沿用、改体换新）
+                </p>
+                <Button
+                  size="sm"
+                  type="submit"
+                  data-testid="se05-send"
+                  disabled={pending !== null || !draft.trim() || draft.trim().length > CONTENT_MAX}
+                >
+                  <Send className="mr-2 h-4 w-4" />
+                  {pending ? "发送中…" : "发送"}
+                </Button>
+              </div>
+            </form>
+          ) : null}
         </Card>
       </aside>
     </div>
