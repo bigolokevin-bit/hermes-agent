@@ -602,51 +602,45 @@ export function DecisionTrail({ detail }: { detail: ApprovalDetail }): ReactNode
  * 非差异」标注。禁 fixture、禁假成功。
  * ------------------------------------------------------------------ */
 
-type ChainPhase =
-  | { state: "pending" }
-  | { state: "no-anchor" }
-  | { state: "failed" }
-  | { state: "note"; note: VersionChainNote };
-
 /**
  * 相邻版本核对腿。只在差异有数据源（employee_version_create 出了字段行）时
  * 才读 GET /api/employee-versions?id=（BFF 既有读口，limit 透传）；
  * 读回形制不合法＝unreadable，网络/无权＝failed——两样都只说「不判定」，
  * 不补 v 号、不画 0。
+ *
+ * 形制：effect 只在异步回调里落结果（不同步 setState，避免级联渲染），
+ * 结果按「单据号|员工号」键控——换单后旧读数自动失效，不串台。
  */
+type ChainResult = { key: string; note: VersionChainNote } | { key: string; failed: true };
+
 function VersionChainLine({ detail }: { detail: ApprovalDetail }): ReactNode {
-  const [phase, setPhase] = useState<ChainPhase>({ state: "pending" });
+  const anchor = detail.versionAnchor;
+  const employeeId = anchor?.employeeId ?? null;
+  const key = `${detail.rawId ?? ""}|${employeeId ?? ""}`;
+  const [result, setResult] = useState<ChainResult | null>(null);
+
   useEffect(() => {
-    const anchor = detail.versionAnchor;
-    if (!anchor) {
-      setPhase({ state: "no-anchor" });
-      return;
-    }
-    if (!anchor.employeeId) {
-      // 没有员工号就没有可读的版本链——这是没有输入，不是读到了空。
-      setPhase({ state: "no-anchor" });
-      return;
-    }
+    if (!employeeId || !anchor) return;
     let alive = true;
-    setPhase({ state: "pending" });
-    void fetchVersionChain(anchor.employeeId)
+    void fetchVersionChain(employeeId)
       .then((refs) => {
-        if (!alive) return;
-        setPhase({
-          state: "note",
-          note: versionChainNote(refs, anchor) ?? { readable: false, fromLabel: null, target: "unknown", chainSize: null },
-        });
+        if (alive) {
+          setResult({
+            key,
+            note: versionChainNote(refs, anchor) ?? { readable: false, fromLabel: null, target: "unknown", chainSize: null },
+          });
+        }
       })
       .catch(() => {
-        if (alive) setPhase({ state: "failed" });
+        if (alive) setResult({ key, failed: true });
       });
     return () => {
       alive = false;
     };
-  }, [detail]);
+  }, [anchor, employeeId, key]);
 
-  if (phase.state === "pending") return null;
-  if (phase.state === "no-anchor") {
+  // 没有员工号就没有可读的版本链——这是「没有输入」，不是「读到了空」（派生态，不进 state）。
+  if (!employeeId) {
     return (
       <p
         className="min-w-0 break-words text-xs text-muted-foreground"
@@ -657,19 +651,20 @@ function VersionChainLine({ detail }: { detail: ApprovalDetail }): ReactNode {
       </p>
     );
   }
-  if (phase.state === "failed") {
+  const fresh = result && result.key === key ? result : null;
+  if (!fresh) return null; // 读取中：不摆骨架、不占位、不猜
+  if ("failed" in fresh) {
     return (
       <p
         className="min-w-0 break-words text-xs text-muted-foreground"
         data-testid="apd10-chain-failed"
-        title="相邻版本核对走 BFF 既有读口 GET /api/employee-versions?id=；这一次没有读回（网络失败、无权，或响应不是版本列表）。字段级差异仍只以这条单据自己的响应为准。"
+        title="相邻版本核对走 BFF 既有读口 GET /api/employee-versions?id=；这一次没有读回（网络失败或无权）。字段级差异仍只以这条单据自己的响应为准。"
       >
         版本链未读回——相邻版本读口这一次没答成，链上位置不判定。
       </p>
     );
   }
-  const { note } = phase;
-  const anchor = detail.versionAnchor;
+  const { note } = fresh;
   if (!note.readable) {
     return (
       <p

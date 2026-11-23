@@ -132,24 +132,25 @@ items[3] {"id":"empv_BEB487D9B8DC46ECB1C1AD663B","versionNo":2,"effectiveFrom":"
 $ cd web && node_modules/.bin/vitest run src/modules/approvals
  Test Files  86 passed (86)
       Tests  417 passed (417)
-   Duration  10.68s (transform 14.96s, setup 0ms, import 67.96s, tests 38.71s, environment 59.02s)
+   Start at  22:35:42
+   Duration  8.96s (transform 20.00s, setup 0ms, import 64.50s, tests 31.03s, environment 40.94s)
 
 $ cd web && node_modules/.bin/vitest run src/modules/approvals/approvals.detail.diff.test.tsx
  Test Files  1 passed (1)
       Tests  14 passed (14)
-   Duration  1.41s (transform 608ms, setup 0ms, import 785ms, tests 273ms, environment 292ms)
 
 $ cd web && node_modules/.bin/vite build            # 未用 pnpm run build（tsc -b 有仓级预存错）
-✓ built in 5.78s        BUILD_EXIT=0
+✓ built in 11.99s        BUILD_EXIT=0
 产物：hermes_cli/web_dist（.gitignore 已忽略，未提交）
 
 $ cd web && node scripts/lint-fake-success.mjs
-{ "script": "lint-fake-success", "file": "docs/console-v4-skeleton.html",
-  "linesScanned": 9252, "allowedInfo": {"规划中":188,"不会保存":1,"未接入":22},
-  "violations": [], "ok": true }                    violations=0 ✓
+violations= 0  ok= True        （file=docs/console-v4-skeleton.html, linesScanned=9252）
 
 $ cd web && node_modules/.bin/tsc --noEmit -p tsconfig.app.json
-approvals 写域错误 = 0        全仓 = 49（全部在 ../apps/shared/src/*.test.ts，本单未触碰）
+全仓 49 错（全部在 ../apps/shared/src/*.test.ts，本单未触碰）；approvals 写域 = 0 错
+
+$ cd web && node_modules/.bin/eslint src/modules/approvals
+✖ 35 problems (0 errors, 35 warnings)      # 全为既有形制告警，本单新增 0 条
 ```
 
 **tsc 口径如实说明**：工单给的 `tsc --noEmit -p .` 在本仓是 **solution 形制**（`tsconfig.json` 为
@@ -224,6 +225,18 @@ Q13 落地的段（`变更差异 · 字段级（只读）`，从 `detail.changeD
 5. **tsc 命令口径**：见 §3——工单给的命令是空集检查，我补跑了真检查并写明两者读数。
 6. **测试文件数不变**：按工单「扩展 approvals.detail.diff.test.tsx」，新分支落在同一件里（+11 例），
    没有新增文件；与 §3 的基线差（86 vs 87）一并说明，避免总控台账按 87/415 对不上数。
+7. **`VersionChainLine` 的 effect 形制**：首版在 effect 体内同步 `setPhase(...)`，lefthook 的
+   `react-hooks/set-state-in-effect` 报了 1 条新告警；已改成**只在异步回调里落结果**，
+   「无员工号」与「读取中」两个态改为**派生判断**（不进 state），结果按 `单据号|员工号` 键控
+   （换单后旧读数自动失效）。改后 eslint 与基线逐字同档（基线 `views.tsx` 只有 1 条既有
+   `react-refresh` 告警，本单新增 0 条），14 例仍全绿。
+8. **截图取图的滚动处理**：详情栏是独立滚动轴且带 `scroll-behavior: smooth`，首版四张视口图里
+   消费态行压在折线外（读数在 DOM 里但拍不到）。脚本改成「关掉祖先 smooth ＋
+   `scrollIntoView({block:'center'})` ＋ settle 300ms」后重取；`ap02-375.png`／
+   `ap02-nosource-1440.png`／`ap02-nosource-375.png` 三张都拍到消费态行，`ap02-1440.png`
+   （1440×900）拍到差异行＋版本链核对句＋摘要标注，该行在 1440 档仍差 32px 在折线下
+   （几何读数 `consumed.top=896 / vh=900`），未强行改视口尺寸。
+   四张图全部出自**最终构建产物**（effect 形制改完重新 `vite build` 后才取图）。
 
 ---
 
