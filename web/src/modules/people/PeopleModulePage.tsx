@@ -186,6 +186,14 @@ function pageUrl(base: string, keyword: string, cursor: string | null): string {
 
 type RosterPhase = "loading" | "ready" | "empty" | "unavailable" | "denied" | "error";
 
+/** 数据源列形制（P0-4）：整列皆缺的可选列连表头一起裁掉。 */
+type SourceShape = {
+  employeeLedger: boolean;
+  account: boolean;
+  dept: boolean;
+  lastActive: boolean;
+};
+
 type Roster = {
   phase: RosterPhase;
   items: Rec[];
@@ -194,6 +202,8 @@ type Roster = {
   requestId: string | null;
   /** 续页请求在途（加载更多钮禁用中）。 */
   loadingMore: boolean;
+  /** 列形制取自未过滤的在册首页；检索子集不得让它闪变（PE-10 ①）。 */
+  shape: SourceShape | null;
 };
 
 const ROSTER_LOADING: Roster = {
@@ -203,7 +213,18 @@ const ROSTER_LOADING: Roster = {
   message: "",
   requestId: null,
   loadingMore: false,
+  shape: null,
 };
+
+function shapeOf(rows: Rec[]): SourceShape {
+  const read = rows.map(readPerson);
+  return {
+    employeeLedger: rows.some((row) => "employeeId" in row),
+    account: read.some((r) => r.account !== null),
+    dept: read.some((r) => r.dept !== null),
+    lastActive: read.some((r) => r.lastActive !== null),
+  };
+}
 
 function readPage(body: unknown): { items: Rec[]; nextCursor: string | null } {
   return { items: itemsOf(body), nextCursor: cursorOf(body) };
@@ -263,19 +284,22 @@ function usePeopleRoster(nonce: number, enabled: boolean, keyword: string): [Ros
     if (!enabled) return;
     const gen = (generation.current += 1);
     inflight.current = true;
-    setRoster({ ...ROSTER_LOADING });
+    // 换关键词/刷新清掉行与游标，但**保留已定档的数据源形制**（列不随关键词闪变）。
+    setRoster((prev) => ({ ...ROSTER_LOADING, shape: prev.shape }));
     const settle = (res: Awaited<ReturnType<typeof fetchRosterPage>>) => {
       if (gen !== generation.current) return;
       if (res.ok) {
         sourceIndex.current = res.index;
-        setRoster({
+        setRoster((prev) => ({
           phase: res.items.length === 0 ? "empty" : "ready",
           items: res.items,
           nextCursor: res.nextCursor,
           message: "",
           requestId: null,
           loadingMore: false,
-        });
+          // 未过滤首页 = 数据源形制定档；检索子集沿用，不让列随关键词闪进闪出。
+          shape: keyword === "" ? shapeOf(res.items) : (prev.shape ?? shapeOf(res.items)),
+        }));
         return;
       }
       // 403/404 与旧口径一致合并为未接入腿（PE-07 互斥禁词由 ?state=denied 预览腿承载）。
@@ -304,7 +328,6 @@ function usePeopleRoster(nonce: number, enabled: boolean, keyword: string): [Ros
       .finally(() => {
         if (gen === generation.current) inflight.current = false;
       });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, nonce, keyword]);
 
   const loadMore = useCallback(() => {
@@ -324,13 +347,17 @@ function usePeopleRoster(nonce: number, enabled: boolean, keyword: string): [Ros
           }));
           return;
         }
-        setRoster((prev) => ({
-          ...prev,
-          phase: "ready",
-          items: dedupeById([...prev.items, ...res.items]),
-          nextCursor: res.nextCursor,
-          loadingMore: false,
-        }));
+        setRoster((prev) => {
+          const merged = dedupeById([...prev.items, ...res.items]);
+          return {
+            ...prev,
+            phase: "ready",
+            items: merged,
+            nextCursor: res.nextCursor,
+            loadingMore: false,
+            shape: keyword === "" ? shapeOf(merged) : (prev.shape ?? shapeOf(merged)),
+          };
+        });
       })
       .finally(() => {
         if (gen === generation.current) inflight.current = false;
@@ -463,13 +490,6 @@ export default function PeopleModulePage() {
   // Q12：行打开页内详情（零路由）。名册状态留在本组件，返回即恢复视图，
   // 不重新拉名单。
   const [openId, setOpenId] = useState<string | null>(null);
-  /** 数据源列形制留档：关键词命中子集不得让整列闪没（P0-4 口径）。 */
-  const sourceShape = useRef<{
-    employeeLedger: boolean;
-    account: boolean;
-    dept: boolean;
-    lastActive: boolean;
-  } | null>(null);
   const previewRid = sp.get("rid") ?? "preview-request";
   const [live, loadMore] = usePeopleRoster(reload, forced === null || forced === "ready", debounced);
   const people = forced && forced !== "ready" ? previewRoster(forced, previewRid) : live;
@@ -477,23 +497,10 @@ export default function PeopleModulePage() {
   // buglist P0-4（#5）：数据源整列皆缺的可选列（账号/部门/最后活跃）连同表头
   // 一起裁掉，缺列信息由来源注记一行承载；个别行缺值仍渲染该列，格内 `—` +
   // title 说明（§5 口径），不再把「上游未提供×」长注记撑进单元格。
-  // PE-10：列在场性是**数据源**属性——按未过滤的全量首页定型并留档，检索命中
-  // 结果只是它的子集，绝不因关键词命中了缺值行而让整列闪没。
+  // PE-10：列在场性是**数据源**属性——检索命中子集沿用未过滤首页定的形制，
+  // 绝不因关键词命中了缺值行而让整列闪没。
   const mapped = useMemo<PersonRow[]>(() => people.items.map(readPerson), [people.items]);
-  if (debounced === "" && (people.phase === "ready" || people.phase === "empty")) {
-    sourceShape.current = {
-      employeeLedger: people.items.some((row) => "employeeId" in row),
-      account: mapped.some((r) => r.account !== null),
-      dept: mapped.some((r) => r.dept !== null),
-      lastActive: mapped.some((r) => r.lastActive !== null),
-    };
-  }
-  const shape = sourceShape.current ?? {
-    employeeLedger: people.items.some((row) => "employeeId" in row),
-    account: mapped.some((r) => r.account !== null),
-    dept: mapped.some((r) => r.dept !== null),
-    lastActive: mapped.some((r) => r.lastActive !== null),
-  };
+  const shape = people.shape ?? shapeOf(people.items);
   const showAccount = shape.account;
   const showDept = shape.dept;
   const showLastActive = shape.lastActive;

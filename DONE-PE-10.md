@@ -88,8 +88,9 @@ GET /api/v1/dept/tree   → 404 {"code":"console.unknown_route"}
 * 口径句（④）：新增 `ppl5-scope-note`
   「搜索为服务端检索在册全量（关键词随请求上送，翻页走服务端游标），不是本地过滤已加载行。」；
   来源注记 `ppl5-source` 的台账口径保留；计数句按状态分「共 N 人 / 已加载 N 人（在册更多，可继续加载）/ 检索命中 N 人」。
-* 列在场性仍是**数据源**属性：`sourceShape` ref 在无关键词的整册读取时定型，
-  检索子集不得让整列闪没（P0-4 口径保留）。
+* 列在场性仍是**数据源**属性：`Roster.shape`（`shapeOf()`）在无关键词的整册读取时定档，
+  换关键词的重置只清行与游标、保留 shape，检索子集不得让整列闪没（P0-4 口径保留）。
+  形制判定走响应数据本身，不在 render 期读写 ref。
 * 搜索框补 `aria-label="搜索人员"`。
 
 ### 2.2 OrgModulePage + org.css（②③）
@@ -165,6 +166,13 @@ lint-exit=0
 $ cd web && node_modules/.bin/tsc -p tsconfig.app.json --noEmit
 error TS 计数 = 49（= 基线，delta 0）
 写域（modules/people / modules/org）命中 = 0
+
+$ pnpm exec eslint src/modules/people/PeopleModulePage.tsx src/modules/org/OrgModulePage.tsx \
+      src/modules/people/people.search.chain.test.tsx
+✖ 3 problems (0 errors, 3 warnings)
+  # PeopleModulePage.tsx:56  react-refresh/only-export-components（既有：本件导出 PEOPLE_* 常量，形制未变）
+  # PeopleModulePage.tsx:288 / OrgModulePage.tsx:289  react-hooks/set-state-in-effect
+  #   （与两件既有 loader 同形制：进 loading 档再取数；org 那条是本卡未触碰的原代码行）
 ```
 
 ---
@@ -189,6 +197,10 @@ whoami=200 user=opsadmin
 * `evidence/pe10-1440.png` — 服务端搜索结果态（1440×900，关键词「产品助理」，
   浏览器实发 1 根带 `keyword=` 的请求并 200，命中 2 人，口径句与来源注记同屏在场）。
 * `evidence/pe10-375.png` — 同态 375×812（搜索框与结果卡堆叠，无横向溢出）。
+
+两图在最后一笔改动（列形制改由响应数据定档）之后重拍：读数与上面逐字相同
+（`whoami=200 user=opsadmin`、`检索请求数=1`、`检索命中 2 人`），代理端口跑后
+`lsof -iTCP:9377` 空。
 
 `evidence/` 全程未提交（`git status` 里只作为未跟踪项存在）。
 
