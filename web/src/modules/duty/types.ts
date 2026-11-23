@@ -209,12 +209,28 @@ export interface GateView {
    * itself is not wired (the gate then states 未接入 with a reason). */
   asOf: string | null;
   inferred?: boolean;
+  /** state=unknown 时在卡上直出的「为什么给不出」一句话结论；其它态为 null。 */
+  whyNot?: string | null;
+}
+
+/** 可上岗三分态（工单 DU-01⑤）：按每个员工的真实证据归类，三桶之和=分母行数。 */
+export interface ReadinessBuckets {
+  /** 四门全部显式 pass 的人数。 */
+  confirmed: number;
+  /** 至少一门证据未回答或门本身 unknown（含扇出未覆盖行）的人数。 */
+  pending: number;
+  /** 至少一门有显式 fail 真读数的人数（真读数，不是猜测）。 */
+  failing: number;
 }
 
 export interface ReadinessView {
   total: number | null;
   active: number | null;
   confirmed: number | null;
+  /** 三分态；目录未到位时 null（此时不给任何计数，连 0 也不给）。 */
+  buckets: ReadinessBuckets | null;
+  /** 分母口径的可见披露：单页加载与逐员工扇出覆盖 n/N。 */
+  denominatorNote: string | null;
   unknownGates: number;
   narrowest: GateView | null;
   deltaToNext: number | null;

@@ -343,17 +343,25 @@ function ReadinessCard({ employees, stats, evidence, onRetry }: { employees: Loa
     >
       <StateLine state={state} onRetry={onRetry} loadingText="正在汇总各项检查…">
         <p className="duty-num" data-testid="ov6-ready-value" data-duty-testid="duty-ready-value">
+          {/* 三分态（DU-01⑤）：不给单一权威百分比——已确认/待核实/未达按真证据划分。 */}
           <span data-testid="ov6-kpi-employees" data-duty-testid="duty-kpi-employees">
-            {readiness.confirmed === null ? "—" : readiness.confirmed}
+            {readiness.buckets === null
+              ? "—"
+              : `已确认 ${readiness.buckets.confirmed} · 待核实 ${readiness.buckets.pending} · 未达 ${readiness.buckets.failing}`}
           </span>
           <em>{readiness.total === null ? "—" : `共 ${readiness.total} 在册`}</em>
         </p>
-        <p className="duty-say">
+        <p className="duty-say" data-testid="duty-ready-denominator" title={readiness.denominatorNote ?? undefined}>
           {readiness.unknownGates > 0
-            ? `还有 ${readiness.unknownGates} 项检查的数据源没有接入，暂不能判定`
+            ? `还有 ${readiness.unknownGates} 项检查的数据源没有接入，暂不能判定 — ${readiness.gates
+                .filter((g) => g.state === "unknown")
+                .map((g) => g.whyNot)
+                .filter(Boolean)
+                .join("；")}`
             : readiness.confirmed === readiness.total
               ? "各项检查全部通过，在册员工均可上岗"
               : `最容易卡住的一项：${readiness.narrowest ? readiness.narrowest.name : "待核实"}`}
+          {readiness.denominatorNote ? `（分母口径：${readiness.denominatorNote}）` : ""}
         </p>
       </StateLine>
     </HCard>

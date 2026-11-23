@@ -16,6 +16,11 @@ import { beijing } from "./format";
 import type { GateVerdict, ReadinessEvidence } from "./readiness";
 import { DENOMINATOR_STATES, rollup, v1Verdict, v2Verdict, v3Verdict, v6Verdict } from "./readiness";
 
+/** 员工目录固定单页 limit=100；拉满一页就证明不了全量（DU-01④）。 */
+export const EMPLOYEES_PAGE_LIMIT = 100;
+/** 逐员工证据扇出硬上限；超出部分按待核实并在卡上披露 n/N。 */
+export const READINESS_FANOUT_LIMIT = 32;
+
 export function lifecycleTotal(stats: Record<string, unknown> | null): number | null {
   if (!stats) return null;
   const by = stats.byLifecycle;
@@ -39,12 +44,12 @@ export function activeCount(stats: Record<string, unknown> | null): number | nul
 }
 
 /**
- * Four gates, computed from live BFF evidence (PRD v4 §2). Nothing is
- * hardcoded to unknown any more: each gate rolls up per-employee verdicts
- * from its evidence source, and an employee whose source did not answer
- * counts as 「待核实」 — unknown never enters the numerator. `evidence` is
- * null only while the evidence fan-out is still in flight (or when the
- * employee directory itself is down), which keeps the loading state honest.
+ * Four gates, computed from live BFF evidence (PRD v4 §2). 每门的诚实程度写
+ * 在卡上：V1 是单腿（渠道事件列表属 BFF 红线，等 DU-04 裁定，不接）；V3 只有
+ * 「可引用文档>0 ∧ 强制引用策略可读」才可能 pass，而策略腿 2026-11-23 实测无
+ * 读口 ⇒ 现网恒「待核实」；V2/V6 逐员工可判。证据源没回答的员工按「待核实」
+ * 计、unknown 永不进分子；目录拉满单页或分母对不上时整组按证据不完整处理
+ * （DU-01④），`evidence` 为 null 只在扇出仍在途（或目录本身失败）时出现。
  */
 export function buildReadiness(
   employees: EmployeeRow[] | null,
@@ -59,8 +64,12 @@ export function buildReadiness(
   const denom = (employees ?? []).filter((e) =>
     DENOMINATOR_STATES.has(e.lifecycleState ?? "active"),
   );
-  // 目录分页没拉满分母时逐员工判定会偏乐观，整组按证据不完整处理。
-  const complete = employees !== null && total !== null && denom.length >= total;
+  const loaded = (employees ?? []).length;
+  // 目录单页 limit=100 拉满就证明不了全量——整组按证据不完整处理，
+  // 一页永远不许冒充全分母（DU-01④）。
+  const pageSaturated = loaded >= EMPLOYEES_PAGE_LIMIT;
+  // 目录分页没拉满分母时逐员工判定会偏乐观，同样按证据不完整处理。
+  const complete = employees !== null && total !== null && denom.length >= total && !pageSaturated;
 
   const v1Verdicts = denom.map((e) => {
     const l = evidence?.stations[e.employeeId];
@@ -73,12 +82,19 @@ export function buildReadiness(
   const kb = evidence?.knowledge;
   const kbReady = kb && kb.k === "ready" ? kb.data : null;
   const v3Source = !kbReady
-    ? "知识文档读口未回答 · 引用证据缺失"
+    ? "知识引用读口未回答 · 引用证据缺失"
     : !kbReady.wired
-      ? "知识库读侧未接线（待后端接入）· 引用证据缺失"
+      ? "可引用文档读口未接线（回包 not_wired 信封）· 强制引用策略无读口"
       : kbReady.count === 0
-        ? "知识目录可引用文档 0 份"
-        : `知识目录可引用文档 ${kbReady.count} 份 · 强制引用策略与运行引用腿未接`;
+        ? "知识目录可引用文档 0 份（真读数）"
+        : `知识目录可引用文档 ${kbReady.count} 份${kbReady.source ? ` · 源 ${kbReady.source}` : ""} · ${kbReady.policy ? kbReady.policy.reason : "强制引用策略无读口"}`;
+  const v3WhyNot = !kbReady
+    ? "知识引用腿本轮没有回答，通过与否都无法证明"
+    : !kbReady.wired
+      ? "可引用文档读口未接线，强制引用策略没有读口——两条腿都没有证据，引用门给不出真读数"
+      : kbReady.policy?.wired
+        ? null
+        : `可引用文档 ${kbReady.count} 份可读，但强制引用策略没有读口，「引用被强制执行」证明不了，引用门保持待核实`;
   const v3Verdicts = denom.map(() => (kbReady ? v3Verdict(kbReady) : null));
   const ap = evidence?.approvals;
   const apRows = ap && ap.k === "ready" ? ap.data : null;
@@ -91,9 +107,13 @@ export function buildReadiness(
     source: string,
     verdicts: (GateVerdict | null)[],
     stampOverride?: string | null,
+    whyNot?: string | null,
   ): GateView => {
     if (!complete || evidence === null) {
-      return { key, name, pass: null, fail: null, state: "unknown", code, source, asOf: null };
+      return {
+        key, name, pass: null, fail: null, state: "unknown", code, source, asOf: null,
+        whyNot: "目录分页或统计对不上账，本轮整组按证据不完整处理",
+      };
     }
     const r = rollup(verdicts);
     return {
@@ -105,6 +125,7 @@ export function buildReadiness(
       code,
       source,
       asOf: r.pass === null ? null : stampOverride ?? stamp,
+      whyNot: r.state === "unknown" ? whyNot ?? "部分员工的证据腿没有回答" : null,
     };
   };
 
@@ -118,7 +139,15 @@ export function buildReadiness(
     .filter((s): s is string => Boolean(s))
     .sort();
 
-  const v1 = roll("V1", "群@", "E_GROUP_WHITELIST", "工位绑定（群 + active）· 渠道事件列表 BFF 未代理，仅工位腿", v1Verdicts);
+  const v1 = roll(
+    "V1",
+    "群@",
+    "E_GROUP_WHITELIST",
+    "工位绑定（群 + active）· 渠道事件列表 BFF 未代理，仅工位腿",
+    v1Verdicts,
+    null,
+    "第二腿（最近一次群内成功应答）属 BFF 红线「勿补」，等 DU-04 裁定；本轮只按工位单腿判定",
+  );
   const v2 = roll(
     "V2",
     "ReBAC",
@@ -126,9 +155,18 @@ export function buildReadiness(
     "有效配置 scopes/grants 投影 · 策略校验未接读口",
     v2Verdicts,
     v2Resolved.length > 0 ? beijing(v2Resolved[v2Resolved.length - 1]) : null,
+    "部分员工的有效配置腿没有回答，无法逐一判定",
   );
-  const v3 = roll("V3", "引用", "E_NO_CITATION", v3Source, v3Verdicts);
-  const v6 = roll("V6", "审批", "E_NO_APPROVER", "审批 message_send 有效决策（有审批人且未过期）", v6Verdicts);
+  const v3 = roll("V3", "引用", "E_NO_CITATION", v3Source, v3Verdicts, null, v3WhyNot);
+  const v6 = roll(
+    "V6",
+    "审批",
+    "E_NO_APPROVER",
+    "审批 message_send 有效决策（有审批人且未过期）",
+    v6Verdicts,
+    null,
+    "审批决策腿没有回答，无法逐一判定",
+  );
 
   const gates = [v1, v2, v3, v6];
   const unknownGates = gates.filter((g) => g.state === "unknown").length;
@@ -142,12 +180,42 @@ export function buildReadiness(
             n + (v1Verdicts[i] === "pass" && v2Verdicts[i] === "pass" && v3Verdicts[i] === "pass" && v6Verdicts[i] === "pass" ? 1 : 0),
           0,
         );
+  // 三分态（DU-01⑤）：分母按真证据划分——「未达」要有至少一门显式 fail（真读数），
+  // 「已确认」要四门全部显式 pass，其余（含扇出未覆盖行）一律「待核实」。
+  // 目录单页拉满时分母本身不可信，不给任何计数（连桶也不给）。
+  const buckets: ReadinessView["buckets"] =
+    employees === null || pageSaturated
+      ? null
+      : denom.reduce<NonNullable<ReadinessView["buckets"]>>(
+          (acc, _e, i) => {
+            const vs = [v1Verdicts[i], v2Verdicts[i], v3Verdicts[i], v6Verdicts[i]];
+            if (vs.some((v) => v === "fail")) return { ...acc, failing: acc.failing + 1 };
+            if (vs.every((v) => v === "pass")) return { ...acc, confirmed: acc.confirmed + 1 };
+            return { ...acc, pending: acc.pending + 1 };
+          },
+          { confirmed: 0, pending: 0, failing: 0 },
+        );
+  // 分母口径的可见披露（DU-01④）：单页加载 + 逐员工扇出覆盖 n/N。
+  const cov = evidence?.coverage ?? null;
+  const denominatorNote =
+    employees === null
+      ? null
+      : [
+          pageSaturated
+            ? `目录已加载 ${loaded} 条（单页上限 ${EMPLOYEES_PAGE_LIMIT}，非全量）`
+            : `目录已加载 ${loaded} 条（单页上限 ${EMPLOYEES_PAGE_LIMIT} 内）`,
+          cov
+            ? cov.covered < cov.requested
+              ? `本轮逐员工判定覆盖 ${cov.covered}/${cov.requested}，其余 ${cov.requested - cov.covered} 名按待核实`
+              : `本轮逐员工判定覆盖 ${cov.covered}/${cov.requested}`
+            : "逐员工证据本轮没有回答",
+        ].join(" · ");
   const failing = gates.filter((g) => g.state !== "unknown" && (g.fail ?? 0) > 0);
   const narrowest = failing.sort((a, b) => (b.fail ?? 0) - (a.fail ?? 0))[0] ?? null;
   const deltaToNext =
     confirmed !== null && total !== null && confirmed < total ? 1 : null;
 
-  return { total, active, confirmed, unknownGates, narrowest, deltaToNext, gates };
+  return { total, active, confirmed, buckets, denominatorNote, unknownGates, narrowest, deltaToNext, gates };
 }
 
 export interface RunTotalsView {

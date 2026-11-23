@@ -1,9 +1,13 @@
 /**
  * V1/V2/V3/V6 gate evidence for 可上岗 (PRD v4 §2 北极星与四门).
  *
- * Every gate is computed from live BFF reads — nothing is hardcoded to
- * unknown any more. A gate whose evidence source did not answer counts as
- * 「待核实」(unknown) per employee, and unknown never enters the numerator.
+ * 每条判定都来自真读口，但诚实程度按门各不相同，注释只描述代码现状：
+ * V1 是单腿（工位）——第二腿渠道事件列表属 BFF 红线「有意不代理、勿补」，
+ * 等 DU-04 裁定，本轮不接。V2/V6 逐员工可判 pass/fail。V3 的真 pass 分支
+ * 需要「可引用文档 > 0」与「强制引用策略可读」两腿同时有真读数；2026-11-23
+ * 实测策略腿在 BFF 没有任何读口，所以现网 V3 恒「待核实」——这是给不出的
+ * 原因，不是可以硬造的数字。
+ * 证据源没回答的员工按「待核实」(unknown) 计，unknown 永不进分子。
  */
 import type { Loadable } from "./types";
 
@@ -30,13 +34,23 @@ export interface ApprovalEvidence {
   hasApprover: boolean;
 }
 
-/** Probe result of /api/knowledge/documents (V3 leg 1). */
+/** Probe result of the V3 documents leg (reads /api/knowledge/citations). */
 export interface KnowledgeProbe {
-  /** False when the read side is not wired (404 envelope), e.g. Bisheng down. */
+  /** False when the read port answered 「未接线」(404 `*.not_wired` envelope)
+   * or returned a shape with no catalog count — never a fabricated count. */
   wired: boolean;
   /** Citable-document count; null while unwired — never a fabricated 0. */
   count: number | null;
   asOf: string | null;
+  /** 真回包自带的上游来源名（如 bisheng:/api/v1/knowledge）；没有就 null。 */
+  source?: string | null;
+  /**
+   * 强制引用策略腿。2026-11-23 实测：BFF 白名单（spaces/sources/citations）
+   * 没有策略读口，effective-config 的 responsePolicy 也不含引用字段。
+   * 接线之前 api.ts 恒传 wired:false ⇒ v3Verdict 的 pass 分支不可达；
+   * 接线之后 api.ts 换成真读数，这里零改动。
+   */
+  policy?: { wired: boolean; reason: string } | null;
 }
 
 export interface ReadinessEvidence {
@@ -44,6 +58,9 @@ export interface ReadinessEvidence {
   configs: Record<string, Loadable<ConfigView>>;
   approvals: Loadable<ApprovalEvidence[]>;
   knowledge: Loadable<KnowledgeProbe>;
+  /** 逐员工扇出的真口径：covered 是本轮实际逐一判定的行数（api.ts 有 32 上限），
+   * requested 是分母行数；covered<requested 时其余行没有判定、按待核实，卡上必须披露。 */
+  coverage: { covered: number; requested: number };
 }
 
 export type GateVerdict = "pass" | "fail" | "unknown";
@@ -55,9 +72,9 @@ function alive(expiresAt: string | null, now: number): boolean {
 }
 
 /**
- * V1 群@：工位里存在「群绑定 + active」。渠道事件（最近一次群内成功应答）走
- * /v1/channel-events，BFF 有意不代理列表（红线），所以这一腿缺证时按已接入
- * 的工位腿判定并在 source 里注明不完整。
+ * V1 群@：工位里存在「群绑定 + active」。第二腿（最近一次群内成功应答）需要
+ * 渠道事件列表读口，BFF 红线「有意不代理、勿补」（server.py 写死），等 DU-04
+ * 裁定——所以 V1 按已接入的单腿工位判定，并在 source 里注明单腿口径。
  */
 export function v1Verdict(stations: StationBinding[]): GateVerdict {
   const ok = stations.some((s) => s.bindingType === "group" && s.status === "active");
@@ -72,14 +89,15 @@ export function v2Verdict(cfg: ConfigView, now: number): GateVerdict {
 }
 
 /**
- * V3 引用：三腿（可引用文档 / responsePolicy 强制引用 / 运行引用证据）。
- * 文档读口未接线 → unknown（「未接」）；已接线但目录为空 → fail；
- * 有文档但策略与运行引用两腿仍无读口 → 仍是 unknown（待核实）。
+ * V3 引用最小真口径（工单 DU-01②）：可引用文档 > 0 ∧ 强制引用策略可读 → pass。
+ * 文档腿未接线或回包形状漂移 → unknown；已接线且目录为 0 → fail（真读数）；
+ * 文档 > 0 但策略腿不可读 → unknown，绝不假 pass、绝不给权威通过数。
  */
 export function v3Verdict(knowledge: KnowledgeProbe): GateVerdict {
   if (!knowledge.wired) return "unknown";
-  if (knowledge.count === null || knowledge.count === 0) return "fail";
-  return "unknown";
+  if (knowledge.count === null) return "unknown";
+  if (knowledge.count === 0) return "fail";
+  return knowledge.policy?.wired ? "pass" : "unknown";
 }
 
 /**

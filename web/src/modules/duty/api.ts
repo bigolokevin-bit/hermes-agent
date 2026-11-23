@@ -11,7 +11,7 @@ import type {
   RunStatsBody,
   TaskRow,
 } from "./types";
-import { asArray, isRecord, normalizeApproval, normalizeEmployee, normalizeRun, normalizeTask, text } from "./types";
+import { asArray, isRecord, normalizeApproval, normalizeEmployee, normalizeRun, normalizeTask, num, text } from "./types";
 import type {
   ApprovalEvidence,
   ConfigView,
@@ -19,6 +19,7 @@ import type {
   ReadinessEvidence,
   StationBinding,
 } from "./readiness";
+import { EMPLOYEES_PAGE_LIMIT, READINESS_FANOUT_LIMIT } from "./aggregate";
 
 export const BFF = "/agent-api/api";
 
@@ -57,7 +58,7 @@ export function humanError(err: unknown): string {
 }
 
 export async function fetchEmployees(): Promise<EmployeeRow[]> {
-  const body = await get("/employees", { limit: 100 });
+  const body = await get("/employees", { limit: EMPLOYEES_PAGE_LIMIT });
   return asArray(body).map(normalizeEmployee).filter((x): x is EmployeeRow => x !== null);
 }
 
@@ -170,14 +171,44 @@ export async function fetchApprovalsEvidence(limit = 100): Promise<ApprovalEvide
 }
 
 /**
- * V3 文档腿探测。读侧未接线时 BFF 返回 404 `*.not_wired` 信封——那不是失败，
- * 是「未接」：返回 wired=false 且不编造 count。其它错误照抛，由 load() 落 error。
+ * V3 文档腿探测。读口 = BFF 白名单实存的 /api/knowledge/citations（2026-11-23
+ * 实测 evidence/probe-knowledge-citations.json：路由存在，上游未接时回 404
+ * `knowledge.not_wired` 信封带 asOf——那是正当的「未接」态，不是取数失败）。
+ * 旧腿 /knowledge/documents 不在主检出白名单，本轮起不再依赖。
+ * 成功回包的计数只取响应自带的 count/rows/documents/items；形状对不上按
+ * 「未接线」处理并保留采集时间，绝不猜数（工单 DU-01①）。
  */
 export async function fetchKnowledgeProbe(): Promise<KnowledgeProbe> {
+  // 策略腿实测无端点（spaces/sources/citations 均无策略读口；effective-config 的
+  // responsePolicy 无引用字段）。接线前恒 wired:false ⇒ V3 的 pass 分支不可达。
+  const policy = {
+    wired: false,
+    reason: "强制引用策略在 BFF 没有读口，「引用被强制执行」这条给不出真读数",
+  };
   try {
-    const body = await get("/knowledge/documents", { limit: 100 });
-    const rec = isRecord(body) ? body : {};
-    return { wired: true, count: asArray(body).length, asOf: text(rec.asOf) };
+    const body = await get("/knowledge/citations");
+    const rec = isRecord(body) ? body : null;
+    const rows = Array.isArray(body)
+      ? body
+      : rec && Array.isArray(rec.rows)
+        ? rec.rows
+        : rec && Array.isArray(rec.documents)
+          ? rec.documents
+          : rec && Array.isArray(rec.items)
+            ? rec.items
+            : null;
+    const count = rec ? num(rec.count) : null;
+    const known = count ?? (rows === null ? null : rows.length);
+    if (known === null) {
+      return { wired: false, count: null, asOf: rec ? text(rec.asOf) : null, policy };
+    }
+    return {
+      wired: true,
+      count: known,
+      asOf: rec ? text(rec.asOf) : null,
+      source: rec ? text(rec.source) : null,
+      policy,
+    };
   } catch (err) {
     if (err instanceof ApiError && (err.status === 404 || err.status === 503) && err.body.includes("not_wired")) {
       let asOf: string | null = null;
@@ -186,15 +217,15 @@ export async function fetchKnowledgeProbe(): Promise<KnowledgeProbe> {
       } catch {
         /* 信封没带采集时间就是没有，不猜。 */
       }
-      return { wired: false, count: null, asOf };
+      return { wired: false, count: null, asOf, policy };
     }
     throw err;
   }
 }
 
-/** 分母员工逐一读工位与有效配置；单员工失败只影响该员工该门。 */
+/** 分母员工逐一读工位与有效配置；单员工失败只影响该员工该门；扇出上限见 aggregate。 */
 export async function fetchReadinessEvidence(employeeIds: string[]): Promise<ReadinessEvidence> {
-  const ids = employeeIds.slice(0, 32);
+  const ids = employeeIds.slice(0, READINESS_FANOUT_LIMIT);
   const perEmployee = await Promise.all(
     ids.map(async (id) => {
       const [stations, config] = await Promise.all([
@@ -214,7 +245,7 @@ export async function fetchReadinessEvidence(employeeIds: string[]): Promise<Rea
     stations[id] = st;
     configs[id] = cfg;
   }
-  return { stations, configs, approvals, knowledge };
+  return { stations, configs, approvals, knowledge, coverage: { covered: ids.length, requested: employeeIds.length } };
 }
 
 /** Convert a promise into a card-sized Loadable; the loader never throws. */

@@ -130,6 +130,7 @@ async function collect(rangeId: DutyRangeId): Promise<DutyData> {
       k: "ready",
       data: knowledgeWired ? { wired: true, count: 0, asOf: null } : { wired: false, count: null, asOf: null },
     },
+    coverage: { covered: 0, requested: 0 },
   });
   if (employees.k === "error") {
     budgetDay = asError<BudgetBody>(employees);
