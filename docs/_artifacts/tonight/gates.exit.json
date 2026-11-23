@@ -1,7 +1,7 @@
 {
   "script": "gates.exit.json",
-  "head": "5ddee38447408d2fc3374dd40b028444c7f38efd",
-  "provenance": "Q43 波次（L0 派工：五门跟代补章 + rebuild 部署 @Q5/Q6 并线波）。\n源码面章面 = 5ddee38447408d2fc3374dd40b028444c7f38efd（merge(runs) Q6 运行 trace 条带；父链含 merge(console) 刷入 Q42 章笔与 merge(duty) Q5 duty 页）。运行期 HEAD 全程恒为该值，本账随章笔落地，账内 head 指向源码面，章 commit 为其后继（章笔不落自身）。\n本波源码差为真实行为源码（非注释级）：git diff --stat a8e0db3843..5ddee38447 = 15 文件 +1058/-46，含 web/src/modules/duty/{DutyPage.tsx,aggregate.ts,api.ts,readiness.ts,useDutyData.ts + 3 测试件} 与 web/src/modules/runs/{RunsModulePage.tsx,runs.ts,runs-density.css,runs.trace.test.tsx}，另有 DONE.md 与 docs/_artifacts/duty/*.png。⇒ 按 L0 DoD② rebuild 必做。\nrebuild：node26 ~/.nvm/versions/node/v26.13.1/bin/node scripts/build/web.mjs（无参，禁传 -- 否则 argv[2] 被当 source）→ BUILD_EXIT=0，日志 _l7-build-5ddee38447.log；in-graph 自证=日志内一次性临时目录 hermes_cli/.web_dist-build-8zvMux（事后 ls -d 无此项）+ 尾部「✓ built in 5.94s」。\nentry 真翻代（上一波「同名同 sha 以 mtime+in-graph 自证」那条本波不适用）：assets/index-DZVbT_9g.js sha256 f24e272a57e17132880eeb9c346d5bae05c4fd3e903b58b4440954fdd608762a → assets/index-wuhTvuKn.js sha256 0a0e81bb18a14b3918622bee94319b2a716d2a8c93ed44d4548e8e1083d066a4（174880B 为巧合相同字节数）；index.html 1084B mtime Nov 23 19:32。\nDoD② 判据「Q5 duty + Q6 runs 源码在 line 不在 served」的执行与清除：波次指纹取自 git diff a8e0db38447 的 + 侧非 test 文件新增字面量 = run6-trace（RunsModulePage.tsx）、知识文档读口未回答 / 渠道事件列表 BFF 未代理（duty/aggregate.ts）、这条事件的载荷里没有输入摘录（runs/runs.ts）。rebuild 前：磁盘 dist 与 served 抓取（86 枚 chunk）双侧 grep 命中 0/0 ⇒ 在 line 不在 served 成立；rebuild + 9122 换代后：磁盘四枚 present，served 侧 DutyPage-CHKYC3le.js 与 RunsModulePage-DsyJXdS1.js 各命中 1 ⇒ 判据清除。自纠注：首批候选 duty-blockers-say / duty-changed-more / duty-details-blockers / run-asof-line / run-cost-caliber-note / run-filter-copy-fallback 经 git grep 实测在旧源码面 a8e0db3843 已存在且已在旧 chunk 命中，非本波指纹，已弃用。\n9122 换代两段如实记：首轮 stop 报「无本 pidfile 记录的实例」、start 报「9122 已在服 pid=2817（幂等返回，不重复起）」并把外部实例收编进 pidfile ⇒ 该轮未重启，但 v4_proxy.py 每请求读盘，served 立即反映新 dist；收编后二轮真换代 stop→「已停（pid=2817）」、start→「已起 pid=64548 root=200」、status→「pid=64534 root=200 size=1084 mtime=Nov 23 19:32:55 entry=assets/index-wuhTvuKn.js sha256=0a0e81bb18a14b3918622bee94319b2a716d2a8c93ed44d4548e8e1083d066a4 (served==磁盘) proxied=401 bff=401（401=fail-closed 正常）」。start 自报 64548 与 status 自报 64534 属既有 pid 自报差异，判据取 served==磁盘 + mtime。\n六枚腿件代次读数：assert-ia-html.json / assert-ia-react.json / crawl.json headHash=5ddee38447（脚本 --short 10 位形制）；state-quad.json headHash=5ddee384（--short=8 形制）；lint-fake.json / lint-reuse.json 脚本不产出 headHash 字段（NOKEY，如实注记，未改脚本）。\n形制注：ia×2/crawl 按 L0 口径另用 --out= 生成 leg json（A1=A2=A3=0）；cmp 实测 assert-ia-html.json 与 _l0-ia-html.stdout.txt 字节相同、assert-ia-react.json 与 _l0-ia-react.stdout.txt 字节相同；crawl.json 与 _l0-crawl.stdout.txt 差 1 字节且仅两行活流量字段不同（mainChars 64 vs 140、consoleErrors 1 vs 3，两次独立采样的正常抖动），非形制破坏，stdout 正本仍按原判据命令（不带 --out）那一跑留存。\n七腿 exit 全 0（_l0-exits.txt）：assert-ia-html=0 assert-ia-react=0 lint-fake-success=0 lint-reuse=0 vitest=0 crawl-routes=0 state-quad=0。\nvitest 计数较上波增长（502 files/3700 tests → 504 files/3724 tests），与 Q5/Q6 新增测试件一致，是源码进线的第二证据；vitest.txt 内既有部署校验行 VERDICT=VERIFIED PORT=9122 ENTRY=assets/index-wuhTvuKn.js（产物↔磁盘↔账本互认）。\ncrawl-auth.json 本波仍不 regen（凭据件豁免）：opsadmin 凭据 rot 第 78 度未换发，auth-state /Users/kevin_studio/.local/state/sekoi-ops/v4-auth-state.json mtime Nov 19 19:12（单枚 access_token_cookie，domain 127.0.0.1）；带该 cookie 前置断言 GET http://127.0.0.1:9122/auth/whoami → HTTP 401 body {\"code\":\"auth.unauthenticated\",\"rid\":\"9e8577bf\",\"message\":\"登录状态缺失或已过期，请重新登录\"}。crawl-auth.json 维持旧代 56eef7a81b ok=false，归因凭据面非本道红；换发脚本 /Users/kevin_studio/Projects/l7-ops/ops/opsadmin-evidence-login.sh 在位但未擅自执行（会轮换在用会话）。\nstate-quad 新形制（已钉，未自改脚本）：keys={base, method, headHash, sampled, passed}，无顶层 ok/entry，passed==sampled 即绿。\n他道件只报不钉（非本道写域）：crawl-anon.json headHash=105f17f0ae（旧代，归夜巡regen）；crawl-auth.json 见上条凭据件豁免。本道代次闸门只钉自己的腿件（assert-ia×2 / crawl / state-quad / lint×2 NOKEY / vitest），旧章面残留扫描对七枚本道腿件与 vitest.txt 为空。\n上一账 head=42dcd7983f56ec39fbdaf5aac92841b6b1816d38（Q42 regen 章笔）被本笔覆盖；不回改历史措辞。\n写域纪律：仅 docs/_artifacts/tonight/**；他道 untracked（default/ fixture/ owned/ target/ docs/governance/LANE-ROSTER.md）与 crawl-anon.json / crawl-auth.json 未 add；无 add -A / --no-verify / force。",
+  "head": "90a80aee6caade12f02407f31ef77fcc752c5b1d",
+  "provenance": "章面（源码面）= 90a80aee6caade12f02407f31ef77fcc752c5b1d（fork lane/hermes-console 线现脸，Q12 people tabs + Q13 approvals diff + Q8 375 截图并线波）。\n运行期 HEAD 恒等：本波七腿与 crawl-anon regen 全程在 90a80aee6c 上跑（开工前本地为补件笔 a0204cb03f，git merge --ff-only FETCH_HEAD 后 FF_EXIT=0；定向 ref 落文件回读与本地逐字相同）。章笔不落自身：本账随章笔提交，账内 head 指向源码面 90a80aee6c，章 commit 为其后继。\n本波源码差为真实行为源码：git diff --stat a0204cb03f..90a80aee6c = 27 文件 +3588/-1，含 web/src/modules/people/{EmployeeDetailPanel.tsx 728+, PeopleModulePage.tsx 27+, people.css 244+, EmployeeDetail.test.tsx 430+}、web/src/modules/approvals/{model.ts 125+, views.tsx 37+, approvals.detail.diff.test.tsx 325+}、docs/_artifacts/Q8-375/shots/*.png。与 Q42 波的注释级并入不同，本波产物字节必然变化。\nrebuild（Q43' 补令①，实脸修正后执行）：cd 仓根 && ~/.nvm/versions/node/v26.13.1/bin/node scripts/build/web.mjs（无参，禁传 --）→ BUILD_EXIT=0，日志 docs/_artifacts/tonight/_l7-build-90a80aee6c.log。补令原文写 `cd web && …`，磁盘实脸 web/scripts/build/web.mjs 不存在（No such file），构建脚本只在仓根（7481B）⇒ 按仓根形制执行，补令意图（无参、出 hermes_cli/web_dist）不变。\nin-graph 自证重建发生：日志内构建落点为一次性临时目录 hermes_cli/.web_dist-build-B01tzX（本次新建、事后 ls -d hermes_cli/.web_dist-build-* → No such file），尾部 built .../hermes_cli/web_dist/index.html。\nentry 真翻代（补令③判据满足，非同名同 sha 分支）：index.html 1084B mtime Nov 23 21:33；assets/index-wuhTvuKn.js（sha256 0a0e81bb18a14b3918622bee94319b2a716d2a8c93ed44d4548e8e1083d066a4，174880B，mtime 19:32）→ assets/index-DmN1Xzu3.js（174885B，sha256 ace640cdbc962ce86d8816e000c96fc6364196f71b9b87f8dc4b30eb92b60cd6，mtime Nov 23 21:33）。新 sha ≠ index-DZVbT_9g.js ✓。\n9122 换代（补令②，实脸修正）：9122 由 ops/console.sh v4-serve 管（start|stop|status，无 restart）。两轮都如实记：第一轮 stop 报「无本 pidfile 记录的实例」、start 报「9122 已在服 pid=64534（幂等返回）」+ 收编进 pidfile ⇒ 未真重启但 served 已随 v4_proxy 每请求读盘换代；第二轮真换代 stop→「已停（pid=64534）」、start→自报 11599、status→pid=11599 root=200 size=1084 mtime=Nov 23 21:33:01 entry=assets/index-DmN1Xzu3.js sha256=ace640cd…（served==磁盘）proxied=401 bff=401（/agent-api→8092，401=fail-closed 正常）；lsof -nP -iTCP:9122 -sTCP:LISTEN → Python 11599（进程身份确实更替 64534→11599）。\n补令②原文的 `console.sh lan stop+lan start` 已照做并如实记事故：lan 管的是 Caddy 站点A（LAN_PORT=8181，纯透传 9122），不是 9122 换代把式。lan stop 杀掉在服 caddy pid=28034 后 lan start 失败——write_caddyfile() 前置门要求 $BUILD_DIR/index.html 与 $CLIENT_BUILD_DIR/index.html（源仓 /Users/kevin_studio/Projects/forks/bisheng-chat-panel 在本机不存在），8181 一度停服（lsof 无监听、curl http=000）。以既有生成物做等价恢复、不重建不改配置：caddy validate --config ~/.local/state/seakoi-ops/Caddyfile → Valid configuration（证书 console-lan.{crt,key} 在位）→ caddy start --config 同一文件 → pid=17440 并回写 caddy.pid → curl -sk https://127.0.0.1:8181/ = 200；同期 9122 未受影响（curl http://127.0.0.1:9122/ = 200）。⇒ 提请 L0：后续波次该腿对 9122 换代不适用且有停服副作用，建议改判「不适用」或裁定 8181 退役。\n部署判据（补令④，双特征 + 本波波次指纹，三侧逐字读数）：源码面 line（git grep -l -F）console-topbar=3 文件、run6-trace=3 文件、错串 runs-trace=0（L6 勘误印证，token 禁带引号喂 -F）。磁盘 dist assets：console-topbar=2、run6-trace=2、ppl5d-table=2、ppl5d-cell-id=2、ppl5d-state-body=2、授权内容未带回细节=1。served 侧（清目录重抓 86 枚 assets，SERVED_ENTRY=assets/index-DmN1Xzu3.js、ENTRY_HTTP=200、served entry sha256==磁盘 ace640cd…）：console-topbar=1、run6-trace=1、ppl5d-table=1、ppl5d-cell-id=1、ppl5d-state-body=1、授权内容未带回细节=1、runs-trace=0。口径注：磁盘侧 2 与 served 侧 1 是两套扫面（磁盘含多入口 chunk，served 每枚 testid 只在其所属 chunk），不作互相矛盾判读。\n本波波次指纹取自 git diff a0204cb03f..90a80aee6c 的 + 侧、非 test 文件新增字面量（Q43 教训：旧 data-testid 已在上一代产物 present，不能当波次指纹）：ppl5d-table / ppl5d-state-body / ppl5d-state-title / ppl5d-state-text / ppl5d-scroll / ppl5d-cell-id / ppl5d-cell-time（Q12 people 详情面板）、授权内容未带回细节（Q13 approvals）。\n七腿 + crawl-anon 全部 exit=0（_l0-exits.txt 七键：assert-ia-html=0 assert-ia-react=0 lint-fake-success=0 lint-reuse=0 vitest=0 crawl-routes=0 state-quad=0；crawl-anon 腿 OUT_ANON=0）。判据命令逐字沿用，未改任何脚本。\n腿件代次读数：assert-ia-html.json / assert-ia-react.json / crawl.json / crawl-anon.json headHash=90a80aee6c（脚本 --short 10 位形制），state-quad.json headHash=90a80aee（脚本 --short=8 形制，keys 仅 base/method/headHash/sampled/passed，无顶层 ok/entry，passed==sampled 即绿），lint-fake.json / lint-reuse.json 与 vitest.txt 无 headHash 字段（NOKEY=脚本形制，如实注记，未改脚本）。\ncrawl-anon.json 自本波入列（补令⑤「crawl-anon/lint×2 regen+headHash 跟代」）：旧值 headHash=105f17f0ae（夜巡道遗留，第八/九读点名），现跟代至 90a80aee6c，故本账 legs=8（新增一条 crawl-anon 腿，命令逐字记录）；lint×2 亦 regen（脚本自写 json），lint-reuse scanned=587→本波实读值见 digest。\n形制注（延续并更新）：--out= 时脚本不打印 stdout ⇒ 本波 ia×2/crawl 先按原判据命令无 --out 跑取 stdout 正本（_l0-*.stdout.txt），再用 --out= 生成 leg json。cmp 实测：assert-ia-html.json / assert-ia-react.json 与各自 stdout 正本字节相同；crawl.json 与 _l0-crawl.stdout.txt 在 char 8568 line 247 处 differ —— 两次独立采样的活流量字段抖动（mainChars / consoleErrors 类），非形制破坏，如实记两枚皆为真跑产物。\ncrawl-auth.json = opsadmin 凭据件豁免（补令⑤：rot85 未换发，如实记不算本道红）：auth-state /Users/kevin_studio/.local/state/sekoi-ops/v4-auth-state.json mtime 仍 Nov 19 19:12（431B，单枚 access_token_cookie domain=127.0.0.1）；带该 cookie GET http://127.0.0.1:9122/auth/whoami → HTTP=401 {\"code\":\"auth.unauthenticated\",\"rid\":\"53b1a3ac\",\"message\":\"登录状态缺失或已过期，请重新登录\"}（本波 rid=53b1a3ac；上波 rid=9e8577bf，同为早衰）。⇒ 本波不 regen crawl-auth.json（现值仍 headHash=56eef7a81b ok=False exitCode=1，归凭据面），且不擅跑换发脚本 l7-ops/ops/opsadmin-evidence-login.sh（会轮换在用会话）。\n他道件只报不钉：docs/governance/LANE-ROSTER.md 与 default/ fixture/ owned/ target/ 为他道 untracked，永不 add；本账不覆盖他道台账。\n上一账 head=5ddee38447408d2fc3374dd40b028444c7f38efd（Q43 rebuild 波，章笔 47de239a17 / 补件笔 a0204cb03f）由本笔覆盖；历史措辞不回改。vitest 内部署校验行见 legs.vitest.digest.deployVerification。",
   "legs": [
     {
       "leg": "assert-ia-html",
@@ -10,16 +10,16 @@
       "artifact": "assert-ia-html.json",
       "exit": 0,
       "digest": {
-        "headHash": "5ddee38447",
         "ok": true,
+        "headHash": "90a80aee6c",
+        "exitCode": 0,
         "counts": {
           "routes": 51,
           "tabs": 22,
           "tabsAll": 23,
           "chatHosts": 1,
           "modules": 8
-        },
-        "stdoutCapture": "_l0-ia-html.stdout.txt"
+        }
       }
     },
     {
@@ -29,15 +29,16 @@
       "artifact": "assert-ia-react.json",
       "exit": 0,
       "digest": {
-        "headHash": "5ddee38447",
         "ok": true,
+        "headHash": "90a80aee6c",
+        "exitCode": 0,
         "counts": {
           "routes": 51,
           "tabs": 22,
           "chatHosts": 1,
           "modules": 8
         },
-        "stdoutCapture": "_l0-ia-react.stdout.txt"
+        "mode": "react"
       }
     },
     {
@@ -47,7 +48,6 @@
       "artifact": "lint-fake.json",
       "exit": 0,
       "digest": {
-        "headHash": "NOKEY(脚本形制)",
         "ok": true,
         "violations": [],
         "linesScanned": 9252,
@@ -56,7 +56,7 @@
           "不会保存": 1,
           "未接入": 22
         },
-        "stdoutCapture": "_l0-lint-fake.stdout.txt"
+        "headHash": "NOKEY(脚本形制：lint-fake-success.mjs 不写 headHash)"
       }
     },
     {
@@ -66,11 +66,10 @@
       "artifact": "lint-reuse.json",
       "exit": 0,
       "digest": {
-        "headHash": "NOKEY(脚本形制)",
         "ok": true,
-        "scanned": 587,
-        "reuseMarkers": 28,
         "violations": [],
+        "scanned": 590,
+        "reuseMarkers": 28,
         "exempted": [
           {
             "surface": "对话 ChatPage",
@@ -80,7 +79,7 @@
             "evidence": "web/src/modules/chat/ChatModulePage.tsx:59；App.tsx:121 + App.tsx:245-262 renderConsoleChatHost 单宿主；T02-ENDPOINT-RECONCILIATION.md L33 记 G8=T40 chat 宿主"
           }
         ],
-        "stdoutCapture": "_l0-lint-reuse.stdout.txt"
+        "headHash": "NOKEY(脚本形制：lint-reuse.mjs 不写 headHash)"
       }
     },
     {
@@ -90,11 +89,11 @@
       "artifact": "vitest.txt",
       "exit": 0,
       "digest": {
-        "testFiles": 504,
-        "tests": 3724,
-        "durationSec": 43.23,
-        "allPassed": true,
-        "deployVerification": "VERDICT=VERIFIED PORT=9122 ENTRY=assets/index-wuhTvuKn.js"
+        "testFiles": "506",
+        "tests": "3735",
+        "durationSec": "44.28",
+        "deployVerification": "VERDICT=VERIFIED PORT=9122 ENTRY=assets/index-DmN1Xzu3.js",
+        "allPassed": true
       }
     },
     {
@@ -105,6 +104,17 @@
       "exit": 0,
       "digest": {
         "ok": true,
+        "headHash": "90a80aee6c",
+        "exitCode": 0,
+        "counts": {
+          "probed": 75,
+          "deadLinks": 0,
+          "contentEmpty": 0,
+          "probeErrors": 0,
+          "verdicts": {
+            "spa-hash": 75
+          }
+        },
         "probed": 75,
         "deadLinks": [],
         "contentEmpty": [],
@@ -112,9 +122,136 @@
         "notes": [
           "redirects=24 vs 门定值 23（routes.ts 并发新增形态，归因非判红；门值更新归 L0/A）"
         ],
-        "headHash": "5ddee38447",
-        "exitCode": 0,
+        "base": "http://127.0.0.1:9122",
+        "mode": "auth-attributed",
+        "deniedEndpoints": [
+          "401 /agent-api/api/__health-probe__",
+          "401 /agent-api/api/approvals",
+          "401 /agent-api/api/audit",
+          "401 /agent-api/api/channels",
+          "401 /agent-api/api/config",
+          "401 /agent-api/api/connectors",
+          "401 /agent-api/api/console-sessions",
+          "401 /agent-api/api/datasources",
+          "401 /agent-api/api/documents",
+          "401 /agent-api/api/employee-stats",
+          "401 /agent-api/api/employees",
+          "401 /agent-api/api/employees/%3AemployeeId",
+          "401 /agent-api/api/gateway-connections",
+          "401 /agent-api/api/health",
+          "401 /agent-api/api/hermes-summary",
+          "401 /agent-api/api/hermes-usage",
+          "401 /agent-api/api/knowledge/citations",
+          "401 /agent-api/api/knowledge/ingest-status",
+          "401 /agent-api/api/knowledge/search",
+          "401 /agent-api/api/knowledge/sources",
+          "401 /agent-api/api/knowledge/spaces",
+          "401 /agent-api/api/matrix",
+          "401 /agent-api/api/mcp/servers",
+          "401 /agent-api/api/messaging/platforms",
+          "401 /agent-api/api/models",
+          "401 /agent-api/api/models/pricing",
+          "401 /agent-api/api/run-activity",
+          "401 /agent-api/api/runs",
+          "401 /agent-api/api/sessions",
+          "401 /agent-api/api/skills",
+          "401 /agent-api/api/tasks",
+          "401 /agent-api/api/tools",
+          "401 /agent-api/api/tools/toolsets",
+          "401 /agent-api/api/v1/departments",
+          "401 /agent-api/api/v1/role/list",
+          "401 /agent-api/api/v1/roles",
+          "401 /agent-api/api/v1/user/all",
+          "401 /agent-api/api/v1/user/list",
+          "401 /agent-api/api/version",
+          "401 /agent-api/api/workbench/queue",
+          "401 /agent-api/api/workbench/summary",
+          "401 /agent-api/api/workbench/timeseries",
+          "401 /auth/whoami"
+        ],
+        "ceAuthority": "login-state",
+        "routes": 51,
+        "redirects": 24,
         "stdoutCapture": "_l0-crawl.stdout.txt"
+      }
+    },
+    {
+      "leg": "crawl-anon",
+      "cwd": "web",
+      "command": "node scripts/crawl-routes.mjs --base http://127.0.0.1:9122 --out=../docs/_artifacts/tonight/crawl-anon.json",
+      "artifact": "crawl-anon.json",
+      "exit": 0,
+      "digest": {
+        "ok": true,
+        "headHash": "90a80aee6c",
+        "exitCode": 0,
+        "counts": {
+          "probed": 75,
+          "deadLinks": 0,
+          "contentEmpty": 0,
+          "probeErrors": 0,
+          "verdicts": {
+            "spa-hash": 75
+          }
+        },
+        "probed": 75,
+        "deadLinks": [],
+        "contentEmpty": [],
+        "parseErrors": [],
+        "notes": [
+          "redirects=24 vs 门定值 23（routes.ts 并发新增形态，归因非判红；门值更新归 L0/A）"
+        ],
+        "base": "http://127.0.0.1:9122",
+        "mode": "auth-attributed",
+        "deniedEndpoints": [
+          "401 /agent-api/api/__health-probe__",
+          "401 /agent-api/api/approvals",
+          "401 /agent-api/api/audit",
+          "401 /agent-api/api/channels",
+          "401 /agent-api/api/config",
+          "401 /agent-api/api/connectors",
+          "401 /agent-api/api/console-sessions",
+          "401 /agent-api/api/datasources",
+          "401 /agent-api/api/documents",
+          "401 /agent-api/api/employee-stats",
+          "401 /agent-api/api/employees",
+          "401 /agent-api/api/employees/%3AemployeeId",
+          "401 /agent-api/api/gateway-connections",
+          "401 /agent-api/api/health",
+          "401 /agent-api/api/hermes-summary",
+          "401 /agent-api/api/hermes-usage",
+          "401 /agent-api/api/knowledge/citations",
+          "401 /agent-api/api/knowledge/ingest-status",
+          "401 /agent-api/api/knowledge/search",
+          "401 /agent-api/api/knowledge/sources",
+          "401 /agent-api/api/knowledge/spaces",
+          "401 /agent-api/api/matrix",
+          "401 /agent-api/api/mcp/servers",
+          "401 /agent-api/api/messaging/platforms",
+          "401 /agent-api/api/models",
+          "401 /agent-api/api/models/pricing",
+          "401 /agent-api/api/run-activity",
+          "401 /agent-api/api/runs",
+          "401 /agent-api/api/sessions",
+          "401 /agent-api/api/skills",
+          "401 /agent-api/api/tasks",
+          "401 /agent-api/api/tools",
+          "401 /agent-api/api/tools/toolsets",
+          "401 /agent-api/api/v1/departments",
+          "401 /agent-api/api/v1/role/list",
+          "401 /agent-api/api/v1/roles",
+          "401 /agent-api/api/v1/user/all",
+          "401 /agent-api/api/v1/user/list",
+          "401 /agent-api/api/version",
+          "401 /agent-api/api/workbench/queue",
+          "401 /agent-api/api/workbench/summary",
+          "401 /agent-api/api/workbench/timeseries",
+          "401 /auth/whoami"
+        ],
+        "ceAuthority": "login-state",
+        "routes": 51,
+        "redirects": 24,
+        "stdoutCapture": "（匿名态件，补令⑤接管入列，不落 stdout 正本）"
       }
     },
     {
@@ -124,13 +261,12 @@
       "artifact": "state-quad.json",
       "exit": 0,
       "digest": {
+        "headHash": "90a80aee",
         "base": "http://127.0.0.1:9122",
         "method": "playwright hash-form /#/<route>?state=<s>; hook=[data-fixture]+[data-testid=shell-fixture-badge] (web/src/shell/fixtures.ts)",
         "sampled": 20,
         "passed": 20,
-        "headHash": "5ddee384",
-        "allPassed": true,
-        "stdoutCapture": "_l0-state-quad.stdout.txt"
+        "allPassed": true
       }
     }
   ]
