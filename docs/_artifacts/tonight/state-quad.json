@@ -1,8 +1,9 @@
 {
   "base": "http://127.0.0.1:9122",
+  "entry": "assets/index-CiJcZ4mg.js",
+  "headHash": "56eef7a81b",
   "method": "playwright hash-form /#/<route>?state=<s>; hook=[data-fixture]+[data-testid=shell-fixture-badge] (web/src/shell/fixtures.ts)",
-  "headHash": "a835e9c408",
-  "sampled": 20,
+  "ok": true,
   "passed": 20,
   "rows": [
     {
@@ -186,9 +187,6 @@
       "badgeOk": true
     }
   ],
-  "entry": "assets/index-CV81EA88.js",
-  "entryBytes": 174883,
-  "entrySha256": "1e5146f4f0ba3bbad7901e8027aa0ed46062cb4e87a2199a10d43e6aa076304b",
-  "stampNote": "headHash 由 8 位短码校正为 10 位（写器 state-quad.mjs:54 用 --short=8，重跑会退回 8 位，故此校正须在最后一次跑之后）；ok 与 entry 手补（写器 schema 不含这几键），ok 按本件自有 cells 实测重算，entry 三键现查在架字节。 cells=20/20",
-  "ok": true
+  "sampled": 20,
+  "stampNote": "headHash 由 8 位短码校正为 10 位（写器 state-quad.mjs:54 用 --short=8，本校正发生在末次重跑之后）；ok 与 entry 手补（写器 schema 不含这几键），ok 按 passed==sampled=20/20 实测重算。served==disk 互认：curl http://127.0.0.1:9122/assets/index-CiJcZ4mg.js|shasum 与盘上 web_dist 同字节 73ebb88b…35642、174883B、mtime 14:57；web_dist/index.html 与 9122/9119 壳页均指 CiJcZ4mg。 登录面 whoami==200 实跑（本窗 OPEN_RC=0）。"
 }

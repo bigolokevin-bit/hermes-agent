@@ -11,12 +11,57 @@
     "note": "parse failed: SyntaxError: Unexpected token '<', \"<!doctype \"... is not valid JSON"
   },
   "statusByCode": {
-    "200": 75
+    "200": 69,
+    "ERR": 6
   },
   "verdicts": {
-    "spa-hash": 75
+    "spa-hash": 69,
+    "transport-error": 6
   },
-  "deadLinks": [],
+  "deadLinks": [
+    {
+      "url": "http://127.0.0.1:9122/",
+      "hash": "#/employees?tab=matrix",
+      "source": "CONSOLE_TABS",
+      "status": null,
+      "error": "TypeError: fetch failed (connect ECONNRESET 127.0.0.1:9122)"
+    },
+    {
+      "url": "http://127.0.0.1:9122/",
+      "hash": "#/work",
+      "source": "CONSOLE_TABS",
+      "status": null,
+      "error": "TypeError: fetch failed (connect ECONNRESET 127.0.0.1:9122)"
+    },
+    {
+      "url": "http://127.0.0.1:9122/",
+      "hash": "#/identity",
+      "source": "CONSOLE_TABS",
+      "status": null,
+      "error": "TypeError: fetch failed (connect ECONNRESET 127.0.0.1:9122)"
+    },
+    {
+      "url": "http://127.0.0.1:9122/",
+      "hash": "#/identity?tab=roles",
+      "source": "CONSOLE_TABS",
+      "status": null,
+      "error": "TypeError: fetch failed (connect ECONNRESET 127.0.0.1:9122)"
+    },
+    {
+      "url": "http://127.0.0.1:9122/",
+      "hash": "#/knowledge?tab=sources",
+      "source": "CONSOLE_TABS",
+      "status": null,
+      "error": "TypeError: fetch failed (connect ECONNRESET 127.0.0.1:9122)"
+    },
+    {
+      "url": "http://127.0.0.1:9122/",
+      "hash": "#/capabilities?tab=channels",
+      "source": "CONSOLE_TABS",
+      "status": null,
+      "error": "TypeError: fetch failed (connect ECONNRESET 127.0.0.1:9122)"
+    }
+  ],
   "transportNote": "200 text/html = the SPA shell served the form (client routing). Every served HTML body shares this many distinct sha256 digests; the server therefore cannot distinguish the routes, which is why the content judgement is rendered, not fetched.",
   "uniqueHtmlShells": 1,
   "contentMethod": "render",
@@ -231,10 +276,10 @@
       "source": "DETAIL_TAB",
       "kind": "detail-zone",
       "verdict": "content-ok",
-      "mainChars": 64,
+      "mainChars": 140,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 2,
+      "consoleErrors": 3,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
       "headSample": "工作台 配置 任务 运行 证据 员工 · EMPLOYEE — 返回 总览 任务 运行 审批 概"
@@ -582,13 +627,13 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 647,
+      "mainChars": 624,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 2,
+      "consoleErrors": 6,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
-      "headSample": "系统健康 默认设置 版本 审计事件 审计事件读取失败 时间为北京时间 导出 CSV 完整性校验 "
+      "headSample": "系统健康默认设置版本审计事件 审计事件读取失败 时间为北京时间导出 CSV完整性校验刷新 导出当"
     },
     {
       "route": "#/system?tab=events&view=anomaly",
@@ -624,7 +669,7 @@
       "mainChars": 281,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 5,
+      "consoleErrors": 9,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
       "headSample": "安全设置 登录、密钥与高危操作 · 只读 重新读取 重新登录后回到这个页面，即可继续查看。请求编"
@@ -634,13 +679,13 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 554,
+      "mainChars": 542,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 4,
+      "consoleErrors": 7,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
-      "headSample": "系统健康 默认设置 版本 审计事件 版本 构建与依赖信息 刷新 下载诊断包（计划中） 组件版本与"
+      "headSample": "系统健康默认设置版本审计事件 版本 构建与依赖信息 刷新 下载诊断包（计划中） 组件版本与健康 "
     },
     {
       "route": "#/work",
@@ -673,13 +718,13 @@
       "source": "COMPAT_TABS",
       "kind": "compat-tab",
       "verdict": "content-ok",
-      "mainChars": 259,
+      "mainChars": 251,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 7,
+      "consoleErrors": 12,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
-      "headSample": "任务 运行 任务看板 按后端状态看任务；拖动排序未启用，状态不会被前端改写。 新建任务 刷新 状"
+      "headSample": "任务运行 任务看板 按后端状态看任务；拖动排序未启用，状态不会被前端改写。 新建任务刷新 状态："
     },
     {
       "route": "#/work?tab=runs",
@@ -695,7 +740,7 @@
       "headSample": "任务 运行 刷新 控制台 · 运行 运行 按时间看运行记录。这一面只读：不取消运行；重试的含义是"
     }
   ],
-  "distinctMainHeads": 36,
+  "distinctMainHeads": 38,
   "medianMainChars": 271,
   "contentEmpty": [],
   "contentEmptyCount": 0,
@@ -761,16 +806,17 @@
   "routesRenderedWithoutMainEl": 0,
   "routesWithConsoleErrors": 51,
   "parseErrors": [],
-  "ok": true,
-  "headHash": "a835e9c408",
-  "exitCode": 0,
+  "ok": false,
+  "headHash": "56eef7a81b",
+  "exitCode": 1,
   "counts": {
     "probed": 75,
-    "deadLinks": 0,
+    "deadLinks": 6,
     "contentEmpty": 0,
     "probeErrors": 0,
     "verdicts": {
-      "spa-hash": 75
+      "spa-hash": 69,
+      "transport-error": 6
     }
   },
   "ceAuthority": "login-state"
