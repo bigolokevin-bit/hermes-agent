@@ -99,6 +99,13 @@ describe("n17 top bar: one h1 outside main, no inline style, no minted tokens", 
     expect(missing).toEqual([]);
   });
 
+  it("the bar keeps the artifact-facing name console-topbar", () => {
+    // 构建产物里要能 grep 到这个名字：组件类名、样式表规则、组件自带 CSS 导入，三者缺一即断链。
+    expect(topbarCode).toContain('className="console-topbar ');
+    expect(CHROME).toContain(".console-topbar");
+    expect(topbarCode).toContain('"./console-chrome.css"');
+  });
+
   it("the bar references only token names the contract layer defines", () => {
     const referenced = new Set(
       [

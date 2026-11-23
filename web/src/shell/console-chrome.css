@@ -1,11 +1,12 @@
 /**
  * Console shell chrome — inline-style migration (UI-KD rubric, wave-161).
  *
- * Scope: the chrome pieces of shell/console.tsx only — state frames, the
- * planned placeholder, both tab strips and the header eyebrow. Values come
+ * Scope: the chrome pieces of the console shell — the top bar row, state frames,
+ * the planned placeholder, both tab strips and the header eyebrow. Values come
  * exclusively from the page contract in ../styles/tokens.css: no literals, no
  * new token names, and nothing here reaches module pages or App. Imported by
- * shell/console.tsx next to console-nav.css (that file stays navigation-only).
+ * shell/console.tsx and shell/TopBar.tsx next to console-nav.css (that file
+ * stays navigation-only).
  *
  * Every rule is the computed equivalent of the inline style it replaces. The
  * -ls alias and the UI-A semantic name it used to grab point at the same
@@ -18,6 +19,13 @@
  *   --color-border-subtle-ls / -subtle              -> var(--line)
  *   --color-danger-ls / --color-danger              -> var(--bad)
  */
+
+/* 顶栏行（shell/TopBar.tsx 的 <header>）。类名是验收与量测在产物里定位这一行的
+   锚点，与 data-testid="shell-topbar" 同源；几何仍由组件上的 px 工具类钉住，这里
+   只把描边从 currentColor 叠色改为契约层的描边令牌，与其余 chrome 同源。 */
+.console-topbar {
+  border-color: var(--color-border-subtle-ls);
+}
 
 /* 面 / 边 / 字三色，原 shellStyle 对象。带 border 的元素才吃 border-color，
    无框的状态屏保持原样（原内联同样只写颜色）。 */
