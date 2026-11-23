@@ -1,6 +1,6 @@
 {
   "from": "2026-11-22T16:00:00.000Z",
-  "to": "2026-11-23T13:16:49.807Z",
+  "to": "2026-11-23T13:20:21.457Z",
   "bucket": "day",
   "buckets": [],
   "totals": {
@@ -15,6 +15,6 @@
     "unknownRuns": 0,
     "sampleCount": 0
   },
-  "asOf": "2026-11-23T13:16:50Z",
+  "asOf": "2026-11-23T13:20:21Z",
   "asOfSource": "bff-read-time"
 }

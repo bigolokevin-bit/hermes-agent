@@ -54,10 +54,12 @@
 ## 截图（9131 独立脸：harness dist → v4_proxy → 真 BFF 8092，登录态 whoami=200 前置断言，playwright 真实等待，非合成）
 
 - `docs/_artifacts/OM-01-overview-kpi/shots/overview-1440.png` — 桌面 1440×900
-- `docs/_artifacts/OM-01-overview-kpi/shots/overview-375.png` — 竖屏 375×812
+- `docs/_artifacts/OM-01-overview-kpi/shots/overview-375.png` — 竖屏 375×812 首屏
+- `docs/_artifacts/OM-01-overview-kpi/shots/overview-375-lower.png` — 竖屏滚动到底（趋势+原文面板）
 
 取证时页面读数（与 raw 逐字一致）：员工 3、今日运行 0、待审批 0、成本 $0.00、健康 正常；
-请求日志三路全 200（`raw/endpoint-log.json`）。
+请求日志三路全 200（`raw/endpoint-log.json`）。observer 两轮核验通过；轻微遗留（不阻塞）：
+趋势末柱贴容器右缘（右内边距偏小）、柱形无值标注（数值以原文面板为准）。
 
 ## 测试与构建
 
