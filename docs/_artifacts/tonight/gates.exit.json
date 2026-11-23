@@ -1,12 +1,12 @@
 {
- "script": "L7 gate ledger, re-stamped at ad3cd13eb7 (五门换代重跑：账本、产物、9122 同代码代)",
- "head": "ad3cd13eb735d05e91028e0737f5b7519df61720",
- "provenance": "dist rebuilt 17:33 from 105f17f0ae via node26 scripts/build/web.mjs (no-arg default out=hermes_cli/web_dist, gitignored); log docs/_artifacts/tonight/_l7-build-105f17f0ae.log; f096471064 相对 105f17f0ae 只有 docs/_artifacts/tonight/crawl-anon.json 一笔，web/src web/scripts web/public 差为空 => 同一代码代，产物不冒充新代次 (entry 同名同 sha: index-DZVbT_9g.js, sourceHash 1f137d37/outputHash c2cb1aff 未变). 9122 restarted with ops/console.sh v4-serve stop+start (pid 49665 收编 pidfile); entry=assets/index-DZVbT_9g.js, sha256=f24e272a57e17132880eeb9c346d5bae05c4fd3e903b58b4440954fdd608762a served==磁盘, root=200 mtime 17:33:01. 七门 exits 见 _l0-exits.txt，全部 exit=0，运行期 HEAD 前后恒为 ad3cd13eb7. lint-fake-success / lint-reuse 脚本无 headHash 字段形制 (NOKEY)，判据不改，代次以本账本 head 与 _l0-exits.txt 为凭。 形制注：assert-ia / crawl-routes / lint-fake-success 传 --out= 时不打印 stdout，故 _l0-*.stdout.txt 为 payload 正本，同代 leg json 是该 stdout 的落盘副本（字节相同），判据命令未改。",
+ "script": "L7 gate ledger, re-stamped at 800068aa17 (Q42 五门跟代补章：账本、产物、9122 同代码代)",
+ "head": "800068aa178db29d3c21ae96d3bd66917afb0bd2",
+ "provenance": "Q42 波次补章 @800068aa17（merge(web): 并入 lane/L4-controls2 原生 select 字面量清零，父 cc41a2d0c1）。Q2 净并入只有两文件：docs/_artifacts/L4-controls2/DONE.md (+115) 与 web/src/shell/ConsoleSelect.tsx（4 行，改动全部落在文件头 JSDoc 注释内，把 `<select>` 字面量改写为 select element 以过注释级清零判据）⇒ 零行为源码差，故本波不 rebuild、entry 不翻代（参谋背书口径）。9122 互认证据：ops/console.sh v4-serve status → pid=49665 root=200 size=1084 mtime=Nov 23 17:33:01 entry=assets/index-DZVbT_9g.js sha256=f24e272a57e17132880eeb9c346d5bae05c4fd3e903b58b4440954fdd608762a served==磁盘；vitest.txt 内既有部署校验行 PORT=9122 DISK_ENTRY=SERVED_ENTRY=assets/index-DZVbT_9g.js VERDICT=VERIFIED 同证产物与账本同代。上一账 head=ad3cd13eb7（被本笔跟代覆盖，账内不回改历史措辞）。七门 exits 见 _l0-exits.txt 全部 exit=0，运行期 HEAD 前后恒为 800068aa17（开工即 ff-only 对齐定向 ref，交付前后 porcelain 只余本波产物件）。 形制注（判据命令未改）：assert-ia / crawl-routes / lint-fake-success 传 --out= 时不打印 stdout；本波按 L0 口径用 --out= 生成 ia×2 与 crawl 的 leg json，并各跑一次无 --out 取 payload 正本落 _l0-*.stdout.txt，cmp 实测字节相同（757B / 1398B / 26772B）。lint-fake-success / lint-reuse 脚本无 headHash 字段形制（NOKEY），判据不改，代次以本账本 head 与 _l0-exits.txt 为凭；两枚 json 本轮读数与上一波逐字相同（linesScanned 9252 / scanned 584 / reuseMarkers 28 / violations 0 / exempted 1=chat→T40）故文件内容未变。state-quad 新形制 passed==sampled（20/20）即绿，headHash=800068aa（--short=8）。 crawl-auth.json 本波未 regen = 凭据件豁免（DoD③ 出口）：opsadmin cookie rot 第 78 度，auth-state 文件 mtime Nov 19 19:12，带 cookie 前置断言 GET /auth/whoami → 401 {\"code\":\"auth.unauthenticated\",\"rid\":\"b2e87116\"}；换发脚本存在但未擅自执行以免轮换在用会话，该件仍为旧代 56eef7a81b ok=false，归凭据面处置，非本车道判红。",
  "legs": [
   {
    "leg": "assert-ia-html",
    "cwd": "web",
-   "command": "node scripts/assert-ia.mjs",
+   "command": "node scripts/assert-ia.mjs --out=../docs/_artifacts/tonight/assert-ia-html.json",
    "artifact": "docs/_artifacts/tonight/_l0-ia-html.stdout.txt",
    "exit": 0,
    "digest": {
@@ -53,14 +53,14 @@
      }
     ],
     "ok": true,
-    "headHash": "ad3cd13eb7",
+    "headHash": "800068aa17",
     "exitCode": 0
    }
   },
   {
    "leg": "assert-ia-react",
    "cwd": "web",
-   "command": "node scripts/assert-ia.mjs --source=react",
+   "command": "node scripts/assert-ia.mjs --source=react --out=../docs/_artifacts/tonight/assert-ia-react.json",
    "artifact": "docs/_artifacts/tonight/_l0-ia-react.stdout.txt",
    "exit": 0,
    "digest": {
@@ -129,7 +129,7 @@
      }
     ],
     "ok": true,
-    "headHash": "ad3cd13eb7",
+    "headHash": "800068aa17",
     "exitCode": 0
    }
   },
@@ -257,13 +257,13 @@
     "testFiles": 502,
     "tests": 3700,
     "allPassed": true,
-    "duration": "39.54s"
+    "duration": "42.25s"
    }
   },
   {
    "leg": "crawl-routes",
    "cwd": "web",
-   "command": "node scripts/crawl-routes.mjs --base http://127.0.0.1:9122",
+   "command": "node scripts/crawl-routes.mjs --base http://127.0.0.1:9122 --out=../docs/_artifacts/tonight/crawl.json",
    "artifact": "docs/_artifacts/tonight/_l0-crawl.stdout.txt",
    "exit": 0,
    "digest": {
@@ -275,7 +275,7 @@
     "notes": [
      "redirects=24 vs 门定值 23（routes.ts 并发新增形态，归因非判红；门值更新归 L0/A）"
     ],
-    "headHash": "ad3cd13eb7"
+    "headHash": "800068aa17"
    }
   },
   {
@@ -289,7 +289,7 @@
     "method": "playwright hash-form /#/<route>?state=<s>; hook=[data-fixture]+[data-testid=shell-fixture-badge] (web/src/shell/fixtures.ts)",
     "sampled": 20,
     "passed": 20,
-    "headHash": "ad3cd13e",
+    "headHash": "800068aa",
     "allPassed": true
    }
   }
