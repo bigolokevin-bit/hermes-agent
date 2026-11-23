@@ -145,3 +145,24 @@ export function formatMessageCount(value: number | null): string {
   if (value === null) return MISSING_PLACEHOLDER;
   return `${value} 条`;
 }
+/**
+ * SE-06：会话列表的**本页筛选**（不是全局搜索）。
+ *
+ * 上游 `GET /v1/console-sessions` 的 query 白名单只有 `employeeId/limit/cursor`
+ * （BFF 侧白名单外参数一律丢弃，server.py 注释口径），因此本模块只能在**已加载的
+ * 行**上做客户端过滤，并在 UI 上明写「本页筛选」——不得谎称全局搜索。
+ *
+ * 匹配口径：会话编号 / 员工编号的大小写不敏感子串。空查询返回原数组（同一引用）。
+ */
+export function filterSessionRows(
+  rows: readonly SessionRow[],
+  query: string,
+): SessionRow[] {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return rows as SessionRow[];
+  return rows.filter(
+    (row) =>
+      row.sessionId.toLowerCase().includes(needle) ||
+      (row.employeeId ? row.employeeId.toLowerCase().includes(needle) : false),
+  );
+}
