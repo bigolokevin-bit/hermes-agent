@@ -8,6 +8,7 @@ import { Card, CardContent } from '@nous-research/ui/ui/components/card';
 import { fetchMatrix, load } from '../duty/api';
 import { beijing, dashed, employeeLabel, shortId, usd } from '../duty/format';
 import { useDutyData, type DutyData } from '../duty/useDutyData';
+import { DUTY_RANGES, DEFAULT_DUTY_RANGE, dutyRange, parseDutyRange, type DutyRangeId } from '../duty/dutyRange';
 import type { Loadable, MatrixBody, RunStatsBody } from '../duty/types';
 import { buildKpis, blockerRows, sourceStamp, trendPoints, OVERVIEW_GAP } from './overview';
 import './overview.css';
@@ -148,14 +149,18 @@ function KpiCard({
   );
 }
 
-function Trend({ stats, onRetry }: { stats: Loadable<RunStatsBody>; onRetry: () => void }) {
-  const points = stats.k === 'ready' ? trendPoints(stats.data) : [];
+function Trend({ stats, label = '近 14 天', days = 14, onRetry }: { stats: Loadable<RunStatsBody>; label?: string; days?: number; onRetry: () => void }) {
+  const points = stats.k === 'ready' ? trendPoints(stats.data, days) : [];
+  // OM-06 数据契约：全缺桶（未返回）与全真零各走各的空态文案，都不画骨架/4px 柱；
+  // max(1,…) 防除零；混合窗（有数有缺）照常逐桶画，缺桶保留 is-missing 形。
+  const allMissing = points.length > 0 && points.every((p) => p.runs === null);
+  const allZero = points.length > 0 && points.every((p) => p.runs === 0);
   const max = Math.max(1, ...points.map((p) => p.runs ?? 0));
   return (
     <Card className="ov5-block" data-testid="ov6-trend" data-duty-testid="duty-trend">
       <CardContent className="ov5-block-bd">
         <div className="ov5-block-hd">
-          <h2>近 14 天运行趋势</h2>
+          <h2>{label}运行趋势</h2>
           <Source>运行统计</Source>
         </div>
         <Freshness items={[{ source: '运行统计', state: stats }]} testid="ov6-trend-stamp" />
@@ -167,14 +172,18 @@ function Trend({ stats, onRetry }: { stats: Loadable<RunStatsBody>; onRetry: () 
             <RequestId id={stats.requestId} />
             <Button size="sm" outlined onClick={onRetry} data-testid="ov6-trend-retry">重试</Button>
           </div>
-        ) : points.length === 0 ? (
+        ) : points.length === 0 || allZero ? (
           <div className="ov5-empty-line">
-            <span>这 14 天还没有运行记录，所以没有趋势可画。</span>
+            <span>{label}还没有运行记录，所以没有趋势可画。</span>
             <Link to="/runs">去看运行记录<ArrowRight className="h-3.5 w-3.5" /></Link>
+          </div>
+        ) : allMissing ? (
+          <div className="ov5-empty-line" data-testid="ov6-trend-missing">
+            <span>{label}的运行数据没有返回，所以画不出趋势。</span>
           </div>
         ) : (
           <>
-            <div className="ov5-bars" role="img" aria-label="近 14 天运行趋势">
+            <div className="ov5-bars" role="img" aria-label={`${label}运行趋势`}>
               {points.map((point) => (
                 <div
                   className={point.runs === null ? 'ov5-bar is-missing' : 'ov5-bar'}
@@ -209,7 +218,9 @@ function RecentActivity({ data, onRetry }: { data: DutyData; onRetry: () => void
       <CardContent className="ov5-block-bd">
         <div className="ov5-block-hd">
           <h2>最近活动</h2>
-          <Link to="/runs">全部运行<ArrowRight className="h-3.5 w-3.5" /></Link>
+          {/* OM-07：卡数据腿固定近 7 天（fetchRuns limit=3 + w7.from），
+              「全部运行」带 window=7d 与卡同窗（runs 页读 window|status|state|run|employee）。 */}
+          <Link to="/runs?window=7d">全部运行<ArrowRight className="h-3.5 w-3.5" /></Link>
         </div>
         <Freshness items={[{ source: '运行记录', state: runs }]} testid="ov6-activity-stamp" />
         {runs.k === 'loading' ? (
@@ -232,8 +243,12 @@ function RecentActivity({ data, onRetry }: { data: DutyData; onRetry: () => void
                 <Link to={`/runs/${encodeURIComponent(run.runId)}`} title={run.runId}>
                   {run.employeeId ? employeeLabel(undefined, run.employeeId) : `运行 ${shortId(run.runId)}`}
                 </Link>
-                <Badge tone={run.status === 'failed' ? 'destructive' : run.status === 'completed' ? 'success' : 'outline'}>
-                  {run.status === 'failed' ? '失败' : run.status === 'completed' ? '成功' : run.status === 'running' ? '运行中' : run.status ?? '—'}
+                <Badge
+                  tone={run.status === 'failed' ? 'destructive' : run.status === 'completed' ? 'success' : 'outline'}
+                  // OM-07 状态四词表封闭：成功/失败/运行中/—；未知原值不进徽标文本，落 title 供核对。
+                  title={run.status && !['failed', 'completed', 'running'].includes(run.status) ? `上游状态：${run.status}` : undefined}
+                >
+                  {run.status === 'failed' ? '失败' : run.status === 'completed' ? '成功' : run.status === 'running' ? '运行中' : '—'}
                 </Badge>
                 <span>{beijing(run.startedAt)}</span>
               </li>
@@ -299,12 +314,20 @@ export function OverviewView({
   matrix,
   loading,
   onRetry,
+  rangeId = DEFAULT_DUTY_RANGE,
+  onRange,
+  rangeInvalid = null,
 }: {
   data: DutyData;
   matrix: Loadable<MatrixBody>;
   loading: boolean;
   onRetry: () => void;
+  /** OM-04：?range= 四档窗口；onRange 缺席时（夹具直渲染）不画分段控件。 */
+  rangeId?: DutyRangeId;
+  onRange?: (id: DutyRangeId) => void;
+  rangeInvalid?: string | null;
 }) {
+  const range = dutyRange(rangeId);
   const stats = data.stats.k === 'ready' ? data.stats.data : null;
   const today = data.todayStats.k === 'ready' ? data.todayStats.data : null;
   const budgetDay = data.budgetDay.k === 'ready' ? data.budgetDay.data : null;
@@ -374,6 +397,33 @@ export function OverviewView({
           <h1>运营总览</h1>
           <p className="ov5-sub">员工、运行、审批与成本各读各的；缺失值显示「—」，不补零。</p>
         </div>
+        <div className="ov5-head-actions">
+          {onRange ? (
+            <div className="ov5-seg" role="group" aria-label="时间窗" data-testid="ov6-range-seg">
+              {DUTY_RANGES.map((r) => (
+                <button
+                  key={r.id}
+                  type="button"
+                  data-testid={`ov6-range-${r.id}`}
+                  aria-pressed={r.id === rangeId}
+                  className={r.id === rangeId ? 'ov5-seg-btn is-active' : 'ov5-seg-btn'}
+                  onClick={() => onRange(r.id)}
+                >
+                  {r.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
+          {rangeInvalid ? (
+            <span
+              className="ov5-range-fallback"
+              data-testid="ov6-range-fallback"
+              title={`时间窗参数「${rangeInvalid}」不是可用档位，已按「${range.label}」读取`}
+            >
+              窗口参数无效，按{range.label}读取
+            </span>
+          ) : null}
+        </div>
         <Button size="sm" outlined onClick={onRetry} disabled={loading || anyLoading} aria-busy={loading || anyLoading} data-testid="ov6-refresh" prefix={<RefreshCw className={`h-3.5 w-3.5 ${loading || anyLoading ? 'ov5-spin' : ''}`} />}>
           刷新
         </Button>
@@ -384,7 +434,7 @@ export function OverviewView({
       {anyLoading ? <div className="ov5-skeleton" aria-busy="true" aria-label="总览加载中" data-testid="ov6-loading"><span /><span /><span /></div> : null}
 
       <div className="ov5-kpis">
-        <KpiCard title="员工" value={dashed(kpis.total)} foot={<>在岗 <b>{dashed(kpis.active)}</b> · 有风险 <b>{dashed(kpis.atRisk)}</b></>} source="员工统计 / 风险矩阵" stamps={[{ source: '员工统计', state: data.stats }, { source: '风险矩阵', state: matrix }]} testid="ov6-kpi-employees" issues={[{ label: '员工统计', state: data.employees }, ...(matrix.k === 'error' ? [{ label: '风险矩阵', state: matrix, gap: OVERVIEW_GAP.risk }] : [])]} onRetry={onRetry} note={kpis.atRisk === null ? '风险口径未接入' : null} noteTitle={kpis.atRisk === null ? OVERVIEW_GAP.risk : undefined}>
+        <KpiCard title="员工" value={dashed(kpis.total)} foot={<>在岗 <b>{dashed(kpis.active)}</b> · 有风险 <b>{dashed(kpis.atRisk)}</b></>} source="员工统计 / 风险矩阵" stamps={[{ source: '员工统计', state: data.stats }, { source: '风险矩阵', state: matrix }]} testid="ov6-kpi-employees" issues={[{ label: '员工统计', state: data.employees, gap: OVERVIEW_GAP.employees }, ...(matrix.k === 'error' ? [{ label: '风险矩阵', state: matrix, gap: OVERVIEW_GAP.risk }] : [])]} onRetry={onRetry} note={kpis.atRisk === null ? '风险口径未接入' : null} noteTitle={kpis.atRisk === null ? OVERVIEW_GAP.risk : undefined}>
           <Users className="ov5-watermark" aria-hidden />
         </KpiCard>
         <KpiCard title="今日运行" value={dashed(kpis.runs)} foot={<>失败 <b>{dashed(kpis.failed)}</b> · 失败率 <b>{kpis.failureRate === null ? '—' : `${kpis.failureRate}%`}</b></>} source="运行统计（今日）" stamps={[{ source: '运行统计', state: data.todayStats }]} testid="ov6-kpi-runs" issues={[{ label: '运行统计', state: data.todayStats, gap: OVERVIEW_GAP.runs }]} onRetry={onRetry} note={kpis.runs === 0 && kpis.failureRate === null ? '今天还没有运行，失败率不计算' : null} noteTitle={kpis.runs === 0 && kpis.failureRate === null ? OVERVIEW_GAP.runs : undefined}>
@@ -398,7 +448,7 @@ export function OverviewView({
       </div>
 
       <div className="ov5-grid">
-        <Trend stats={data.stats14} onRetry={onRetry} />
+        <Trend stats={data.stats14} label={range.label} days={range.days} onRetry={onRetry} />
         <RecentActivity data={data} onRetry={onRetry} />
         <Blockers data={data} onRetry={onRetry} />
       </div>
@@ -406,8 +456,9 @@ export function OverviewView({
   );
 }
 
-function LiveOverview() {
-  const { data, reload, loading } = useDutyData();
+function LiveOverview({ rangeId, onRange, rangeInvalid }: { rangeId: DutyRangeId; onRange: (id: DutyRangeId) => void; rangeInvalid: string | null }) {
+  // OM-04④：总览不渲染活动热力，活动腿关掉（不请求），DutyPage 默认档不受影响。
+  const { data, reload, loading } = useDutyData(rangeId, { activity: false });
   const [matrix, setMatrix] = useState<Loadable<MatrixBody>>({ k: 'loading' });
 
   const loadMatrix = useCallback(() => {
@@ -436,7 +487,7 @@ function LiveOverview() {
     return () => window.clearTimeout(timer);
   }, [hasError, retry]);
 
-  return <OverviewView data={data} matrix={matrix} loading={loading} onRetry={retry} />;
+  return <OverviewView data={data} matrix={matrix} loading={loading} onRetry={retry} rangeId={rangeId} onRange={onRange} rangeInvalid={rangeInvalid} />;
 }
 
 export function OverviewPage() {
@@ -446,6 +497,17 @@ export function OverviewPage() {
     forcedRaw === 'loading' || forcedRaw === 'empty' || forcedRaw === 'error'
       ? (forcedRaw as Forced)
       : null;
+
+  // OM-04：?range= 深链四档（24h/7d/14d/30d，复用 duty 的 DUTY_RANGES 表，
+  // 勿新建常量）。非法值回落默认档，并在页面顶部以 title 说明。
+  const rangeRaw = params.get('range');
+  const rangeId = parseDutyRange(rangeRaw);
+  const rangeInvalid = rangeRaw !== null && rangeRaw !== rangeId ? rangeRaw : null;
+  const setRange = (id: DutyRangeId) => {
+    const next = new URLSearchParams(params);
+    next.set('range', id);
+    setParams(next, { replace: true });
+  };
 
   const clearForced = () => {
     const next = new URLSearchParams(params);
@@ -485,7 +547,7 @@ export function OverviewPage() {
       </section>
     );
   }
-  return <LiveOverview />;
+  return <LiveOverview rangeId={rangeId} onRange={setRange} rangeInvalid={rangeInvalid} />;
 }
 
 export default OverviewPage;

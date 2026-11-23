@@ -11,7 +11,7 @@ import type {
   RunStatsBody,
   TaskRow,
 } from "./types";
-import { asArray, isRecord, normalizeApproval, normalizeEmployee, normalizeRun, normalizeTask, text } from "./types";
+import { asArray, isRecord, normalizeApproval, normalizeEmployee, normalizeRun, normalizeTask, num, text, EMPLOYEES_PAGE_LIMIT } from "./types";
 import type {
   ApprovalEvidence,
   ConfigView,
@@ -19,6 +19,40 @@ import type {
   ReadinessEvidence,
   StationBinding,
 } from "./readiness";
+import { READINESS_FANOUT_LIMIT } from "./aggregate";
+import type { ServerRowCount } from "./dutySlots";
+import { serverRowsOf } from "./dutySlots";
+
+/** 运行明细一页要几条；三卡的截断披露与请求上限共用这一个源（DU-02①）。 */
+export const DUTY_RUNS_PAGE_LIMIT = 3;
+
+/** 一页行数据＋服务端真给行数（DU-02：卡上的 N 只能来自这里）。 */
+export interface RowPage<T> {
+  rows: T[];
+  count: ServerRowCount;
+}
+
+/**
+ * 数响应带回的行、再逐行归一化。计数走 serverRowsOf（漂移→null，不给假 0），
+ * 归一化丢掉的条数记进 unreadable，卡外折叠区要披露。
+ */
+function pageOf<T>(body: unknown, normalize: (v: unknown) => T | null, requestLimit: number | null): RowPage<T> {
+  const raw = Array.isArray(body)
+    ? (body as unknown[])
+    : body && typeof body === "object" && Array.isArray((body as { items?: unknown }).items)
+      ? ((body as { items: unknown[] }).items as unknown[])
+      : null;
+  const rows = raw === null ? [] : raw.map(normalize).filter((x): x is T => x !== null);
+  const serverRows = serverRowsOf(body);
+  return {
+    rows,
+    count: {
+      serverRows,
+      unreadable: serverRows === null ? null : serverRows - rows.length,
+      requestLimit,
+    },
+  };
+}
 
 export const BFF = "/agent-api/api";
 
@@ -43,11 +77,26 @@ export function statusOf(err: unknown): number {
   return err instanceof ApiError ? err.status : 0;
 }
 
+/**
+ * 「未接入」判定（DU-05①）：与 fetchKnowledgeProbe 同一口径——404/503 且信封带
+ * `not_wired`。这一形制归「未接入」，绝不进「读取失败」的文案；其余错误才是失败。
+ */
+export function isNotWiredError(err: unknown): boolean {
+  return (
+    err instanceof ApiError &&
+    (err.status === 404 || err.status === 503) &&
+    err.body.includes("not_wired")
+  );
+}
+
 /** Chinese, actionable error line. Never includes HTTP codes or raw bodies. */
 export function humanError(err: unknown): string {
   const status = statusOf(err);
   if (status === 401) return "登录状态已过期，请重新登录后再刷新。";
-  if (status === 403 || status === 404) return "你没有查看这块数据的权限，或该数据尚未接入。";
+  // DU-05① 口径不混用：403 是没有权限（失败类），404 是没接这个口（未接入类），
+  // 一句只说一件事，不再「权限或尚未接入」二义并列。
+  if (status === 403) return "你没有查看这块数据的权限。";
+  if (status === 404) return "这块数据的来源尚未接入。";
   if (status === 0) return "当前网络不可达，请检查连接后重试。";
   if (status === 429) return "请求太频繁，请稍后再重试。";
   if (status >= 500) return "数据服务暂时没有响应，请稍后重试。";
@@ -56,9 +105,9 @@ export function humanError(err: unknown): string {
   return "本次数据读取失败，请重试。";
 }
 
-export async function fetchEmployees(): Promise<EmployeeRow[]> {
-  const body = await get("/employees", { limit: 100 });
-  return asArray(body).map(normalizeEmployee).filter((x): x is EmployeeRow => x !== null);
+export async function fetchEmployees(): Promise<RowPage<EmployeeRow>> {
+  const body = await get("/employees", { limit: EMPLOYEES_PAGE_LIMIT });
+  return pageOf(body, normalizeEmployee, EMPLOYEES_PAGE_LIMIT);
 }
 
 export async function fetchEmployeeStats(): Promise<Record<string, unknown>> {
@@ -97,9 +146,9 @@ export async function fetchApprovals(limit = 3): Promise<ApprovalRow[]> {
   return asArray(body).map(normalizeApproval).filter((x): x is ApprovalRow => x !== null);
 }
 
-export async function fetchRuns(limit: number, since: string, status?: string): Promise<RunRow[]> {
+export async function fetchRuns(limit: number, since: string, status?: string): Promise<RowPage<RunRow>> {
   const body = await get("/runs", { since, limit, status });
-  return asArray(body).map(normalizeRun).filter((x): x is RunRow => x !== null);
+  return pageOf(body, normalizeRun, limit);
 }
 
 export async function fetchBlockedTasks(limit = 3): Promise<TaskRow[]> {
@@ -170,14 +219,44 @@ export async function fetchApprovalsEvidence(limit = 100): Promise<ApprovalEvide
 }
 
 /**
- * V3 文档腿探测。读侧未接线时 BFF 返回 404 `*.not_wired` 信封——那不是失败，
- * 是「未接」：返回 wired=false 且不编造 count。其它错误照抛，由 load() 落 error。
+ * V3 文档腿探测。读口 = BFF 白名单实存的 /api/knowledge/citations（2026-11-23
+ * 实测 evidence/probe-knowledge-citations.json：路由存在，上游未接时回 404
+ * `knowledge.not_wired` 信封带 asOf——那是正当的「未接」态，不是取数失败）。
+ * 旧腿 /knowledge/documents 不在主检出白名单，本轮起不再依赖。
+ * 成功回包的计数只取响应自带的 count/rows/documents/items；形状对不上按
+ * 「未接线」处理并保留采集时间，绝不猜数（工单 DU-01①）。
  */
 export async function fetchKnowledgeProbe(): Promise<KnowledgeProbe> {
+  // 策略腿实测无端点（spaces/sources/citations 均无策略读口；effective-config 的
+  // responsePolicy 无引用字段）。接线前恒 wired:false ⇒ V3 的 pass 分支不可达。
+  const policy = {
+    wired: false,
+    reason: "强制引用策略在 BFF 没有读口，「引用被强制执行」这条给不出真读数",
+  };
   try {
-    const body = await get("/knowledge/documents", { limit: 100 });
-    const rec = isRecord(body) ? body : {};
-    return { wired: true, count: asArray(body).length, asOf: text(rec.asOf) };
+    const body = await get("/knowledge/citations");
+    const rec = isRecord(body) ? body : null;
+    const rows = Array.isArray(body)
+      ? body
+      : rec && Array.isArray(rec.rows)
+        ? rec.rows
+        : rec && Array.isArray(rec.documents)
+          ? rec.documents
+          : rec && Array.isArray(rec.items)
+            ? rec.items
+            : null;
+    const count = rec ? num(rec.count) : null;
+    const known = count ?? (rows === null ? null : rows.length);
+    if (known === null) {
+      return { wired: false, count: null, asOf: rec ? text(rec.asOf) : null, policy };
+    }
+    return {
+      wired: true,
+      count: known,
+      asOf: rec ? text(rec.asOf) : null,
+      source: rec ? text(rec.source) : null,
+      policy,
+    };
   } catch (err) {
     if (err instanceof ApiError && (err.status === 404 || err.status === 503) && err.body.includes("not_wired")) {
       let asOf: string | null = null;
@@ -186,15 +265,15 @@ export async function fetchKnowledgeProbe(): Promise<KnowledgeProbe> {
       } catch {
         /* 信封没带采集时间就是没有，不猜。 */
       }
-      return { wired: false, count: null, asOf };
+      return { wired: false, count: null, asOf, policy };
     }
     throw err;
   }
 }
 
-/** 分母员工逐一读工位与有效配置；单员工失败只影响该员工该门。 */
+/** 分母员工逐一读工位与有效配置；单员工失败只影响该员工该门；扇出上限见 aggregate。 */
 export async function fetchReadinessEvidence(employeeIds: string[]): Promise<ReadinessEvidence> {
-  const ids = employeeIds.slice(0, 32);
+  const ids = employeeIds.slice(0, READINESS_FANOUT_LIMIT);
   const perEmployee = await Promise.all(
     ids.map(async (id) => {
       const [stations, config] = await Promise.all([
@@ -214,7 +293,7 @@ export async function fetchReadinessEvidence(employeeIds: string[]): Promise<Rea
     stations[id] = st;
     configs[id] = cfg;
   }
-  return { stations, configs, approvals, knowledge };
+  return { stations, configs, approvals, knowledge, coverage: { covered: ids.length, requested: employeeIds.length } };
 }
 
 /** Convert a promise into a card-sized Loadable; the loader never throws. */
@@ -227,6 +306,8 @@ export async function load<T>(fn: () => Promise<T>): Promise<Loadable<T>> {
       status: statusOf(err),
       message: humanError(err),
       requestId: requestIdOf(err),
+      // 页头 health chip 靠这个标把「未接入」和「读取失败」分开画（DU-05①）。
+      notWired: isNotWiredError(err),
     };
   }
 }

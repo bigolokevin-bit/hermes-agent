@@ -92,7 +92,13 @@ const EmployeeDetailPage = lazy(() => import("@/pages/EmployeeDetailPage"));
 const ApprovalsPage = lazy(() => import("@/pages/ApprovalsPage"));
 // Wave-1 module pages (lanes T10/T13/T14/T15) — integration wiring into the
 // console live maps below; manifests' reuse loaders stay metadata-only.
-const DutyConsolePage = lazy(() => import("@/modules/duty/DutyPage"));
+/* OM-01 (总览挂载裁定, deep/01-overview.md D-1): #/overview 的 duty 标签页
+ * 渲染运营总览本体 modules/overview/OverviewPage（ov6-*），不再复用
+ * duty/DutyPage。DutyPage 保留文件——/duty 深链经 DutyRedirect 归一到
+ * /overview（routes.ts EXPLICIT_ALIASES），其成本/健康元素由 duty 测试面
+ * 继续锚定；是否退役另案（backlog OM-03+）。UsageConsolePage
+ * （用量与成本 tab）不变。 */
+const OverviewConsolePage = lazy(() => import("@/modules/overview/OverviewPage"));
 const MatrixConsolePage = lazy(() =>
   import("@/modules/matrix/MatrixModulePage").then((m) => ({
     default: m.MatrixModulePage,
@@ -198,7 +204,20 @@ const ApprovalsHistoryConsolePage = lazy(() =>
 const RunsPage = lazy(() => import("@/pages/RunsPage"));
 const EnvPage = lazy(() => import("@/pages/EnvPage"));
 const FilesPage = lazy(() => import("@/pages/FilesPage"));
-const SessionsPage = lazy(() => import("@/pages/SessionsPage"));
+/* SE-02 mount-fix: the console sessions surface is delivered by
+ * modules/sessions (SE-02 lane); the route swaps the bare upstream
+ * pages/SessionsPage for that module page-unit. The module exports
+ * SessionsList (named + default), which needs a bound employeeId, so the
+ * route wrapper below binds it from the ?employeeId= search param — the
+ * form modules/sessions/index.ts documents for callers. Unbound stays the
+ * module's own honest 「缺少员工编号」 state; the shell never guesses scope.
+ * pages/SessionsPage.tsx stays on disk untouched (upstream Hermes-direct
+ * surface), it is just no longer mounted. */
+const SessionsModulePage = lazy(() =>
+  import("@/modules/sessions/SessionsList").then((m) => ({
+    default: m.SessionsList,
+  })),
+);
 const LogsPage = lazy(() => import("@/pages/LogsPage"));
 const AnalyticsPage = lazy(() => import("@/pages/AnalyticsPage"));
 const ModelsPage = lazy(() => import("@/pages/ModelsPage"));
@@ -320,7 +339,7 @@ const CHAT_NAV_ITEM: NavItem = {
  */
 const BUILTIN_ROUTES_CORE: Record<string, ComponentType> = {
   "/": RootRedirect,
-  "/sessions": SessionsPage,
+  "/sessions": ConsoleSessionsMount,
   "/files": FilesPage,
   "/analytics": AnalyticsPage,
   "/models": ModelsPage,
@@ -360,6 +379,18 @@ function ChatRouteSink() {
  */
 function ConsoleChatMount({ employeeId }: { employeeId: string }) {
   return <ChatModulePage employeeId={employeeId} />;
+}
+
+/**
+ * Thin route wrapper for the sessions module (SE-02 mount-fix; same shape as
+ * ConsoleChatMount).  The route table hands components no props, so the
+ * employeeId that SessionsList requires is bound from the ?employeeId=
+ * search param here.  An empty value is passed through untouched: the module
+ * renders its own honest "缺少员工编号" error instead of guessing a scope.
+ */
+function ConsoleSessionsMount() {
+  const [searchParams] = useSearchParams();
+  return <SessionsModulePage employeeId={searchParams.get("employeeId") ?? ""} />;
 }
 
 const BUILTIN_NAV_REST: NavItem[] = [
@@ -1183,7 +1214,7 @@ export default function App() {
                           element={
                             <ConsoleModulePage
                               module="overview"
-                              live={{ duty: <DutyConsolePage />, usage: <UsageConsolePage /> }}
+                              live={{ duty: <OverviewConsolePage />, usage: <UsageConsolePage /> }}
                             />
                           }
                         />

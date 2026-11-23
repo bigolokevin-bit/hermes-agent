@@ -1,0 +1,32 @@
+whoami=200 user=opsadmin
+
+── per-run batch wall clock (one refresh = one batch) ──
+  run 1: phase1=397ms phase2=22ms batch=419ms legs=20 non200=-1@/api/workbench/timeseries,-1@/api/workbench/queue,-1@/api/run-activity,-1@/api/runs,-1@/api/tasks,404@/api/knowledge/citations
+  run 2: phase1=12ms phase2=24ms batch=36ms legs=20 non200=404@/api/knowledge/citations
+  run 3: phase1=11ms phase2=26ms batch=37ms legs=20 non200=404@/api/knowledge/citations
+  run 4: phase1=13ms phase2=24ms batch=37ms legs=20 non200=404@/api/knowledge/citations
+  run 5: phase1=15ms phase2=26ms batch=41ms legs=20 non200=404@/api/knowledge/citations
+
+batch ms: n=5 min=36 p50=37 p95=419 max=419
+phase1 ms p50=13 max=397
+phase2 ms p50=24 max=26
+
+── per-leg ms (p50 / max / n) ──
+     396ms max |     13ms p50 | n=5 | /api/workbench/summary
+     385ms max |      7ms p50 | n=5 | /api/employee-stats
+     385ms max |      6ms p50 | n=15 | /api/runs
+     242ms max |      6ms p50 | n=5 | /api/employees
+      26ms max |     24ms p50 | n=5 | /api/approvals
+      13ms max |     11ms p50 | n=15 | /api/effective-config
+      13ms max |      8ms p50 | n=10 | /api/budget-usage
+      11ms max |      9ms p50 | n=15 | /api/workstations
+       9ms max |      7ms p50 | n=5 | /api/workbench/timeseries
+       8ms max |      7ms p50 | n=5 | /api/run-activity
+       8ms max |      5ms p50 | n=5 | /api/workbench/queue
+       7ms max |      6ms p50 | n=5 | /api/tasks
+       4ms max |      3ms p50 | n=5 | /api/knowledge/citations
+
+── throttle window derivation ──
+  single batch p50=37ms max=419ms
+  slowest leg max=396ms
+  rule: max(工单建议下限 5000ms, 一批实测 max 向上取整到 0.5s) => 5000ms

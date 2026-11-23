@@ -1,0 +1,123 @@
+whoami status=200 user=opsadmin
+折叠态 before={"details":false,"notes":"false","heat":"false","trendTable":"false"} after={"details":true,"notes":"true","heat":"true","trendTable":"true"}（判据=aria-expanded/[open]，非宽度）
+
+[375] doc={"scrollWidth":375,"bodyScrollWidth":375,"innerWidth":375,"clientWidth":375} 根字号=15px
+[375] 逐卡右缘越出视口=0/14；文档级 scrollWidth=375
+  header.duty-head: sw=344/cw=342 right=352.8 | 最内 div.duty-head-actions over=2px sw=344 cw=342 overflowX=visible
+  duty-refresh-bar: sw=342/cw=342 right=352.8
+  duty-ready: sw=340/cw=340 right=352.8
+  duty-today-runs: sw=340/cw=340 right=352.8
+  duty-today-cost: sw=340/cw=340 right=352.8
+  duty-trend: sw=340/cw=340 right=352.8 | 最内 button.font-mono#duty-trend-table-toggle over=2px sw=318 cw=316 overflowX=visible
+  duty-activity: sw=340/cw=340 right=352.8 | 最内 button.font-mono#duty-activity-text-toggle over=2px sw=318 cw=316 overflowX=visible
+  duty-blockers: sw=340/cw=340 right=352.8
+  duty-pending: sw=340/cw=340 right=352.8
+  duty-recent: sw=340/cw=340 right=352.8
+  duty-health: sw=342/cw=342 right=352.8
+  duty-fleet-rail: sw=342/cw=342 right=352.8 | 最内 div.duty-fleet-viewport over=472px sw=796 cw=324 overflowX=auto(设计内滑轨)
+  duty-details: sw=340/cw=340 right=352.8
+  duty-notes: sw=342/cw=342 right=352.8
+[375] 目标有 rect=21 个；<44 且最近邻中心距<44 = 0
+[375] title 节点=74，拆段后仍有段无出口=24
+  未落地 button.font-mono :: 切换主题: Hermes Teal :: 缺段=["切换主题: Hermes Teal"]
+  未落地 button.font-mono :: 切换语言 :: 缺段=["切换语言"]
+  未落地 duty-health-chip :: 汇总本页各读取腿的回答，非独立健康端点 · 未接入：知识检索 :: 缺段=["汇总本页各读取腿的回答，非独立健康端点 · 未接入：知识检索"]
+  未落地 ov6-asof :: 取各来源响应自带的采集时间，最新的一个上屏 :: 缺段=["取各来源响应自带的采集时间，最新的一个上屏"]
+  未落地 ov6-ready-stamp :: 取不到采集时间：上游响应没有带采集时间；不用本机时间顶替 :: 缺段=["取不到采集时间：上游响应没有带采集时间；不用本机时间顶替"]
+  未落地 ov6-today-runs-stamp :: 来源：运行窗口统计；采集时间取自上游响应 :: 缺段=["来源：运行窗口统计；采集时间取自上游响应"]
+  未落地 ov6-today-cost-stamp :: 来源：当日成本账本；采集时间取自上游响应 :: 缺段=["来源：当日成本账本；采集时间取自上游响应"]
+  未落地 duty-details-readiness :: workbench/agents 缺 byLifecycle 聚合计数（active/paused/offboardin :: 缺段=["workbench/agents 缺 byLifecycle 聚合计数（active/paused/offboarding）、缺分页之外的完整名单（翻页时 total 为 null），逐行 today* 也恒为 null；本卡仍取员工目录 + 员工统计，换成该读口会丢掉总分母，故不换。"]
+  未落地 ov6-gate-V1 :: V1 · 群@ :: 缺段=["V1 · 群@"]
+  未落地 span.duty-gate-asof :: 来源回答未携带采集时间 :: 缺段=["来源回答未携带采集时间"]
+  未落地 i.duty-dot :: 1 人未达 :: 缺段=["1 人未达"]
+  未落地 ov6-gate-V2 :: V2 · ReBAC :: 缺段=["V2 · ReBAC"]
+  未落地 ov6-gate-V3 :: V3 · 引用 :: 缺段=["V3 · 引用"]
+  未落地 span.duty-gate-asof :: E_NO_CITATION：该数据源尚未接入，没有采集时间 :: 缺段=["E_NO_CITATION：该数据源尚未接入，没有采集时间"]
+  未落地 i.duty-dot :: 证据源缺失，暂不计入可上岗人数 :: 缺段=["证据源缺失，暂不计入可上岗人数"]
+  未落地 ov6-gate-V6 :: V6 · 审批 :: 缺段=["V6 · 审批"]
+  未落地 span.duty-gate-asof :: 来源回答未携带采集时间 :: 缺段=["来源回答未携带采集时间"]
+  未落地 i.duty-dot :: 2 人未达 :: 缺段=["2 人未达"]
+  未落地 duty-runs-caliber :: 本卡读 workbench/summary?range=1d（BFF 聚合一日的运行数 KPI），采集时刻 2026-1 :: 缺段=["本卡读 workbench/summary?range=1d（BFF 聚合一日的运行数 KPI），采集时刻 2026-11-24 01:40；/metrics 读 /api/run-stats 当前时间窗（totals.runs）。两页各读自己的口，本页不另发请求去取对方的数：只有当两侧读数出自同一读模型时才写「同源一致」，否则按口径不同处理，不为了对上而改任何一侧的取数。"]
+  未落地 ov6-trend-stamp :: 来源：近 14 天运行统计；采集时间取自上游响应 :: 缺段=["来源：近 14 天运行统计；采集时间取自上游响应"]
+  未落地 ov6-activity-stamp :: 取不到采集时间：上游响应没有带采集时间；不用本机时间顶替 :: 缺段=["取不到采集时间：上游响应没有带采集时间；不用本机时间顶替"]
+  未落地 ov6-blockers-stamp :: 取不到采集时间：上游响应没有带采集时间；不用本机时间顶替 :: 缺段=["取不到采集时间：上游响应没有带采集时间；不用本机时间顶替"]
+  未落地 ov6-pending-stamp :: 来源：审批统计；采集时间取自上游响应 :: 缺段=["来源：审批统计；采集时间取自上游响应"]
+  未落地 ov6-recent-stamp :: 取不到采集时间：上游响应没有带采集时间；不用本机时间顶替 :: 缺段=["取不到采集时间：上游响应没有带采集时间；不用本机时间顶替"]
+[375] 省略号裁切未换行=[{"node":"span.duty-fleet-name","testid":"","cutPx":104,"text":"QA2 契约验证 1794894768"},{"node":"span.duty-fleet-role","testid":"","cutPx":109,"text":"QA2 契约验证（dev 库，可清理）"},{"node":"span.duty-fleet-state","testid":"","cutPx":14,"text":"草稿"},{"node":"span.duty-fleet-name","testid":"","cutPx":56,"text":"AgentOS 产品助理"},{"node":"span.duty-fleet-role","testid":"","cutPx":74,"text":"产品助理（数字员工 · Pilot）"},{"node":"span.duty-fleet-state","testid":"","cutPx":12,"text":"在岗"},{"node":"span.duty-fleet-name","testid":"","cutPx":56,"text":"AgentOS 产品助理"},{"node":"span.duty-fleet-role","testid":"","cutPx":74,"text":"产品助理（数字员工 · Pilot）"},{"node":"span.duty-fleet-state","testid":"","cutPx":12,"text":"在岗"}]
+[375] :hover 承载显示的规则=[]
+[375] 裸 0 读数=[{"testid":"duty-kpi-failed","text":"0","inCard":"duty-details","label":"0失败"}]
+[375] 单列：块=14 重叠=0 列起点=[11.3]
+[375] 文字替代腿={"trendSummary":"近 14 天：首日 11/12 1 次 · 末日 11/22 4 次 · 峰值 11/20 44 次 · 最低 11/12 1 次 · 合计 86 次","heatCells":24,"heatTextAltRows":24,"heatTextToggleAria":"true","fleetMetricNote":"今日处理还没有可用的逐人数据；接入后会自动显示。 成功率要等逐人日聚合接入；零分母或未齐时不显示，也不画进度条。","fleetIdRows":4,"blockersLinkNote":"任务页不接受 status 筛选参数，这里去任务板；阻塞项已在本卡逐条列出。","stampMissingReasonOnScreen":["数据截至 —（北京时间） · 来源 员工目录与运行统计 · 原因：上游响应没有带采集时间","数据截至 —（北京时间） · 来源 近 14 天活跃统计 · 原因：上游响应没有带采集时间","数据截至 —（北京时间） · 来源 运行·任务·审批明细 · 原因：上游响应没有带采集时间","数据截至 —（北京时间） · 来源 运行明细 · 原因：上游响应没有带采集时间"]}
+[375] tap 可达=[{"name":"刷新","ok":true,"changed":false,"before":"null|null|na","after":"null|null|na"},{"name":"切窗 7d","ok":true,"changed":true,"before":"null|false|na","after":"null|true|na"},{"name":"逐时文字开关","ok":true,"changed":true,"before":"true|null|na","after":"false|null|na"},{"name":"趋势表格开关","ok":true,"changed":true,"before":"true|null|na","after":"false|null|na"},{"name":"状态筛选 失败","ok":true,"changed":true,"before":"null|false|true","after":"null|true|true"},{"name":"卡外折叠区","ok":true,"changed":true,"before":"null|null|true","after":"null|null|false"},{"name":"口径说明折叠","ok":true,"changed":true,"before":"true|null|na","after":"false|null|na"}]
+[375] 折叠末态={"details":false,"notes":"false","heat":"false","trendTable":"false"}
+[375] 截图 duty-375.png（375×812）
+[375] 截图 duty-375-folded.png（折叠全开·页尾）
+whoami status=200 user=opsadmin
+折叠态 before={"details":false,"notes":"false","heat":"false","trendTable":"false"} after={"details":true,"notes":"true","heat":"true","trendTable":"true"}（判据=aria-expanded/[open]，非宽度）
+
+[1440] doc={"scrollWidth":1440,"bodyScrollWidth":1440,"innerWidth":1440,"clientWidth":1440} 根字号=15px
+[1440] 逐卡右缘越出视口=0/14；文档级 scrollWidth=1440
+  header.duty-head: sw=1178/cw=1176 right=1406.5 | 最内 div.duty-head-actions over=2px sw=344 cw=342 overflowX=visible
+  duty-refresh-bar: sw=1176/cw=1176 right=1406.5
+  duty-ready: sw=379/cw=379 right=611.8
+  duty-today-runs: sw=379/cw=379 right=1009.2
+  duty-today-cost: sw=379/cw=379 right=1406.5
+  duty-trend: sw=578/cw=578 right=810.5 | 最内 button.font-mono#duty-trend-table-toggle over=2px sw=548 cw=546 overflowX=visible
+  duty-activity: sw=578/cw=578 right=1406.5 | 最内 button.font-mono#duty-activity-text-toggle over=2px sw=548 cw=546 overflowX=visible
+  duty-blockers: sw=379/cw=379 right=611.8
+  duty-pending: sw=379/cw=379 right=1009.2
+  duty-recent: sw=379/cw=379 right=1406.5
+  duty-health: sw=1176/cw=1176 right=1406.5
+  duty-fleet-rail: sw=1176/cw=1176 right=1406.5 | 最内 span.duty-fleet-role over=80px sw=183 cw=103 overflowX=hidden
+  duty-details: sw=1174/cw=1174 right=1406.5
+  duty-notes: sw=1176/cw=1176 right=1406.5
+[1440] 目标有 rect=20 个；<44 且最近邻中心距<44 = 7
+  小目标 刷新钮 rect={"x":1340.7,"y":-1633.2,"w":65.8,"h":29.8} 最近邻=42.5px(duty-range-30d)
+  小目标 窗口 24h rect={"x":1064.5,"y":-1633.2,"w":75.3,"h":29.8} 最近邻=35px(duty-range-7d)
+  小目标 窗口 7d rect={"x":1143.8,"y":-1633.2,"w":55.4,"h":29.8} 最近邻=35px(duty-range-24h)
+  小目标 窗口 14d rect={"x":1203.2,"y":-1633.2,"w":61.9,"h":29.8} 最近邻=35px(duty-range-7d)
+  小目标 窗口 30d rect={"x":1269.1,"y":-1633.2,"w":63.7,"h":29.8} 最近邻=38px(duty-range-14d)
+  小目标 状态筛选 全部 rect={"x":247.5,"y":-537.4,"w":41.8,"h":25.2} 最近邻=27.9px(duty-status-running)
+  小目标 状态筛选 失败 rect={"x":385,"y":-537.4,"w":41.8,"h":25.2} 最近邻=27.9px(duty-status-completed)
+[1440] title 节点=74，拆段后仍有段无出口=24
+  未落地 button.font-mono :: 切换主题: Hermes Teal :: 缺段=["切换主题: Hermes Teal"]
+  未落地 button.font-mono :: 切换语言 :: 缺段=["切换语言"]
+  未落地 duty-health-chip :: 汇总本页各读取腿的回答，非独立健康端点 · 未接入：知识检索 :: 缺段=["汇总本页各读取腿的回答，非独立健康端点 · 未接入：知识检索"]
+  未落地 ov6-asof :: 取各来源响应自带的采集时间，最新的一个上屏 :: 缺段=["取各来源响应自带的采集时间，最新的一个上屏"]
+  未落地 ov6-ready-stamp :: 取不到采集时间：上游响应没有带采集时间；不用本机时间顶替 :: 缺段=["取不到采集时间：上游响应没有带采集时间；不用本机时间顶替"]
+  未落地 ov6-today-runs-stamp :: 来源：运行窗口统计；采集时间取自上游响应 :: 缺段=["来源：运行窗口统计；采集时间取自上游响应"]
+  未落地 ov6-today-cost-stamp :: 来源：当日成本账本；采集时间取自上游响应 :: 缺段=["来源：当日成本账本；采集时间取自上游响应"]
+  未落地 duty-details-readiness :: workbench/agents 缺 byLifecycle 聚合计数（active/paused/offboardin :: 缺段=["workbench/agents 缺 byLifecycle 聚合计数（active/paused/offboarding）、缺分页之外的完整名单（翻页时 total 为 null），逐行 today* 也恒为 null；本卡仍取员工目录 + 员工统计，换成该读口会丢掉总分母，故不换。"]
+  未落地 ov6-gate-V1 :: V1 · 群@ :: 缺段=["V1 · 群@"]
+  未落地 span.duty-gate-asof :: 来源回答未携带采集时间 :: 缺段=["来源回答未携带采集时间"]
+  未落地 i.duty-dot :: 1 人未达 :: 缺段=["1 人未达"]
+  未落地 ov6-gate-V2 :: V2 · ReBAC :: 缺段=["V2 · ReBAC"]
+  未落地 ov6-gate-V3 :: V3 · 引用 :: 缺段=["V3 · 引用"]
+  未落地 span.duty-gate-asof :: E_NO_CITATION：该数据源尚未接入，没有采集时间 :: 缺段=["E_NO_CITATION：该数据源尚未接入，没有采集时间"]
+  未落地 i.duty-dot :: 证据源缺失，暂不计入可上岗人数 :: 缺段=["证据源缺失，暂不计入可上岗人数"]
+  未落地 ov6-gate-V6 :: V6 · 审批 :: 缺段=["V6 · 审批"]
+  未落地 span.duty-gate-asof :: 来源回答未携带采集时间 :: 缺段=["来源回答未携带采集时间"]
+  未落地 i.duty-dot :: 2 人未达 :: 缺段=["2 人未达"]
+  未落地 duty-runs-caliber :: 本卡读 workbench/summary?range=1d（BFF 聚合一日的运行数 KPI），采集时刻 2026-1 :: 缺段=["本卡读 workbench/summary?range=1d（BFF 聚合一日的运行数 KPI），采集时刻 2026-11-24 01:41；/metrics 读 /api/run-stats 当前时间窗（totals.runs）。两页各读自己的口，本页不另发请求去取对方的数：只有当两侧读数出自同一读模型时才写「同源一致」，否则按口径不同处理，不为了对上而改任何一侧的取数。"]
+  未落地 ov6-trend-stamp :: 来源：近 14 天运行统计；采集时间取自上游响应 :: 缺段=["来源：近 14 天运行统计；采集时间取自上游响应"]
+  未落地 ov6-activity-stamp :: 取不到采集时间：上游响应没有带采集时间；不用本机时间顶替 :: 缺段=["取不到采集时间：上游响应没有带采集时间；不用本机时间顶替"]
+  未落地 ov6-blockers-stamp :: 取不到采集时间：上游响应没有带采集时间；不用本机时间顶替 :: 缺段=["取不到采集时间：上游响应没有带采集时间；不用本机时间顶替"]
+  未落地 ov6-pending-stamp :: 来源：审批统计；采集时间取自上游响应 :: 缺段=["来源：审批统计；采集时间取自上游响应"]
+  未落地 ov6-recent-stamp :: 取不到采集时间：上游响应没有带采集时间；不用本机时间顶替 :: 缺段=["取不到采集时间：上游响应没有带采集时间；不用本机时间顶替"]
+[1440] 省略号裁切未换行=[{"node":"span.duty-fleet-name","testid":"","cutPx":76,"text":"QA2 契约验证 1794894768"},{"node":"span.duty-fleet-role","testid":"","cutPx":80,"text":"QA2 契约验证（dev 库，可清理）"},{"node":"span.duty-fleet-state","testid":"","cutPx":11,"text":"草稿"},{"node":"span.duty-fleet-name","testid":"","cutPx":32,"text":"AgentOS 产品助理"},{"node":"span.duty-fleet-role","testid":"","cutPx":43,"text":"产品助理（数字员工 · Pilot）"},{"node":"span.duty-fleet-state","testid":"","cutPx":7,"text":"在岗"},{"node":"span.duty-fleet-name","testid":"","cutPx":32,"text":"AgentOS 产品助理"},{"node":"span.duty-fleet-role","testid":"","cutPx":43,"text":"产品助理（数字员工 · Pilot）"},{"node":"span.duty-fleet-state","testid":"","cutPx":7,"text":"在岗"}]
+[1440] :hover 承载显示的规则=[]
+[1440] 裸 0 读数=[{"testid":"duty-kpi-failed","text":"0","inCard":"duty-details","label":"0失败"}]
+[1440] 单列：块=14 重叠=0 列起点=[230.5,627.8,1025.2,826.5]
+[1440] 文字替代腿={"trendSummary":"近 14 天：首日 11/12 1 次 · 末日 11/22 4 次 · 峰值 11/20 44 次 · 最低 11/12 1 次 · 合计 86 次","heatCells":24,"heatTextAltRows":24,"heatTextToggleAria":"true","fleetMetricNote":"今日处理还没有可用的逐人数据；接入后会自动显示。 成功率要等逐人日聚合接入；零分母或未齐时不显示，也不画进度条。","fleetIdRows":4,"blockersLinkNote":"任务页不接受 status 筛选参数，这里去任务板；阻塞项已在本卡逐条列出。","stampMissingReasonOnScreen":["数据截至 —（北京时间） · 来源 员工目录与运行统计 · 原因：上游响应没有带采集时间","数据截至 —（北京时间） · 来源 近 14 天活跃统计 · 原因：上游响应没有带采集时间","数据截至 —（北京时间） · 来源 运行·任务·审批明细 · 原因：上游响应没有带采集时间","数据截至 —（北京时间） · 来源 运行明细 · 原因：上游响应没有带采集时间"]}
+[1440] tap 可达=[{"name":"刷新","ok":true,"changed":false,"before":"null|null|na","after":"null|null|na"},{"name":"切窗 7d","ok":true,"changed":true,"before":"null|false|na","after":"null|true|na"},{"name":"逐时文字开关","ok":true,"changed":true,"before":"true|null|na","after":"false|null|na"},{"name":"趋势表格开关","ok":true,"changed":true,"before":"true|null|na","after":"false|null|na"},{"name":"状态筛选 失败","ok":true,"changed":true,"before":"null|false|true","after":"null|true|true"},{"name":"卡外折叠区","ok":true,"changed":true,"before":"null|null|true","after":"null|null|false"},{"name":"口径说明折叠","ok":true,"changed":true,"before":"true|null|na","after":"false|null|na"}]
+[1440] 折叠末态={"details":false,"notes":"false","heat":"false","trendTable":"false"}
+[1440] 截图 duty-1440.png（1440×900）
+[1440] 截图 duty-1440-folded.png（折叠全开·页尾）
+
+读数落盘 /Users/kevin_studio/Projects/tasks/DU-07-375-criteria/evidence/du07-readings.json
+
+=== 375 判据汇总（实值）===
+① document.scrollWidth=375（判据<=375）；卡右缘越视口=0；设计内滑轨=1
+② <44×44 且中心距<44 的目标=0；根字号=15px
+③ title 拆段无出口=24；省略号裁切=9；hover-only CSS=0；tap 失败=0
+④ 重叠=0；列起点=[11.3]

@@ -1,0 +1,39 @@
+{
+  "tag": "after",
+  "page": "/overview",
+  "base": "http://127.0.0.1:5299",
+  "shots": [
+    {
+      "w": 1440,
+      "fp": "shots/q10-duty-1440-after-fullpage.png",
+      "tp": "shots/q10-duty-1440-after-tall.png",
+      "metrics": {
+        "VW": 1440,
+        "scrollWidth": 1440,
+        "scrollHeight": 900,
+        "clientHeight": 900,
+        "docLevelOverflow": false,
+        "textLen": 1576
+      }
+    },
+    {
+      "w": 375,
+      "fp": "shots/q10-duty-375-after-fullpage.png",
+      "tp": "shots/q10-duty-375-after-tall.png",
+      "metrics": {
+        "VW": 375,
+        "scrollWidth": 375,
+        "scrollHeight": 900,
+        "clientHeight": 900,
+        "docLevelOverflow": false,
+        "textLen": 1582
+      }
+    }
+  ],
+  "whoami": {
+    "status": 200,
+    "ok": true
+  },
+  "error": null,
+  "dutyMounted": true
+}

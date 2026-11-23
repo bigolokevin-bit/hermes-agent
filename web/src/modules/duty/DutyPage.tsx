@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { copyTextToClipboard } from "@/lib/clipboard";
 import {
   activity24,
+  blockersTotal,
   buildBlockers,
   buildCost,
   buildReadiness,
@@ -18,7 +19,7 @@ import {
   runTotals,
   trendSummary,
 } from "./aggregate";
-import { beijing, beijingHour, beijingWeekday, dashed, duration, shortId, usd } from "./format";
+import { beijing, beijingHour, beijingWeekday, dashed, duration, employeeLabel, shortId, usd } from "./format";
 import { runsCaliber } from "./runsCaliber";
 import {
   DUTY_STATUS_FILTERS,
@@ -28,7 +29,7 @@ import {
   type DutyStatusFilterId,
 } from "./dutyStatusFilter";
 import { DUTY_NOTES } from "./dutyNotes";
-import { AgentFleetRail } from "./AgentFleetRail";
+import { AgentFleetRail, FLEET_METRIC_REASONS } from "./AgentFleetRail";
 import type {
   ActivityBody,
   ApprovalRow,
@@ -43,7 +44,9 @@ import type {
   TaskRow,
 } from "./types";
 import type { ReadinessEvidence } from "./readiness";
-import { useDutyData } from "./useDutyData";
+import { useDutyData, type DutyData, type DutyLegKey } from "./useDutyData";
+import { deriveDutyHealth, healthChipText, healthChipTitle } from "./health";
+import { forcedStateOf } from "./usage";
 import {
   DEFAULT_DUTY_RANGE,
   DUTY_RANGES,
@@ -52,6 +55,14 @@ import {
   parseDutyRange,
 } from "./dutyRange";
 import { DUTY_GATES_OPEN, dutyGates, type DutyGates } from "./dutyGates";
+import {
+  DUTY_LIST_CAP,
+  NO_COUNT,
+  detailsListNote,
+  truncationClause,
+  viewAllText,
+  type ServerRowCount,
+} from "./dutySlots";
 import "./duty.css";
 
 type Tone = "default" | "destructive" | "outline" | "secondary" | "success" | "warning";
@@ -59,6 +70,9 @@ type Tone = "default" | "destructive" | "outline" | "secondary" | "success" | "w
 /** One gate set for every action on the page; see dutyGates.ts. */
 const DutyGatesContext = createContext<DutyGates>(DUTY_GATES_OPEN);
 const useDutyGates = () => useContext(DutyGatesContext);
+
+/** Q10 条目3：三张列表明细的卡外展示上限；超出部分披露「另有 N 条」。 */
+const LIST_CAP = 3;
 
 function CopyRid({ id, testId = "ov6-rid-copy" }: { id: string; testId?: string }) {
   const [state, setState] = useState<"idle" | "done" | "failed">("idle");
@@ -111,10 +125,16 @@ function StateLine({
   if (state.k === "error") {
     /* UI-B 错误态组合：人话标题在外，技术句（HTTP 语义的 message）折叠进「详情」；
      * rid 复制入口保持可见可复制；重试=卡内唯一实心主操作（刷新条的「再试」
-     * 不在卡内、且两错误腿不同层，不与之争主操作位）。 */
+     * 不在卡内、且两错误腿不同层，不与之争主操作位）。
+     * DU-05① 标题分档：未接入 / 无权限 / 读取失败三套词各说各的，互不混用。 */
+    const title = state.notWired
+      ? "这一块的数据源未接入"
+      : state.status === 401 || state.status === 403
+        ? "这一块你没有权限查看"
+        : "这一块没有读取成功";
     return (
       <div className="duty-error" role="alert">
-        <p className="duty-error-title">这一块没有读取成功</p>
+        <p className="duty-error-title">{title}</p>
         <p className="duty-req">
           {state.requestId ? (
             <>
@@ -200,6 +220,8 @@ function HCard({
             }
           >
             数据截至 {stamp.shown ?? "—（北京时间）"} · 来源 {stamp.source}
+            {/* DU-07①③：缺采集时刻的原因不许只活在 title 里——缺数「—」＋原因上屏。 */}
+            {stamp.shown ? null : ` · 原因：${stamp.reason ?? "上游响应没有带采集时间"}`}
           </p>
         ) : null}
         {children}
@@ -238,16 +260,18 @@ function asOfOf(x: unknown): string | null {
   return null;
 }
 
-function legReason(legs: readonly { k: string }[]): string {
+function legReason(legs: readonly Loadable<unknown>[]): string {
   if (legs.some((l) => l.k === "loading")) return "数据还在读取";
-  if (legs.some((l) => l.k === "error")) return "本次读取失败，取不到采集时间";
+  // DU-05① 口径不混用：not_wired 形制的腿缺采集时间是因为「未接入」，不是「失败」。
+  if (legs.some((l) => l.k === "error" && !l.notWired)) return "本次读取失败，取不到采集时间";
+  if (legs.some((l) => l.k === "error")) return "数据来源未接入，取不到采集时间";
   return "上游响应没有带采集时间";
 }
 
 function stampOf(
   raw: string | null,
   source: string,
-  legs: readonly { k: string }[],
+  legs: readonly Loadable<unknown>[],
 ): { shown: string | null; source: string; reason?: string } {
   return { shown: raw ? beijing(raw) : null, source, reason: raw ? undefined : legReason(legs) };
 }
@@ -327,7 +351,20 @@ function readinessView(
   return { readiness, rawStamp, state };
 }
 
-function ReadinessCard({ employees, stats, evidence, onRetry }: { employees: Loadable<EmployeeRow[]>; stats: Loadable<Record<string, unknown>>; evidence?: Loadable<ReadinessEvidence>; onRetry: () => void }) {
+function ReadinessCard({
+  employees,
+  stats,
+  evidence,
+  count = NO_COUNT,
+  onRetry,
+}: {
+  employees: Loadable<EmployeeRow[]>;
+  stats: Loadable<Record<string, unknown>>;
+  evidence?: Loadable<ReadinessEvidence>;
+  /** 员工目录响应真带回的行数（DU-02①）；拿不到就写「数量未提供」。 */
+  count?: ServerRowCount;
+  onRetry: () => void;
+}) {
   const { readiness, rawStamp, state } = readinessView(employees, stats, evidence);
   return (
     <HCard
@@ -335,25 +372,38 @@ function ReadinessCard({ employees, stats, evidence, onRetry }: { employees: Loa
       testid="duty-ready"
       stamp={stampOf(rawStamp, "员工目录与运行统计", [employees, stats])}
       action={
-        <Link className="duty-link duty-card-foot" to="/employees" data-testid="duty-route-readiness">
-          查看明细
+        <Link
+          className="duty-link duty-card-foot"
+          to="/employees"
+          data-testid="duty-route-readiness"
+          title={truncationClause(count)}
+        >
+          {viewAllText(count.serverRows)}
           <ArrowRight className="h-3.5 w-3.5" />
         </Link>
       }
     >
       <StateLine state={state} onRetry={onRetry} loadingText="正在汇总各项检查…">
         <p className="duty-num" data-testid="ov6-ready-value" data-duty-testid="duty-ready-value">
+          {/* 三分态（DU-01⑤）：不给单一权威百分比——已确认/待核实/未达按真证据划分。 */}
           <span data-testid="ov6-kpi-employees" data-duty-testid="duty-kpi-employees">
-            {readiness.confirmed === null ? "—" : readiness.confirmed}
+            {readiness.buckets === null
+              ? "—"
+              : `已确认 ${readiness.buckets.confirmed} · 待核实 ${readiness.buckets.pending} · 未达 ${readiness.buckets.failing}`}
           </span>
           <em>{readiness.total === null ? "—" : `共 ${readiness.total} 在册`}</em>
         </p>
-        <p className="duty-say">
+        <p className="duty-say" data-testid="duty-ready-denominator" title={readiness.denominatorNote ?? undefined}>
           {readiness.unknownGates > 0
-            ? `还有 ${readiness.unknownGates} 项检查的数据源没有接入，暂不能判定`
+            ? `还有 ${readiness.unknownGates} 项检查的数据源没有接入，暂不能判定 — ${readiness.gates
+                .filter((g) => g.state === "unknown")
+                .map((g) => g.whyNot)
+                .filter(Boolean)
+                .join("；")}`
             : readiness.confirmed === readiness.total
               ? "各项检查全部通过，在册员工均可上岗"
               : `最容易卡住的一项：${readiness.narrowest ? readiness.narrowest.name : "待核实"}`}
+          {readiness.denominatorNote ? `（分母口径：${readiness.denominatorNote}）` : ""}
         </p>
       </StateLine>
     </HCard>
@@ -368,6 +418,8 @@ function DutyDetailsSection({
   employees,
   stats,
   evidence,
+  employeesCount = NO_COUNT,
+  runsCount = NO_COUNT,
   todayStats,
   todayRuns,
   day,
@@ -384,6 +436,9 @@ function DutyDetailsSection({
   employees: Loadable<EmployeeRow[]>;
   stats: Loadable<Record<string, unknown>>;
   evidence?: Loadable<ReadinessEvidence>;
+  /** 三卡深链的 N 与折叠区必须同源：这两个计数由页面透传，本区不另算。 */
+  employeesCount?: ServerRowCount;
+  runsCount?: ServerRowCount;
   todayStats: Loadable<RunStatsBody>;
   todayRuns: Loadable<RunRow[]>;
   day: Loadable<BudgetBody>;
@@ -399,6 +454,11 @@ function DutyDetailsSection({
 }) {
   const { readiness } = readinessView(employees, stats, evidence);
   const totals = todayStats.k === "ready" ? runTotals(todayStats.data) : null;
+  // 三格从今日运行卡里搬来（DU-02②：主数字每卡一个），算法与卡上原形一致。
+  const rate =
+    totals && totals.runs && totals.runs > 0 && totals.succeeded !== null
+      ? Math.round((totals.succeeded / totals.runs) * 100)
+      : null;
   const caliberAsOf = todayStats.k === "ready" ? asOfOf(todayStats.data) : null;
   const caliber = runsCaliber({
     duty: totals ? totals.runs : null,
@@ -407,6 +467,9 @@ function DutyDetailsSection({
   });
   const shownRuns =
     todayRuns.k === "ready" ? filterDutyRuns(todayRuns.data, statusFilterId) : [];
+  const listedRuns = Math.min(shownRuns.length, DUTY_LIST_CAP);
+  const statusFilterLabel =
+    DUTY_STATUS_FILTERS.find((f) => f.id === statusFilterId)?.label ?? "";
   const cost = buildCost(
     day.k === "ready" ? day.data : null,
     month.k === "ready" ? month.data : null,
@@ -419,10 +482,16 @@ function DutyDetailsSection({
     blockedTasks.k === "ready" ? blockedTasks.data : null,
     approvals.k === "ready" ? approvals.data : null,
   );
-  const pendingRows = pendingView(
+  const blockerTotal = blockersTotal(
+    failedRuns.k === "ready" ? failedRuns.data : null,
+    blockedTasks.k === "ready" ? blockedTasks.data : null,
+    approvals.k === "ready" ? approvals.data : null,
+  );
+  const pending = pendingView(
     approvalStats.k === "ready" ? approvalStats.data : null,
     approvals.k === "ready" ? approvals.data : null,
-  ).rows;
+  );
+  const pendingRows = pending.rows;
   const recentRows = recentRuns.k === "ready" ? recentRuns.data : [];
   return (
     <details className="duty-details" data-testid="duty-details" data-duty-testid="duty-details">
@@ -438,15 +507,49 @@ function DutyDetailsSection({
           }
         >
           <h3>可上岗检查项</h3>
+          <p className="duty-say" data-testid="duty-gates-net" data-duty-testid="duty-gates-net">
+            {readiness.netNote}
+          </p>
+          <p className="duty-note" data-testid="duty-details-readiness-count">
+            {employeesCount.serverRows === null
+              ? "员工目录返回条数未提供"
+              : `员工目录${truncationClause(employeesCount)}`}{" "}
+            · 检查项 {readiness.gates.length} 项
+            {employeesCount.unreadable && employeesCount.unreadable > 0
+              ? ` · ${employeesCount.unreadable} 条读不成行形，不计入分母`
+              : ""}
+          </p>
           <div className="duty-gates">
             {readiness.gates.map((g) => (
               <GateRow key={g.key} gate={g} narrowest={readiness.narrowest?.key === g.key} />
             ))}
           </div>
           <p className="duty-note">各项检查独立判定，标「待核实」的项既不算通过也不算不通过。</p>
+          <p className="duty-note" data-testid="duty-denominator-caliber" data-duty-testid="duty-denominator-caliber">
+            {readiness.denomNote}
+          </p>
         </section>
         <section className="duty-details-block" data-testid="duty-details-runs">
           <h3>今日运行明细</h3>
+          {/* DU-02②：这三格原来占着今日运行卡的 KPI 位，卡上只留运行数一个主数字。 */}
+          <div className="duty-kpis duty-details-kpis" data-testid="duty-today-runs-kpis">
+            <span className="duty-kpi">
+              <b data-testid="duty-kpi-success-rate">{rate === null ? "—" : `${rate}%`}</b>
+              <i>成功率</i>
+            </span>
+            <span className="duty-kpi">
+              <b data-testid="duty-kpi-running">{totals ? dashed(totals.running) : "—"}</b>
+              <i>在跑</i>
+            </span>
+            <span className="duty-kpi">
+              <b data-testid="duty-kpi-failed">{totals ? dashed(totals.failed) : "—"}</b>
+              <i>失败</i>
+            </span>
+          </div>
+          <p className="duty-note" data-testid="duty-details-runs-count">
+            {`运行明细${detailsListNote(runsCount, listedRuns)}`}
+            {statusFilterId === "all" ? "" : ` · 当前按「${statusFilterLabel}」筛选`}
+          </p>
           <div className="duty-ranges duty-status-filters" role="group" aria-label="运行状态筛选">
             {DUTY_STATUS_FILTERS.map((f) => (
               <button
@@ -464,7 +567,7 @@ function DutyDetailsSection({
           {todayRuns.k === "ready" && todayRuns.data.length > 0 ? (
             shownRuns.length > 0 ? (
               <ul className="duty-list" data-testid="duty-details-run-list">
-                {shownRuns.slice(0, 8).map((run) => (
+                {shownRuns.slice(0, DUTY_LIST_CAP).map((run) => (
                   <li key={run.runId}>
                     <RunStatusBadge status={run.status} />
                     <Link className="duty-row-title" to={`/runs/?run=${encodeURIComponent(run.runId)}`}>
@@ -501,6 +604,12 @@ function DutyDetailsSection({
         </section>
         <section className="duty-details-block" data-testid="duty-details-cost">
           <h3>成本覆盖明细</h3>
+          <p className="duty-note" data-testid="duty-details-cost-count">
+            {cost.covered === null
+              ? "当日账本返回行数未提供"
+              : `当日账本本轮返回 ${cost.covered} 行`}
+            {cost.missing > 0 ? ` · 服务端报缺 ${cost.missing} 人金额` : ""}
+          </p>
           <ul className="duty-list">
             <li>
               <span className="duty-row-title">已覆盖</span>
@@ -520,11 +629,18 @@ function DutyDetailsSection({
           {blockerItems.length === 0 ? (
             <p className="duty-say">当前没有读到的阻塞项</p>
           ) : (
-            <ul className="duty-list duty-list-block">
-              {blockerItems.map((item, i) => (
-                <BlockerRow key={`${item.object}-${i}`} item={item} />
-              ))}
-            </ul>
+            <>
+              <ul className="duty-list duty-list-block">
+                {blockerItems.slice(0, LIST_CAP).map((item, i) => (
+                  <BlockerRow key={`${item.object}-${i}`} item={item} />
+                ))}
+              </ul>
+              {blockerTotal > blockerItems.length ? (
+                <p className="duty-note" data-testid="duty-blockers-more">
+                  另有 {blockerTotal - blockerItems.length} 条未在本页列出；「查看全部 ({blockerTotal})」为本次读到的总数（各源单页上限 3，非全量）。
+                </p>
+              ) : null}
+            </>
           )}
         </section>
         <section className="duty-details-block" data-testid="duty-details-pending">
@@ -532,14 +648,26 @@ function DutyDetailsSection({
           {pendingRows.length === 0 ? (
             <p className="duty-say">今天没有待你审批的事</p>
           ) : (
-            <ul className="duty-list">
-              {pendingRows.map((a) => (
-                <li key={a.approvalId}>
-                  <span className="duty-row-title">{a.title ?? "未命名审批"}</span>
-                  <span className="duty-row-time">{beijing(a.createdAt)}</span>
-                </li>
-              ))}
-            </ul>
+            <>
+              <ul className="duty-list">
+                {pendingRows.slice(0, LIST_CAP).map((a) => (
+                  <li key={a.approvalId}>
+                    <span className="duty-row-title">{a.title ?? "未命名审批"}</span>
+                    <span className="duty-row-time">{beijing(a.createdAt)}</span>
+                  </li>
+                ))}
+              </ul>
+              {(() => {
+                // 总数优先取服务端 pending 计数；没读到就按本页条数如实说。
+                const total = pending.pending ?? pendingRows.length;
+                const shown = Math.min(pendingRows.length, LIST_CAP);
+                return total > shown ? (
+                  <p className="duty-note" data-testid="duty-pending-more">
+                    另有 {total - shown} 条未在本页列出。
+                  </p>
+                ) : null;
+              })()}
+            </>
           )}
         </section>
         <section className="duty-details-block" data-testid="duty-details-recent">
@@ -547,17 +675,59 @@ function DutyDetailsSection({
           {recentRows.length === 0 ? (
             <p className="duty-say">最近没有运行记录</p>
           ) : (
-            <ul className="duty-list">
-              {recentRows.slice(0, 8).map((run) => (
-                <li key={run.runId}>
-                  <Link className="duty-row-title font-mono" to={`/runs/?run=${encodeURIComponent(run.runId)}`}>
-                    {shortId(run.runId)}
-                  </Link>
-                  <RunStatusBadge status={run.status} />
-                  <span className="duty-row-time">{duration(run.startedAt, run.endedAt)}</span>
+            <>
+              <ul className="duty-list">
+                {recentRows.slice(0, DUTY_LIST_CAP).map((run) => (
+                  <li key={run.runId}>
+                    <Link className="duty-row-title font-mono" to={`/runs/?run=${encodeURIComponent(run.runId)}`}>
+                      {shortId(run.runId)}
+                    </Link>
+                    <RunStatusBadge status={run.status} />
+                    <span className="duty-row-time">{duration(run.startedAt, run.endedAt)}</span>
+                  </li>
+                ))}
+              </ul>
+              {recentRows.length >= DUTY_LIST_CAP ? (
+                <p className="duty-note" data-testid="duty-recent-more">
+                  本页最多读取 {DUTY_LIST_CAP} 条已触顶，可能还有更多未列出；「查看全部」的计数为本次读到的条数，非全量。
+                </p>
+              ) : null}
+            </>
+          )}
+        </section>
+        <section className="duty-details-block" data-testid="duty-details-fleet">
+          <h3>舰队轨明细</h3>
+          {/* DU-03①：2026-11-24 现网实测 /api/employees 键并集含 department（3 条中 2 条
+              为 null、1 条有值），能力标签列仍不在花名册；卡面第③层按工单裁定保持整层
+              省略（禁空壳、禁编造），说明句必须与真响应一致——工单原句「无数据源」对
+              department 不成立，已按实测改口径，偏差见 DONE-DU-03.md。 */}
+          <p className="duty-note" data-testid="duty-fleet-l3-note">
+            舰队轨第③层未显示：花名册无能力标签列，部门多为空值（待 /api/matrix 扩列）
+          </p>
+          {/* DU-07③：卡面两个「—」的原因原来只活在格上 title（悬停才有）。判据不许关键信息
+              只存在于 :hover——这里在既有载体（卡外折叠区）给**同串**出口，措辞取自
+              AgentFleetRail 的 FLEET_METRIC_REASONS 单一事实源，页面不另写第二套。 */}
+          <p className="duty-note" data-testid="duty-fleet-metric-note">
+            {FLEET_METRIC_REASONS.today} {FLEET_METRIC_REASONS.successRate}
+          </p>
+          {/* DU-07③：卡面 title 的另一半原文是「名字｜原始 employee_id」。屏上只给短码
+              （DU-03 裁定：屏上绝不裸 id），全值就必须有可点开的等价出口——本折叠明细
+              逐行给 名字＋ui-c-id 全值，与卡面 title 同串。 */}
+          {employees.k === "ready" && employees.data.length > 0 ? (
+            <ul className="duty-list duty-fleet-ids" data-testid="duty-fleet-id-list">
+              {employees.data.slice(0, DUTY_LIST_CAP).map((row) => (
+                <li key={row.employeeId}>
+                  <span>{employeeLabel(row.name, row.employeeId)}</span>
+                  <code className="ui-c-id duty-fleet-id" data-testid={`duty-fleet-id-${row.employeeId}`}>
+                    {row.employeeId}
+                  </code>
                 </li>
               ))}
             </ul>
+          ) : (
+            <p className="duty-note" data-testid="duty-fleet-id-empty">
+              花名册没有可列出的员工行，全值编号暂无法给出（不是没有编号）。
+            </p>
           )}
         </section>
       </div>
@@ -579,13 +749,20 @@ function RunStatusBadge({ status }: { status?: string }) {
   return <Badge tone={hit?.tone ?? "outline"}>{hit?.text ?? "—"}</Badge>;
 }
 
+/**
+ * 今日运行卡（DU-02 固定槽位）：标题 / 一个主数字（运行数）/ 一句状态 / 一个「查看全部 (N)」深链。
+ * 成功率·在跑·失败三格属明细，挪进卡外「今日运行明细」（信息一条不删），
+ * 卡高因此与数据行数无关。N 只取运行明细响应真带回的行数。
+ */
 function TodayRunsCard({
   stats,
   runs,
+  count = NO_COUNT,
   onRetry,
 }: {
   stats: Loadable<RunStatsBody>;
   runs: Loadable<RunRow[]>;
+  count?: ServerRowCount;
   onRetry: () => void;
   statusFilterId: DutyStatusFilterId;
   onChooseStatus: (next: DutyStatusFilterId) => void;
@@ -595,37 +772,40 @@ function TodayRunsCard({
     totals && totals.runs && totals.runs > 0 && totals.succeeded !== null
       ? Math.round((totals.succeeded / totals.runs) * 100)
       : null;
+  const say =
+    totals === null
+      ? "运行窗口统计没有返回合计，先不报数（缺数不当 0）"
+      : `成功率 ${rate === null ? "—" : `${rate}%`} · 在跑 ${dashed(totals.running)} · 失败 ${dashed(
+          totals.failed,
+        )}，逐条见卡外「今日运行明细」`;
+  const truncated = truncationClause(count);
   return (
     <HCard
       title="今日运行"
       testid="duty-today-runs"
       stamp={stampOf(stats.k === "ready" ? asOfOf(stats.data) : null, "运行窗口统计", [stats, runs])}
       action={
-        <Link className="duty-link duty-card-foot" to="/runs" data-testid="duty-route-today-runs">
-          查看明细
+        <Link
+          className="duty-link duty-card-foot"
+          to="/runs"
+          data-testid="duty-route-today-runs"
+          title={truncated}
+        >
+          {viewAllText(count.serverRows)}
           <ArrowRight className="h-3.5 w-3.5" />
         </Link>
       }
     >
       <StateLine state={stats} onRetry={onRetry}>
-        <div className="duty-kpis" data-testid="duty-today-runs-kpis">
-          <span className="duty-kpi">
-            <b data-testid="ov6-kpi-runs" data-duty-testid="duty-kpi-runs">{totals ? dashed(totals.runs) : "—"}</b>
-            <i>运行数</i>
+        <p className="duty-num" data-testid="ov6-today-runs-num" data-duty-testid="duty-today-runs-num">
+          <span data-testid="ov6-kpi-runs" data-duty-testid="duty-kpi-runs">
+            {totals ? dashed(totals.runs) : "—"}
           </span>
-          <span className="duty-kpi">
-            <b data-testid="duty-kpi-success-rate">{rate === null ? "—" : `${rate}%`}</b>
-            <i>成功率</i>
-          </span>
-          <span className="duty-kpi">
-            <b data-testid="duty-kpi-running">{totals ? dashed(totals.running) : "—"}</b>
-            <i>在跑</i>
-          </span>
-          <span className="duty-kpi">
-            <b data-testid="duty-kpi-failed">{totals ? dashed(totals.failed) : "—"}</b>
-            <i>失败</i>
-          </span>
-        </div>
+          <em>次 · 今日</em>
+        </p>
+        <p className="duty-say" data-testid="duty-today-runs-say">
+          {say}｜{truncated}
+        </p>
       </StateLine>
     </HCard>
   );
@@ -648,6 +828,11 @@ function CostCard({
     month.k === "ready" ? month.data : null,
     null,
   );
+  // 账本腿的行数直接取响应自带的 items（未归一化、未相加），缺形状就是 null。
+  const ledgerNote =
+    cost.covered === null
+      ? "当日账本返回行数未提供"
+      : `当日账本本轮返回 ${cost.covered} 行`;
   const state = day.k === "error" ? day : month.k === "error" ? month : day;
   return (
     <HCard
@@ -655,8 +840,13 @@ function CostCard({
       testid="duty-today-cost"
       stamp={stampOf(day.k === "ready" ? asOfOf(day.data) : null, "当日成本账本", [day, month])}
       action={
-        <Link className="duty-link duty-card-foot" to="/metrics" data-testid="duty-route-cost">
-          查看明细
+        <Link
+          className="duty-link duty-card-foot"
+          to="/metrics"
+          data-testid="duty-route-cost"
+          title={ledgerNote}
+        >
+          {viewAllText(cost.covered)}
           <ArrowRight className="h-3.5 w-3.5" />
         </Link>
       }
@@ -666,10 +856,11 @@ function CostCard({
           {usd(cost.dayUsd)}
           <em>今日</em>
         </p>
-        <p className="duty-say">
+        <p className="duty-say" data-testid="duty-today-cost-say">
           {cost.partial
             ? `账本还缺 ${cost.missing || "若干"} 人的金额，先不报合计`
             : `本月已花 ${usd(cost.monthUsd)}`}
+          ｜{ledgerNote}
         </p>
       </StateLine>
     </HCard>
@@ -783,6 +974,7 @@ function TrendCard({
       <Button
         size="sm"
         outlined
+        className="duty-disclosure-toggle"
         aria-expanded={tableOpen}
         aria-controls="duty-trend-table"
         data-testid="duty-trend-table-toggle"
@@ -841,7 +1033,18 @@ function TrendCard({
   );
 }
 
+/**
+ * DU-07①③：热力格的逐时读数原文。title（悬停）与「以文字查看」列表共用这**一份**
+ * 字符串——逐时计数不许只活在悬停里，窄屏也不靠色块猜数。
+ */
+function heatCellText(c: { hour: number; count: number | null; future: boolean }): string {
+  return c.future
+    ? `${String(c.hour).padStart(2, "0")}:00 · 未发生`
+    : `${String(c.hour).padStart(2, "0")}:00 · ${c.count ?? "—"} 次`;
+}
+
 function ActivityCard({ activity, onRetry, label }: { activity: Loadable<ActivityBody>; onRetry: () => void; label: string }) {
+  const [textOpen, setTextOpen] = useState(false);
   const view = activity24(
     activity.k === "ready" ? activity.data : null,
     beijingWeekday(),
@@ -867,7 +1070,7 @@ function ActivityCard({ activity, onRetry, label }: { activity: Loadable<Activit
             <span
               key={c.hour}
               className={cn("duty-cell", `is-l${c.level}`, c.future && "is-future")}
-              title={`${String(c.hour).padStart(2, "0")}:00 · ${c.future ? "未发生" : c.count ?? "—"} 次`}
+              title={heatCellText(c)}
             />
           ))}
         </div>
@@ -879,6 +1082,28 @@ function ActivityCard({ activity, onRetry, label }: { activity: Loadable<Activit
           <span>24</span>
         </div>
         <p className="duty-note">近 7 天同小时分布 · 当前时段之后留空 · 不补零</p>
+        {/* DU-07①③：热力图的文字替代腿（与趋势「以表格查看」同形制）。逐时读数
+            与格上 title 同串，点开即得——关键数字不再只存在于悬停。 */}
+        <Button
+          size="sm"
+          outlined
+          className="duty-disclosure-toggle"
+          aria-expanded={textOpen}
+          aria-controls="duty-activity-text"
+          data-testid="duty-activity-text-toggle"
+          onClick={() => setTextOpen((v) => !v)}
+        >
+          {textOpen ? "收起逐时文字" : "以文字查看逐时"}
+        </Button>
+        {textOpen ? (
+          <ul className="duty-heat-text" id="duty-activity-text" data-testid="duty-activity-text-list">
+            {view.cells.map((c) => (
+              <li key={c.hour} data-testid={`duty-activity-text-${c.hour}`}>
+                {heatCellText(c)}
+              </li>
+            ))}
+          </ul>
+        ) : null}
       </StateLine>
     </HCard>
   );
@@ -935,15 +1160,31 @@ function BlockersCard({
     tasks.k === "ready" ? tasks.data : null,
     approvals.k === "ready" ? approvals.data : null,
   );
+  // 截断前的读到总数：卡面恒列前 3，按钮数字不得冒充成截断后的 shown。
+  const total = blockersTotal(
+    runs.k === "ready" ? runs.data : null,
+    tasks.k === "ready" ? tasks.data : null,
+    approvals.k === "ready" ? approvals.data : null,
+  );
   const firstError = [runs, tasks, approvals].find((x) => x.k === "error");
   const allReady = runs.k === "ready" && tasks.k === "ready" && approvals.k === "ready";
+  // DU-07③×L0 裁定（merge 3113707983）：title 原文上屏的判据不变，但句子必须
+  // 采纳线侧 DU-02 诚实口径——各读口上限 3、共读到 total、列前 LIST_CAP、其余标
+  // 「另有 N 条」，禁写「已在本卡逐条列出」（该话术已被 duty.q10-parity 条目3 判失真）。
+  // 链接文案恢复「查看全部 (N)」，N=blockersTotal 真数。title 与屏上句共用这一份串。
+  const blockersLinkNote = `任务页不接受 status 筛选参数，这里去任务板。本次各读口上限 3 条，共读到 ${total} 项阻塞；卡面列前 ${LIST_CAP} 条，其余如实标注「另有 N 条」，不说「已逐条列出」。`;
   return (
     <HCard
       title="阻塞"
       testid="duty-blockers" stamp={stampOf(null, "运行·任务·审批明细", [runs, tasks, approvals])}
       action={
-        <Link className="duty-link" to="/work" data-testid="duty-route-blockers" title="任务页不接受 status 筛选参数，这里去任务板；阻塞项已在本卡逐条列出。">
-          查看全部
+        <Link
+          className="duty-link"
+          to="/work"
+          data-testid="duty-route-blockers"
+          title={blockersLinkNote}
+        >
+          查看全部{total > 0 ? ` (${total})` : ""}
           <ArrowRight className="h-3.5 w-3.5" />
         </Link>
       }
@@ -964,6 +1205,7 @@ function BlockersCard({
         <p className="duty-say" data-testid="duty-blockers-say">{`${items.length} 项阻塞 · 逐条见下方「阻塞明细」`}</p>
       )}
       <p className="duty-note">阻塞卡五字段：阻塞对象 · 卡在哪一步 · 等谁 · 已等时长 · 下一步动作</p>
+      <p className="duty-note" data-testid="duty-blockers-link-note">{blockersLinkNote}</p>
     </HCard>
   );
 }
@@ -984,8 +1226,17 @@ function PendingCard({
       title="待我处理"
       testid="duty-pending" stamp={stampOf(stats.k === "ready" ? asOfOf(stats.data) : null, "审批统计", [stats, approvals])}
       action={
-        <Link className="duty-link" to="/approvals" data-testid="duty-route-pending">
-          查看全部
+        <Link
+          className="duty-link"
+          to="/approvals"
+          data-testid="duty-route-pending"
+          title={
+            view.pending === null
+              ? "审批总数未读到：不带数字的查看全部只跳审批页，不假造计数。"
+              : `待审批总数 ${view.pending}（服务端统计）；本页最多列前 ${LIST_CAP} 条，其余标「另有 N 条」。`
+          }
+        >
+          查看全部{view.pending === null ? "" : ` (${view.pending})`}
           <ArrowRight className="h-3.5 w-3.5" />
         </Link>
       }
@@ -1017,8 +1268,13 @@ function RecentCard({ runs, onRetry }: { runs: Loadable<RunRow[]>; onRetry: () =
       title="最近运行"
       testid="duty-recent" stamp={stampOf(null, "运行明细", [runs])}
       action={
-        <Link className="duty-link duty-card-foot" to="/runs" data-testid="duty-route-recent">
-          查看全部
+        <Link
+          className="duty-link duty-card-foot"
+          to="/runs"
+          data-testid="duty-route-recent"
+          title={`最近运行每次最多读取 ${LIST_CAP} 条；查看全部 ${runs.k === "ready" ? `(${runs.data.length})` : ""}为本次读到的条数${runs.k === "ready" && runs.data.length >= LIST_CAP ? "，已触顶，非全量" : ""}，总数以运行记录页为准。`}
+        >
+          查看全部{runs.k === "ready" && runs.data.length > 0 ? ` (${runs.data.length})` : ""}
           <ArrowRight className="h-3.5 w-3.5" />
         </Link>
       }
@@ -1117,12 +1373,56 @@ function DutyNotes() {
   );
 }
 
+/**
+ * DU-05①：页头 health chip。三态词表按主仓 `_overview` 真形制钉死（见 health.ts）：
+ * ok=正常 / degraded=降级（列「读取失败」的腿名）/ 未接入（列 not_wired 的腿名）。
+ * 「未接入」永不写进失败清单，「读取失败」永不借用「未接入」的说法；缺读数画「—」。
+ */
+function DutyHealthChip({ data }: { data: DutyData }) {
+  const view = deriveDutyHealth(data);
+  const tone =
+    view.level === "ok" ? "success" : view.level === "degraded" ? "warning" : "default";
+  return (
+    <span
+      className="duty-health-chip"
+      data-testid="duty-health-chip"
+      data-duty-testid="duty-health-chip"
+      data-state={view.level}
+      title={healthChipTitle(view)}
+    >
+      <Badge tone={tone as Tone}>{healthChipText(view)}</Badge>
+    </span>
+  );
+}
+
+/** DU-05③：`?state=` 复现说明——形制是复现的，不是服务的回答；去掉参数即真读。 */
+function DutyReproNote({ state }: { state: string }) {
+  return (
+    <p className="duty-note" data-testid="duty-repro-note" title="复现腿不发起真实请求，去掉 ?state= 即为真实读取">
+      {`强制态：?state=${state} — 这是用地址参数复现出来的界面形制，不是服务此刻的回答；复现腿不发起真实请求，去掉 ?state= 即为真实读取。`}
+    </p>
+  );
+}
+
 export default function DutyPage() {
   const [params, setParams] = useSearchParams();
   const rangeId = parseDutyRange(params.get(DUTY_RANGE_PARAM));
   const statusFilterId = parseDutyStatusFilter(params.get(DUTY_STATUS_PARAM));
   const range = dutyRange(rangeId);
-  const { data, reload, loading, refreshState } = useDutyData(rangeId);
+  // DU-05③：四态强制读**查询串**（BrowserRouter 下这才是真接线；旧实现只看
+  // window.location.hash，现网 `/overview?state=…` 根本进不了分支）。hash 形制
+  // 保留兼容（壳侧 bridge 的 in-hash 写法）。非法值=忽略，回到真实读取。
+  const forced = (() => {
+    const fromSearch = params.get("state");
+    if (fromSearch) return forcedStateOf(fromSearch.trim().toLowerCase());
+    const hash = typeof window === "undefined" ? "" : window.location.hash;
+    const match = hash.match(/[?&]state=([^&]+)/);
+    return match ? forcedStateOf(decodeURIComponent(match[1]).trim().toLowerCase()) : null;
+  })();
+  // OM-04 的读取开关占位为默认档：值班台要渲染活动热力，activity 照常请求。
+  const { data, counts, reload, loading, refreshState } = useDutyData(rangeId, {}, forced);
+  // DU-05②：单腿重试的入口在 hook 上；复现态时它是空操作（不发请求）。
+  const retry = (keys: readonly DutyLegKey[]) => () => refreshState.retryLegs(keys);
   const chooseRange = (next: string) => {
     const query = new URLSearchParams(params);
     if (next === DEFAULT_DUTY_RANGE) query.delete(DUTY_RANGE_PARAM);
@@ -1140,56 +1440,26 @@ export default function DutyPage() {
   const loadableValues = Object.values(data);
   const allFailed =
     !loading && loadableValues.length > 0 && loadableValues.every((v) => v.k === "error");
-  const gates = dutyGates({ loading, refreshing: refreshState.refreshing, allFailed });
-
-  const forced = (() => {
-    const match = window.location.hash.match(/[?&]state=([^&]+)/);
-    return match ? decodeURIComponent(match[1]) : "";
-  })();
-  if (forced === "loading") {
-    return (
-      <div className="duty-page" data-testid="ov6-page" data-duty-testid="duty-page">
-        <p className="duty-note">正在读取值班数据…</p>
-        <p className="duty-note" data-testid="ov6-asof" title="取不到采集时间：数据还在读取；不用本机时间顶替">采集时刻 —（北京时间）</p>
-      </div>
-    );
-  }
-  if (forced === "empty") {
-    return (
-      <div className="duty-page" data-testid="ov6-page" data-duty-testid="duty-page">
-        <div className="duty-empty">
-          <p>当前没有可显示的值班数据。</p>
-          <p>数据源返回为空，可能尚未接入。</p>
-          <p className="duty-note" data-testid="ov6-asof" title="取不到采集时间：上游响应没有带采集时间；不用本机时间顶替">采集时刻 —（北京时间）</p>
-          <Link className="duty-link" to="/employees">去员工列表</Link>
-        </div>
-      </div>
-    );
-  }
-  if (forced === "error") {
-    return (
-      <div className="duty-page" data-testid="ov6-page" data-duty-testid="duty-page">
-        <div className="duty-empty">
-          <p>值班数据暂时不可用。</p>
-          <p>请求编号：未提供</p>
-          <p className="duty-note" data-testid="ov6-asof" title="取不到采集时间：本次读取失败；不用本机时间顶替">采集时刻 —（北京时间）</p>
-          <Button outlined onClick={reload}>重试</Button>
-        </div>
-      </div>
-    );
-  }
+  const gates = dutyGates({
+    loading,
+    refreshing: refreshState.refreshing,
+    allFailed,
+    cooling: refreshState.cooling,
+  });
   const totalEmployees =
     data.stats.k === "ready" ? lifecycleTotal(data.stats.data) : null;
 
   return (
     <DutyGatesContext.Provider value={gates}>
     <div className="duty-page" data-testid="ov6-page" data-duty-testid="duty-page">
-      <span data-testid="duty-gates-scope" data-gates="refresh,retry,copy,link" hidden />
+      <span data-testid="duty-gates-scope" data-gates="refresh,retry,copy,link,exportDaily" hidden />
+      {forced !== null ? <DutyReproNote state={forced} /> : null}
       <header className="duty-head">
         <div className="duty-title">
           <ShieldCheck className="h-5 w-5" aria-hidden />
           <span className="duty-title-name">值班台</span>
           <span>运营总览 · 只读</span>
+          <DutyHealthChip data={data} />
           {(() => {
             // R41: ANY source that carries its own collection stamp counts;
             // the newest (maximum) stamp goes on screen. Only when every
@@ -1245,17 +1515,42 @@ export default function DutyPage() {
           <Button
             size="sm"
             outlined
+            className="duty-refresh-btn"
             onClick={refreshState.refresh}
-            disabled={!gates.refresh.enabled}
+            // DU-06①：aria-disabled 而不是原生 disabled——原生 disabled 的按钮拿不到
+            // 焦点，读屏与键盘都读不到那句原因；这里让钮可达但按下去不发请求
+            // （useDutyData 的节流与单飞锁就是那句原因的牙齿）。
+            aria-disabled={!gates.refresh.enabled}
             title={gates.refresh.title ?? undefined}
             aria-busy={refreshState.refreshing}
             data-testid="duty-refresh"
+            data-cooling={refreshState.cooling ? "true" : "false"}
             prefix={
               <RefreshCw className={cn("h-3.5 w-3.5", refreshState.refreshing && "animate-spin")} />
             }
           >
             刷新
           </Button>
+          {/* Q10 条目6：导出日报没有后端写接口——goto 型占位。aria-disabled
+              （非原生 disabled）保焦点可辨；data-planned 与「计划中」明示。 */}
+          <Button
+            size="sm"
+            outlined
+            aria-disabled={!gates.exportDaily.enabled}
+            data-planned={gates.exportDaily.enabled ? undefined : ""}
+            title={gates.exportDaily.title ?? undefined}
+            onClick={() => {
+              if (!gates.exportDaily.enabled) return;
+            }}
+            data-testid="duty-export-daily"
+          >
+            导出日报
+          </Button>
+          {!gates.exportDaily.enabled ? (
+            <span className="duty-meta" data-testid="duty-export-daily-hint">
+              计划中
+            </span>
+          ) : null}
         </div>
       </header>
 
@@ -1263,6 +1558,13 @@ export default function DutyPage() {
         {refreshState.refreshing ? (
           <p className="duty-note" role="status" data-testid="duty-busy-note">
             更新中…（区块先保留上一次读到的数据）
+          </p>
+        ) : null}
+        {!refreshState.refreshing && refreshState.cooling ? (
+          // DU-06①：节流窗口的原因句要**看得见**，不能只挂在 title 上
+          // （DU-07 判据③：关键信息不只存在于 :hover）。句子出自 dutyGates 单点。
+          <p className="duty-note" role="status" data-testid="duty-cooling-note">
+            {gates.refresh.title}
           </p>
         ) : null}
         {!refreshState.refreshing && refreshState.refreshAt ? (
@@ -1311,11 +1613,18 @@ export default function DutyPage() {
       </div>
 
       <div className="duty-grid duty-grid-3">
-        <ReadinessCard employees={data.employees} stats={data.stats} evidence={data.readiness} onRetry={reload} />
+        <ReadinessCard
+          employees={data.employees}
+          stats={data.stats}
+          evidence={data.readiness}
+          count={counts.employees}
+          onRetry={reload}
+        />
         <TodayRunsCard
           stats={data.todayStats}
           runs={data.todayRuns}
-          onRetry={reload}
+          count={counts.todayRuns}
+          onRetry={retry(["todayStats"])}
           statusFilterId={statusFilterId}
           onChooseStatus={chooseStatus}
         />
@@ -1324,7 +1633,7 @@ export default function DutyPage() {
           month={data.budgetMonth}
           employees={data.employees}
           totalEmployees={totalEmployees}
-          onRetry={reload}
+          onRetry={retry(["budgetDay", "budgetMonth"])}
         />
       </div>
 
@@ -1336,6 +1645,8 @@ export default function DutyPage() {
         employees={data.employees}
         stats={data.stats}
         evidence={data.readiness}
+        employeesCount={counts.employees}
+        runsCount={counts.todayRuns}
         todayStats={data.todayStats}
         todayRuns={data.todayRuns}
         day={data.budgetDay}
@@ -1354,7 +1665,7 @@ export default function DutyPage() {
       <div className="duty-grid duty-grid-2">
         <TrendCard
           stats={data.stats14}
-          onRetry={reload}
+          onRetry={retry(["stats14"])}
           label={range.label}
           windowNote={
             range.tsRange === "30d" && range.days < 30
@@ -1362,13 +1673,13 @@ export default function DutyPage() {
               : null
           }
         />
-        <ActivityCard activity={data.activity} onRetry={reload} label={range.label} />
+        <ActivityCard activity={data.activity} onRetry={retry(["activity"])} label={range.label} />
       </div>
 
       <div className="duty-grid duty-grid-3">
         <BlockersCard runs={data.failedRuns} tasks={data.blockedTasks} approvals={data.approvals} onRetry={reload} />
-        <PendingCard stats={data.approvalStats} approvals={data.approvals} onRetry={reload} />
-        <RecentCard runs={data.recentRuns} onRetry={reload} />
+        <PendingCard stats={data.approvalStats} approvals={data.approvals} onRetry={retry(["approvalStats"])} />
+        <RecentCard runs={data.recentRuns} onRetry={retry(["recentRuns"])} />
       </div>
 
       <DutyNotes />

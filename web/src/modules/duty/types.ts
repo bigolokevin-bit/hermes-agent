@@ -5,10 +5,23 @@
  * a missing key renders "—" and never 0. Unknown enum values stay unknown.
  */
 
+/** 员工目录单页读取上限；分母口径句在触顶时明写「非全量」（Q10 条目5）。 */
+export const EMPLOYEES_PAGE_LIMIT = 100;
+
 export type Loadable<T> =
   | { k: "loading" }
   | { k: "ready"; data: T }
-  | { k: "error"; status: number; message: string; requestId: string | null };
+  | {
+      k: "error";
+      status: number;
+      message: string;
+      requestId: string | null;
+      /**
+       * DU-05①：404/503 + `not_wired` 信封是正当的「未接入」，不是取数失败
+       * （fetchKnowledgeProbe 同口径，api.ts `isNotWiredError` 判定）。缺省 false。
+       */
+      notWired?: boolean;
+    };
 
 export function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v);
@@ -209,16 +222,37 @@ export interface GateView {
    * itself is not wired (the gate then states 未接入 with a reason). */
   asOf: string | null;
   inferred?: boolean;
+  /** state=unknown 时在卡上直出的「为什么给不出」一句话结论；其它态为 null。 */
+  whyNot?: string | null;
+}
+
+/** 可上岗三分态（工单 DU-01⑤）：按每个员工的真实证据归类，三桶之和=分母行数。 */
+export interface ReadinessBuckets {
+  /** 四门全部显式 pass 的人数。 */
+  confirmed: number;
+  /** 至少一门证据未回答或门本身 unknown（含扇出未覆盖行）的人数。 */
+  pending: number;
+  /** 至少一门有显式 fail 真读数的人数（真读数，不是猜测）。 */
+  failing: number;
 }
 
 export interface ReadinessView {
   total: number | null;
   active: number | null;
   confirmed: number | null;
+  /** 三分态；目录未到位时 null（此时不给任何计数，连 0 也不给）。 */
+  buckets: ReadinessBuckets | null;
+  /** 分母口径的可见披露：单页加载与逐员工扇出覆盖 n/N。 */
+  denominatorNote: string | null;
   unknownGates: number;
   narrowest: GateView | null;
   deltaToNext: number | null;
+  /** Q10 条目4：最窄限制门置顶，其余保持原序。 */
   gates: GateView[];
+  /** Q10 条目4：四门叠加净效果的人话句（交集句）。 */
+  netNote: string;
+  /** Q10 条目5：比率分母的来源口径句——单页触顶时明写「非全量」。 */
+  denomNote: string;
 }
 
 export interface BlockerItem {

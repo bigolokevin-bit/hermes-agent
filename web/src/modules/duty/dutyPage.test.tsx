@@ -134,13 +134,13 @@ describe("DutyPage", () => {
       if (
         url.includes("/workstations") ||
         url.includes("/effective-config") ||
-        url.includes("/knowledge/documents") ||
+        url.includes("/knowledge/citations") ||
         (url.includes("/approvals") && url.includes("status=all"))
       ) {
         return Promise.reject(
           new ApiError("source not wired", {
             status: 404,
-            body: '{"code":"documents.read_not_wired"}',
+            body: '{"code":"knowledge.not_wired","asOf":"2026-11-23T15:11:05Z"}',
             url,
             requestId: "req-unknown-gate",
           }),
@@ -154,8 +154,14 @@ describe("DutyPage", () => {
       expect(text).toContain(title);
     }
     expect(container.querySelectorAll('[data-card="duty"]')).toHaveLength(8);
-    expect(container.querySelector('[data-duty-testid="duty-ready-value"]')?.textContent).toContain("—");
+    // 三分态取代单一权威数字：证据没回答的行归「待核实」，绝不冒充百分比。
+    const readyValue = container.querySelector('[data-duty-testid="duty-ready-value"]')?.textContent ?? "";
+    expect(readyValue).toContain("已确认 0 · 待核实 1 · 未达 0");
+    expect(readyValue).not.toMatch(/\d+(\.\d+)?%/);
     expect(text).toContain("待核实");
+    expect(container.querySelector('[data-testid="duty-ready-denominator"]')?.textContent ?? "").toContain(
+      "分母口径：目录已加载 1 条",
+    );
     expect(text).not.toContain("HTTP");
   });
 
@@ -415,11 +421,19 @@ describe("DutyPage action gates", () => {
     const ready = dutyGates({ loading: false, refreshing: false, allFailed: false });
     expect(ready.retry.enabled && ready.copy.enabled && ready.refresh.enabled).toBe(true);
 
+    // DU-06① 改了这一相：在飞不再是「能点但悄悄吞掉」，而是 aria-disabled＋原因句。
     const busy = dutyGates({ loading: false, refreshing: true, allFailed: false });
-    expect(busy.refresh.enabled).toBe(true);
+    expect(busy.refresh.enabled).toBe(false);
+    expect(busy.refresh.title).toContain("这一轮读完成前重复点没有意义");
     expect(busy.retry.enabled).toBe(false);
     expect(busy.copy.enabled).toBe(false);
     expect(busy.retry.title).toContain("更新中");
+
+    // DU-06①：读完但还在最小间隔窗口内，同一颗钮给另一句原因。
+    const cooling = dutyGates({ loading: false, refreshing: false, allFailed: false, cooling: true });
+    expect(cooling.refresh.enabled).toBe(false);
+    expect(cooling.refresh.title).toContain("不能刷新");
+    expect(cooling.refresh.title).toContain("5 秒");
 
     const down = dutyGates({ loading: false, refreshing: false, allFailed: true });
     expect(down.refresh.enabled).toBe(true);
@@ -756,7 +770,11 @@ describe("DutyPage runs caliber", () => {
 
     const diff = runsCaliber({ duty: 3, metrics: 5, dutyAsOfText: "2026-11-18 14:00" });
     expect(diff.verdict).toBe("different");
-    expect(diff.compare).toBe("本卡 3 · /metrics 5｜口径不同，见 title");
+    // DU-07③：原句「口径不同，见 title」把结论的唯一载体放在悬停里，判据不允许；
+    // 改为自足句（完整相遇条件仍留在 title 作补充）。这是本轮对既有断言的**唯一**
+    // 措辞更新，理由见 DONE-DU-07.md。
+    expect(diff.compare).toBe("本卡 3 · /metrics 5｜两条读口不同，不为对上改任一侧取数");
+    expect(diff.compare).not.toContain("见 title");
 
     const missing = runsCaliber({ duty: null, metrics: null, dutyAsOfText: "—" });
     expect(missing.verdict).toBe("missing");
@@ -1273,22 +1291,28 @@ describe("DutyPage 三卡固定槽位返工", () => {
     const cards = firstRow();
     expect(cards, "三卡在场").toHaveLength(3);
     for (const card of cards) {
-      for (const banned of [".duty-gates", ".duty-list", ".duty-ranges", ".duty-runs-caliber"]) {
+      for (const banned of [".duty-gates", ".duty-list", ".duty-ranges", ".duty-runs-caliber", ".duty-kpis"]) {
         expect(card.querySelector(banned), "卡内不许再放明细：" + banned).toBeNull();
       }
+      expect(card.querySelectorAll(".duty-num").length, "每卡恰好一个主数字").toBe(1);
+      expect(card.querySelectorAll(".duty-say").length, "每卡恰好一句状态").toBe(1);
       expect(card.querySelectorAll("[data-testid], [data-duty-testid]").length).toBeGreaterThan(0);
-      const foot = card.querySelector(".duty-card-foot");
-      expect(foot, "每卡一个查看明细深链").not.toBeNull();
-      expect(foot?.tagName, "深链必须是链接（走明细页/抽屉，不是删信息）").toBe("A");
+      const foot = card.querySelectorAll(".duty-card-foot");
+      expect(foot, "每卡一个查看明细深链").toHaveLength(1);
+      expect(foot[0].tagName, "深链必须是链接（走明细页/抽屉，不是删信息）").toBe("A");
+      expect(foot[0].textContent ?? "", "深链带服务端真给行数或明说未提供").toMatch(
+        /查看全部 \((\d+|数量未提供)\)/,
+      );
     }
     const runs = cards[1];
-    expect(runs.querySelectorAll(".duty-kpi"), "今日运行=四格 KPI").toHaveLength(4);
-    const kpiTexts = Array.from(runs.querySelectorAll(".duty-kpi")).map((el) => el.textContent ?? "");
-    for (const label of ["运行数", "成功率", "在跑", "失败"]) {
-      expect(kpiTexts.join("|"), "四格标签：" + label).toContain(label);
-    }
+    expect(runs.querySelector('[data-testid="ov6-kpi-runs"]')?.textContent, "今日运行主数字=运行数").toContain("2");
     const details = container.querySelector<HTMLElement>('[data-testid="duty-details"]');
     expect(details, "卡外明细折叠区必须在场").not.toBeNull();
+    const moved = details?.querySelector('[data-testid="duty-today-runs-kpis"]');
+    expect(moved, "今日运行的三格 KPI 挪到卡外（信息不删）").not.toBeNull();
+    for (const label of ["成功率", "在跑", "失败"]) {
+      expect(moved?.textContent ?? "", "卡外三格标签：" + label).toContain(label);
+    }
     expect(details?.querySelector(".duty-gates"), "检查项挪到卡外").not.toBeNull();
     expect(details?.querySelector('[data-testid="duty-runs-caliber"]'), "口径挪到卡外").not.toBeNull();
     expect(details?.querySelector('[data-testid="duty-status-all"]'), "状态筛选挪到卡外").not.toBeNull();

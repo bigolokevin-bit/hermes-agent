@@ -216,6 +216,14 @@ export function EmptyPanel({
   );
 }
 
+/**
+ * 工程值唯一出口：`technical` 与 `detailLines`（AP-06 ①：如 409 expired 的
+ * `details.expiredFrom`）合并成「详情」折的行集。两者都只在这条折里出现，
+ * 屏面（句子/请求号）永不含裸码与裸枚举。
+ */
+const disclosureLines = (failure: FailureCopy): string[] =>
+  [failure.technical, ...(failure.detailLines ?? [])].filter((line): line is string => Boolean(line));
+
 export function ErrorPanel({
   failure,
   onRetry,
@@ -244,7 +252,7 @@ export function ErrorPanel({
         </div>
         <p className="max-w-prose break-words text-xs text-muted-foreground">{failure.sentence}</p>
         <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="apv-state-rid"><RequestIdCopyField requestId={failure.requestId} fallback={APPROVAL_RID_FALLBACK} /></p>
-        {failure.technical ? <DetailsDisclosure lines={[failure.technical]} testId={`${testId}-details`} /> : null}
+        {failure.technical || failure.detailLines?.length ? <DetailsDisclosure lines={disclosureLines(failure)} testId={`${testId}-details`} /> : null}
         <span data-testid="apv-state-retry">
           <Button size="sm" className="shrink-0 whitespace-nowrap" onClick={onRetry} data-testid={retryTestId ?? `${testId}-retry`} prefix={<RefreshCw className="h-3.5 w-3.5" />}>
             {APPROVAL_RETRY_LABEL}
@@ -300,7 +308,7 @@ export function InlineFailure({
       <p className="max-w-prose break-words text-xs text-destructive">{`${action}：${failure.sentence}`}</p>
       <p className="min-w-0 break-words text-xs text-muted-foreground"><RequestIdCopyField requestId={failure.requestId} fallback={APPROVAL_RID_FALLBACK} /></p>
       <div className="flex flex-wrap items-center gap-2">
-        {failure.technical ? <DetailsDisclosure lines={[failure.technical]} testId={`${testId}-details`} /> : null}
+        {failure.technical || failure.detailLines?.length ? <DetailsDisclosure lines={disclosureLines(failure)} testId={`${testId}-details`} /> : null}
         {onRetry ? (
           <Button size="sm" outlined onClick={onRetry}>
             {retryLabel}
