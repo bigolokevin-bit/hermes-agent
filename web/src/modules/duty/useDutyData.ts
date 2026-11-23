@@ -24,6 +24,7 @@ import { beijingDayWindow, daysAgoWindow } from "./format";
 import { NO_COUNT, type ServerRowCount } from "./dutySlots";
 import type { RowPage } from "./api";
 import { diffDuty, type DutyDelta } from "./dutyDelta";
+import { DUTY_REFRESH_MIN_INTERVAL_MS } from "./dutyGates";
 import { DEFAULT_DUTY_RANGE, dutyRange, type DutyRangeId } from "./dutyRange";
 import type { ForcedState } from "./usage";
 import type {
@@ -109,7 +110,12 @@ const EMPTY_DUTY_COUNTS: DutyCounts = {
 
 export interface DutyRefresh {
   refreshing: boolean;
-  /** Read time of the last successful refresh; never a data time. */
+  /**
+   * DU-06①：上一批全量读已经读完，但距今还没到 `DUTY_REFRESH_MIN_INTERVAL_MS`。
+   * 窗口内的刷新点击一条请求都不发，界面用 aria-disabled＋原因句说明为什么。
+   */
+  cooling: boolean;
+  /** Read time of the last successful batch; never a data time. */
   refreshAt: string | null;
   refreshError: { message: string; requestId: string | null } | null;
   /** Card-by-card changes between the last two batches; null until a refresh succeeds. */
@@ -209,6 +215,16 @@ const NO_DEPS: LegDeps = { employeeIds: [], denominatorIds: [] };
 /** 行页腿（重试时要顺带回填服务端真行数）：目录与今日运行。 */
 function isRowsCountLeg(key: DutyLegKey): boolean {
   return key === "employees" || key === "todayRuns";
+}
+
+/**
+ * 一批里第一条没回答的腿。首读与手动刷共用同一个判据：有腿失败就不记读取时刻
+ * （DU-06②「失败时不更新」），谁也不另定一套「算不算成功」。
+ */
+function failedLeg(batch: DutyData): Extract<Loadable<unknown>, { k: "error" }> | undefined {
+  return Object.values(batch).find(
+    (v): v is Extract<Loadable<unknown>, { k: "error" }> => v.k === "error",
+  );
 }
 
 const emptyEvidence = (knowledgeWired: boolean): ReadinessEvidence => ({
@@ -388,6 +404,7 @@ export function useDutyData(
   const [data, setData] = useState<DutyData>(() => (forced !== null ? forcedBatch(forced) : initial()));
   const [counts, setCounts] = useState<DutyCounts>(EMPTY_DUTY_COUNTS);
   const [refreshing, setRefreshing] = useState(false);
+  const [cooling, setCooling] = useState(false);
   const [refreshAt, setRefreshAt] = useState<string | null>(null);
   const [refreshError, setRefreshError] = useState<DutyRefresh["refreshError"]>(null);
   const [refreshDelta, setRefreshDelta] = useState<DutyDelta | null>(null);
@@ -399,6 +416,13 @@ export function useDutyData(
   const rangeRef = useRef<DutyRangeId>(rangeId);
   const rangeVersionRef = useRef(0);
   const mountedRef = useRef(false);
+  // DU-06③：一整批全量读（首读或手动刷新）的代号。同一时刻只允许一批活着，
+  // 晚到的上一批既不写屏也不放锁——锁归最新那批解。
+  const batchSeqRef = useRef(0);
+  // DU-06①：上一批**读成功**的全量读起点。节流窗口从这里算，没读到东西的
+  // 失败批不开窗口（失败后的「再试」是出路，不能被窗口挡住）。
+  const lastBatchStartRef = useRef(0);
+  const cooldownTimerRef = useRef<number | null>(null);
   // DU-05②：正在单腿重试的卡名。同一腿的重试不叠加，批次刷新在飞时也不另发。
   const retryingRef = useRef<Set<DutyLegKey>>(new Set());
   const forcedRef = useRef(forced);
@@ -410,6 +434,37 @@ export function useDutyData(
   useEffect(() => {
     dataRef.current = data;
   }, [data]);
+
+  const clearCooldown = useCallback(() => {
+    if (cooldownTimerRef.current !== null) {
+      window.clearTimeout(cooldownTimerRef.current);
+      cooldownTimerRef.current = null;
+    }
+    lastBatchStartRef.current = 0;
+    setCooling(false);
+  }, []);
+
+  /**
+   * DU-06①：一批**读成功**后开节流窗口。窗口从这批的起点算起，所以落地时只剩
+   * `间隔 − 批耗时`；已经过完就干脆不开（下一次点照常发）。失败批不开窗口——
+   * 失败后的「再试」是出路，不能自己被门挡住。
+   */
+  const armCooldown = useCallback((startedAt: number) => {
+    const remaining = DUTY_REFRESH_MIN_INTERVAL_MS - (Date.now() - startedAt);
+    if (remaining <= 0) return;
+    lastBatchStartRef.current = startedAt;
+    setCooling(true);
+    if (cooldownTimerRef.current !== null) window.clearTimeout(cooldownTimerRef.current);
+    cooldownTimerRef.current = window.setTimeout(() => {
+      cooldownTimerRef.current = null;
+      setCooling(false);
+    }, remaining);
+  }, []);
+
+  // 卸载收掉定时器：窗口不该在页面没了之后还点着 state。
+  useEffect(() => () => {
+    if (cooldownTimerRef.current !== null) window.clearTimeout(cooldownTimerRef.current);
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -427,16 +482,24 @@ export function useDutyData(
     setData(initial());
     setCounts(EMPTY_DUTY_COUNTS);
     setRefreshDelta(null);
+    clearCooldown();
+    // DU-06③：首读也是一整批全量读，占住同一把单飞锁。原实现只锁手动刷新，
+    // 首读还在飞时点刷新会再起一批 ⇒ mount 期间并发两遍全量读。
+    const seq = ++batchSeqRef.current;
+    busyRef.current = true;
+    // OM-04④：首读同样经带消费者开关的新签名，与手动刷新/重试同一条路。
     void collect(rangeRef.current, { activity: wantActivityRef.current }).then(({ batch, counts: next }) => {
-      if (alive) {
-        setData(batch);
-        setCounts(next);
-      }
+      // 被更新的一批取代：既不写屏，也不替那一批解锁（锁归最新一批）。
+      if (seq !== batchSeqRef.current) return;
+      busyRef.current = false;
+      if (!alive) return;
+      setData(batch);
+      setCounts(next);
     });
     return () => {
       alive = false;
     };
-  }, [nonce, forced]);
+  }, [nonce, forced, clearCooldown]);
 
   // Switching the range re-reads only the two readers whose answer depends on
   // it. Everything else in the batch (directory, staff stats, queue, month
@@ -455,6 +518,8 @@ export function useDutyData(
     // A refresh still in flight belongs to the old window: drop it whole.
     versionRef.current += 1;
     busyRef.current = false;
+    // 那一批被作废了，它欠的节流窗口也不该继续挡用户——窗口只属于真读到的一批。
+    clearCooldown();
     setRefreshing(false);
     setRefreshError(null);
     setRefreshDelta(null);
@@ -477,11 +542,14 @@ export function useDutyData(
 
   const refresh = useCallback(() => {
     if (forcedRef.current !== null) return; // 复现腿不发真实请求
-    if (busyRef.current) return;
+    if (busyRef.current) return; // 单飞锁：这一批还没落地
+    // DU-06①：最小间隔——上一批读成功到现在不足窗口，这一条请求根本不发。
+    if (Date.now() - lastBatchStartRef.current < DUTY_REFRESH_MIN_INTERVAL_MS) return;
     busyRef.current = true;
     setRefreshing(true);
     setRefreshError(null);
     setRefreshDelta(null);
+    const startedAt = Date.now();
     const before = dataRef.current;
     const version = versionRef.current;
     void collect(rangeRef.current, { activity: wantActivityRef.current }).then(({ batch, counts: next }) => {
@@ -492,26 +560,28 @@ export function useDutyData(
       // A failed card drops out of the comparison (it reads as missing, not 0),
       // the cards that did answer still report their change.
       setRefreshDelta(diffDuty(before, batch));
-      const failed = Object.values(batch).find(
-        (v): v is Extract<Loadable<unknown>, { k: "error" }> => v.k === "error",
-      );
+      const failed = failedLeg(batch);
       if (failed) {
         setRefreshError({ message: failed.message, requestId: failed.requestId });
       } else {
+        // DU-06②：只有整批没失败才记真实读取时刻；失败批保留上一批的时刻（不更新）。
         setRefreshAt(new Date().toISOString());
+        // DU-06①：读到东西的这批开窗口；失败批不开，「再试」立刻可用。
+        armCooldown(startedAt);
       }
       busyRef.current = false;
       setRefreshing(false);
     });
-  }, []);
+  }, [armCooldown]);
 
   const cancelRefresh = useCallback(() => {
     versionRef.current += 1;
     busyRef.current = false;
+    clearCooldown();
     setRefreshing(false);
     setRefreshError(null);
     setRefreshDelta(null);
-  }, []);
+  }, [clearCooldown]);
 
   const reload = useCallback(() => {
     cancelRefresh();
@@ -611,6 +681,7 @@ export function useDutyData(
     loading: loadingAny,
     refreshState: {
       refreshing,
+      cooling,
       refreshAt,
       refreshError,
       refreshDelta,

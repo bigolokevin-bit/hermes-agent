@@ -581,6 +581,14 @@
 }
 
 /* duty refresh: one batch, old numbers stay until the new ones land. */
+/* DU-06①：节流窗口内与在飞时的刷新钮要**看得出来**「现在点没用」。
+   刻意不用原生 disabled——原生 disabled 的按钮拿不到焦点，读屏和键盘都念不出
+   dutyGates 那句原因；这里用 aria-disabled＋这一条形制，牙齿在 useDutyData
+   （按下去既不发请求也不排队）。 */
+.duty-refresh-btn[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 .duty-refreshbar { display: flex; flex-direction: column; gap: 6px; }
 .duty-refresh-error {
   display: flex;

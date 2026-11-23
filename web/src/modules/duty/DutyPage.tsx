@@ -1373,7 +1373,12 @@ export default function DutyPage() {
   const loadableValues = Object.values(data);
   const allFailed =
     !loading && loadableValues.length > 0 && loadableValues.every((v) => v.k === "error");
-  const gates = dutyGates({ loading, refreshing: refreshState.refreshing, allFailed });
+  const gates = dutyGates({
+    loading,
+    refreshing: refreshState.refreshing,
+    allFailed,
+    cooling: refreshState.cooling,
+  });
   const totalEmployees =
     data.stats.k === "ready" ? lifecycleTotal(data.stats.data) : null;
 
@@ -1443,11 +1448,16 @@ export default function DutyPage() {
           <Button
             size="sm"
             outlined
+            className="duty-refresh-btn"
             onClick={refreshState.refresh}
-            disabled={!gates.refresh.enabled}
+            // DU-06①：aria-disabled 而不是原生 disabled——原生 disabled 的按钮拿不到
+            // 焦点，读屏与键盘都读不到那句原因；这里让钮可达但按下去不发请求
+            // （useDutyData 的节流与单飞锁就是那句原因的牙齿）。
+            aria-disabled={!gates.refresh.enabled}
             title={gates.refresh.title ?? undefined}
             aria-busy={refreshState.refreshing}
             data-testid="duty-refresh"
+            data-cooling={refreshState.cooling ? "true" : "false"}
             prefix={
               <RefreshCw className={cn("h-3.5 w-3.5", refreshState.refreshing && "animate-spin")} />
             }
@@ -1481,6 +1491,13 @@ export default function DutyPage() {
         {refreshState.refreshing ? (
           <p className="duty-note" role="status" data-testid="duty-busy-note">
             更新中…（区块先保留上一次读到的数据）
+          </p>
+        ) : null}
+        {!refreshState.refreshing && refreshState.cooling ? (
+          // DU-06①：节流窗口的原因句要**看得见**，不能只挂在 title 上
+          // （DU-07 判据③：关键信息不只存在于 :hover）。句子出自 dutyGates 单点。
+          <p className="duty-note" role="status" data-testid="duty-cooling-note">
+            {gates.refresh.title}
           </p>
         ) : null}
         {!refreshState.refreshing && refreshState.refreshAt ? (

@@ -421,11 +421,19 @@ describe("DutyPage action gates", () => {
     const ready = dutyGates({ loading: false, refreshing: false, allFailed: false });
     expect(ready.retry.enabled && ready.copy.enabled && ready.refresh.enabled).toBe(true);
 
+    // DU-06① 改了这一相：在飞不再是「能点但悄悄吞掉」，而是 aria-disabled＋原因句。
     const busy = dutyGates({ loading: false, refreshing: true, allFailed: false });
-    expect(busy.refresh.enabled).toBe(true);
+    expect(busy.refresh.enabled).toBe(false);
+    expect(busy.refresh.title).toContain("这一轮读完成前重复点没有意义");
     expect(busy.retry.enabled).toBe(false);
     expect(busy.copy.enabled).toBe(false);
     expect(busy.retry.title).toContain("更新中");
+
+    // DU-06①：读完但还在最小间隔窗口内，同一颗钮给另一句原因。
+    const cooling = dutyGates({ loading: false, refreshing: false, allFailed: false, cooling: true });
+    expect(cooling.refresh.enabled).toBe(false);
+    expect(cooling.refresh.title).toContain("不能刷新");
+    expect(cooling.refresh.title).toContain("5 秒");
 
     const down = dutyGates({ loading: false, refreshing: false, allFailed: true });
     expect(down.refresh.enabled).toBe(true);
