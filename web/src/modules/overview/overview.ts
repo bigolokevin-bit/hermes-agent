@@ -158,6 +158,7 @@ export interface TrendPoint {
   day: string;
   label: string;
   runs: number | null;
+  failed: number | null;
 }
 
 const DAY_LABEL = new Intl.DateTimeFormat('zh-CN', {
@@ -194,6 +195,7 @@ export function trendPoints(
           ? `${HOUR_LABEL.format(date)}时`
           : DAY_LABEL.format(date),
       runs: typeof b.runs === 'number' && !Number.isNaN(b.runs) ? b.runs : null,
+      failed: typeof b.failed === 'number' && !Number.isNaN(b.failed) ? b.failed : null,
     };
   });
 }

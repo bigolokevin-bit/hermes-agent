@@ -324,12 +324,26 @@ export function OverviewView({
               ? '读取中…'
               : `${rangeDef.label}内接口没有返回任何${bucketUnit}桶，这里不放柱子图。`}
           </div>
+        ) : points.every((p) => p.runs === null) ? (
+          <div className="ov5-empty-line" data-testid="ov6-trend-empty">
+            {`${rangeDef.label}内接口返回的${bucketUnit}桶没有可用的运行数，这里不放柱子图。`}
+          </div>
+        ) : points.every((p) => p.runs === 0) ? (
+          <div className="ov5-empty-line" data-testid="ov6-trend-empty">
+            {`${rangeDef.label}内接口真数为 0，还没有运行记录，这里不放柱子图。`}
+          </div>
         ) : (
           <div className="ov5-bars" data-testid="ov6-bars">
             {points.map((p) => (
-              <div className="ov5-bar" key={p.day} title={`${p.label} · 运行 ${p.runs === null ? '未接' : p.runs}`}>
+              <div
+                className={`ov5-bar${p.runs === null ? ' is-missing' : ''}`}
+                key={p.day}
+                title={`${p.label} · 运行 ${p.runs === null ? '未接' : p.runs} · 失败 ${p.failed === null ? '未接' : p.failed}`}
+              >
                 <span className="ov5-bar-track">
-                  <i style={{ height: p.runs === null ? '2%' : `${Math.max(2, Math.min(100, (p.runs / Math.max(1, ...points.map((x) => x.runs ?? 0)))) * 100)}%` }} />
+                  {p.runs !== null && p.runs > 0 ? (
+                    <i style={{ height: `${Math.max(2, Math.min(100, (p.runs / Math.max(1, ...points.map((x) => x.runs ?? 0)))) * 100)}%` }} />
+                  ) : null}
                 </span>
                 <em>{p.label}</em>
               </div>

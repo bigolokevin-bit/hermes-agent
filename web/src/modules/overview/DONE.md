@@ -65,11 +65,12 @@ observer 第三轮（OM-03 五列网格）判定 PASS，另记 1440 五列变窄
 
 ## 测试与构建
 
-- `cd web && node_modules/.bin/vitest run src/modules/overview` → **17 passed / 17**
-  （OverviewModulePage.test 11 + overview.window.test 6）
+- `cd web && node_modules/.bin/vitest run src/modules/overview` → **26 passed / 26**
+  （OverviewModulePage.test 11 + overview.window.test 6 + overview.trend.test 4 + overview.gaps.test 5）
   （合同：forced 态零请求；只打两端口且 bucket=day；真 0 带来源原文；失败率同源 20%；
   summary 挂→各卡未接入+编号+重试；今日窗挂只影响运行卡；全挂整页错误声明不编造；
-  采集时间行；日桶渲染；原文面板无 innerHTML；OM-03/10 五卡等宽+健康卡真来源钉）
+  采集时间行；日桶渲染；原文面板无 innerHTML；OM-03/10 五卡等宽+健康卡真来源钉；
+  OM-04 四档深链/切窗计数/回落说明；OM-05/06 趋势桶契约与缺字段诚实线）
 - `cd web && node_modules/.bin/vite build` → 通过（产物 `<tree>/hermes_cli/web_dist`）。
 
 ## OM-02 前提复核（2026-11-23 21:2x 现网实测，未动主仓 BFF）
@@ -106,6 +107,27 @@ OM-02 可径直标 VERIFIED（腿已在）。P-OM-3 的「workbench 0 命中」�
 - 硬门二 `scripts/lint-fake-success.mjs` 在 l0-board/fork/l7-ops 均不存在（全盘 find 无果）：
   以测试合同替代闸门——null→「未接」、真 0 必附接口来源原文、无 fixture 上屏；建议 L0 补该脚本。
 - 取证：`overview-1440.png`（五档 pill 在列）、`overview-range7d.png`（近 7 天窗实测脸）。
+
+## OM-06 趋势数据契约（桶数与柱子一一对应，缺桶不画假柱）
+
+- `trendPoints` 每桶新增 `failed: number | null`；柱子渲染规则：
+  **runs 为 null 的桶** → `.ov5-bar.is-missing`（只有轨道无柱体），**runs 真 0 的桶**同样不放假柱体；
+  仅 `runs > 0` 才按 `runs / max(非null runs)` 归一画柱高（不再用 2% 占位高度冒充读数）。
+- 全桶 null → 空态句「…桶没有可用的运行数，这里不放柱子图。」且 `ov6-bars` 不存在；
+  全桶真 0 → 空态句「…内接口真数为 0，还没有运行记录，这里不放柱子图。」（OM-06 DoD 点名话术）。
+- **失败数只进悬停 title**：`label · 运行 n · 失败 n`（null 显示「未接」），柱体可见文本无「失败」字样
+  （测试钉死，防窄栏挤压换行）。
+- 测试：`overview.trend.test.tsx` 4 项——N 桶→N 柱且 is-missing 计数= null 桶数（[44,null,0,4]→4 柱、1 缺、仅 2 有柱体）；
+  全 null / 全 0 → bars=0 + 各自空态话术；失败只现于 title。
+
+## OM-05 KPI 缺字段/错误态诚实线（测试面补齐）
+
+- **缺字段 ≠ 链路故障**：`summary` ready 但字段缺失 → 卡面值恰为「未接」（非空串、非假 0、无 $0.00），
+  附注「接口未返回该读数；置 null，不以 0 冒充」，且**不出现**任何 `-issue`（错误态）节点；
+  summary 整体 error → 才出现「未接入：」+ 请求编号 + 重试按钮（两态在测试中分开断言）。
+- 运行卡缺 todayRuns → 注明「未用 run-stats 桶合计冒充（口径不同）」；失败率缺分母 → 「未接」不出 0%。
+- 健康卡缺 `healthStatus` → 「未接」，且全页无「n/6 来源正常」类合成计数话术。
+- 测试：`overview.gaps.test.tsx` 5 项（每缺口点名 testid 断言；模块用例总数 26 ≥ backlog 要求的 15）。
 
 ## 已知边界（如实上报，非缺陷隐瞒）
 
