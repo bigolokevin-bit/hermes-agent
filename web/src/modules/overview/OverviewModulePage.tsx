@@ -13,6 +13,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 
 import { fetchRunStats, load } from '../duty/api';
+import { DEFAULT_DUTY_RANGE, DUTY_RANGES, parseDutyRange, type DutyRangeId } from '../duty/dutyRange';
 import { beijing, beijingDayWindow, daysAgoWindow, usd } from '../duty/format';
 import type { Loadable, RunStatsBody } from '../duty/types';
 import { fetchOverviewSummary, type OverviewSummaryBody } from './api';
@@ -138,11 +139,28 @@ interface OverviewViewProps {
   state: OverviewState;
   todayDate: string;
   onRetry: () => void;
+  /** OM-04 时间窗档位；缺省 14 日（与旧页默认一致）。 */
+  rangeId?: DutyRangeId;
+  /** 非法 ?range= 原值：如实回显并说明已回落默认档。 */
+  rangeFallback?: string | null;
+  /** 切换档位（写 ?range=）；演示分支不传即只读。 */
+  onRange?: (id: DutyRangeId) => void;
   /** 演示状态（?state=）标记：本次未请求接口，一切读数显示未接。 */
   demo?: boolean;
 }
 
-export function OverviewView({ state, todayDate, onRetry, demo = false }: OverviewViewProps) {
+export function OverviewView({
+  state,
+  todayDate,
+  onRetry,
+  rangeId = DEFAULT_DUTY_RANGE,
+  rangeFallback = null,
+  onRange,
+  demo = false,
+}: OverviewViewProps) {
+  const rangeDef = DUTY_RANGES.find((r) => r.id === rangeId) ?? DUTY_RANGES[2];
+  const hourBucket = rangeDef.id === '24h';
+  const bucketUnit = hourBucket ? '小时' : '日';
   const kpis = useMemo(
     () =>
       buildKpis(
@@ -152,8 +170,12 @@ export function OverviewView({ state, todayDate, onRetry, demo = false }: Overvi
     [state.summary, state.today],
   );
   const points = useMemo(
-    () => trendPoints(state.trend.k === 'ready' ? state.trend.data : null),
-    [state.trend],
+    () =>
+      trendPoints(state.trend.k === 'ready' ? state.trend.data : null, {
+        bucket: hourBucket ? 'hour' : 'day',
+        cap: hourBucket ? 24 : rangeDef.days,
+      }),
+    [state.trend, hourBucket, rangeDef.days],
   );
 
   const summaryStamp = sourceStamp(state.summary);
@@ -186,6 +208,26 @@ export function OverviewView({ state, todayDate, onRetry, demo = false }: Overvi
           {asof ? `数据截至 ${asof}（北京时间）` : '数据截至时间未知'}
           <Link to="/overview" data-testid="ov6-back-duty">返回旧总览</Link>
         </p>
+        <nav className="ov5-range" aria-label="时间窗切换" data-testid="ov6-range">
+          {DUTY_RANGES.map((r) => (
+            <button
+              key={r.id}
+              type="button"
+              data-testid={`ov6-range-${r.id}`}
+              aria-pressed={r.id === rangeDef.id}
+              className={r.id === rangeDef.id ? 'is-active' : undefined}
+              onClick={() => onRange?.(r.id)}
+              disabled={!onRange}
+            >
+              {r.label}
+            </button>
+          ))}
+        </nav>
+        {rangeFallback ? (
+          <p className="ov5-note" data-testid="ov6-range-fallback">
+            时间窗「{rangeFallback}」不是可用档位，已按默认档（{rangeDef.label}）显示。
+          </p>
+        ) : null}
       </header>
 
       {allError ? (
@@ -265,10 +307,10 @@ export function OverviewView({ state, todayDate, onRetry, demo = false }: Overvi
         </section>
       )}
 
-      <section className="ov5-block" data-testid="ov6-trend">
+      <section className="ov5-block" data-testid="ov6-trend" aria-label={`${rangeDef.label}运行趋势`}>
         <header className="ov5-block-hd">
-          <span>近 14 日运行趋势（run-stats 日桶）</span>
-          <span className="ov5-kpi-src">GET /api/run-stats?from&to&bucket=day</span>
+          <span>{rangeDef.label}运行趋势（run-stats {bucketUnit}桶）</span>
+          <span className="ov5-kpi-src">GET /api/run-stats?from&to&bucket={hourBucket ? 'hour' : 'day'}</span>
         </header>
         {state.trend.k === 'error' ? (
           <div className="ov5-kpi-issue" data-testid="ov6-trend-issue" role="alert">
@@ -278,7 +320,9 @@ export function OverviewView({ state, todayDate, onRetry, demo = false }: Overvi
           </div>
         ) : points.length === 0 ? (
           <div className="ov5-empty-line" data-testid="ov6-trend-empty">
-            {state.trend.k === 'loading' ? '读取中…' : '未接到任何日桶，这里不放柱子图。'}
+            {state.trend.k === 'loading'
+              ? '读取中…'
+              : `${rangeDef.label}内接口没有返回任何${bucketUnit}桶，这里不放柱子图。`}
           </div>
         ) : (
           <div className="ov5-bars" data-testid="ov6-bars">
@@ -297,7 +341,7 @@ export function OverviewView({ state, todayDate, onRetry, demo = false }: Overvi
           今日桶计数 {todayBucketRun(state.today.k === 'ready' ? state.today.data : null, todayDate) === null
             ? '未接'
             : todayBucketRun(state.today.k === 'ready' ? state.today.data : null, todayDate)}（今日窗现查，
-            与上方 14 日窗分开请求）。
+            与上方{rangeDef.label}分开请求）。
         </p>
       </section>
 
@@ -325,40 +369,90 @@ export function OverviewView({ state, todayDate, onRetry, demo = false }: Overvi
 }
 
 export function OverviewModulePage() {
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   const forced = params.get('state');
   const [state, setState] = useState<OverviewState>(INITIAL);
-  const inFlight = useRef(0);
+  const summarySeq = useRef(0);
+  const trendSeq = useRef(0);
   // 北京日窗在挂载时现查；重试沿用同窗，跨午夜后的窗口由下次整页加载刷新。
   const win = useMemo(() => beijingDayWindow(), []);
-  const trendWin = useMemo(() => daysAgoWindow(13), []);
+  // OM-04：时间窗档位以 ?range= 深链为准，非法值回落默认档并给说明。
+  const rawRange = params.get('range');
+  const rangeId = parseDutyRange(rawRange);
+  const rangeFallback = rawRange && rawRange !== rangeId ? rawRange : null;
+  const rangeDef = DUTY_RANGES.find((r) => r.id === rangeId) ?? DUTY_RANGES[2];
+  const trendWin = useMemo(() => {
+    if (rangeDef.id === '24h') {
+      // 24h 档走 hour 桶（现网 run-stats bucket=hour 实测 200，空桶如实空态）。
+      const now = new Date();
+      return {
+        from: new Date(now.getTime() - 24 * 3600 * 1000).toISOString(),
+        to: now.toISOString(),
+        bucket: 'hour' as const,
+      };
+    }
+    const w = daysAgoWindow(rangeDef.days - 1);
+    return { ...w, bucket: 'day' as const };
+  }, [rangeDef]);
 
-  const loadAll = useCallback(async () => {
-    inFlight.current += 1;
-    const seq = inFlight.current;
-    const [s, t, tr] = await Promise.all([
+  const loadSummaryToday = useCallback(async () => {
+    summarySeq.current += 1;
+    const seq = summarySeq.current;
+    const [s, t] = await Promise.all([
       load(fetchOverviewSummary),
       load(() => fetchRunStats(win.from, win.to)),
-      load(() => fetchRunStats(trendWin.from, trendWin.to)),
     ]);
-    // 迟到的旧响应不得覆盖新结果（防闪烁规则）。
-    if (seq !== inFlight.current) return;
-    setState({ summary: s, today: t, trend: tr });
-  }, [win, trendWin]);
+    if (seq !== summarySeq.current) return; // 迟到的旧响应不得覆盖新结果（防闪烁规则）。
+    setState((prev) => ({ summary: s, today: t, trend: prev.trend }));
+  }, [win]);
+
+  const loadTrend = useCallback(async () => {
+    trendSeq.current += 1;
+    const seq = trendSeq.current;
+    setState((prev) => ({ ...prev, trend: { k: 'loading' } }));
+    const tr = await load(() => fetchRunStats(trendWin.from, trendWin.to, trendWin.bucket));
+    if (seq !== trendSeq.current) return;
+    setState((prev) => ({ ...prev, trend: tr }));
+  }, [trendWin]);
+
+  const retryAll = useCallback(() => {
+    void loadSummaryToday();
+    void loadTrend();
+  }, [loadSummaryToday, loadTrend]);
+
+  const selectRange = useCallback(
+    (id: string) => {
+      setParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.set('range', id);
+          return next;
+        },
+        { replace: true },
+      );
+    },
+    [setParams],
+  );
 
   useEffect(() => {
     if (forced === 'loading' || forced === 'empty' || forced === 'error') return;
-    void loadAll();
-  }, [loadAll, forced]);
+    void loadSummaryToday();
+  }, [loadSummaryToday, forced]);
+
+  // 换档只重发趋势腿：loadTrend 依赖 trendWin，档位变化即且仅即触发一次新请求。
+  useEffect(() => {
+    if (forced === 'loading' || forced === 'empty' || forced === 'error') return;
+    void loadTrend();
+  }, [loadTrend, forced]);
 
   // 自动重试：任一路失败时静默周期重读；成功即停表。
   const anyError =
     state.summary.k === 'error' || state.today.k === 'error' || state.trend.k === 'error';
   useEffect(() => {
     if (!anyError || forced) return;
-    const timer = window.setInterval(() => void loadAll(), RETRY_MS);
+    const timer = window.setInterval(retryAll, RETRY_MS);
     return () => window.clearInterval(timer);
-  }, [anyError, loadAll, forced]);
+  }, [anyError, retryAll, forced]);
 
   if (forced === 'loading') {
     return (
@@ -376,7 +470,10 @@ export function OverviewModulePage() {
           trend: { k: 'ready', data: {} },
         }}
         todayDate={win.date}
-        onRetry={() => void loadAll()}
+        onRetry={retryAll}
+        rangeId={rangeId}
+        rangeFallback={rangeFallback}
+        onRange={selectRange}
         demo
       />
     );
@@ -390,12 +487,24 @@ export function OverviewModulePage() {
           trend: { k: 'error', status: 503, message: '演示错误态（未请求接口）', requestId: null },
         }}
         todayDate={win.date}
-        onRetry={() => void loadAll()}
+        onRetry={retryAll}
+        rangeId={rangeId}
+        rangeFallback={rangeFallback}
+        onRange={selectRange}
         demo
       />
     );
   }
-  return <OverviewView state={state} todayDate={win.date} onRetry={() => void loadAll()} />;
+  return (
+    <OverviewView
+      state={state}
+      todayDate={win.date}
+      onRetry={retryAll}
+      rangeId={rangeId}
+      rangeFallback={rangeFallback}
+      onRange={selectRange}
+    />
+  );
 }
 
 export default OverviewModulePage;

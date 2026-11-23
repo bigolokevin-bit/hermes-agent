@@ -65,7 +65,8 @@ observer 第三轮（OM-03 五列网格）判定 PASS，另记 1440 五列变窄
 
 ## 测试与构建
 
-- `cd web && node_modules/.bin/vitest run src/modules/overview` → **11 passed / 11**
+- `cd web && node_modules/.bin/vitest run src/modules/overview` → **17 passed / 17**
+  （OverviewModulePage.test 11 + overview.window.test 6）
   （合同：forced 态零请求；只打两端口且 bucket=day；真 0 带来源原文；失败率同源 20%；
   summary 挂→各卡未接入+编号+重试；今日窗挂只影响运行卡；全挂整页错误声明不编造；
   采集时间行；日桶渲染；原文面板无 innerHTML；OM-03/10 五卡等宽+健康卡真来源钉）
@@ -92,6 +93,19 @@ OM-02 可径直标 VERIFIED（腿已在）。P-OM-3 的「workbench 0 命中」�
   `bff fan-out probe（本请求 employees/runs-stats/approvals 三路上游结果）`，不再用本页取数成败计数；
   测试钉住卡面含该来源串且无「n/6 来源正常」话术。`/api/hermes-summary` 属 metrics 车道（MT 组），不在本写域重复接线。
 - P-OM-2（失败率同源同窗）在 4bf3097a91 已修：分子分母同取 run-stats 今日窗 totals。
+
+## OM-04 时间窗切换（24h/7d/14d/30d）
+
+- 档位复用值守页 `duty/dutyRange.ts` 的 `DUTY_RANGES`（不另立枚举）；深链 `?range=` 经
+  `parseDutyRange` 解析，非法值回落默认档并在页顶 `ov6-range-fallback` 说明原值与生效档。
+- 趋势腿按档独立请求 run-stats：24h 走 **hour 桶**（现网实测 200，空桶如实空态句，不放假柱），
+  7d/14d/30d 走 day 桶 `daysAgoWindow(days-1)`；趋势标题/来源行/aria-label/空态句全部随档位变量。
+- 切窗**只重发趋势腿**：summary+今日窗不重复请求（测试钉住点击 30d 后 summary 计数不变、
+  run-stats 仅 +1）；KPI 五卡恒为「今日」口径，不随趋势窗漂移——这是与 backlog 草案的差异点，
+  如实记在此，若 L0 要求 KPI 随窗需另裁。
+- 硬门二 `scripts/lint-fake-success.mjs` 在 l0-board/fork/l7-ops 均不存在（全盘 find 无果）：
+  以测试合同替代闸门——null→「未接」、真 0 必附接口来源原文、无 fixture 上屏；建议 L0 补该脚本。
+- 取证：`overview-1440.png`（五档 pill 在列）、`overview-range7d.png`（近 7 天窗实测脸）。
 
 ## 已知边界（如实上报，非缺陷隐瞒）
 

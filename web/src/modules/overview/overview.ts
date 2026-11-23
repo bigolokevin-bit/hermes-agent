@@ -166,16 +166,34 @@ const DAY_LABEL = new Intl.DateTimeFormat('zh-CN', {
   day: '2-digit',
 });
 
-/** 趋势条：run-stats bucket=day 的 14 日窗（现网无独立 daily-trend 端点，实测 404）。 */
-export function trendPoints(body: RunStatsBody | null): TrendPoint[] {
+const HOUR_LABEL = new Intl.DateTimeFormat('zh-CN', {
+  timeZone: 'Asia/Shanghai',
+  hour: '2-digit',
+  hour12: false,
+});
+
+/**
+ * 趋势条：run-stats 的日桶/小时桶序列（现网无独立 daily-trend 端点，实测 404）。
+ * OM-04 四档窗共用：cap 取档位天数（24h 档为 24 个小时桶）。
+ */
+export function trendPoints(
+  body: RunStatsBody | null,
+  opts?: { bucket?: 'day' | 'hour'; cap?: number },
+): TrendPoint[] {
   if (!body || !Array.isArray(body.buckets)) return [];
-  return body.buckets.slice(-14).map((bucket) => {
-    const start = bucket.bucketStart;
+  const bucket = opts?.bucket ?? 'day';
+  const cap = opts?.cap ?? 14;
+  return body.buckets.slice(-cap).map((b) => {
+    const start = b.bucketStart;
     const date = new Date(start);
     return {
-      day: start.slice(0, 10),
-      label: Number.isNaN(date.getTime()) ? start : DAY_LABEL.format(date),
-      runs: typeof bucket.runs === 'number' && !Number.isNaN(bucket.runs) ? bucket.runs : null,
+      day: bucket === 'hour' ? start : start.slice(0, 10),
+      label: Number.isNaN(date.getTime())
+        ? start
+        : bucket === 'hour'
+          ? `${HOUR_LABEL.format(date)}时`
+          : DAY_LABEL.format(date),
+      runs: typeof b.runs === 'number' && !Number.isNaN(b.runs) ? b.runs : null,
     };
   });
 }

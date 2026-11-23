@@ -367,3 +367,26 @@
     grid-auto-columns: minmax(6px, 1fr);
   }
 }
+/* OM-04 时间窗切换（24h/7d/14d/30d，复用值守档位定义）。 */
+.ov5-range {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0 2px;
+}
+.ov5-range button {
+  border: 1px solid var(--line, #e2e5ea);
+  background: var(--surface, #fff);
+  color: var(--ink-2, #4b5563);
+  border-radius: 999px;
+  padding: 3px 11px;
+  font-size: 12px;
+  line-height: 1.6;
+  cursor: pointer;
+}
+.ov5-range button.is-active {
+  border-color: var(--accent, #5b7cfa);
+  background: var(--accent-soft, rgba(91, 124, 250, 0.1));
+  color: var(--accent, #5b7cfa);
+  font-weight: 600;
+}
