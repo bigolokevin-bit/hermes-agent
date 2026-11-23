@@ -36,6 +36,7 @@ import {
   formatBeijing,
   aggregateByEmployee,
   employeeLabel,
+  fanoutCoveredDays,
   formatCount,
   formatRate,
   formatUnitPrice,
@@ -80,6 +81,7 @@ import {
   shareCsv,
   shareCsvFileName,
   shareCsvStem,
+  shareCoverageNote,
   shareOfCosts,
   shareOfWhole,
   runsDrill,
@@ -223,7 +225,14 @@ type CmpState = { kind: 'loading' } | UsageBlock<CmpRow[]>;
 
 type ShareState =
   | { kind: 'loading' }
-  | UsageBlock<{ rows: ModelCostRow[]; asOf: string | null; days: number; source: 'model' | 'employee' }>;
+  | UsageBlock<{
+      rows: ModelCostRow[];
+      asOf: string | null;
+      days: number;
+      /** 实际读了几天：份额扇出被闸门封顶时小于 days，屏上据此标「非全窗」。 */
+      coveredDays: number;
+      source: 'model' | 'employee';
+    }>;
 
 // Q14 — the model axis (tokens / ledger cost / success rate) reads the same
 // /api/hermes-usage endpoint the other blocks use; it is its own block so a
@@ -1162,18 +1171,26 @@ export function MetricsModulePage() {
           setShare({ kind: 'unavailable', reason: parsed.reason, gap: USAGE_GAP, requestId: null });
           return;
         }
-        setShare({ kind: 'ready', value: { rows: parsed.rows, asOf: parsed.asOf, days, source: 'model' } });
+        // 模型这条腿是单次聚合读，不经扇出闸门：覆盖 = 整窗。
+        setShare({
+          kind: 'ready',
+          value: { rows: parsed.rows, asOf: parsed.asOf, days, coveredDays: days, source: 'model' },
+        });
         return;
       }
       const directory = employeeIdsOf(await loadJson('/agent-api/api/employees?limit=200'));
+      const chunks = chunkIds(directory.ids);
+      // 扇出闸门：days × 分片数超预算就按最近日优先截断。dayKeys 的尾部是最近日，
+      // 所以只生成 coveredDays 个键等于「砍掉窗口最老的那几天」，不补 0。
+      const coveredDays = fanoutCoveredDays(days, chunks.length);
       const now = new Date();
       const dayKeys: string[] = [];
-      for (let back = days - 1; back >= 0; back -= 1) {
+      for (let back = coveredDays - 1; back >= 0; back -= 1) {
         dayKeys.push(beijingDayKey(new Date(now.getTime() - back * 86_400_000)));
       }
       const bodies = await Promise.all(
         dayKeys.flatMap((day) =>
-          chunkIds(directory.ids).map((ids) =>
+          chunks.map((ids) =>
             loadJson(
               `/agent-api/api/budget-usage?employeeId=${ids.map(encodeURIComponent).join(',')}` +
                 `&periodKind=day&period=${encodeURIComponent(day)}`,
@@ -1195,7 +1212,10 @@ export function MetricsModulePage() {
         costUsd: row.costUsd,
       }));
       if (!signal.live) return;
-      setShare({ kind: 'ready', value: { rows: mapped, asOf: ledgerAsOf(rows), days, source: 'employee' } });
+      setShare({
+        kind: 'ready',
+        value: { rows: mapped, asOf: ledgerAsOf(rows), days, coveredDays, source: 'employee' },
+      });
     } catch (error) {
       if (!signal.live) return;
       setShare({ kind: 'unavailable', ...blockFailure(error) });
@@ -1498,11 +1518,15 @@ export function MetricsModulePage() {
           }
     : shownBreakdown;
 
+  const shareWindowDays = Math.max(1, Math.round(usageWindow.hours / 24));
   const shareView: ShareState = forced
     ? forced === 'loading'
       ? { kind: 'loading' }
       : forced === 'empty'
-        ? { kind: 'ready', value: { rows: [], asOf: null, days: Math.max(1, Math.round(usageWindow.hours / 24)), source: groupBy } }
+        ? {
+            kind: 'ready',
+            value: { rows: [], asOf: null, days: shareWindowDays, coveredDays: shareWindowDays, source: groupBy },
+          }
         : {
             kind: 'unavailable',
             reason:
@@ -1593,6 +1617,12 @@ export function MetricsModulePage() {
     share: shareOfWhole(byModelRows.map((row) => row.costUsd), sumOrNull(byModelRows.map((row) => row.costUsd))),
   };
   const bmCell = (value: number | null): string => (value === null ? '未接' : formatCount(value));
+  // 份额扇出被闸门截断时的两句话：屏上一句「仅覆盖近 n 天，非全窗」，合计数值的
+  // title 一句点明「未补 0」。days 仍是窗口天数（「窗口 N 天」口径不动），
+  // coveredDays 才是真读了几天；两者相等时两处都不出现。
+  const shareCovered = shareView.kind === 'ready' ? shareView.value.coveredDays : shareWindowDays;
+  const shareCoverage =
+    shareView.kind === 'ready' ? shareCoverageNote(shareView.value.days, shareView.value.coveredDays) : null;
 
   // metS — a group switch keeps the time window and the share-table sort, but
   // the detail table's own sort returns to its default (cost, descending) and
@@ -2249,6 +2279,14 @@ export function MetricsModulePage() {
               </Button>
             ))}
           </div>
+
+          {/* MT-05：24 小时档在这条读口上被折叠成整天（days=1 的今日整日账）。
+              这里不改行为，只把口径写在屏上；聚合端点另票。 */}
+          {usageWindow.id === '24h' ? (
+            <p className="met6-hint" data-testid="metU-24h-daycaliber-note">
+              该读口按整天记账，24 小时档取的是今日整日账。
+            </p>
+          ) : null}
 
           {usageDown ? (
             <div data-testid="metH-page-error">
@@ -3354,8 +3392,19 @@ export function MetricsModulePage() {
                 <p className="met6-source" id="metY-after-share" tabIndex={-1} data-testid={`${sharePrefix}-source`}>
                   来源：{groupBy === 'employee' ? '员工账本' : '模型用量'} · 截至{' '}
                   {shareView.value.asOf ? formatBeijing(shareView.value.asOf) : '—'} · 窗口 {shareView.value.days} 天 · 可读实扣合计{' '}
-                  <span className="font-mono">{formatUsd(shareTotal)}</span>
+                  <span
+                    className="font-mono"
+                    data-testid={`${sharePrefix}-total-spent`}
+                    title={shareCoverage === null ? undefined : `账本只覆盖近 ${shareCovered} 天，未补 0`}
+                  >
+                    {formatUsd(shareTotal)}
+                  </span>
                 </p>
+                {shareCoverage === null ? null : (
+                  <p className="met6-hint" data-testid={`${sharePrefix}-coverage-note`}>
+                    {shareCoverage}
+                  </p>
+                )}
                 <p
                   className="met6-hint"
                   data-testid="metAH-cap-note-share"
