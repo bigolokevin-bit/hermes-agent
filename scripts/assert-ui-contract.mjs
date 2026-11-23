@@ -237,7 +237,8 @@ async function main() {
       const hit = jar.split("\n").find((l) => l.split("\t")[5] === "access_token_cookie");
       const val = hit ? hit.split("\t")[6].trim() : "";
       if (val) {
-        await ctx.addCookies([{ name: "access_token_cookie", value: val, url: BASE, httpOnly: true, path: "/" }]);
+        // addCookies 的 url 与 domain/path 二选一（同传必拒），url 自带 path=/。
+        await ctx.addCookies([{ name: "access_token_cookie", value: val, url: BASE, httpOnly: true }]);
         tokenInjected = true;
       }
     } catch {
