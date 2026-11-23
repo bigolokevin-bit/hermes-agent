@@ -770,7 +770,11 @@ describe("DutyPage runs caliber", () => {
 
     const diff = runsCaliber({ duty: 3, metrics: 5, dutyAsOfText: "2026-11-18 14:00" });
     expect(diff.verdict).toBe("different");
-    expect(diff.compare).toBe("本卡 3 · /metrics 5｜口径不同，见 title");
+    // DU-07③：原句「口径不同，见 title」把结论的唯一载体放在悬停里，判据不允许；
+    // 改为自足句（完整相遇条件仍留在 title 作补充）。这是本轮对既有断言的**唯一**
+    // 措辞更新，理由见 DONE-DU-07.md。
+    expect(diff.compare).toBe("本卡 3 · /metrics 5｜两条读口不同，不为对上改任一侧取数");
+    expect(diff.compare).not.toContain("见 title");
 
     const missing = runsCaliber({ duty: null, metrics: null, dutyAsOfText: "—" });
     expect(missing.verdict).toBe("missing");

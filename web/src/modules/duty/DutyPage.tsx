@@ -19,7 +19,7 @@ import {
   runTotals,
   trendSummary,
 } from "./aggregate";
-import { beijing, beijingHour, beijingWeekday, dashed, duration, shortId, usd } from "./format";
+import { beijing, beijingHour, beijingWeekday, dashed, duration, employeeLabel, shortId, usd } from "./format";
 import { runsCaliber } from "./runsCaliber";
 import {
   DUTY_STATUS_FILTERS,
@@ -29,7 +29,7 @@ import {
   type DutyStatusFilterId,
 } from "./dutyStatusFilter";
 import { DUTY_NOTES } from "./dutyNotes";
-import { AgentFleetRail } from "./AgentFleetRail";
+import { AgentFleetRail, FLEET_METRIC_REASONS } from "./AgentFleetRail";
 import type {
   ActivityBody,
   ApprovalRow,
@@ -220,6 +220,8 @@ function HCard({
             }
           >
             数据截至 {stamp.shown ?? "—（北京时间）"} · 来源 {stamp.source}
+            {/* DU-07①③：缺采集时刻的原因不许只活在 title 里——缺数「—」＋原因上屏。 */}
+            {stamp.shown ? null : ` · 原因：${stamp.reason ?? "上游响应没有带采集时间"}`}
           </p>
         ) : null}
         {children}
@@ -702,6 +704,31 @@ function DutyDetailsSection({
           <p className="duty-note" data-testid="duty-fleet-l3-note">
             舰队轨第③层未显示：花名册无能力标签列，部门多为空值（待 /api/matrix 扩列）
           </p>
+          {/* DU-07③：卡面两个「—」的原因原来只活在格上 title（悬停才有）。判据不许关键信息
+              只存在于 :hover——这里在既有载体（卡外折叠区）给**同串**出口，措辞取自
+              AgentFleetRail 的 FLEET_METRIC_REASONS 单一事实源，页面不另写第二套。 */}
+          <p className="duty-note" data-testid="duty-fleet-metric-note">
+            {FLEET_METRIC_REASONS.today} {FLEET_METRIC_REASONS.successRate}
+          </p>
+          {/* DU-07③：卡面 title 的另一半原文是「名字｜原始 employee_id」。屏上只给短码
+              （DU-03 裁定：屏上绝不裸 id），全值就必须有可点开的等价出口——本折叠明细
+              逐行给 名字＋ui-c-id 全值，与卡面 title 同串。 */}
+          {employees.k === "ready" && employees.data.length > 0 ? (
+            <ul className="duty-list duty-fleet-ids" data-testid="duty-fleet-id-list">
+              {employees.data.slice(0, DUTY_LIST_CAP).map((row) => (
+                <li key={row.employeeId}>
+                  <span>{employeeLabel(row.name, row.employeeId)}</span>
+                  <code className="ui-c-id duty-fleet-id" data-testid={`duty-fleet-id-${row.employeeId}`}>
+                    {row.employeeId}
+                  </code>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="duty-note" data-testid="duty-fleet-id-empty">
+              花名册没有可列出的员工行，全值编号暂无法给出（不是没有编号）。
+            </p>
+          )}
         </section>
       </div>
     </details>
@@ -947,6 +974,7 @@ function TrendCard({
       <Button
         size="sm"
         outlined
+        className="duty-disclosure-toggle"
         aria-expanded={tableOpen}
         aria-controls="duty-trend-table"
         data-testid="duty-trend-table-toggle"
@@ -1005,7 +1033,18 @@ function TrendCard({
   );
 }
 
+/**
+ * DU-07①③：热力格的逐时读数原文。title（悬停）与「以文字查看」列表共用这**一份**
+ * 字符串——逐时计数不许只活在悬停里，窄屏也不靠色块猜数。
+ */
+function heatCellText(c: { hour: number; count: number | null; future: boolean }): string {
+  return c.future
+    ? `${String(c.hour).padStart(2, "0")}:00 · 未发生`
+    : `${String(c.hour).padStart(2, "0")}:00 · ${c.count ?? "—"} 次`;
+}
+
 function ActivityCard({ activity, onRetry, label }: { activity: Loadable<ActivityBody>; onRetry: () => void; label: string }) {
+  const [textOpen, setTextOpen] = useState(false);
   const view = activity24(
     activity.k === "ready" ? activity.data : null,
     beijingWeekday(),
@@ -1031,7 +1070,7 @@ function ActivityCard({ activity, onRetry, label }: { activity: Loadable<Activit
             <span
               key={c.hour}
               className={cn("duty-cell", `is-l${c.level}`, c.future && "is-future")}
-              title={`${String(c.hour).padStart(2, "0")}:00 · ${c.future ? "未发生" : c.count ?? "—"} 次`}
+              title={heatCellText(c)}
             />
           ))}
         </div>
@@ -1043,6 +1082,28 @@ function ActivityCard({ activity, onRetry, label }: { activity: Loadable<Activit
           <span>24</span>
         </div>
         <p className="duty-note">近 7 天同小时分布 · 当前时段之后留空 · 不补零</p>
+        {/* DU-07①③：热力图的文字替代腿（与趋势「以表格查看」同形制）。逐时读数
+            与格上 title 同串，点开即得——关键数字不再只存在于悬停。 */}
+        <Button
+          size="sm"
+          outlined
+          className="duty-disclosure-toggle"
+          aria-expanded={textOpen}
+          aria-controls="duty-activity-text"
+          data-testid="duty-activity-text-toggle"
+          onClick={() => setTextOpen((v) => !v)}
+        >
+          {textOpen ? "收起逐时文字" : "以文字查看逐时"}
+        </Button>
+        {textOpen ? (
+          <ul className="duty-heat-text" id="duty-activity-text" data-testid="duty-activity-text-list">
+            {view.cells.map((c) => (
+              <li key={c.hour} data-testid={`duty-activity-text-${c.hour}`}>
+                {heatCellText(c)}
+              </li>
+            ))}
+          </ul>
+        ) : null}
       </StateLine>
     </HCard>
   );
@@ -1107,6 +1168,11 @@ function BlockersCard({
   );
   const firstError = [runs, tasks, approvals].find((x) => x.k === "error");
   const allReady = runs.k === "ready" && tasks.k === "ready" && approvals.k === "ready";
+  // DU-07③×L0 裁定（merge 3113707983）：title 原文上屏的判据不变，但句子必须
+  // 采纳线侧 DU-02 诚实口径——各读口上限 3、共读到 total、列前 LIST_CAP、其余标
+  // 「另有 N 条」，禁写「已在本卡逐条列出」（该话术已被 duty.q10-parity 条目3 判失真）。
+  // 链接文案恢复「查看全部 (N)」，N=blockersTotal 真数。title 与屏上句共用这一份串。
+  const blockersLinkNote = `任务页不接受 status 筛选参数，这里去任务板。本次各读口上限 3 条，共读到 ${total} 项阻塞；卡面列前 ${LIST_CAP} 条，其余如实标注「另有 N 条」，不说「已逐条列出」。`;
   return (
     <HCard
       title="阻塞"
@@ -1116,7 +1182,7 @@ function BlockersCard({
           className="duty-link"
           to="/work"
           data-testid="duty-route-blockers"
-          title={`任务页不接受 status 筛选参数，这里去任务板。本次各读口上限 3 条，共读到 ${total} 项阻塞；卡面列前 ${LIST_CAP} 条，其余如实标注「另有 N 条」，不说「已逐条列出」。`}
+          title={blockersLinkNote}
         >
           查看全部{total > 0 ? ` (${total})` : ""}
           <ArrowRight className="h-3.5 w-3.5" />
@@ -1139,6 +1205,7 @@ function BlockersCard({
         <p className="duty-say" data-testid="duty-blockers-say">{`${items.length} 项阻塞 · 逐条见下方「阻塞明细」`}</p>
       )}
       <p className="duty-note">阻塞卡五字段：阻塞对象 · 卡在哪一步 · 等谁 · 已等时长 · 下一步动作</p>
+      <p className="duty-note" data-testid="duty-blockers-link-note">{blockersLinkNote}</p>
     </HCard>
   );
 }
