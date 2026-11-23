@@ -1,0 +1,386 @@
+{
+  "dist": "http://127.0.0.1:9147",
+  "upstreamWhoami": "http://127.0.0.1:9122",
+  "legs": [
+    {
+      "tag": "1440",
+      "width": 1440,
+      "fixture": "withTime",
+      "whoamiStatus": 200,
+      "apiStatus": {
+        "$2/shared-metrics/consent": 200,
+        "$2/config": 200,
+        "$2/auth/me": 200,
+        "$2/status": 200,
+        "$2/profiles": 200,
+        "$2/profiles/active": 200,
+        "$2/dashboard/font": 200,
+        "$2/dashboard/plugins": 200,
+        "$2/dashboard/themes": 200,
+        "list": 200,
+        "$2/runs": 200,
+        "whoami": 200,
+        "$2/employees": 200,
+        "$2/budget-usage": 200,
+        "$2/employee-stats": 200,
+        "$2/tasks": 200,
+        "$2/run-activity": 200,
+        "$2/workbench/timeseries": 200,
+        "$2/workbench/queue": 200,
+        "$2/workbench/summary": 200
+      },
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 502 (Bad Gateway)"
+      ],
+      "plain": {
+        "entry": "/assets/index-CjZDGcv-.js",
+        "rows": 3,
+        "scope": [
+          "service-order",
+          "service-order",
+          "service-order"
+        ],
+        "position": [
+          1,
+          2,
+          3
+        ],
+        "order": [
+          "evt-1",
+          "evt-2",
+          "evt-3"
+        ],
+        "note": "仅在当前已加载的 3 条内排序——服务端没有可用的排序参数（本轮实测拿不到生效证据），清掉排序就回到服务给的回行顺序。",
+        "ariaSort": [
+          [
+            "aud-sort-head-time",
+            "none"
+          ],
+          [
+            "aud-sort-head-actor",
+            "none"
+          ],
+          [
+            "aud-sort-head-action",
+            "none"
+          ],
+          [
+            "aud-sort-head-resource",
+            "none"
+          ]
+        ],
+        "status": "这一页保持服务给的回行顺序（新在前）。",
+        "textHasNaN": false
+      },
+      "sorted": {
+        "entry": "/assets/index-CjZDGcv-.js",
+        "rows": 3,
+        "scope": [
+          "local-page",
+          "local-page",
+          "local-page"
+        ],
+        "position": [
+          1,
+          2,
+          3
+        ],
+        "order": [
+          "evt-3",
+          "evt-1",
+          "evt-2"
+        ],
+        "note": "仅在当前已加载的 3 条内排序——服务端没有可用的排序参数（本轮实测拿不到生效证据），清掉排序就回到服务给的回行顺序。",
+        "ariaSort": [
+          [
+            "aud-sort-head-time",
+            "ascending"
+          ],
+          [
+            "aud-sort-head-actor",
+            "none"
+          ],
+          [
+            "aud-sort-head-action",
+            "none"
+          ],
+          [
+            "aud-sort-head-resource",
+            "none"
+          ]
+        ],
+        "status": "本列按时间从小到大（升序）排，只重排这一页已加载的 3 条；服务端没有可用的排序参数（本轮实测拿不到生效证据），所以这不是整窗重排。缺这个值的行恒排在最后。",
+        "textHasNaN": false
+      },
+      "desc": {
+        "entry": "/assets/index-CjZDGcv-.js",
+        "rows": 3,
+        "scope": [
+          "local-page",
+          "local-page",
+          "local-page"
+        ],
+        "position": [
+          1,
+          2,
+          3
+        ],
+        "order": [
+          "evt-2",
+          "evt-1",
+          "evt-3"
+        ],
+        "note": "仅在当前已加载的 3 条内排序——服务端没有可用的排序参数（本轮实测拿不到生效证据），清掉排序就回到服务给的回行顺序。",
+        "ariaSort": [
+          [
+            "aud-sort-head-time",
+            "descending"
+          ],
+          [
+            "aud-sort-head-actor",
+            "none"
+          ],
+          [
+            "aud-sort-head-action",
+            "none"
+          ],
+          [
+            "aud-sort-head-resource",
+            "none"
+          ]
+        ],
+        "status": "本列按时间从大到小（降序）排，只重排这一页已加载的 3 条；服务端没有可用的排序参数（本轮实测拿不到生效证据），所以这不是整窗重排。缺这个值的行恒排在最后。",
+        "textHasNaN": false
+      },
+      "cleared": {
+        "entry": "/assets/index-CjZDGcv-.js",
+        "rows": 3,
+        "scope": [
+          "service-order",
+          "service-order",
+          "service-order"
+        ],
+        "position": [
+          1,
+          2,
+          3
+        ],
+        "order": [
+          "evt-1",
+          "evt-2",
+          "evt-3"
+        ],
+        "note": "仅在当前已加载的 3 条内排序——服务端没有可用的排序参数（本轮实测拿不到生效证据），清掉排序就回到服务给的回行顺序。",
+        "ariaSort": [
+          [
+            "aud-sort-head-time",
+            "none"
+          ],
+          [
+            "aud-sort-head-actor",
+            "none"
+          ],
+          [
+            "aud-sort-head-action",
+            "none"
+          ],
+          [
+            "aud-sort-head-resource",
+            "none"
+          ]
+        ],
+        "status": "这一页保持服务给的回行顺序（新在前）。",
+        "textHasNaN": false
+      }
+    },
+    {
+      "tag": "375",
+      "width": 375,
+      "fixture": "missingTime",
+      "whoamiStatus": 200,
+      "apiStatus": {
+        "$2/profiles": 200,
+        "$2/dashboard/plugins": 200,
+        "$2/status": 200,
+        "$2/dashboard/themes": 200,
+        "$2/config": 200,
+        "$2/dashboard/font": 200,
+        "$2/profiles/active": 200,
+        "$2/shared-metrics/consent": 200,
+        "$2/auth/me": 200,
+        "list": 200,
+        "$2/runs": 200,
+        "$2/employees": 200,
+        "$2/workbench/timeseries": 200,
+        "$2/tasks": 200,
+        "$2/employee-stats": 200,
+        "$2/workbench/queue": 200,
+        "$2/run-activity": 200,
+        "$2/budget-usage": 200,
+        "$2/workbench/summary": 200,
+        "whoami": 200
+      },
+      "consoleErrors": [],
+      "plain": {
+        "entry": "/assets/index-CjZDGcv-.js",
+        "rows": 3,
+        "scope": [
+          "service-order",
+          "service-order",
+          "service-order"
+        ],
+        "position": [
+          1,
+          2,
+          3
+        ],
+        "order": [
+          "evt-1",
+          "evt-2",
+          "evt-3"
+        ],
+        "note": "仅在当前已加载的 3 条内排序——服务端没有可用的排序参数（本轮实测拿不到生效证据），清掉排序就回到服务给的回行顺序。",
+        "ariaSort": [
+          [
+            "aud-sort-head-time",
+            "none"
+          ],
+          [
+            "aud-sort-head-actor",
+            "none"
+          ],
+          [
+            "aud-sort-head-action",
+            "none"
+          ],
+          [
+            "aud-sort-head-resource",
+            "none"
+          ]
+        ],
+        "status": "这一页保持服务给的回行顺序（新在前）。",
+        "textHasNaN": false
+      },
+      "sorted": {
+        "entry": "/assets/index-CjZDGcv-.js",
+        "rows": 3,
+        "scope": [
+          "local-page",
+          "local-page",
+          "local-page"
+        ],
+        "position": [
+          1,
+          2,
+          3
+        ],
+        "order": [
+          "evt-3",
+          "evt-1",
+          "evt-2"
+        ],
+        "note": "仅在当前已加载的 3 条内排序——服务端没有可用的排序参数（本轮实测拿不到生效证据），清掉排序就回到服务给的回行顺序。",
+        "ariaSort": [
+          [
+            "aud-sort-head-time",
+            "ascending"
+          ],
+          [
+            "aud-sort-head-actor",
+            "none"
+          ],
+          [
+            "aud-sort-head-action",
+            "none"
+          ],
+          [
+            "aud-sort-head-resource",
+            "none"
+          ]
+        ],
+        "status": "本列按时间从小到大（升序）排，只重排这一页已加载的 3 条；服务端没有可用的排序参数（本轮实测拿不到生效证据），所以这不是整窗重排。缺这个值的行恒排在最后。",
+        "textHasNaN": false
+      },
+      "desc": {
+        "entry": "/assets/index-CjZDGcv-.js",
+        "rows": 3,
+        "scope": [
+          "local-page",
+          "local-page",
+          "local-page"
+        ],
+        "position": [
+          1,
+          2,
+          3
+        ],
+        "order": [
+          "evt-1",
+          "evt-3",
+          "evt-2"
+        ],
+        "note": "仅在当前已加载的 3 条内排序——服务端没有可用的排序参数（本轮实测拿不到生效证据），清掉排序就回到服务给的回行顺序。",
+        "ariaSort": [
+          [
+            "aud-sort-head-time",
+            "descending"
+          ],
+          [
+            "aud-sort-head-actor",
+            "none"
+          ],
+          [
+            "aud-sort-head-action",
+            "none"
+          ],
+          [
+            "aud-sort-head-resource",
+            "none"
+          ]
+        ],
+        "status": "本列按时间从大到小（降序）排，只重排这一页已加载的 3 条；服务端没有可用的排序参数（本轮实测拿不到生效证据），所以这不是整窗重排。缺这个值的行恒排在最后。",
+        "textHasNaN": false
+      },
+      "cleared": {
+        "entry": "/assets/index-CjZDGcv-.js",
+        "rows": 3,
+        "scope": [
+          "service-order",
+          "service-order",
+          "service-order"
+        ],
+        "position": [
+          1,
+          2,
+          3
+        ],
+        "order": [
+          "evt-1",
+          "evt-2",
+          "evt-3"
+        ],
+        "note": "仅在当前已加载的 3 条内排序——服务端没有可用的排序参数（本轮实测拿不到生效证据），清掉排序就回到服务给的回行顺序。",
+        "ariaSort": [
+          [
+            "aud-sort-head-time",
+            "none"
+          ],
+          [
+            "aud-sort-head-actor",
+            "none"
+          ],
+          [
+            "aud-sort-head-action",
+            "none"
+          ],
+          [
+            "aud-sort-head-resource",
+            "none"
+          ]
+        ],
+        "status": "这一页保持服务给的回行顺序（新在前）。",
+        "textHasNaN": false
+      }
+    }
+  ]
+}
