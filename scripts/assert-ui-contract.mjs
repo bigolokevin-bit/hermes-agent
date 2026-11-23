@@ -26,6 +26,8 @@ const arg = (name) => {
 // L0 修复 2026-11-23：默认落 9122 验收脸（唯一常驻服务面；9148 是车道临时静态服务并非常态）。
 const BASE = (arg("url") || "http://127.0.0.1:9122/agent-v2").replace(/\/$/, "");
 const AUTH = arg("auth");
+// L0 修复④（GATE 二级修复）：--auth 未传时，从 --token-file 的 netscape jar 取 token 注入同源 Cookie（值禁回显）。
+const TOKEN_FILE = arg("token-file") || process.env.UI_GATE_TOKEN_FILE || "";
 const STAGE = arg("stage") || "duty";
 const NO_LAUNCH = argv.includes("--dry-parse");
 
@@ -227,6 +229,21 @@ async function main() {
     viewport: { width: 1440, height: 900 },
     ...(AUTH ? { storageState: AUTH } : {}),
   });
+  // L0 修复④：登录态注入——运行时条款必须在登录态跑（匿名骨架态污染全部读数，2026-11-23 11:5x 实锤）。
+  let tokenInjected = false;
+  if (!AUTH && TOKEN_FILE) {
+    try {
+      const jar = readFileSync(TOKEN_FILE, "utf8");
+      const hit = jar.split("\n").find((l) => l.split("\t")[5] === "access_token_cookie");
+      const val = hit ? hit.split("\t")[6].trim() : "";
+      if (val) {
+        await ctx.addCookies([{ name: "access_token_cookie", value: val, url: BASE, httpOnly: true, path: "/" }]);
+        tokenInjected = true;
+      }
+    } catch {
+      // jar 读取失败不崩：交给 whoami 断言的显式降级标记兜底
+    }
+  }
   const page = await ctx.newPage();
   // L0 修复 2026-11-23①：先落正常 origin 再发相对 fetch（原顺序在 about:blank 上 fetch，whoami 恒 -1）。
   await page.goto(`${BASE}/`, { waitUntil: "domcontentloaded", timeout: 30000 }).catch(() => {});
@@ -238,6 +255,12 @@ async function main() {
       return -1;
     }
   }).catch(() => -1);
+  // L0 修复④：whoami 非 200 显式降级——匿名态读数不作判据，拒绝骨架伪像入账。
+  if (whoami !== 200) {
+    console.log(
+      `WARN 匿名态：whoami=${whoami}${!AUTH && !TOKEN_FILE ? "（未给登录态：传 --token-file=<jar> 或 --auth=<storageState>，或设 UI_GATE_TOKEN_FILE）" : ""}——运行时条款读数不作判据`,
+    );
+  }
   // L0 修复②（AGENTS.md《车道测量腿三坑》条1）：networkidle 在验收脸永不收敛（活轮询+重试风暴），
   // 超时被 catch 吞掉后页停 about:blank，PROBE 的 localStorage 即抛 SecurityError（GATE_EXIT=2 根因）。
   await page.goto(`${BASE}/#/overview`, { waitUntil: "domcontentloaded", timeout: 30000 }).catch(() => {});
@@ -257,7 +280,7 @@ async function main() {
     englishRole: ENGLISH_ROLE.source,
   });
 
-  console.log(`\n脸=${BASE} 登录whoami=${whoami} 视口=${probe.viewport.w}x${probe.viewport.h} stage=${STAGE}\n`);
+  console.log(`\n脸=${BASE} 登录whoami=${whoami} token注入=${tokenInjected ? "是" : "否"} 视口=${probe.viewport.w}x${probe.viewport.h} stage=${STAGE}\n`);
   const gating = STAGE === "duty" ? new Set([3, 5, 6, 7, 10]) : new Set([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
   const verdictFor = (n) => (gating.has(n) ? "FAIL" : "DEFERRED");
 
