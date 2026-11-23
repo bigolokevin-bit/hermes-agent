@@ -303,9 +303,11 @@ describe('MetricsModulePage — usage & cost (met6)', () => {
     expect(document.querySelector('[data-testid="met6-cost-month"]')?.textContent).toBe('$0.13');
     expect(document.querySelectorAll('[data-testid="met6-cost-rows"] li')).toHaveLength(2);
     expect(document.querySelector('[data-testid="met6-cost-rows"]')?.textContent).toContain('小鲤 · AAAABBBB');
-    // Unit price is its own source and is not connected here.
+    // Unit price is its own source and is not connected here — MT-01：404 归一为
+    // 「标价未接」，编号按 met6-gap 形制进 title；不出现裸 404/Not Found。
     expect(document.querySelector('[data-testid="met6-price-value"]')?.textContent).toBe('—');
-    expect(document.querySelector('[data-testid="met6-price-gap"]')?.textContent).toContain('这项数据当前读不到');
+    expect(document.querySelector('[data-testid="met6-price-gap"]')?.textContent).toContain('标价未接');
+    expect(document.querySelector('[data-testid="met6-price-gap"]')?.getAttribute('title')).toBe('GAP-MET6-01');
 
     const called = urls();
     const statsCall = called.find((url) => url.includes('run-stats')) ?? '';
@@ -1682,9 +1684,10 @@ describe('metH — partial failure isolation', () => {
     expect(q('met6-cost-rows')).not.toBeNull();
 
     // Only the pricing card carries the failure, with its copyable id and a retry.
+    // MT-01：价目 404 的可见文案归一为「标价未接」（GAP 编号进 title）。
     const err = q('metH-card-error-price');
     expect(err).not.toBeNull();
-    expect(err?.textContent).toContain('这项数据当前读不到');
+    expect(err?.textContent).toContain('标价未接');
     expect(err?.textContent).toContain('req-metH-price');
     expect(q('metH-card-retry-price')).not.toBeNull();
     expect(q('metH-card-error-runs')).toBeNull();

@@ -263,6 +263,23 @@ function blockFailure(error: unknown): { reason: string; gap: string | null; req
   return { reason: '这次没能读取这项数据，请稍后重试。', gap: null, requestId };
 }
 
+/** MT-01（GAP-MET6-01）：价目表「未接」的形状归一——404（BFF 未注册该路由的旧
+ *  形状 console.unknown_route）、503（BFF 诚实未接信封 models.pricing_not_wired）
+ *  与既有纪律中的 403（403/404 同一句话，不泄露路由存在性）→ 同一个「标价未接」
+ *  态。上游没有价目端点，标价就不出数：不展示裸 404/503/Not Found 原文，也不拿
+ *  任何数字冒充标价；采集时刻随之记「—」。
+ *  GAP 编号按本页既有 met6-gap 形制只进 title tooltip（UI-B 达标现状：工程编号
+ *  不进可见文案，MetricsModulePage.test.tsx 408-415 钉住）。其余状态走通用
+ *  blockFailure。 */
+function pricingFailure(
+  error: unknown,
+): { reason: string; gap: string | null; requestId: string | null } | null {
+  if (error instanceof ApiError && (error.status === 403 || error.status === 404 || error.status === 503)) {
+    return { reason: '标价未接：上游还没有价目端点，金额只认账本实扣。', gap: USAGE_GAP, requestId: error.requestId ?? null };
+  }
+  return null;
+}
+
 function employeeIdsOf(payload: unknown): { ids: string[]; names: Record<string, string>; truncated: boolean } {
   if (typeof payload !== 'object' || payload === null) return { ids: [], names: {}, truncated: false };
   const record = payload as { items?: unknown; nextCursor?: unknown };
@@ -494,7 +511,8 @@ export function MetricsModulePage() {
       return payload;
     } catch (error) {
       if (key && epoch === sourceEpoch.current) {
-        const failure = blockFailure(error);
+        // 价目读口的未接形状走专属归一（MT-01），其余读口保持通用文案。
+        const failure = (key === 'pricing' ? pricingFailure(error) : null) ?? blockFailure(error);
         setSourcesSeen(true);
         setSources((prev) => ({
           ...prev,
@@ -549,6 +567,7 @@ export function MetricsModulePage() {
     async <T,>(
       run: () => Promise<unknown>,
       parse: (body: unknown) => { ok: true; value: T } | { ok: false; reason: string },
+      failMap?: (error: unknown) => { reason: string; gap: string | null; requestId: string | null } | null,
     ): Promise<UsageBlock<T>> => {
       try {
         const body = await run();
@@ -556,7 +575,7 @@ export function MetricsModulePage() {
         if (!parsed.ok) return { kind: 'unavailable', reason: parsed.reason, gap: null, requestId: null };
         return { kind: 'ready', value: parsed.value };
       } catch (error) {
-        return { kind: 'unavailable', ...blockFailure(error) };
+        return { kind: 'unavailable', ...(failMap?.(error) ?? blockFailure(error)) };
       }
     },
     [],
@@ -653,6 +672,8 @@ export function MetricsModulePage() {
             (body) => ({ ok: true, value: body as LedgerSnapshot }),
           );
         case 'pricing':
+          // MT-01：404/503 两种未接形状都归一成「标价未接（GAP-MET6-01）」；
+          // readPricing 的 invalid 语义原样保留（那是「接到了但形状不对」）。
           return readBlock(
             () => loadJson('/agent-api/api/models/pricing'),
             (body) => {
@@ -661,6 +682,7 @@ export function MetricsModulePage() {
                 ? { ok: true, value: { rows: parsed.rows, asOf: parsed.asOf } }
                 : { ok: false, reason: parsed.reason };
             },
+            pricingFailure,
           );
       }
     },
