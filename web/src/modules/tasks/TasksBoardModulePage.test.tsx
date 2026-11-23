@@ -259,7 +259,7 @@ describe("TasksBoardModulePage", () => {
     expect(container.textContent).toContain("小鲤 · 1A2B3C4D");
     expect(container.textContent).not.toContain("emp_1a2b3c4d");
     // ConsoleSelect since wave-36: this filter is a disabled trigger BUTTON, and
-    // `button.disabled` is the honest gate (a <select> read was the old protocol).
+    // `button.disabled` is the honest gate (a native select read was the old protocol).
     const prio = container.querySelector('[data-testid="tsk4-filter-priority"]') as HTMLButtonElement;
     expect(prio.disabled).toBe(true);
     const next = container.querySelector('[data-testid="tsk4-page-next"]') as HTMLButtonElement;

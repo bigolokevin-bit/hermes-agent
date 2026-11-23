@@ -126,7 +126,7 @@ async function click(testid: string) {
 }
 
 async function selectStatus(value: string) {
-  // wave-36 moved this filter off the native <select> onto ConsoleSelect, so the
+  // wave-36 moved this filter off the native select onto ConsoleSelect, so the
   // sanctioned interaction is the harness's: activate the combobox trigger, then
   // pick the option by its machine value ("" is 全部状态).
   await pickByValue("run5-filter-status", value);

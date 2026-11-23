@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import "./ui.css";
 
 /**
- * 下拉基元：自绘触发器 + role=listbox 面板。禁原生 <select>——设计系统的 Select
+ * 下拉基元：自绘触发器 + role=listbox 面板。禁原生下拉控件——设计系统的 Select
  * 内部渲染的就是原生控件（@nous-research/ui dist/components/Select.d.ts extends
  * Omit<SelectHTMLAttributes<HTMLSelectElement>,"onChange">，且 value 只能是 string），
  * 所以这里自己实现，单值与多选共用一套键盘/焦点语义。

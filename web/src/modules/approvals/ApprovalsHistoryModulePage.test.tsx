@@ -237,7 +237,7 @@ describe("the eight states", () => {
     expect(document.querySelector("[data-testid='apv5-filter-risk']"), "stale risk select gone").toBeNull();
     expect(document.querySelector("[data-testid='apv-risk-rail']"), "risk rail mounted").toBeTruthy();
     // ConsoleSelect since wave-36: the testid sits on the trigger button, so the
-    // gate is `button.disabled` — reading it as a <select> was the retired protocol.
+    // gate is `button.disabled` — reading it as a native select was the retired protocol.
     const win = document.querySelector("[data-testid='apv5-filter-window']") as HTMLButtonElement;
     expect(win.disabled).toBe(true);
   });

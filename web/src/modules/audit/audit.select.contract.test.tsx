@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 // R170 — the shape the audit filters really have, now that wave-36 replaced the
-// native `<select>`.
+// native select controls.
 //
 // Why this file exists: R166 found guards reading `element.value` off a control
 // whose test id now sits on ConsoleSelect's trigger BUTTON. A button's `value`
@@ -148,7 +148,7 @@ afterEach(async () => {
 });
 
 describe("R170 - what the filter controls are now made of", () => {
-  it("puts every filter test id on a focusable combobox, and on no <select>", async () => {
+  it("puts every filter test id on a focusable combobox, and on no native select control", async () => {
     await render(`/audit${SEVEN}`);
     // No native select is left to read: a guard that asks for `.value` on these
     // ids is asking a button for something only a form field has.

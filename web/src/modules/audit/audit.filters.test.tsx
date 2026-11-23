@@ -12,7 +12,7 @@
 //
 // 每条护栏只读屏幕与 mock 的请求串，不产生任何额外请求。
 //
-// R166 修红：wave-36 把筛选控件从原生 <select> 换成了 ConsoleSelect（合入的自定义下拉那一项改动），
+// R166 修红：wave-36 把筛选控件从原生下拉换成了 ConsoleSelect（合入的自定义下拉那一项改动），
 // testid 现在落在 trigger button 上，`.value` 恒为空串。所以四个取值断言改走仓内既有的
 // `@/shell/selectHarness`（runs.filters.test.tsx 同一手法），断言的对象与强度一个字没减：
 // 仍是「控件此刻持有的机器值」。日期两栏仍是真 <input>，`.value` 照旧。

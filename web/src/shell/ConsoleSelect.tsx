@@ -1,13 +1,13 @@
 /**
  * ConsoleSelect — a hand-drawn listbox control that replaces every native
- * `<select>` in the console surface.
+ * select element in the console surface.
  *
  * WHY it exists instead of `@nous-research/ui/ui/components/select`: the
  * library control is keyboard-complete but its props are frozen at
  * {children, className, disabled, id, onValueChange, placeholder, style,
  * value} — it will not pass `data-testid` through, and the testids
  * (`tsk4-filter-status`, `audH-page-size`, …) are the addresses the route
- * tests and IA assertions click. Native `<select>` is out for the visual
+ * tests and IA assertions click. Native select elements are out for the visual
  * reason this lane exists: the platform popup ignores the console palette.
  *
  * Write-domain note: `src/shell/**` keeps the zero-UI-import discipline, so
