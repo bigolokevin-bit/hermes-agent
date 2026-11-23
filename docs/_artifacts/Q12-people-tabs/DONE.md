@@ -47,6 +47,14 @@
 - 旁证：`vitest run src/shell/bridge.test.ts` → 8 passed；`tsc -p tsconfig.app.json --noEmit` → 0 errors
 - 构建闸 `node_modules/.bin/vite build` → **exit 0**（终版 ✓ built in 5.91s，产物 `hermes_cli/web_dist/`）
 
+## FIX-Q12（并线波闸退修复）
+- 闸：`src/components/ui/scrollbar-utility.test.ts`（滚动条棘轮门）判 people.css 三枚裸 `::-webkit-scrollbar*` 定义为第二真值源 → **删除该装饰段**（原值：height:8px + track/thumb 6%/30% color-mix）。棘轮规定定义点恒 1 且只在 index.css 的 `.scrollbar-none` 块，无法新增工具类，故横滑 affordance 收敛为提示文案「左右滑动查看全部列」+ 首列粘性钉左，滚动条本体回落系统默认。桌面 >760 行为不变。
+- 自检（node v26.13.1）：
+  - 全量 `vitest run src` → **505 文件：3731 passed / 1 failed（3732 例）**；唯一红 = `src/shell/e1Contract.test.ts`「served entry drifted」——该腿比对 9122 活部署与本树 dist，任务 worktree 重建后天然背离＝结构性环境红（同文件在共享检出 7/7 绿实证），与本 diff 无关。
+  - 本件相关面全绿：`vitest run src/components/ui src/modules/people` → 53/53（含棘轮门 4 条）。
+  - `tsc -b . --noEmit` → **exit 0（0 errors）**；`vite build` → exit 0。
+- 8 张截图已按终版 dist 全部重截（rows=9 真渲染闸、无 reqfail、无 login 跳转）。
+
 ## 截图（真实登录态：v4_proxy 临时口 5512 指本件 dist + `access_token_cookie` 注入，BFF 实连 8092，无 reqfail）
 交付口径两张：
 - `desktop-1440-profile.png`（1440×900，档案 Tab 真值 9 行）
