@@ -1,0 +1,146 @@
+{
+ "face": "add934b0c3750d377c47ee81cd79fa6fabc930bf",
+ "faceNote": "face=当拍定向 ls-remote lane/hermes-console；部署面另记 entry",
+ "port": "8183",
+ "method": "document.querySelectorAll('select').length per route (read-only, no code change)",
+ "startedAt": "2026-11-23T02:28:21.015Z",
+ "routes": [
+  {
+   "route": "/overview",
+   "select": 0,
+   "hash": "",
+   "href": "/overview",
+   "entry": "http://100.117.184.117:8183/assets/index-CCMhKt2U.js",
+   "who": 200,
+   "at": "2026-11-23T02:28:23.152Z"
+  },
+  {
+   "route": "/overview?tab=usage",
+   "select": 0,
+   "hash": "",
+   "href": "/overview?tab=usage",
+   "entry": "http://100.117.184.117:8183/assets/index-CCMhKt2U.js",
+   "who": 200,
+   "at": "2026-11-23T02:28:24.201Z"
+  },
+  {
+   "route": "/employees",
+   "select": 0,
+   "hash": "",
+   "href": "/employees",
+   "entry": "http://100.117.184.117:8183/assets/index-CCMhKt2U.js",
+   "who": 200,
+   "at": "2026-11-23T02:28:25.256Z"
+  },
+  {
+   "route": "/work",
+   "select": 0,
+   "hash": "",
+   "href": "/work",
+   "entry": "http://100.117.184.117:8183/assets/index-CCMhKt2U.js",
+   "who": 200,
+   "at": "2026-11-23T02:28:26.311Z"
+  },
+  {
+   "route": "/approvals",
+   "select": 0,
+   "hash": "",
+   "href": "/approvals",
+   "entry": "http://100.117.184.117:8183/assets/index-CCMhKt2U.js",
+   "who": 200,
+   "at": "2026-11-23T02:28:27.371Z"
+  },
+  {
+   "route": "/identity",
+   "select": 0,
+   "hash": "",
+   "href": "/identity",
+   "entry": "http://100.117.184.117:8183/assets/index-CCMhKt2U.js",
+   "who": 200,
+   "at": "2026-11-23T02:28:28.455Z"
+  },
+  {
+   "route": "/knowledge",
+   "select": 0,
+   "hash": "",
+   "href": "/knowledge",
+   "entry": "http://100.117.184.117:8183/assets/index-CCMhKt2U.js",
+   "who": 200,
+   "at": "2026-11-23T02:28:29.507Z"
+  },
+  {
+   "route": "/knowledge?tab=spaces",
+   "select": 0,
+   "hash": "",
+   "href": "/knowledge?tab=spaces&panel=spaces",
+   "entry": "http://100.117.184.117:8183/assets/index-CCMhKt2U.js",
+   "who": 200,
+   "at": "2026-11-23T02:28:30.536Z"
+  },
+  {
+   "route": "/knowledge?tab=ingest",
+   "select": 0,
+   "hash": "",
+   "href": "/knowledge?tab=sources&panel=ingest",
+   "entry": "http://100.117.184.117:8183/assets/index-CCMhKt2U.js",
+   "who": 200,
+   "at": "2026-11-23T02:28:31.580Z"
+  },
+  {
+   "route": "/capabilities",
+   "select": 0,
+   "hash": "",
+   "href": "/capabilities?tab=skills",
+   "entry": "http://100.117.184.117:8183/assets/index-CCMhKt2U.js",
+   "who": 200,
+   "at": "2026-11-23T02:28:32.603Z"
+  },
+  {
+   "route": "/system",
+   "select": 0,
+   "hash": "",
+   "href": "/system",
+   "entry": "http://100.117.184.117:8183/assets/index-CCMhKt2U.js",
+   "who": 200,
+   "at": "2026-11-23T02:28:33.660Z"
+  },
+  {
+   "route": "/audit",
+   "select": 0,
+   "hash": "",
+   "href": "/audit",
+   "entry": "http://100.117.184.117:8183/assets/index-CCMhKt2U.js",
+   "who": 200,
+   "at": "2026-11-23T02:28:34.729Z"
+  }
+ ],
+ "entry": "/assets/index-CCMhKt2U.js",
+ "whoamiAll": [
+  200,
+  200,
+  200,
+  200,
+  200,
+  200,
+  200,
+  200,
+  200,
+  200,
+  200,
+  200
+ ],
+ "jsErrors": 0,
+ "res4xx": [
+  "404 http://100.117.184.117:8183/agent-api/api/v1/user/list",
+  "404 http://100.117.184.117:8183/agent-api/api/v1/user/all",
+  "404 http://100.117.184.117:8183/agent-api/api/documents?limit=50",
+  "404 http://100.117.184.117:8183/agent-api/api/knowledge/spaces?limit=20",
+  "404 http://100.117.184.117:8183/agent-api/api/documents?limit=50",
+  "404 http://100.117.184.117:8183/agent-api/api/knowledge/spaces?limit=20",
+  "404 http://100.117.184.117:8183/agent-api/api/knowledge/sources?limit=20",
+  "404 http://100.117.184.117:8183/agent-api/api/knowledge/ingest-status?limit=20",
+  "404 http://100.117.184.117:8183/agent-api/api/documents?limit=50",
+  "404 http://100.117.184.117:8183/agent-api/api/documents?limit=50"
+ ],
+ "finishedAt": "2026-11-23T02:28:34.730Z"
+}
