@@ -1,7 +1,7 @@
 {
   "script": "lint-reuse",
   "root": "web/src/modules",
-  "scanned": 594,
+  "scanned": 608,
   "reuseMarkers": 28,
   "chatHostFiles": [
     {

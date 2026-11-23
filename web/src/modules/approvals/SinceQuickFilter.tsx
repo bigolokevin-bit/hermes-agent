@@ -9,7 +9,7 @@
  * persisted to the URL) and the timezone math is pure UTC-epoch arithmetic —
  * 本机时区不参与判定。
  */
-import { gateReason } from "./gates";
+import { crossPageLoadHint, gateReason } from "./gates";
 import { epochOf } from "./RelativeTime";
 
 type Phase = "loading" | "empty" | "ready" | "error" | "denied";
@@ -38,11 +38,13 @@ export function SinceQuickFilter({
   since,
   loadedCount,
   onPick,
+  hasMore = false,
 }: {
   phase: Phase;
   since: SinceValue | null;
   loadedCount: number;
   onPick: (value: SinceValue | null) => void;
+  hasMore?: boolean;
 }) {
   const ready = phase === "ready";
   // P1-375-2: 同 RiskQuickFilter——时间窗 chip（含「近 24 小时」这类带空格的
@@ -96,6 +98,11 @@ export function SinceQuickFilter({
         title="实测本页读口带 since=24h / window=24h / since=<日期> 与不带时返回同一全量（同序同行集），后台不做时间窗过滤；为避免假筛选，这里只对已加载的行做前端本地过滤，切换不产生新请求。没有提交时间的行不属于任何时间窗。"
       >
         按当前已加载 {loadedCount} 条统计，不是全量；切换时间范围不发新请求。
+        {hasMore ? (
+          <span data-testid="apv-since-crosspage" data-apv-since-crosspage="needs-load">
+            {` ${crossPageLoadHint(true)}`}
+          </span>
+        ) : null}
       </p>
     </div>
   );

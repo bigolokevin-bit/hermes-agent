@@ -1,19 +1,32 @@
 // @vitest-environment jsdom
 /**
  * Q13 — 审批详情「变更前后差异（字段级）」三态锁。
+ * AP-02 — 同段的 changeKind 四分支 ＋ consumedAt 两态（E52/E53）＋ 禁 0/禁风险差异四项。
  *
  * 数据源口径（禁扩）：唯一来源是详情响应本体
  * （GET /agent-api/api/approval?id=，api.ts fetchDetail）。键形制取自
  * 2026-11-23 本机金标准实测（evidence/raw-detail-ap_AEEC….json）：
  *   detail.changeDetail{fromVersionId,toVersionNo,addedGrants[],removedGrantIds[]}
  *   + resource 的 snake 镜像（同一载荷，禁数两遍）。
+ * 相邻版本核对腿只读 BFF 既有端点 GET /agent-api/api/employee-versions?id=
+ * （形制取自 evidence/raw-employee-versions.json 实测顶层 keys=[items]）；
+ * **不新增端点**，读不回就写「未读回」，不补 v 号。
  *
- * 三态：
+ * 三态（Q13 契约，逐字不许破）：
  *  ① 真实差异键在 → 字段级前/后行（版本行 + 每条 added grant），camel/snake
  *     镜像只算一份；
  *  ② 差异键不在（message_send 单实测无 changeDetail）→ diff=null，屏上
  *     「未接」+原因句，不 fixture、不猜；
  *  ③ 决策按钮仍禁用且 title 带原因（DECISION_GATE 现状契约，本功能零写路径）。
+ *
+ * AP-02 新增分支口径（backlog §AP-02 步骤①②③④）：
+ *  ① employee_version_create 有载体 → 字段行 ＋ 版本链核对；
+ *  ② employee_version_create 无载体 → 「未接」+原因，不猜相邻版本对；
+ *  ③ 其它已知类型（message_send/grant_escalation）→ 「差异明细未提供
+ *     （该变更类型无差异数据源）」；
+ *  ④ 未写明类型 → 「差异明细未提供（该单据没写明变更类型）」；
+ *  consumedAt 两态 + 仅当真带回 run 才画回链；风险差异四项整块不渲染；
+ *  argsDigest 标「不可逆摘要，非差异」。
  */
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -49,7 +62,7 @@ vi.mock("@nous-research/ui", () => ({
 import { fetchJSON } from "@/lib/api";
 import ApprovalsHistoryModulePage from "@/modules/approvals/ApprovalsHistoryModulePage";
 import ApprovalsPendingModulePage from "@/modules/approvals/ApprovalsPendingModulePage";
-import { approvalDetailFrom, approvalDiffFrom } from "@/modules/approvals/model";
+import { approvalDetailFrom, approvalDiffFrom, consumptionStateFrom } from "@/modules/approvals/model";
 import { DECISION_GATE } from "@/modules/approvals/writeGate";
 import { shortRef } from "@/modules/tasks/tasksBoard";
 
@@ -323,3 +336,265 @@ describe("Q13 approvals detail diff — three honest states", () => {
     expect(text("apd10-diff")).toContain("员工版本");
   });
 });
+
+/* ------------------------------------------------------------------ *
+ * AP-02 — changeKind 四分支 ＋ consumedAt 两态 ＋ 禁 0/禁风险差异四项。
+ * 形制全部照 evidence/ 实测原文（顶层 keys、items 形制、binding.runId 位）。
+ * ------------------------------------------------------------------ */
+
+/** evidence/raw-employee-versions.json 的实测形制（items[].id/versionNo/…）。 */
+const VERSIONS_MEASURED = {
+  items: [
+    { id: "empv_037096D42F194AF6B38A3D8F62", employeeId: "emp_86A81CE8FF6F42E187BCF2B540", versionNo: 5, effectiveFrom: "2026-11-21T18:39:20.008Z" },
+    { id: "empv_E54E79C90FB747E8AA75BC7762", employeeId: "emp_86A81CE8FF6F42E187BCF2B540", versionNo: 4, effectiveFrom: "2026-11-21T18:35:13.297Z" },
+    { id: "empv_7369DD6AAB6B4AD9B07D9D67AF", employeeId: "emp_86A81CE8FF6F42E187BCF2B540", versionNo: 3, effectiveFrom: "2026-11-15T03:27:58.000Z" },
+    { id: "empv_BEB487D9B8DC46ECB1C1AD663B", employeeId: "emp_86A81CE8FF6F42E187BCF2B540", versionNo: 2, effectiveFrom: "2026-11-14T11:30:47.566Z" },
+    { id: "empv_DA3408CDC3DC4F8F9BFEED9EF8", employeeId: "emp_86A81CE8FF6F42E187BCF2B540", versionNo: 1, effectiveFrom: "2026-11-13T22:15:11.641Z" },
+  ],
+};
+
+/** grant_escalation：实测 consumed 单（无 detail 载体、binding.changeKind 在位）。 */
+const GOLD_ESCALATION = {
+  approvalId: "ap_7D484B3FFBE048ECB7B96F92C9",
+  type: "business_action",
+  status: "consumed",
+  action: "grant.escalation",
+  argsDigest: "0d1f1c8f0dcd7a3b0f0a9a9c6a4c2a5b",
+  binding: {
+    subjectType: "employee",
+    subjectId: "emp_86A81CE8FF6F42E187BCF2B540",
+    changeKind: "grant_escalation",
+    targetHash: "th_7111bc64272abf73c0f0e27373c4f4e9",
+  },
+  riskLevel: "high",
+  reasonText: "P0-7 temporary grants escalation",
+  consumedAt: "2026-11-15T03:23:29.443Z",
+  decisions: [{ userId: "human:1", verdict: "approve", decidedAt: "2026-11-15T03:23:00.000Z" }],
+  createdAt: "2026-11-15T03:20:00.000Z",
+  decidedAt: "2026-11-15T03:23:00.000Z",
+};
+
+/** 批准但未消费（approved + 无 consumedAt）：E52 的输入形制。 */
+const GOLD_APPROVED_WAITING = {
+  ...GOLD_ESCALATION,
+  approvalId: "ap_AP02WAITING00000000000001",
+  status: "approved",
+  consumedAt: undefined,
+};
+
+/** consumed 但响应里没有 run 标识：只给文案，不画回链。 */
+const GOLD_CONSUMED_NO_RUN = {
+  ...GOLD_ESCALATION,
+  approvalId: "ap_AP02NORUN0000000000000001",
+};
+
+/** consumed 且 binding.runId 在位（message_send 实测形制）：给文案 + 真回链。 */
+const GOLD_CONSUMED_WITH_RUN = {
+  ...GOLD_ESCALATION,
+  approvalId: "ap_AP02WITHRUN0000000000000001",
+  action: "message.send",
+  binding: { ...GOLD_ESCALATION.binding, changeKind: "message_send", runId: "rn_01P07E2E0000000000000000AA" },
+};
+
+/** 没写明变更类型（binding 不带 changeKind）：第四分支。 */
+const GOLD_NO_KIND = {
+  approvalId: "ap_AP02NOKIND0000000000000001",
+  type: "business_action",
+  status: "expired",
+  action: "unknown.thing",
+  riskLevel: "low",
+  reasonText: "无类型单",
+  decisions: [],
+  createdAt: "2026-11-20T00:00:00.000Z",
+};
+
+/** employee_version_create 但响应不带差异载体：第二分支（不猜版本对）。 */
+const GOLD_VERSION_NO_CARRIER = {
+  ...GOLD_ESCALATION,
+  approvalId: "ap_AP02NOCARRIER00000000000001",
+  action: "employee.version.create",
+  binding: { ...GOLD_ESCALATION.binding, changeKind: "employee_version_create" },
+};
+
+/** 按 URL 记账的 serve：分支测试要钉「该读的读、不该读的一次都不读」。 */
+function serveTracking(rows: unknown[], versions: unknown = VERSIONS_MEASURED): string[] {
+  const urls: string[] = [];
+  mock.mockImplementation(async (url: string) => {
+    const u = String(url);
+    urls.push(u);
+    if (u.includes("/api/approval?id=")) {
+      const id = decodeURIComponent(u.split("id=")[1]?.split("&")[0] ?? "");
+      const row = (rows as { approvalId?: string }[]).find((r) => r.approvalId === id);
+      return row ? { ...row } : {};
+    }
+    if (u.includes("/api/employee-versions")) return versions;
+    if (u.includes("/api/approvals")) return { items: rows };
+    return {};
+  });
+  return urls;
+}
+
+const versionsCalls = (urls: string[]): string[] => urls.filter((u) => u.includes("/api/employee-versions"));
+
+describe("AP-02 changeKind-bracketed diff — four确定形态", () => {
+  it("分支①：employee_version_create 有载体 → 字段行 + 相邻版本核对（读既有端点，钉 URL）", async () => {
+    const urls = serveTracking([GOLD_VERSION, GOLD_MESSAGE]);
+    await renderInto("/approvals?tab=history", <ApprovalsHistoryModulePage />);
+    await openDetail("ap_AEEC078E0C824E749513AFEC9A");
+
+    await waitFor("chain note", () => !!q("apd10-chain-note"));
+    const body = text("apd10-diff");
+    expect(body).toContain("员工版本");
+    // 实测链上 empv_BEB487…＝v2，单据宣布 v3 ⇒ 屏上能说 v2→v3。
+    const chain = text("apd10-chain-note");
+    expect(chain).toContain("前版 v2");
+    expect(chain).toContain("后版 v3 已在链上");
+    expect(chain).toContain("链上读回 5 版");
+    // 只读既有端点，URL 形制逐字钉住（员工号来自响应）。
+    expect(versionsCalls(urls)).toEqual(["/agent-api/api/employee-versions?id=emp_86A81CE8FF6F42E187BCF2B540&limit=50"]);
+    expect(q("apd10-diff-unwired"), "有数据不显未提供句").toBeNull();
+  });
+
+  it("分支①b：版本链读不回（响应不是列表）→ 只说未读回，不补 v 号", async () => {
+    serveTracking([GOLD_VERSION], { detail: "console.unknown_route" });
+    await renderInto("/approvals?tab=history", <ApprovalsHistoryModulePage />);
+    await openDetail("ap_AEEC078E0C824E749513AFEC9A");
+
+    await waitFor("chain unreadable", () => !!q("apd10-chain-unreadable"));
+    expect(text("apd10-chain-unreadable")).toContain("版本链未读回");
+    expect(q("apd10-chain-note"), "读不回不画链上行").toBeNull();
+    // 字段级行仍来自本单响应，不受链失败影响。
+    expect(text("apd10-diff")).toContain("员工版本");
+  });
+
+  it("分支②：employee_version_create 无载体 → 「未接」带原因，且一次都不读版本链", async () => {
+    const urls = serveTracking([GOLD_VERSION_NO_CARRIER]);
+    await renderInto("/approvals?tab=history", <ApprovalsHistoryModulePage />);
+    await openDetail("ap_AP02NOCARRIER00000000000001");
+
+    const unwired = q("apd10-diff-unwired");
+    expect(unwired, "未接 carrier").toBeTruthy();
+    expect(unwired!.textContent ?? "").toContain("未接");
+    expect(unwired!.getAttribute("title") ?? "").toContain("没有带回字段级前后值");
+    expect(q("apd10-diff-row-0"), "无载体不画行").toBeNull();
+    expect(q("apd10-chain-note"), "无载体不猜版本对，不读链").toBeNull();
+    expect(versionsCalls(urls), "无载体零次读链").toEqual([]);
+  });
+
+  it("分支③：其它已知类型（message_send/grant_escalation）→ 差异明细未提供（无差异数据源）", async () => {
+    const urls = serveTracking([GOLD_MESSAGE, GOLD_ESCALATION]);
+    await renderInto("/approvals?tab=history", <ApprovalsHistoryModulePage />);
+    await openDetail("ap_0C67930A766D4AA49E4B5B44EC");
+
+    const unwired = q("apd10-diff-unwired");
+    expect(unwired!.textContent ?? "").toContain("差异明细未提供（该变更类型无差异数据源）");
+    expect(unwired!.getAttribute("title") ?? "", "原因句点名类型原值").toContain("message_send");
+    expect(q("apd10-diff-row-0")).toBeNull();
+    expect(versionsCalls(urls), "非版本类型零次读链").toEqual([]);
+
+    await openDetail("ap_7D484B3FFBE048ECB7B96F92C9");
+    const again = q("apd10-diff-unwired");
+    expect(again!.textContent ?? "").toContain("差异明细未提供（该变更类型无差异数据源）");
+    expect(again!.getAttribute("title") ?? "").toContain("grant_escalation");
+    expect(versionsCalls(urls)).toEqual([]);
+  });
+
+  it("分支④：未写明变更类型 → 差异明细未提供（没写明类型），不推断成任何已知类", async () => {
+    const urls = serveTracking([GOLD_NO_KIND]);
+    await renderInto("/approvals?tab=history", <ApprovalsHistoryModulePage />);
+    await openDetail("ap_AP02NOKIND0000000000000001");
+
+    const unwired = q("apd10-diff-unwired");
+    expect(unwired!.textContent ?? "").toContain("差异明细未提供（该单据没写明变更类型）");
+    expect(text("apd10-diff")).not.toContain("员工版本");
+    expect(versionsCalls(urls)).toEqual([]);
+  });
+
+  it("风险差异四项无源 ⇒ 整块不渲染，也不以 0 或空壳占位", async () => {
+    serveTracking([GOLD_VERSION, GOLD_ESCALATION]);
+    await renderInto("/approvals?tab=history", <ApprovalsHistoryModulePage />);
+    await openDetail("ap_AEEC078E0C824E749513AFEC9A");
+    const drawer = text("apr5-detail");
+    for (const item of ["可触达", "新增写入", "未脱敏", "同类申请"]) {
+      expect(drawer, `风险差异项「${item}」无源不渲染`).not.toContain(item);
+    }
+    // 差异段里没有「0 项/0 条」这类把缺读当 0 的句式。
+    expect(text("apd10-diff")).not.toMatch(/\b0\b\s*[项条]|\b无\s*0\b/);
+    expect(q("apd10-diff-row-2"), "removed_grant_ids 实测为空数组 ⇒ 不出移除行").toBeTruthy();
+    expect(q("apd10-diff-row-3"), "空数组不画第四行").toBeNull();
+  });
+
+  it("argsDigest 标注「不可逆摘要，非差异」（差异段内 + 详情技术行）", async () => {
+    serveTracking([GOLD_VERSION]);
+    await renderInto("/approvals?tab=history", <ApprovalsHistoryModulePage />);
+    await openDetail("ap_AEEC078E0C824E749513AFEC9A");
+
+    expect(text("apd10-digest-note")).toContain("不可逆摘要，非差异");
+    // 「详情」折叠段展开后，摘要行同样自带说明；原码不进差异正文。
+    const toggle = Array.from((q("apr5-detail") ?? document).querySelectorAll("button")).find(
+      (b) => (b.textContent ?? "").trim() === "详情",
+    ) as HTMLButtonElement | undefined;
+    expect(toggle, "详情钮在位").toBeTruthy();
+    await act(async () => {
+      toggle!.click();
+    });
+    const disclosure = document.querySelector("[data-testid$='-details']");
+    expect(disclosure?.textContent ?? "", "详情技术行带摘要说明").toContain(
+      "参数摘要：22eadfcebfdaa88b5451bb8622503c876ddfd7418e692056baa29786bb9fb63f（不可逆摘要，非差异）",
+    );
+    expect(text("apd10-diff")).not.toContain("22eadfcebfdaa88b");
+  });
+});
+
+describe("AP-02 consumedAt — E52/E53 两态可判", () => {
+  it("approved 且 consumedAt 空 ⇒「已批准，等待运行时使用」，无回链", async () => {
+    const urls = serveTracking([GOLD_APPROVED_WAITING]);
+    await renderInto("/approvals?tab=history", <ApprovalsHistoryModulePage />);
+    await openDetail("ap_AP02WAITING00000000000001");
+
+    expect(text("apd10-consumed-waiting")).toContain("已批准，等待运行时使用");
+    expect(q("apd10-consumed-used"), "等待态不显已使用").toBeNull();
+    expect(q("apd10-consumed-run-link"), "没有 run 标识不画回链").toBeNull();
+    expect(versionsCalls(urls)).toEqual([]);
+  });
+
+  it("consumedAt 非空 ⇒「已被运行时使用」；仅当响应真带回 run 才画回链", async () => {
+    serveTracking([GOLD_CONSUMED_WITH_RUN, GOLD_CONSUMED_NO_RUN]);
+    await renderInto("/approvals?tab=history", <ApprovalsHistoryModulePage />);
+
+    await openDetail("ap_AP02WITHRUN0000000000000001");
+    expect(text("apd10-consumed-used")).toContain("已被运行时使用");
+    const link = q("apd10-consumed-run-link") as HTMLAnchorElement | null;
+    expect(link, "binding.runId 实测在位 ⇒ 真回链").toBeTruthy();
+    expect(link!.getAttribute("href")).toBe("/runs?run=rn_01P07E2E0000000000000000AA");
+
+    await openDetail("ap_AP02NORUN0000000000000001");
+    expect(text("apd10-consumed-used")).toContain("已被运行时使用");
+    expect(q("apd10-consumed-run-link"), "无 run 标识只给文案").toBeNull();
+    expect(text("apd10-consumed-run-none")).toContain("没带回运行编号");
+  });
+
+  it("consumed 但 consumedAt 缺键 ⇒ 说「使用时间未回传」，不假装有读数", async () => {
+    const rows = [{ ...GOLD_ESCALATION, approvalId: "ap_AP02NOCONSUMEDAT0000000001", consumedAt: undefined }];
+    serveTracking(rows);
+    await renderInto("/approvals?tab=history", <ApprovalsHistoryModulePage />);
+    await openDetail("ap_AP02NOCONSUMEDAT0000000001");
+
+    expect(text("apd10-consumed-used")).toContain("使用时间未随本单回传");
+    expect(q("apd10-consumed-waiting"), "已执行态不说等待使用").toBeNull();
+  });
+
+  it("读取腿单点：consumedAt/run 的键形制按实测响应解析，缺即 null", () => {
+    const used = approvalDetailFrom(GOLD_CONSUMED_WITH_RUN);
+    expect(used!.consumedAt).toBe("2026-11-15T03:23:29.443Z");
+    expect(used!.consumptionRunId).toBe("rn_01P07E2E0000000000000000AA");
+    const waiting = approvalDetailFrom(GOLD_APPROVED_WAITING);
+    expect(waiting!.consumedAt).toBeNull();
+    expect(waiting!.consumptionRunId).toBeNull();
+    const view = consumptionStateFrom(waiting!.status.raw, waiting!.consumedAt);
+    expect(view).toEqual({ state: "waiting", at: null, atRaw: null, timeMissing: false });
+    expect(consumptionStateFrom("expired", null), "过期单不宣称消费态").toBeNull();
+    expect(consumptionStateFrom("pending", null)).toBeNull();
+  });
+});
+

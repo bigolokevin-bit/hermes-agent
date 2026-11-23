@@ -11,13 +11,13 @@ import type {
   RunStatsBody,
   TaskRow,
 } from "./types";
-import { num } from "./types";
+import { num, EMPLOYEES_PAGE_LIMIT } from "./types";
 import { beijing } from "./format";
 import type { GateVerdict, ReadinessEvidence } from "./readiness";
 import { DENOMINATOR_STATES, rollup, v1Verdict, v2Verdict, v3Verdict, v6Verdict } from "./readiness";
 
-/** 员工目录固定单页 limit=100；拉满一页就证明不了全量（DU-01④）。 */
-export const EMPLOYEES_PAGE_LIMIT = 100;
+/** 员工目录固定单页 limit=100；拉满一页就证明不了全量（DU-01④）。owner=types.ts，此处仅再导出兼容旧引用。 */
+export { EMPLOYEES_PAGE_LIMIT } from "./types";
 /** 逐员工证据扇出硬上限；超出部分按待核实并在卡上披露 n/N。 */
 export const READINESS_FANOUT_LIMIT = 32;
 
@@ -216,7 +216,33 @@ export function buildReadiness(
   const deltaToNext =
     confirmed !== null && total !== null && confirmed < total ? 1 : null;
 
-  return { total, active, confirmed, buckets, denominatorNote, unknownGates, narrowest, deltaToNext, gates };
+  // Q10 条目3（截断披露）：明细出卡进折叠区后，「总数 / 被截条数」由本页读到的
+  // 条数如实承担——运行·任务·审批每个读口单页上限 3，触顶即明写可能还有更多。
+  // 条目4（最窄门置顶 + 交集句）：最窄限制门排到第一，其余保持原序；净效果句
+  // 用门名 + 拦下人数说人话，unknown 存在时明说「净人数暂不给」。
+  const orderedGates = narrowest
+    ? [narrowest, ...gates.filter((g) => g.key !== narrowest.key)]
+    : gates;
+  const netNote = narrowest
+    ? unknownGates > 0
+      ? `四门叠加先看最窄的一道「${narrowest.name}」：拦下 ${narrowest.fail} 人；还有 ${unknownGates} 项检查结果未知，叠加后的净人数暂不给。`
+      : `四门叠加后最窄的一道是「${narrowest.name}」：它拦下 ${narrowest.fail} 人，其余检查单独看都更宽。`
+    : unknownGates > 0
+      ? `还有 ${unknownGates} 项检查的数据源没有接入，四门叠加的净效果暂不能判定。`
+      : "四门检查全部通过才可上岗；当前没有单独卡人的检查。";
+
+  // Q10 条目5（分母护栏）：员工目录是单页读取（上限 100）。触顶或目录条数低于
+  // 在册统计时，比率分母只是「本页口径」，句子里必须点名，不得假造全量分母。
+  const pageCapped = employees !== null && employees.length >= EMPLOYEES_PAGE_LIMIT;
+  const denomNote = employees === null
+    ? "比率分母未读到：员工目录没有回答。"
+    : pageCapped
+      ? `比率分母口径：本页 ${employees.length} 人＝数据源单页上限 ${EMPLOYEES_PAGE_LIMIT}，非全量。`
+      : !complete && total !== null
+        ? `比率分母口径：本页 ${employees.length} 人 · 在册统计 ${total} 人，目录未拉满，非全量。`
+        : `比率分母口径：本页 ${employees.length} 人，未触单页上限 ${EMPLOYEES_PAGE_LIMIT}，与在册统计一致。`;
+
+  return { total, active, confirmed, buckets, denominatorNote, unknownGates, narrowest, deltaToNext, gates: orderedGates, netNote, denomNote };
 }
 
 export interface RunTotalsView {
@@ -451,6 +477,19 @@ export function buildBlockers(
     });
   }
   return out.slice(0, 3);
+}
+
+/**
+ * Q10 条目3：buildBlockers 恒截前 3 条（既有口径）；「读到多少」要数截断前
+ * 的源头，否则「查看全部 (N)」会把 shown 冒充 total。失败运行按 1 组计，
+ * 与逐条的卡面口径一致。
+ */
+export function blockersTotal(
+  failedRuns: RunRow[] | null,
+  blockedTasks: TaskRow[] | null,
+  approvals: ApprovalRow[] | null,
+): number {
+  return (failedRuns && failedRuns.length > 0 ? 1 : 0) + (blockedTasks?.length ?? 0) + (approvals?.length ?? 0);
 }
 
 export function pendingView(
