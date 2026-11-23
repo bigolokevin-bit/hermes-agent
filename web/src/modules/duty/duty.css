@@ -40,6 +40,18 @@
   font-size: var(--font-size-1);
 }
 
+/* DU-05①：页头 health chip（三态：ok / degraded / 未接入，词表见 health.ts）。
+   只借 Badge 的面，状态色由 data-state 决定语义，pending 减一档存在感——
+   「还没回答」不许比「失败」更抢眼。 */
+.duty-health-chip {
+  display: inline-flex;
+  align-items: center;
+}
+
+.duty-health-chip[data-state="pending"] {
+  opacity: 0.85;
+}
+
 .duty-head-actions {
   display: flex;
   flex-wrap: wrap;
