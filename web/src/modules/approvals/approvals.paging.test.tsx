@@ -7,7 +7,9 @@
  *   ApprovalsHistoryModulePage.test.tsx describe "R79 cursor pagination…"
  *   两用例（duplicate row suppressed / more disabled at end /
  *   title 含「已到末页」——工单措辞「到底」与现场文案「已到末页」不同，
- *   按现状记录，禁为此改产品文案）；window 维=apv5-filter-window 恒 disabled
+ *   按现状记录，禁为此改产品文案；AP-01 起本行的 count 句式改由分母句单点
+ *   派生「已加载 n 条（非全量）」，more title 的「已到末页」仍是游标事实）；
+ *   window 维=apv5-filter-window 恒 disabled
  *   摆设（R129 裁决），不存在「切 window」动作，status 切换游标重置已由
  *   R79 第二用例 + approvals.history.filters.test.tsx ② + R98 chip 移除锁。
  * 本文件新增量=翻页「之后」的三态复验：
@@ -134,10 +136,11 @@ describe("R139 ①⑤ after append: three numbers equal, row copy stays index-al
     expect(rowCount()).toBe(4);
     expect(q("apv5-count")?.textContent).toBe("4");
     expect(q("apv7-export-count")?.textContent, "export count mirrors the same visibleRows").toBe("共 4 行");
-    // P1-A2 ② 改判：total 不可用且已到末页时，count 单句直述「已到末页」，
-    // 不再与「总数不可用」并存；apv-page-end 角标在 total 未知腿退出。
-    expect(q("apv-page-count")?.textContent).toBe("已到末页 · 已显示 4 条");
-    // ③ 末页现状文案（「已到末页」，非工单措辞「到底」——按现状记录）。
+    // AP-01①（覆盖 P1-A2 ② 的旧句式「已到末页 · 已显示 4 条」）：total 未知腿的
+    // count 只报分母句「已加载 4 条（非全量）」；末页证据仍由 more 钮禁用＋title
+    // 承担（那句「已到末页」是服务端游标事实，不是总量），apv-page-end 照旧缺席。
+    expect(q("apv-page-count")?.textContent).toBe("已加载 4 条（非全量）");
+    // ③ 末页现状文案（more title 的「已到末页」，非工单措辞「到底」——按现状记录）。
     expect((q("apv-page-more") as HTMLButtonElement).disabled, "more disabled at end").toBe(true);
     expect(q("apv-page-more")?.getAttribute("title")).toContain("已到末页");
     expect(q("apv-page-end"), "P1-A2 ②: end chip absent when total unknown").toBeNull();

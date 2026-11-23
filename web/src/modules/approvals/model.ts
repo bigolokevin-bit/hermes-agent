@@ -503,9 +503,15 @@ export interface ApprovalPage {
   rows: ApprovalRow[];
   /** Records the answer carried but that could not be read — counted, never dressed up. */
   unreadable: number;
+  /** Server cursor for the next page; `null` = the read port handed back no cursor. */
   next: string | null;
-  /* R79: 读口顶层无 total 键（实测 keys=[items,nextCursor]）——解析 total/count
-   * 以备契约升级，缺省恒 null；UI 禁按已加载条数推算。 */
+  /* R79 + AP-01: 读口顶层无 total 键。现网实测（经 8092→8101，opsadmin 会话）：
+   *   status=all/缺省（BFF _approvals_all 逐 8 态扇出）→ keys=[items,nextCursor]，
+   *     且跨态 cursor 恒为 None、合并后按 limit 截断；
+   *   单态透传（如 status=expired/pending）→ keys=[items]（无游标即无续页）。
+   * 这里解析 total|count 只为契约升级预留；缺省恒 null。null 是「读口没说」，
+   * 不是「0」也不是「rows.length」——UI 侧唯一的分母口径见 QueueSummaryBar 的
+   * denominatorReadout()，禁在任何地方用本页已加载条数推算总量。 */
   total: number | null;
 }
 
@@ -513,10 +519,11 @@ export interface ApprovalPage {
 export function approvalsPageFrom(payload: unknown): ApprovalPage | null {
   let items: unknown[] | null = null;
   let next: string | null = null;
+  let rec: Record<string, unknown> | null = null;
   if (Array.isArray(payload)) {
     items = payload;
   } else {
-    const rec = asRecord(payload);
+    rec = asRecord(payload);
     if (!rec) return null;
     for (const key of LIST_KEYS) {
       const value = rec[key];
@@ -535,8 +542,11 @@ export function approvalsPageFrom(payload: unknown): ApprovalPage | null {
     if (row) rows.push(row);
     else unreadable += 1;
   });
-  const totalRaw = (payload as Record<string, unknown>).total ?? (payload as Record<string, unknown>).count;
+  /* AP-01：总数只认读口顶层的 total|count 键（现网两路实测都缺）。缺省＝null＝
+   * 「读口没说」：这里绝不回退成 rows.length，否则本页条数就冒充了总量。 */
+  const totalRaw = rec?.total ?? rec?.count;
   const total = typeof totalRaw === "number" && Number.isFinite(totalRaw) ? totalRaw : null;
+  // 键序＝ApprovalPage 声明序（rows, unreadable, next, total）：契约补 total 时按同序落键。
   return { rows, unreadable, next, total };
 }
 
