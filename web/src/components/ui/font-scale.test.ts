@@ -97,10 +97,15 @@ describe("字阶棘轮门（字号集合 ⊆ 6 档令牌）", () => {
     for (const h of hits) byFile.set(h.file, (byFile.get(h.file) ?? 0) + 1);
     const top = [...byFile.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4);
     // 这四个文件是收敛主力，若归属突然变化说明有人绕过台账动手，先红再对。
+    // 2026-11-23 Q9 批（task/Q9-sample-compare a6de0b4b3d）逐文件归属：
+    //   access.css 15 处（被动进位——原第五）、counts.css 14 处、metrics.css 13 处、health.css 12 处；
+    //   duty.css 由原主力 45+ 处被 Q9 全量令牌化到 0 处退出 top-4（离阶实测归零，
+    //   见 docs/_artifacts/q9-sample-compare/q9-metrics.json 后四页 fonts 读数），
+    //   employees-density.css 同日 2→0。属台账内批清，非绕过台账动数。
     expect(top.map(([f]) => f).sort()).toEqual(
       [
+        "modules/access/access.css",
         "modules/capabilities/counts.css",
-        "modules/duty/duty.css",
         "modules/health/health.css",
         "modules/metrics/metrics.css",
       ].sort(),
