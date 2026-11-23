@@ -1,7 +1,7 @@
 {
   "script": "lint-reuse",
   "root": "web/src/modules",
-  "scanned": 570,
+  "scanned": 584,
   "reuseMarkers": 28,
   "chatHostFiles": [
     {
@@ -54,7 +54,7 @@
       "owner": "work",
       "declaredWhere": "web/src/modules/work/manifest.ts（row 6 runs tab）",
       "declared": true,
-      "codeMentions": 19,
+      "codeMentions": 21,
       "via": "marker web/src/modules/work/manifest.ts:32"
     },
     {
@@ -84,17 +84,5 @@
   ],
   "violations": [],
   "count": 0,
-  "ok": true,
-  "headHash": "2610339d",
-  "entry": "assets/index-BuZxlyEv.js",
-  "entrySha256": "22c17ec34b4f6859adf0955c8f745e0f63f790c9ef8d607030338a2aa28c2a9d",
-  "entryBytes": 172175,
-  "css": "assets/index-DLpXaUuB.css",
-  "cssSha256": "13a111877909a0a34aa08f54c6635f795fb77351f3ebef339d42d5926fd0a0dc",
-  "cssBytes": 146491,
-  "servedEntryAfter": "index-BuZxlyEv.js",
-  "servedCssAfter": "index-DLpXaUuB.css",
-  "criteriaNote": "旧 document 级 375 全绿作废不入账（L0③）；本代 375 承者=assert-375 逐元素判据+视口加高取图腿+字体等待旁路复测；channels=点名重跑合入 PASS（首轮读数存 firstRunRow）；sessions=真 NOT MEASURED：45s 旁路仍 screenshot 超时，逐条 navError 入账",
-  "stampNote": "wave-129 6586df6b 本代新跑（非沿用）",
-  "exitCode": 0
+  "ok": true
 }

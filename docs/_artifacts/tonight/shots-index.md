@@ -1,108 +1,120 @@
-# shots index — auth @2610339ddf（构建脸 4a654bba / entry index-DiNZbuB-.js）
+# lane-D screenshot evidence index
 
-| route | viewport | mark | bytes | mtime |
-|---|---|---|---|---|
-| #/access | 1440 | fresh | 72166 | 11-22 07:20:20 |
-| #/access | 375 | fresh | 44876 | 11-22 07:20:21 |
-| #/approvals | 1440 | fresh | 94545 | 11-22 07:20:21 |
-| #/approvals | 375 | fresh | 56763 | 11-22 07:20:22 |
-| #/approvals?tab=history | 1440 | fresh | 129725 | 11-22 07:20:22 |
-| #/approvals?tab=history | 375 | fresh | 84962 | 11-22 07:20:23 |
-| #/approvals?tab=mine | 1440 | fresh | 94317 | 11-22 07:20:23 |
-| #/approvals?tab=mine | 375 | fresh | 57111 | 11-22 07:20:23 |
-| #/approvals?tab=pending&view=mine | 1440 | fresh | 94578 | 11-22 07:20:24 |
-| #/approvals?tab=pending&view=mine | 375 | fresh | 57310 | 11-22 07:20:24 |
-| #/approvals?tab=pending&view=release | 1440 | fresh | 94835 | 11-22 07:20:25 |
-| #/approvals?tab=pending&view=release | 375 | fresh | 56834 | 11-22 07:20:25 |
-| #/approvals?tab=policy | 1440 | fresh | 94565 | 11-22 07:20:26 |
-| #/approvals?tab=policy | 375 | fresh | 56790 | 11-22 07:20:26 |
-| #/approvals?tab=release | 1440 | fresh | 94544 | 11-22 07:20:27 |
-| #/approvals?tab=release | 375 | fresh | 56651 | 11-22 07:20:27 |
-| #/audit | 1440 | fresh | 160325 | 11-22 07:20:28 |
-| #/audit | 375 | fresh | 88452 | 11-22 07:20:28 |
-| #/capabilities | 1440 | fresh | 97661 | 11-22 07:20:29 |
-| #/capabilities | 375 | fresh | 64402 | 11-22 07:20:29 |
-| #/capabilities?tab=channels | 1440 | fresh | 64098 | 11-22 07:44:36 |
-| #/capabilities?tab=channels | 375 | fresh | 37673 | 11-22 07:44:36 |
-| #/capabilities?tab=models | 1440 | fresh | 74285 | 11-22 07:44:36 |
-| #/capabilities?tab=models | 375 | fresh | 44469 | 11-22 07:44:36 |
-| #/capabilities?tab=tools | 1440 | fresh | 103683 | 11-22 07:29:50 |
-| #/capabilities?tab=tools | 375 | fresh | 72859 | 11-22 07:29:50 |
-| #/employees | 1440 | fresh | 93370 | 11-22 07:29:51 |
-| #/employees | 375 | fresh | 52429 | 11-22 07:29:51 |
-| #/employees?tab=matrix | 1440 | fresh | 81593 | 11-22 07:29:52 |
-| #/employees?tab=matrix | 375 | fresh | 52625 | 11-22 07:29:52 |
-| #/employees/:employeeId | 1440 | fresh | 49297 | 11-22 07:29:52 |
-| #/employees/:employeeId | 375 | fresh | 37158 | 11-22 07:29:53 |
-| #/employees/:employeeId?zone=config | 1440 | fresh | 63725 | 11-22 07:29:54 |
-| #/employees/:employeeId?zone=config | 375 | fresh | 36937 | 11-22 07:29:54 |
-| #/employees/:employeeId?zone=evidence | 1440 | fresh | 49459 | 11-22 07:29:55 |
-| #/employees/:employeeId?zone=evidence | 375 | fresh | 36988 | 11-22 07:29:55 |
-| #/employees/:employeeId?zone=runs | 1440 | fresh | 49444 | 11-22 07:29:56 |
-| #/employees/:employeeId?zone=runs | 375 | fresh | 23682 | 11-22 07:29:56 |
-| #/employees/:employeeId?zone=tasks | 1440 | fresh | 64130 | 11-22 07:29:57 |
-| #/employees/:employeeId?zone=tasks | 375 | fresh | 13490 | 11-22 07:29:57 |
-| #/identity | 1440 | fresh | 66732 | 11-22 07:29:58 |
-| #/identity | 375 | fresh | 38901 | 11-22 07:29:58 |
-| #/identity?tab=admins | 1440 | fresh | 66449 | 11-22 07:29:59 |
-| #/identity?tab=admins | 375 | fresh | 38698 | 11-22 07:30:00 |
-| #/identity?tab=binding | 1440 | fresh | 66745 | 11-22 07:30:00 |
-| #/identity?tab=binding | 375 | fresh | 38722 | 11-22 07:30:01 |
-| #/identity?tab=checks | 1440 | fresh | 66390 | 11-22 07:30:01 |
-| #/identity?tab=checks | 375 | fresh | 38549 | 11-22 07:30:02 |
-| #/identity?tab=departments | 1440 | fresh | 62370 | 11-22 07:30:02 |
-| #/identity?tab=departments | 375 | fresh | 35896 | 11-22 07:30:03 |
-| #/identity?tab=people&view=admins | 1440 | fresh | 66403 | 11-22 07:30:03 |
-| #/identity?tab=people&view=admins | 375 | fresh | 38613 | 11-22 07:30:04 |
-| #/identity?tab=roles | 1440 | fresh | 71639 | 11-22 07:30:04 |
-| #/identity?tab=roles | 375 | fresh | 44785 | 11-22 07:30:05 |
-| #/identity?tab=tenant | 1440 | fresh | 66368 | 11-22 07:30:05 |
-| #/identity?tab=tenant | 375 | fresh | 38927 | 11-22 07:30:06 |
-| #/knowledge | 1440 | fresh | 127012 | 11-22 07:30:06 |
-| #/knowledge | 375 | fresh | 61362 | 11-22 07:30:07 |
-| #/knowledge?tab=citations | 1440 | fresh | 122343 | 11-22 07:30:07 |
-| #/knowledge?tab=citations | 375 | fresh | 62735 | 11-22 07:30:08 |
-| #/knowledge?tab=evidence | 1440 | fresh | 81230 | 11-22 07:30:08 |
-| #/knowledge?tab=evidence | 375 | fresh | 49929 | 11-22 07:30:09 |
-| #/knowledge?tab=ingest | 1440 | fresh | 122860 | 11-22 07:30:10 |
-| #/knowledge?tab=ingest | 375 | fresh | 63091 | 11-22 07:30:10 |
-| #/knowledge?tab=retrieval | 1440 | fresh | 124813 | 11-22 07:30:11 |
-| #/knowledge?tab=retrieval | 375 | fresh | 61585 | 11-22 07:30:11 |
-| #/knowledge?tab=scope | 1440 | fresh | 127012 | 11-22 07:30:12 |
-| #/knowledge?tab=scope | 375 | fresh | 61362 | 11-22 07:30:12 |
-| #/knowledge?tab=sources | 1440 | fresh | 122860 | 11-22 07:30:13 |
-| #/knowledge?tab=sources | 375 | fresh | 63091 | 11-22 07:30:13 |
-| #/metrics | 1440 | fresh | 96684 | 11-22 07:30:14 |
-| #/metrics | 375 | fresh | 59660 | 11-22 07:30:14 |
-| #/org | 1440 | fresh | 66262 | 11-22 07:30:15 |
-| #/org | 375 | fresh | 38637 | 11-22 07:30:15 |
-| #/overview | 1440 | fresh | 141454 | 11-22 07:30:16 |
-| #/overview | 375 | fresh | 54006 | 11-22 07:30:16 |
-| #/overview?tab=usage | 1440 | fresh | 65838 | 11-22 07:30:17 |
-| #/overview?tab=usage | 375 | fresh | 38667 | 11-22 07:30:17 |
-| #/sessions | 1440 | fresh | 37447 | 11-22 07:44:36 |
-| #/sessions | 375 | oldFace | 12529 | 11-21 16:08:15 |
-| #/system | 1440 | fresh | 121895 | 11-22 07:30:17 |
-| #/system | 375 | fresh | 62307 | 11-22 07:30:18 |
-| #/system?tab=defaults | 1440 | fresh | 63889 | 11-22 07:30:19 |
-| #/system?tab=defaults | 375 | fresh | 36384 | 11-22 07:30:19 |
-| #/system?tab=events | 1440 | fresh | 160297 | 11-22 07:30:20 |
-| #/system?tab=events | 375 | fresh | 88452 | 11-22 07:30:20 |
-| #/system?tab=events&view=anomaly | 1440 | fresh | 160100 | 11-22 07:30:21 |
-| #/system?tab=events&view=anomaly | 375 | fresh | 88452 | 11-22 07:30:21 |
-| #/system?tab=retention | 1440 | fresh | 160342 | 11-22 07:30:21 |
-| #/system?tab=retention | 375 | fresh | 88452 | 11-22 07:30:22 |
-| #/system?tab=security | 1440 | fresh | 99031 | 11-22 07:30:22 |
-| #/system?tab=security | 375 | fresh | 53792 | 11-22 07:30:23 |
-| #/system?tab=version | 1440 | fresh | 127761 | 11-22 07:30:23 |
-| #/system?tab=version | 375 | fresh | 63235 | 11-22 07:30:24 |
-| #/work | 1440 | fresh | 99826 | 11-22 07:30:24 |
-| #/work | 375 | fresh | 70649 | 11-22 07:30:25 |
-| #/work?tab=board&view=cron | 1440 | fresh | 99600 | 11-22 07:30:25 |
-| #/work?tab=board&view=cron | 375 | fresh | 70649 | 11-22 07:30:26 |
-| #/work?tab=cron | 1440 | fresh | 99797 | 11-22 07:30:26 |
-| #/work?tab=cron | 375 | fresh | 70227 | 11-22 07:30:27 |
-| #/work?tab=runs | 1440 | fresh | 102597 | 11-22 07:30:27 |
-| #/work?tab=runs | 375 | fresh | 68936 | 11-22 07:30:28 |
+- base: `http://127.0.0.1:9122`  |  nav form: `#/<route>` (hash, per brief)  |  viewports: 1440x900, 375x812
+- routes enumerated from `web/src/shell/routes.ts` appendix A: **51**  |  routes driven this run: 51  |  expected shots: 102  |  produced: **102**
+- driver: playwright loaded from `/Users/kevin_studio/Projects/seakoi-console-web/package.json` (sibling checkout, not installed here); chromium `/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing`
+- root shell baseline: ok=true, <main> text = 1063 chars, hasMainEl=true — on this build the root path renders an EMPTY <main>, so the binding criterion is per-route `main>0`; `differsFromRoot` is kept as secondary info only
 
-failures: #/sessions-375 CDP 拒截（有界单腿终判）；其余 101 帧本拍全新鲜（含 3 页单腿）。
+| route (hash) | label | vp | HTTP | main chars | main>0 | empty? | error? | overflow px | differsFromRoot | png bytes | console err |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| `#/access` | 角色与权限 | 1440 | 200 | 186 | yes | - | - | 0 | yes | 72237 | 5 |
+| `#/access` | 角色与权限 | 375 | 200 | 186 | yes | - | - | 0 | yes | 43841 | 5 |
+| `#/approvals` | 待处理 | 1440 | 200 | 328 | yes | - | yes | 0 | yes | 95047 | 2 |
+| `#/approvals` | 待处理 | 375 | 200 | 328 | yes | - | yes | 0 | yes | 56004 | 2 |
+| `#/approvals?tab=history` | 历史决策 | 1440 | 200 | 514 | yes | yes | yes | 0 | yes | 129775 | 2 |
+| `#/approvals?tab=history` | 历史决策 | 375 | 200 | 514 | yes | yes | yes | 0 | yes | 84140 | 2 |
+| `#/approvals?tab=mine` | 待处理 | 1440 | 200 | 328 | yes | - | yes | 0 | yes | 95211 | 2 |
+| `#/approvals?tab=mine` | 待处理 | 375 | 200 | 328 | yes | - | yes | 0 | yes | 56104 | 2 |
+| `#/approvals?tab=pending&view=mine` | 待处理 | 1440 | 200 | 328 | yes | - | yes | 0 | yes | 94869 | 2 |
+| `#/approvals?tab=pending&view=mine` | 待处理 | 375 | 200 | 328 | yes | - | yes | 0 | yes | 55880 | 2 |
+| `#/approvals?tab=pending&view=release` | 待处理 | 1440 | 200 | 328 | yes | - | yes | 0 | yes | 95089 | 2 |
+| `#/approvals?tab=pending&view=release` | 待处理 | 375 | 200 | 328 | yes | - | yes | 0 | yes | 55939 | 2 |
+| `#/approvals?tab=policy` | 待处理 | 1440 | 200 | 328 | yes | - | yes | 0 | yes | 95527 | 2 |
+| `#/approvals?tab=policy` | 待处理 | 375 | 200 | 328 | yes | - | yes | 0 | yes | 56262 | 2 |
+| `#/approvals?tab=release` | 待处理 | 1440 | 200 | 328 | yes | - | yes | 0 | yes | 95214 | 2 |
+| `#/approvals?tab=release` | 待处理 | 375 | 200 | 328 | yes | - | yes | 0 | yes | 55808 | 2 |
+| `#/audit` | 审计事件 | 1440 | 200 | 659 | yes | - | yes | 0 | yes | 160963 | 2 |
+| `#/audit` | 审计事件 | 375 | 200 | 659 | yes | - | yes | 0 | yes | 87604 | 2 |
+| `#/capabilities` | 技能 | 1440 | 200 | 340 | yes | yes | yes | 0 | yes | 98470 | 2 |
+| `#/capabilities` | 技能 | 375 | 200 | 340 | yes | yes | yes | 0 | yes | 63808 | 2 |
+| `#/capabilities?tab=channels` | 平台接入 | 1440 | 200 | 185 | yes | - | - | 0 | yes | 80466 | 8 |
+| `#/capabilities?tab=channels` | 平台接入 | 375 | 200 | 185 | yes | - | - | 0 | yes | 50640 | 8 |
+| `#/capabilities?tab=models` | 模型与单价 | 1440 | 200 | 163 | yes | - | - | 0 | yes | 75380 | 4 |
+| `#/capabilities?tab=models` | 模型与单价 | 375 | 200 | 163 | yes | - | - | 0 | yes | 44008 | 4 |
+| `#/capabilities?tab=tools` | 工具与 MCP | 1440 | 200 | 375 | yes | yes | yes | 0 | yes | 103937 | 4 |
+| `#/capabilities?tab=tools` | 工具与 MCP | 375 | 200 | 375 | yes | yes | yes | 0 | yes | 72353 | 4 |
+| `#/employees` | 列表 | 1440 | 200 | 282 | yes | - | - | 0 | yes | 94534 | 2 |
+| `#/employees` | 列表 | 375 | 200 | 282 | yes | - | - | 0 | yes | 53523 | 2 |
+| `#/employees?tab=matrix` | 能力与权限 | 1440 | 200 | 214 | yes | - | - | 0 | yes | 84706 | 2 |
+| `#/employees?tab=matrix` | 能力与权限 | 375 | 200 | 214 | yes | - | - | 0 | yes | 53467 | 2 |
+| `#/employees/:employeeId` | 详情 | 1440 | 200 | 42 | yes | - | - | 0 | yes | 45411 | 3 |
+| `#/employees/:employeeId` | 详情 | 375 | 200 | 42 | yes | - | - | 0 | yes | 15154 | 3 |
+| `#/employees/:employeeId?zone=config` | 详情 | 1440 | 200 | 42 | yes | - | - | 0 | yes | 45598 | 2 |
+| `#/employees/:employeeId?zone=config` | 详情 | 375 | 200 | 146 | yes | - | - | 0 | yes | 38952 | 3 |
+| `#/employees/:employeeId?zone=evidence` | 详情 | 1440 | 200 | 42 | yes | - | - | 0 | yes | 45557 | 2 |
+| `#/employees/:employeeId?zone=evidence` | 详情 | 375 | 200 | 42 | yes | - | - | 0 | yes | 15315 | 3 |
+| `#/employees/:employeeId?zone=runs` | 详情 | 1440 | 200 | 42 | yes | - | - | 0 | yes | 45546 | 3 |
+| `#/employees/:employeeId?zone=runs` | 详情 | 375 | 200 | 42 | yes | - | - | 0 | yes | 15315 | 1 |
+| `#/employees/:employeeId?zone=tasks` | 详情 | 1440 | 200 | 42 | yes | - | - | 0 | yes | 45544 | 3 |
+| `#/employees/:employeeId?zone=tasks` | 详情 | 375 | 200 | 42 | yes | - | - | 0 | yes | 21356 | 3 |
+| `#/identity` | 人员目录 | 1440 | 200 | 112 | yes | - | - | 0 | yes | 63962 | 4 |
+| `#/identity` | 人员目录 | 375 | 200 | 112 | yes | - | - | 0 | yes | 35257 | 4 |
+| `#/identity?tab=admins` | 人员目录 | 1440 | 200 | 112 | yes | - | - | 0 | yes | 63658 | 4 |
+| `#/identity?tab=admins` | 人员目录 | 375 | 200 | 112 | yes | - | - | 0 | yes | 35283 | 4 |
+| `#/identity?tab=binding` | 人员目录 | 1440 | 200 | 112 | yes | - | - | 0 | yes | 63905 | 4 |
+| `#/identity?tab=binding` | 人员目录 | 375 | 200 | 112 | yes | - | - | 0 | yes | 35242 | 4 |
+| `#/identity?tab=checks` | 人员目录 | 1440 | 200 | 112 | yes | - | - | 0 | yes | 63810 | 4 |
+| `#/identity?tab=checks` | 人员目录 | 375 | 200 | 112 | yes | - | - | 0 | yes | 35302 | 4 |
+| `#/identity?tab=departments` | 组织与部门 | 1440 | 200 | 128 | yes | - | - | 0 | yes | 62681 | 2 |
+| `#/identity?tab=departments` | 组织与部门 | 375 | 200 | 128 | yes | - | - | 0 | yes | 34876 | 2 |
+| `#/identity?tab=people&view=admins` | 人员目录 | 1440 | 200 | 112 | yes | - | - | 0 | yes | 63989 | 4 |
+| `#/identity?tab=people&view=admins` | 人员目录 | 375 | 200 | 112 | yes | - | - | 0 | yes | 35146 | 4 |
+| `#/identity?tab=roles` | 角色与权限 | 1440 | 200 | 186 | yes | - | - | 0 | yes | 72391 | 5 |
+| `#/identity?tab=roles` | 角色与权限 | 375 | 200 | 186 | yes | - | - | 0 | yes | 44117 | 5 |
+| `#/identity?tab=tenant` | 人员目录 | 1440 | 200 | 112 | yes | - | - | 0 | yes | 64119 | 4 |
+| `#/identity?tab=tenant` | 人员目录 | 375 | 200 | 112 | yes | - | - | 0 | yes | 35124 | 4 |
+| `#/knowledge` | 知识空间 | 1440 | 200 | 518 | yes | yes | - | 0 | yes | 134919 | 3 |
+| `#/knowledge` | 知识空间 | 375 | 200 | 518 | yes | yes | - | 0 | yes | 62249 | 3 |
+| `#/knowledge?tab=citations` | 证据与引用 | 1440 | 200 | 479 | yes | yes | - | 0 | yes | 126870 | 4 |
+| `#/knowledge?tab=citations` | 证据与引用 | 375 | 200 | 479 | yes | yes | - | 0 | yes | 61998 | 4 |
+| `#/knowledge?tab=evidence` | 审计证据 | 1440 | 200 | 183 | yes | yes | - | 0 | yes | 81811 | 2 |
+| `#/knowledge?tab=evidence` | 审计证据 | 375 | 200 | 183 | yes | yes | - | 0 | yes | 49206 | 2 |
+| `#/knowledge?tab=ingest` | 数据源 | 1440 | 200 | 560 | yes | yes | - | 0 | yes | 127440 | 5 |
+| `#/knowledge?tab=ingest` | 数据源 | 375 | 200 | 560 | yes | yes | - | 0 | yes | 62042 | 5 |
+| `#/knowledge?tab=retrieval` | 检索 | 1440 | 200 | 511 | yes | yes | - | 0 | yes | 128040 | 4 |
+| `#/knowledge?tab=retrieval` | 检索 | 375 | 200 | 511 | yes | yes | - | 0 | yes | 62442 | 4 |
+| `#/knowledge?tab=scope` | 知识空间 | 1440 | 200 | 518 | yes | yes | - | 0 | yes | 134919 | 3 |
+| `#/knowledge?tab=scope` | 知识空间 | 375 | 200 | 518 | yes | yes | - | 0 | yes | 62249 | 3 |
+| `#/knowledge?tab=sources` | 数据源 | 1440 | 200 | 560 | yes | yes | - | 0 | yes | 127440 | 5 |
+| `#/knowledge?tab=sources` | 数据源 | 375 | 200 | 560 | yes | yes | - | 0 | yes | 62042 | 5 |
+| `#/metrics` | 用量与成本 | 1440 | 200 | 818 | yes | - | - | 0 | yes | 100795 | 1 |
+| `#/metrics` | 用量与成本 | 375 | 200 | 818 | yes | - | - | 0 | yes | 63318 | 1 |
+| `#/org` | 人员目录 | 1440 | 200 | 112 | yes | - | - | 0 | yes | 63982 | 4 |
+| `#/org` | 人员目录 | 375 | 200 | 112 | yes | - | - | 0 | yes | 35091 | 4 |
+| `#/overview` | 值班台 | 1440 | 200 | 1063 | yes | yes | yes | 0 | no | 138999 | 11 |
+| `#/overview` | 值班台 | 375 | 200 | 1063 | yes | yes | yes | 0 | no | 52554 | 11 |
+| `#/overview?tab=usage` | 用量与成本 | 1440 | 200 | 122 | yes | - | - | 0 | yes | 66060 | 2 |
+| `#/overview?tab=usage` | 用量与成本 | 375 | 200 | 122 | yes | - | - | 0 | yes | 37697 | 2 |
+| `#/sessions` | 列表 | 1440 | 200 | 106 | yes | - | - | 0 | yes | 53841 | 3 |
+| `#/sessions` | 列表 | 375 | 200 | 106 | yes | - | - | 0 | yes | 27045 | 3 |
+| `#/system` | 系统健康 | 1440 | 200 | 934 | yes | yes | yes | 0 | yes | 122160 | 5 |
+| `#/system` | 系统健康 | 375 | 200 | 934 | yes | yes | yes | 0 | yes | 61181 | 5 |
+| `#/system?tab=defaults` | 默认设置 | 1440 | 200 | 111 | yes | - | yes | 0 | yes | 64931 | 2 |
+| `#/system?tab=defaults` | 默认设置 | 375 | 200 | 111 | yes | - | yes | 0 | yes | 35670 | 2 |
+| `#/system?tab=events` | 审计事件 | 1440 | 200 | 659 | yes | - | yes | 0 | yes | 160907 | 2 |
+| `#/system?tab=events` | 审计事件 | 375 | 200 | 659 | yes | - | yes | 0 | yes | 87604 | 2 |
+| `#/system?tab=events&view=anomaly` | 审计事件 | 1440 | 200 | 659 | yes | - | yes | 0 | yes | 161004 | 2 |
+| `#/system?tab=events&view=anomaly` | 审计事件 | 375 | 200 | 659 | yes | - | yes | 0 | yes | 87604 | 2 |
+| `#/system?tab=retention` | 审计事件 | 1440 | 200 | 659 | yes | - | yes | 0 | yes | 160987 | 2 |
+| `#/system?tab=retention` | 审计事件 | 375 | 200 | 659 | yes | - | yes | 0 | yes | 87604 | 2 |
+| `#/system?tab=security` | 安全设置 | 1440 | 200 | 293 | yes | - | - | 0 | yes | 103284 | 5 |
+| `#/system?tab=security` | 安全设置 | 375 | 200 | 293 | yes | - | - | 0 | yes | 55758 | 5 |
+| `#/system?tab=version` | 版本 | 1440 | 200 | 574 | yes | - | yes | 0 | yes | 128607 | 4 |
+| `#/system?tab=version` | 版本 | 375 | 200 | 574 | yes | - | yes | 0 | yes | 62308 | 4 |
+| `#/work` | 任务 | 1440 | 200 | 266 | yes | yes | - | 0 | yes | 100275 | 7 |
+| `#/work` | 任务 | 375 | 200 | 266 | yes | yes | - | 0 | yes | 69617 | 7 |
+| `#/work?tab=board&view=cron` | 任务 | 1440 | 200 | 266 | yes | yes | - | 0 | yes | 100017 | 7 |
+| `#/work?tab=board&view=cron` | 任务 | 375 | 200 | 266 | yes | yes | - | 0 | yes | 69363 | 7 |
+| `#/work?tab=cron` | 任务 | 1440 | 200 | 266 | yes | yes | - | 0 | yes | 100314 | 7 |
+| `#/work?tab=cron` | 任务 | 375 | 200 | 266 | yes | yes | - | 0 | yes | 69548 | 7 |
+| `#/work?tab=runs` | 运行 | 1440 | 200 | 468 | yes | - | yes | 0 | yes | 103099 | 3 |
+| `#/work?tab=runs` | 运行 | 375 | 200 | 468 | yes | - | yes | 0 | yes | 68170 | 3 |
+
+- routes with empty main (any viewport): none
+- routes with no <main> element at all: none
+
+## oversize pngs (> 2097152 bytes, excluded from the commit)
+- none
+
+## failures
+- none
