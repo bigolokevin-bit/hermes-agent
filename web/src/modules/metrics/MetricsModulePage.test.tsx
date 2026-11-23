@@ -305,7 +305,7 @@ describe('MetricsModulePage — usage & cost (met6)', () => {
     expect(document.querySelector('[data-testid="met6-cost-rows"]')?.textContent).toContain('小鲤 · AAAABBBB');
     // Unit price is its own source and is not connected here.
     expect(document.querySelector('[data-testid="met6-price-value"]')?.textContent).toBe('—');
-    expect(document.querySelector('[data-testid="met6-price-gap"]')?.textContent).toContain('这项数据当前读不到');
+    expect(document.querySelector('[data-testid="met6-price-gap"]')?.textContent).toContain('标价未接：上游价目数据源还没有接入。');
 
     const called = urls();
     const statsCall = called.find((url) => url.includes('run-stats')) ?? '';
@@ -1022,7 +1022,12 @@ describe('MetricsModulePage — met8 cost share by employee', () => {
     expect(document.querySelector('[data-testid="met8-cost-aaaabbbb"]')?.textContent).toBe('$0.00');
     expect(document.querySelector('[data-testid="met8-cost-ddddeeee"]')?.textContent).toBe('—');
     expect(document.querySelector('[data-testid="met8-share-aaaabbbb"]')?.textContent).toBe('—');
-    expect(text()).not.toContain('0.0%');
+    // The byModel block may legitimately show 100.0% for a single-row ledger; the
+    // zero-vs-missing contract here is pinned by the met8-* rows above, so the
+    // whole-page scan excludes the byModel subtree.
+    const pageClone = document.body.cloneNode(true) as HTMLElement;
+    pageClone.querySelector('[data-testid="metBM-by-model"]')?.remove();
+    expect(pageClone.textContent ?? '').not.toContain('0.0%');
   });
 });
 
@@ -1684,7 +1689,7 @@ describe('metH — partial failure isolation', () => {
     // Only the pricing card carries the failure, with its copyable id and a retry.
     const err = q('metH-card-error-price');
     expect(err).not.toBeNull();
-    expect(err?.textContent).toContain('这项数据当前读不到');
+    expect(err?.textContent).toContain('标价未接：上游价目数据源还没有接入。');
     expect(err?.textContent).toContain('req-metH-price');
     expect(q('metH-card-retry-price')).not.toBeNull();
     expect(q('metH-card-error-runs')).toBeNull();

@@ -1,0 +1,27 @@
+{
+  "info": {
+    "hash": "",
+    "h1": [
+      "Analytics",
+      "Analytics",
+      "Token analytics hidden"
+    ],
+    "metPrefixes": [],
+    "hasMetBM": false,
+    "bodyHead": "HERMES\nAGENT\n控制台\n运营\n运营总览\n数字员工\n任务与运行\n审批与发布门\n治理\n人员与访问\n知识与数据\n平台\n能力与接入\n系统\n系统设置\n审计\nopsadmin\n角色：—\n租户：—\n退出登录\nHERMES TEAL\nEN\n—\nNous Research\n数字员工控制台\nAnalytics\nAnalytics\nTOKEN ANALYTICS HIDDEN\n\nThe token, cost, and per-day analytics on this page are a local debug estimate. They only count successful main-agent responses with a usable usage block, and silently exclude auxiliary calls (context compression, t"
+  },
+  "api": [
+    "200 /api/shared-metrics/consent",
+    "200 /api/auth/me",
+    "200 /api/dashboard/plugins",
+    "200 /api/status",
+    "200 /api/config",
+    "200 /api/profiles/active",
+    "200 /api/profiles",
+    "200 /api/dashboard/themes",
+    "200 /api/dashboard/font",
+    "200 /api/config",
+    "200 /auth/whoami"
+  ],
+  "errs": []
+}

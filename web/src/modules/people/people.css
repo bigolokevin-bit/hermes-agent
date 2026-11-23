@@ -154,3 +154,247 @@
     font-variant-numeric: tabular-nums;
   }
 }
+
+/* ------------------------------------------------------------------ *
+ * Q12 名册行内详情（ppl5d-*）：页内五页签视图，桌面优先，375 不横向溢出
+ * （长表进 .ppl5d-scroll 自持滚动，页面仍由 .ppl5-page overflow-x clip 兜底）。
+ * ------------------------------------------------------------------ */
+.ppl5d-open {
+  flex: 0 0 auto;
+  margin-left: auto;
+  border: 1px solid color-mix(in srgb, var(--color-text) 16%, transparent);
+  border-radius: var(--radius-1);
+  background: transparent;
+  padding: 2px 8px;
+  color: color-mix(in srgb, var(--color-text) 62%, transparent);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.ppl5d-open:hover {
+  color: color-mix(in srgb, var(--color-text) 90%, transparent);
+  border-color: color-mix(in srgb, var(--color-text) 32%, transparent);
+}
+.ppl5d-detail {
+  min-width: 0;
+  gap: var(--space-3);
+}
+.ppl5d-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.ppl5d-head > div {
+  min-width: 0;
+}
+.ppl5d-tablist {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-width: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-text) 8%, transparent);
+  padding-bottom: 0;
+}
+.ppl5d-tab {
+  border: 1px solid transparent;
+  border-bottom: 0;
+  border-radius: var(--radius-1) var(--radius-1) 0 0;
+  background: transparent;
+  padding: 6px 12px;
+  color: color-mix(in srgb, var(--color-text) 52%, transparent);
+  font-size: var(--font-size-1);
+}
+.ppl5d-tab:hover {
+  color: color-mix(in srgb, var(--color-text) 82%, transparent);
+}
+.ppl5d-tab--active {
+  color: color-mix(in srgb, var(--color-text) 92%, transparent);
+  border-color: color-mix(in srgb, var(--color-text) 12%, transparent);
+  background: color-mix(in srgb, var(--color-text) 4%, transparent);
+}
+.ppl5d-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.ppl5d-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+}
+.ppl5d-loading-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+}
+.ppl5d-kv {
+  display: grid;
+  grid-template-columns: minmax(5.5em, 0.32fr) minmax(0, 1fr);
+  gap: 2px var(--space-4);
+  margin: 0;
+}
+.ppl5d-kv-row {
+  display: contents;
+}
+.ppl5d-kv dt {
+  color: color-mix(in srgb, var(--color-text) 45%, transparent);
+  font-size: var(--font-size-1);
+  padding: 4px 0;
+}
+.ppl5d-kv dd {
+  margin: 0;
+  padding: 4px 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: color-mix(in srgb, var(--color-text) 86%, transparent);
+  font-size: var(--font-size-1);
+}
+.ppl5d-scroll {
+  overflow-x: auto;
+  min-width: 0;
+}
+/* 宽表横滑提示：桌面不占位（表落得下/屏幕宽），≤760 由下方媒体查询显形。 */
+.ppl5d-scrollhint {
+  display: none;
+  margin: 0;
+  padding: var(--space-2) var(--space-4) 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-1);
+}
+.ppl5d-table {
+  width: 100%;
+  min-width: 34rem;
+  border-collapse: collapse;
+  font-size: var(--font-size-1);
+}
+.ppl5d-table th {
+  text-align: left;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-muted);
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-text) 8%, transparent);
+  white-space: nowrap;
+}
+.ppl5d-table td {
+  padding: 10px var(--space-4);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-text) 5%, transparent);
+  color: color-mix(in srgb, var(--color-text) 82%, transparent);
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+.ppl5d-table tr:last-child td {
+  border-bottom: 0;
+}
+.ppl5d-cell-id,
+.ppl5d-cell-time {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: color-mix(in srgb, var(--color-text) 66%, transparent);
+  white-space: nowrap;
+}
+.ppl5d-total {
+  margin: 0;
+  padding: var(--space-2) var(--space-4) 0;
+  color: color-mix(in srgb, var(--color-text) 55%, transparent);
+  font-size: var(--font-size-1);
+}
+.ppl5d-footnote {
+  margin: 0;
+  color: color-mix(in srgb, var(--color-text) 40%, transparent);
+  font-size: var(--font-size-1);
+}
+.ppl5d-pad {
+  padding: var(--space-2) var(--space-4);
+}
+.ppl5d-state-body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-8) var(--space-4);
+}
+.ppl5d-state-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: color-mix(in srgb, var(--color-text) 90%, transparent);
+  font-size: var(--font-size-3);
+  font-weight: var(--font-weight-medium);
+}
+.ppl5d-state-text {
+  margin: 0;
+  max-width: 68ch;
+  color: color-mix(in srgb, var(--color-text) 55%, transparent);
+  font-size: var(--font-size-1);
+  line-height: 1.6;
+}
+.ppl5d-state-note {
+  margin: 0;
+  max-width: 68ch;
+  color: color-mix(in srgb, var(--color-text) 40%, transparent);
+  font-size: var(--font-size-1);
+}
+/* 375 兜底：详情头部的返回钮与姓名换行成两行，页签条已 flex-wrap。 */
+@media (max-width: 760px) {
+  .ppl5d-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+/* 窄屏表格（≤760）：先求「装得下」——去掉 34rem 宽度地板、压扁左右内距、
+ * 只让首列（标题/长句）换行，其余短标签列 nowrap。375 实测：任务表 5 列
+ * 与任职/授权表都在卡片内容宽度内落位，「来源」表头不再被裁成半字，
+ * 「待处理/普通/手动」不再逐字竖排。 */
+@media (max-width: 760px) {
+  .ppl5d-table {
+    min-width: 0;
+  }
+  .ppl5d-table th,
+  .ppl5d-table td {
+    /* 只收左右内距：垂直留白归全站 UI-A 行高契约
+     * （styles/table-density.css 的 [data-tab] :is(th,td) padding-block:0 !important
+     * + tbody>tr height:40px），窄屏实测行高 40、行内单行居中，不去打架。 */
+    padding-inline: 6px;
+  }
+  .ppl5d-table td {
+    white-space: nowrap;
+    overflow-wrap: normal;
+  }
+  .ppl5d-table td:first-child {
+    white-space: normal;
+    overflow-wrap: break-word;
+  }
+  /* 时间与短码列即使是首列（审计表「时间」）也整块不换行。 */
+  .ppl5d-table td.ppl5d-cell-time,
+  .ppl5d-table td.ppl5d-cell-id {
+    white-space: nowrap;
+  }
+  /* 真放不下时（审计六列：时间+动作+执行者+对象+结果+来源系统 的自然最小宽度
+   * 实测 594 > 卡片内容宽 340）交还横向滚动，并把「能滑」做成看得见的东西：
+   * 提示文案显形 + 首列粘性钉左（不透明底，滑过的列不从它下面透出来）+ 钉住列
+   * 右缘投影。沿 metrics metW / health sys3 先例；sys3 那笔已撤回右缘 fade
+   * （遮罩会盖在钉住列上），这里同样不做 fade。
+   * 只在 .ppl5d-scroll--x（真会溢出的壳）上生效，落得下的表零装饰。 */
+  .ppl5d-scrollhint {
+    display: block;
+  }
+  /* 滚动条外观不自定义：滚动条棘轮门（components/ui/scrollbar-utility.test.ts）
+   * 规定三属性定义点恒 1 且只在 index.css 的 .scrollbar-none 块，任何模块 css
+   * 再写滚动条伪元素裸声明就是第二真值源。可滑性由上方提示文案 + 下方
+   * 首列粘性钉左承担，滚动条本体回落系统默认。 */
+  .ppl5d-scroll--x .ppl5d-table th:first-child,
+  .ppl5d-scroll--x .ppl5d-table td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: var(--color-card);
+    box-shadow: 8px 0 8px -8px color-mix(in srgb, var(--color-text) 30%, transparent);
+  }
+  .ppl5d-scroll--x .ppl5d-table thead th:first-child {
+    z-index: 2;
+  }
+}

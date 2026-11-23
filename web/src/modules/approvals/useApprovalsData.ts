@@ -15,6 +15,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { failureInfo, fetchDetail, fetchList, isDenied } from "./api";
 import { readFailure, type FailureCopy } from "./copy";
+import { APPROVAL_DENIED_BODY } from "./stateCopy";
 import type { ApprovalDetail, ApprovalRow } from "./model";
 
 export type ForcedState = "loading" | "empty" | "error" | "denied" | null;
@@ -82,12 +83,16 @@ function copyOf(err: unknown): FailureCopy {
   return readFailure(err, failureInfo(err));
 }
 
+/**
+ * AP-06 ③：`?state=` 是 QA 复现开关，不是服务的回答——但它**必须是同一具形体**：
+ * 面板渲染的是 stateCopy 单点常量（真 403 走的也是那两个），这里若自造半句，
+ * 强制态与真答就不同形，验收会拿到一个只有复现态才有的版面。
+ * 单点取自 ./stateCopy，禁在本文件字面量化（原「这块内容要么尚未对你开放…」
+ * 那句是 APPROVAL_DENIED_BODY 的截断副本＝分叉词汇，已删）。
+ */
 function forcedCopy(kind: "error" | "denied", forced: ForcedState): FailureCopy {
   return {
-    sentence:
-      kind === "denied"
-        ? "这块内容要么尚未对你开放，要么当前环境还没有提供它。"
-        : "（复现）审批服务在处理时出了错，请稍后重试。",
+    sentence: kind === "denied" ? APPROVAL_DENIED_BODY : "（复现）审批服务在处理时出了错，请稍后重试。",
     requestId: null,
     technical: `?state=${forced}`,
   };
@@ -115,6 +120,9 @@ export function useApprovalsList(status: string | null, forced: ForcedState): Li
               : page.rows,
             unreadable: append ? prev.unreadable + page.unreadable : page.unreadable,
             next: nextRef.current,
+            // AP-01 清点结论：这是「跨页保住读口给过的真 total」，不是按条数推算——
+            // 两个分支的值都来自服务端顶层键（page.total / prev.total，prev 同样只可能
+            // 来自 page.total）；读口没给时恒 null，UI 侧只报「已加载 n 条（非全量）」。
             total: page.total ?? (append ? prev.total : null),
             failure: null,
             pageFailure: append ? prev.pageFailure : null,

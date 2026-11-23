@@ -11,6 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ApiError } from "@/lib/api-error";
 import { CsrfMissingError, postDecision } from "@/modules/approvals/api";
+import { DECISION_GATE } from "@/modules/approvals/writeGate";
 import { rawCorrelationReturn, saveCorrelationReturn } from "@/modules/approvals/correlationReturn";
 
 const api = vi.hoisted(() => ({ fetchJSON: vi.fn() }));
@@ -152,7 +153,11 @@ describe("pending queue states", () => {
     // R76: 提交时间的绝对到秒在 title。
     expect(document.querySelector("[data-testid='apv-time-row-submitted-ap_9F3A1111']")?.getAttribute("title") ?? "").toContain("2026-11-19 09:20:00");
     expect(text()).toContain("$25.00");
-    expect(text()).toContain("已显示 1 条申请，其中 1 条待处理");
+    // AP-01①：队列首屏的分母口径＝汇总条分母句＋与之同行的待处理读数；
+    // 「已显示 N 条申请」这种能被读成总量的句式已退出（条数只在分母句里报）。
+    expect(text()).toContain("已加载 1 条（非全量）");
+    expect(text()).toContain("已加载行中 1 条待处理");
+    expect(text()).not.toContain("已显示 1 条申请");
   });
 
   it("R54: the pending tab carries the same-source CSV control", async () => {
@@ -393,9 +398,10 @@ describe("decision writes", () => {
     expect(approve!.getAttribute("aria-disabled")).toBe("true");
     expect(reject!.disabled).toBe(true);
     expect(reject!.getAttribute("aria-disabled")).toBe("true");
-    // 三属性同源：title 与人话说明段是同一句话的两个出口。
+    // AP-07②：可见说明段与三属性 title 同源同句——都直接渲染 DECISION_GATE.title，
+    // 不再是「同一句话的两个出口」（那要求两段措辞一致），而是同一个字符串的单点。
     const note = document.querySelector("[data-testid='apr5-actions-readonly-note']") as HTMLElement | null;
-    expect(note?.textContent).toContain("控制台是只读的");
+    expect(note?.textContent?.trim()).toBe(DECISION_GATE.title);
     expect(note?.textContent).toContain("请走它原本产生决定的渠道");
     for (const el of [approve!, reject!, comment!]) {
       const title = el.getAttribute("title") ?? "";
@@ -724,13 +730,17 @@ describe("R79 pending pagination rail (apv-page-*)", () => {
   it("the pending tab shows the same rail: no-total sentence, end state disabled", async () => {
     await mount(queue(), "/approvals?tab=pending");
     await waitFor(() => !!qa("apv-page"), "rail");
-    // P1-A2 ② — 改判：无 total 且已到末页时只出一句「已到末页 · 已显示 N 条」，
-    // 「总数不可用」与「已到末页」不再并存；end chip 在此腿退出。
-    expect(qa("apv-page-count")?.textContent, "末页单句，不并存").toBe("已到末页 · 已显示 1 条");
+    // AP-01① — 原 P1-A2 ② 改判句（「已到末页 · 已显示 N 条」）退出：无 total 时
+    // 分页条只报分母句「已加载 N 条（非全量）」，末页承诺由 more 钮禁用＋原因句承担，
+    // 不再由计数句式承担；end chip 仍在此腿缺席。
+    expect(qa("apv-page-count")?.textContent, "无 total 腿＝分母句，不报总数").toBe("已加载 1 条（非全量）");
+    expect(qa("apv-page-count")?.getAttribute("title")).toContain("不报总数");
     const more = qa("apv-page-more") as HTMLButtonElement;
     expect(more.disabled, "queue fits one page — no cursor").toBe(true);
     expect(more.getAttribute("title")).toContain("已到末页");
     expect(qa("apv-page-end"), "end chip retired when total unavailable").toBeNull();
+    // AP-01②：单态透传腿的到底说明（与扇出腿同形不同因）。
+    expect(qa("apv-denominator-note")?.textContent).toContain("总数不推算");
   });
 });
 

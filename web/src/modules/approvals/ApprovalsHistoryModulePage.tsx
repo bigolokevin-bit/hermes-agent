@@ -26,8 +26,8 @@ import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 import { Spinner } from "@nous-research/ui/ui/components/spinner";
 
 import { STATUS_FILTERS, approvalSortKeyOf, approvalsRowSearchText, isKnownStatus, sortApprovalRows, type ApprovalSortDir, type ApprovalSortKey } from "./model";
-import { actionGates, announcement } from "./gates";
-import { QueueSummaryBar } from "./QueueSummaryBar";
+import { actionGates, announcement, crossPageLoadHint } from "./gates";
+import { QueueSummaryBar, denominatorReadout } from "./QueueSummaryBar";
 import { clearFilterParams, hasActiveFilters, resetTitle } from "./FilterReset";
 import { FilterSummary } from "./FilterSummary";
 import { PermalinkCopy } from "./PermalinkCopy";
@@ -383,8 +383,27 @@ export function ApprovalsHistoryModulePage(): ReactNode {
     );
   })();
 
-  // R79: 聚合（全部状态）=扇出取齐无统一游标，到底原因要分开说。
-  const singleAgg = status === null;  return (
+  // AP-01③（含 R79「聚合腿到底原因要分开说」）：BFF 对 status 缺省与 status=all
+  // 都走 _approvals_all 逐状态扇出（跨态 cursor 恒置 None、合并后按 limit 截断），
+  // 其余状态值原样透传；两条腿的顶层实测都没有 total 键（扇出 keys=[items,nextCursor]、
+  // 单态 keys=[items]），所以分母句必须由同一个 denominatorReadout 派生——两路同形，
+  // 只差原因句。旧变量名 singleAgg（=status===null）覆盖面不足 "all"，已由
+  // aggregated 取代，不再单独保留。
+  const aggregated = status === null || status.trim().toLowerCase() === "all";
+  const denominator = useMemo(
+    () => ({
+      loaded: list.rows.length,
+      total: list.total,
+      hasMore: list.next !== null,
+      aggregated,
+    }),
+    [list.rows.length, list.total, list.next, aggregated],
+  );
+  const readout = denominatorReadout(denominator);
+  // AP-07①: 服务端给了下一页游标＝本地过滤作用域还没到底，各过滤器作用域句据此追加
+  // 「需先加载」提示；status 是唯一真服务端筛选（读口实测只发 status/limit/cursor）。
+  const hasMore = list.next !== null;
+  return (
     <div className="flex min-w-0 w-full max-w-full flex-col gap-3" data-testid="apr5-page-history">
       <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
         {/* R86: 播报单点=下方 sr-only apv-live；这行只是屏上读数，不再自带
@@ -467,7 +486,14 @@ export function ApprovalsHistoryModulePage(): ReactNode {
         </button>
         <FilterSummary params={params} onRemove={removeFilterKeys} phase={list.phase} />
       </div>
-      <QueueSummaryBar phase={list.phase} rows={visibleRows} scope="history" singleStatus={status} />
+      <QueueSummaryBar
+        phase={list.phase}
+        rows={visibleRows}
+        scope="history"
+        singleStatus={status}
+        denominator={denominator}
+        unreadable={list.unreadable}
+      />
       <QueueCsvExport rows={visibleRows} tab="history" status={status} phase={list.phase} sort={asort} dir={asort ? adir : null} />
       {filtersOpen ? (
         <div
@@ -498,14 +524,27 @@ export function ApprovalsHistoryModulePage(): ReactNode {
             title="实测：本页读口带 q/keyword/title 任一参数都与不带时返回同一全量（同集合），后台不做关键字过滤；为避免「假服务端搜索」，这里只做前端本地过滤。"
           >
             仅在当前已加载 {list.rows.length} 条内搜索；关键字是前端本地过滤，不产生新请求（实测后台 q/keyword/title 参数被忽略）。
+            {hasMore ? (
+              <span data-testid="apv8-search-crosspage" data-apv8-search-crosspage="needs-load">
+                {` ${crossPageLoadHint(true)}`}
+              </span>
+            ) : null}
           </p>
-          <ActorBuckets rows={riskBaseRows} phase={list.phase} actor={actor} onPick={pickActor} />
-          <SinceQuickFilter phase={list.phase} since={since} loadedCount={list.rows.length} onPick={pickSince} />
-          <RiskQuickFilter rows={actorBaseRows} phase={list.phase} risk={risk} onPick={pickRisk} />
+          <p
+            className="min-w-0 break-words text-xs text-muted-foreground"
+            data-testid="apv-h-status-note"
+            data-apv-h-status-scope="server"
+            title="本页的「按处理结果筛选」八态组是真正发到服务端的 status 维度（实测 listUrl 只发 status/limit/cursor）；上面搜索/审批人/时间/风险与排序都是当前已加载行上的本地过滤，二者不同源。"
+          >
+            下面的「按处理结果筛选」八态＝服务端 status 筛选（切换会重新请求）；搜索、审批人、时间窗、风险档、排序都是本地过滤，只在已加载行内生效。
+          </p>
+          <ActorBuckets rows={riskBaseRows} phase={list.phase} actor={actor} onPick={pickActor} hasMore={hasMore} />
+          <SinceQuickFilter phase={list.phase} since={since} loadedCount={list.rows.length} onPick={pickSince} hasMore={hasMore} />
+          <RiskQuickFilter rows={actorBaseRows} phase={list.phase} risk={risk} onPick={pickRisk} hasMore={hasMore} />
         </div>
       ) : null}
 
-      <QueueSortBar phase={list.phase} sort={asort} dir={adir} loadedCount={list.rows.length} onCycle={cycleSort} />
+      <QueueSortBar phase={list.phase} sort={asort} dir={adir} loadedCount={list.rows.length} onCycle={cycleSort} hasMore={hasMore} />
       <RowDetailCopy row={visibleRows.find((r) => r.key === previewKey) ?? null} />
 
 
@@ -685,7 +724,9 @@ export function ApprovalsHistoryModulePage(): ReactNode {
               {list.pageFailure ? <InlineFailure failure={list.pageFailure} action="后续记录没有加载成功" onRetry={list.loadMore} /> : null}
 
               {/* P1-A2 ③②：分页 footer 状态机——有可见行才出分页条；过滤 miss/空态由空卡说话，
-                  不留死钮。「总数不可用」与「已到末页」互斥：无 total 且已到末页时只说一句末页话。 */}
+                  不留死钮。AP-01①②：计数句与待处理腿同一个 denominatorReadout（两路同形），
+                  读口无 total 时只报「已加载 n 条（非全量）」，游标缺失不等于全量（扇出腿按 limit
+                  截断）；「已到末页」角标只在 total 已知时出现，未知腿由 P1-A2 ② 已退出。 */}
               {visibleRows.length > 0 ? (
               <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs" data-testid="apv-page">
                 <Button
@@ -698,29 +739,16 @@ export function ApprovalsHistoryModulePage(): ReactNode {
                   title={
                     list.next
                       ? "带服务端游标续取下一页（追加时按单号去重，重复行不上屏）。"
-                      : singleAgg
-                        ? "聚合视图按状态扇出取齐，没有续页游标：已到末页。切到单一状态可按游标续取。"
-                        : "服务端没有给出下一页游标：已到末页。"
+                      : aggregated
+                        ? "聚合视图按 8 个状态扇出取齐，跨状态没有续页游标：这里已到末页，但合并结果按单页上限截断，服务端并不承诺这就是全量。切到单一状态可按游标续取。"
+                        : "服务端没有给出下一页游标：已到末页。读口不给总数，这不等于服务端承诺屏上这些就是全量。"
                   }
                   prefix={list.loadingMore ? <Spinner className="h-3.5 w-3.5" /> : <RefreshCw className="h-3.5 w-3.5" />}
                 >
                   {list.loadingMore ? "加载中…" : "加载更多"}
                 </Button>
-                <span
-                  data-testid="apv-page-count"
-                  title={
-                    list.total !== null
-                      ? "总数来自读口 total 键；已显示=当前已加载行数"
-                      : list.next
-                        ? "读口响应顶层只有 items/nextCursor（无 total 键，实测本页响应）；按已加载条数推算会撒谎，故不推算。"
-                        : "读口没有回传 total 键；服务端已无下一页游标，屏上这些就是全部取到的记录。"
-                  }
-                >
-                  {list.total !== null
-                    ? `共 ${list.total} 条 / 已显示 ${list.rows.length} 条`
-                    : list.next
-                      ? `总数不可用 · 已显示 ${list.rows.length} 条`
-                      : `已到末页 · 已显示 ${list.rows.length} 条`}
+                <span data-testid="apv-page-count" title={readout.reason}>
+                  {readout.text}
                 </span>
                 {!list.next && list.total !== null ? (
                   <span className="text-muted-foreground" data-testid="apv-page-end">
@@ -728,6 +756,17 @@ export function ApprovalsHistoryModulePage(): ReactNode {
                   </span>
                 ) : null}
               </div>
+              ) : null}
+
+              {/* AP-01②：到底/截断态的诚实说明，只在读口给不出总数时上屏。 */}
+              {list.phase === "ready" && list.total === null && readout.note ? (
+                <p
+                  className="min-w-0 break-words text-xs text-muted-foreground"
+                  data-testid="apv-denominator-note"
+                  title={readout.reason}
+                >
+                  {readout.note}
+                </p>
               ) : null}
             </>
           ) : null}

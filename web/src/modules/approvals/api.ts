@@ -6,6 +6,8 @@
  *   list    `GET  /agent-api/api/approvals`        (`?status=&limit=&cursor=`)
  *   detail  `GET  /agent-api/api/approval?id=`     (web/src/shell/routes.ts row 7,
  *                                                    docs/_artifacts/D/T02-ENDPOINT-RECONCILIATION.md)
+ *   records `GET  /agent-api/api/audit?resourceId=` — AP-03 处理记录腿，走审计
+ *                                                    车道既有读口（见下方 AUDIT_LIST_PATH）
  *   decision `POST /agent-api/api/approval/decision?id=` — the BFF's single approval
  *   write route (`X-Console-Write: 1`, body `{verdict, comment?}`).
  *
@@ -17,11 +19,24 @@ import { fetchJSON } from "@/lib/api";
 import { ApiError } from "@/lib/api-error";
 import { csrfFailureCopy, csrfWriteHeaders } from "@/lib/csrf";
 
-import { approvalDetailFrom, approvalsPageFrom, type ApprovalDetail, type ApprovalPage } from "./model";
+import {
+  approvalDetailFrom,
+  approvalsPageFrom,
+  employeeVersionRefsFrom,
+  type ApprovalDetail,
+  type ApprovalPage,
+  type EmployeeVersionRef,
+} from "./model";
+import { auditPageFrom, type AuditPage } from "@/modules/audit/model";
 
 export const LIST_PATH = "/agent-api/api/approvals";
 export const DETAIL_PATH = "/agent-api/api/approval";
 export const DECISION_PATH = "/agent-api/api/approval/decision";
+/**
+ * AP-02 ① 相邻版本核对腿——BFF 既有端点（apps/console/server.py:59 路由表，
+ * 2026-11-23 实测 `?id=emp_…` → 200 items[5]），经 /agent-api 反代，零新增。
+ */
+export const EMPLOYEE_VERSIONS_PATH = "/agent-api/api/employee-versions";
 
 /** The BFF's own cursor page size; kept explicit so both panes ask the same thing. */
 export const PAGE_LIMIT = 50;
@@ -55,6 +70,41 @@ export function decisionUrl(id: string): string {
   return appendQuery(DECISION_PATH, "id", id);
 }
 
+/** 相邻版本读口的请求形制：`?id=<员工号>&limit=50`（limit 透传，BFF 实测接受）。 */
+export function employeeVersionsUrl(employeeId: string, limit = PAGE_LIMIT): string {
+  let url = appendQuery(EMPLOYEE_VERSIONS_PATH, "id", employeeId);
+  url = appendQuery(url, "limit", String(limit));
+  return url;
+}
+
+/**
+ * AP-03 ② 处理记录读腿。审计车道既有读口 GET /api/audit（modules/audit/api.ts
+ * 的 LIST_PATH 同一路径），本模块只拼自己的 query、不改它的面。
+ * 本机 2026-11-23 真登录腿实测（evidence/raw-audit-*.json，BFF 8092）：
+ *   `?resourceId=ap_0C67930A766D4AA49E4B5B44EC&limit=50` → **200**，顶层
+ *   keys=[events,limit,cursor,hasMore,total,totalSource]，3 行，行内带
+ *   eventId/occurredAt/actor{type,id}/action/outcome；
+ *   `?limit=50`（无过滤）→ **400** `console.missing_filter`（七个过滤键至少给
+ *   一个），所以 resourceId 必带；
+ *   无会话 cookie → **401** `console.unauthenticated`（带 X-Console-Request-Id）。
+ * 行解析复用 `auditPageFrom`（单点），不在此另起一套审计行模型。
+ */
+export const AUDIT_LIST_PATH = "/agent-api/api/audit";
+/** 一次读多少行：与审计面板同档（audit/api.ts PAGE_LIMIT），不新造尺寸。 */
+export const RECORDS_LIMIT = 50;
+
+export function auditResourceUrl(resourceId: string, limit = RECORDS_LIMIT): string {
+  let url = appendQuery(AUDIT_LIST_PATH, "resourceId", resourceId);
+  url = appendQuery(url, "limit", String(limit));
+  return url;
+}
+
+/** null = 这一条读口没答成列表（失败/无权），屏上说「暂不可用」，不画空列表。 */
+export async function fetchProcessingRecords(resourceId: string): Promise<AuditPage | null> {
+  const payload = await fetchJSON<unknown>(auditResourceUrl(resourceId));
+  return auditPageFrom(payload);
+}
+
 /** One page of the queue. `null` page = the answer is not a list at all (a failure). */
 export async function fetchList(status: string | null, cursor: string | null): Promise<ApprovalPage | null> {
   const payload = await fetchJSON<unknown>(listUrl(status, cursor));
@@ -64,6 +114,16 @@ export async function fetchList(status: string | null, cursor: string | null): P
 export async function fetchDetail(id: string): Promise<ApprovalDetail | null> {
   const payload = await fetchJSON<unknown>(detailUrl(id));
   return approvalDetailFrom(payload);
+}
+
+/**
+ * AP-02 ① 版本链读取：只读、只在 employee_version_create 详情里被调用。
+ * 返回 null = 读口没答成列表（失败/无权），屏上写「版本链未接」；
+ * 空数组 = 真读了但没有可比版本。两者都不画 0、都不补造。
+ */
+export async function fetchVersionChain(employeeId: string): Promise<EmployeeVersionRef[] | null> {
+  const payload = await fetchJSON<unknown>(employeeVersionsUrl(employeeId));
+  return employeeVersionRefsFrom(payload);
 }
 
 /**
@@ -100,6 +160,57 @@ export class CsrfMissingError extends Error {
   }
 }
 
+/**
+ * AP-06 ① — the service's own error envelope, read the way the BFF reads it.
+ *
+ * 板仓只读核对（`apps/console/server.py`，2026-11-24）：
+ * - `_error_code_of` L298-304 只认**顶层 `code` 字符串**；
+ * - 域信封平铺 `{code, message, details?}`（`services/domain/http_app.py:36-41`，
+ *   `details` 仅在有值时出现——409 `approval.expired` 带 `{expiredFrom}`，
+ *   `services/domain/approvals.py:962-967`）；
+ * - 保留透传族 `approval.not_approver|already_decided|expired|service_unavailable`
+ *   （`PASSTHROUGH_ERROR_CODES` L216-221）＝上游码与体逐字转给浏览器；
+ * - 折叠族 `approval.not_found` ＋ consume 四码（`FOLDED_ERROR_CODES` L223-228）
+ *   ＝统一 404 `{"code":"approval.unavailable","message":"approval not found or
+ *   not actionable"}`（`_UNAVAILABLE` L230、写腿 L1975-1977）。
+ *
+ * 码只用来选句子；它本身永远不上屏（裸码/裸枚举属工程值，见 copy.ts 单点句）。
+ */
+export interface ErrorEnvelope {
+  code: string | null;
+  details: Record<string, unknown> | null;
+}
+
+const NO_ENVELOPE: ErrorEnvelope = { code: null, details: null };
+
+function textOf(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function recordOf(value: unknown): Record<string, unknown> | null {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+export function errorEnvelopeOf(body: string | null | undefined): ErrorEnvelope {
+  if (!body) return NO_ENVELOPE;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    return NO_ENVELOPE; // 非 JSON（代理 HTML 页等）：没有码可认，走状态码句。
+  }
+  const rec = recordOf(parsed);
+  if (!rec) return NO_ENVELOPE;
+  // 平铺信封是真形制；`detail` 嵌套只作兼容腿（csrf.ts 同款容忍），不改判据。
+  const nested = recordOf(rec.detail);
+  const code = textOf(rec.code) ?? textOf(nested?.code);
+  const details = recordOf(rec.details) ?? recordOf(nested?.details);
+  if (code === null && details === null) return NO_ENVELOPE;
+  return { code, details };
+}
+
 /** Status + trace id of a failure, for the panels that have to speak to a person. */
 export interface FailureInfo {
   status: number;
@@ -108,20 +219,38 @@ export interface FailureInfo {
   sentence?: string;
   /** Raw multi-line detail — for the 「详情」 disclosure only, never on the surface. */
   technical: string | null;
+  /** AP-06 ①：服务错误信封的码（`approval.*` 等），选句子用，不上屏。 */
+  code?: string | null;
+  /** AP-06 ①：信封 `details`（如 409 expired 的 `expiredFrom`），只进详情披露。 */
+  details?: Record<string, unknown> | null;
 }
 
 export function failureInfo(err: unknown): FailureInfo {
   if (err instanceof CsrfMissingError) {
-    return { status: -1, requestId: null, technical: null, sentence: err.message };
+    return { status: -1, requestId: null, technical: null, sentence: err.message, code: null, details: null };
   }
   if (err instanceof ApiError) {
+    const envelope = errorEnvelopeOf(err.body);
     const csrfCopy = csrfFailureCopy(err.status, err.body, err.requestId);
     if (csrfCopy) {
-      return { status: err.status, requestId: csrfCopy.requestId, technical: err.details, sentence: csrfCopy.sentence };
+      return {
+        status: err.status,
+        requestId: csrfCopy.requestId,
+        technical: err.details,
+        sentence: csrfCopy.sentence,
+        code: envelope.code,
+        details: envelope.details,
+      };
     }
-    return { status: err.status, requestId: err.requestId ?? null, technical: err.details };
+    return {
+      status: err.status,
+      requestId: err.requestId ?? null,
+      technical: err.details,
+      code: envelope.code,
+      details: envelope.details,
+    };
   }
-  return { status: -1, requestId: null, technical: err instanceof Error ? err.message : String(err) };
+  return { status: -1, requestId: null, technical: err instanceof Error ? err.message : String(err), code: null, details: null };
 }
 
 /** 403 and 404 are one and the same body: both mean "this is not reachable for you". */
@@ -132,4 +261,25 @@ export function isDenied(status: number): boolean {
 /** 405/501 = the write route is not open in this deployment: a degradation, not a bug. */
 export function isWriteUnavailable(status: number): boolean {
   return status === 405 || status === 501;
+}
+
+/**
+ * AP-05 ③ 判据：这条失败是否属于「结果未知」——请求已出网、答复没拿到
+ * （0=连不上/超时，-1=传输层异常）。`CsrfMissingError` 是唯一例外：它拦在
+ * 网络之前，决定确定没有送出，不算未知。服务答了话的失败（4xx/5xx）都是
+ * 已知结果，走既有 writeFailure 逐码句，不进读回腿。
+ */
+export function isUnknownOutcome(err: unknown, info: FailureInfo): boolean {
+  if (err instanceof CsrfMissingError) return false;
+  return info.status === 0 || info.status === -1;
+}
+
+/**
+ * AP-05 ③：结果未知后的唯一后继——恰好一次 GET 读回票面（同一个详情读口
+ * `/api/approval?id=`，看 status/decisions 再决定；deep/03 §3.4 口径）。
+ * 本函数只读不写；submitDecisionWithRecovery 的每个未知分支只调它一次、
+ * 绝不重发 POST（approvals.idempotency.test.tsx 以请求计数钉死第二 POST 不发生）。
+ */
+export async function readBackDecisionTicket(id: string): Promise<ApprovalDetail | null> {
+  return fetchDetail(id);
 }
