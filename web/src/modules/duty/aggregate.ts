@@ -12,6 +12,9 @@ import type {
   TaskRow,
 } from "./types";
 import { num } from "./types";
+import { beijing } from "./format";
+import type { GateVerdict, ReadinessEvidence } from "./readiness";
+import { DENOMINATOR_STATES, rollup, v1Verdict, v2Verdict, v3Verdict, v6Verdict } from "./readiness";
 
 export function lifecycleTotal(stats: Record<string, unknown> | null): number | null {
   if (!stats) return null;
@@ -36,56 +39,109 @@ export function activeCount(stats: Record<string, unknown> | null): number | nul
 }
 
 /**
- * Four gates. V1/V2/V3 have no read route in this BFF yet, so they are
- * explicitly unknown and never enter the numerator. V6 is inferred from the
- * employee owner field and labelled as inference.
+ * Four gates, computed from live BFF evidence (PRD v4 §2). Nothing is
+ * hardcoded to unknown any more: each gate rolls up per-employee verdicts
+ * from its evidence source, and an employee whose source did not answer
+ * counts as 「待核实」 — unknown never enters the numerator. `evidence` is
+ * null only while the evidence fan-out is still in flight (or when the
+ * employee directory itself is down), which keeps the loading state honest.
  */
 export function buildReadiness(
   employees: EmployeeRow[] | null,
   stats: Record<string, unknown> | null,
+  evidence: ReadinessEvidence | null,
   stamp: string | null = null,
+  now: number = Date.now(),
 ): ReadinessView {
   const total = lifecycleTotal(stats);
   const active = activeCount(stats);
-  const unknown = (key: GateView["key"], name: string, code: string, source: string): GateView => ({
-    key,
-    name,
-    pass: null,
-    fail: null,
-    state: "unknown",
-    code,
-    source,
-    asOf: null,
+
+  const denom = (employees ?? []).filter((e) =>
+    DENOMINATOR_STATES.has(e.lifecycleState ?? "active"),
+  );
+  // 目录分页没拉满分母时逐员工判定会偏乐观，整组按证据不完整处理。
+  const complete = employees !== null && total !== null && denom.length >= total;
+
+  const v1Verdicts = denom.map((e) => {
+    const l = evidence?.stations[e.employeeId];
+    return l && l.k === "ready" ? v1Verdict(l.data) : null;
   });
+  const v2Verdicts = denom.map((e) => {
+    const l = evidence?.configs[e.employeeId];
+    return l && l.k === "ready" ? v2Verdict(l.data, now) : null;
+  });
+  const kb = evidence?.knowledge;
+  const kbReady = kb && kb.k === "ready" ? kb.data : null;
+  const v3Source = !kbReady
+    ? "知识文档读口未回答 · 引用证据缺失"
+    : !kbReady.wired
+      ? "知识库读侧未接线（待后端接入）· 引用证据缺失"
+      : kbReady.count === 0
+        ? "知识目录可引用文档 0 份"
+        : `知识目录可引用文档 ${kbReady.count} 份 · 强制引用策略与运行引用腿未接`;
+  const v3Verdicts = denom.map(() => (kbReady ? v3Verdict(kbReady) : null));
+  const ap = evidence?.approvals;
+  const apRows = ap && ap.k === "ready" ? ap.data : null;
+  const v6Verdicts = denom.map((e) => (apRows ? v6Verdict(apRows, e.employeeId, now) : null));
 
-  const v1 = unknown("V1", "群@", "E_GROUP_WHITELIST", "工位与渠道事件 · 渠道事件数据源未接入");
-  const v2 = unknown("V2", "ReBAC", "E_SCOPE_MISS", "有效配置与策略校验 · 策略校验数据源未接入");
-  const v3 = unknown("V3", "引用", "E_NO_CITATION", "知识空间与引用 · 知识数据源未接入");
+  const roll = (
+    key: GateView["key"],
+    name: string,
+    code: string,
+    source: string,
+    verdicts: (GateVerdict | null)[],
+    stampOverride?: string | null,
+  ): GateView => {
+    if (!complete || evidence === null) {
+      return { key, name, pass: null, fail: null, state: "unknown", code, source, asOf: null };
+    }
+    const r = rollup(verdicts);
+    return {
+      key,
+      name,
+      pass: r.pass,
+      fail: r.fail,
+      state: r.state,
+      code,
+      source,
+      asOf: r.pass === null ? null : stampOverride ?? stamp,
+    };
+  };
 
-  let v6: GateView;
-  if (total === null || employees === null || employees.length < total) {
-    v6 = {
-      ...unknown("V6", "审批", "E_NO_APPROVER", "审批人名单未冻结 · 负责人推断不完整"),
-    };
-  } else {
-    const pass = employees.filter((e) => Boolean(e.ownerUserId)).length;
-    const fail = Math.max(0, total - pass);
-    v6 = {
-      key: "V6",
-      name: "审批",
-      pass,
-      fail,
-      state: fail === 0 ? "pass" : "fail",
-      code: "E_NO_APPROVER",
-      source: `负责人推断（${pass}/${total}）· 审批人名单未冻结`,
-      asOf: stamp,
-      inferred: true,
-    };
-  }
+  // V2 的采集时间取 effective-config 自带的 resolvedAt（真实读取时刻），
+  // 其它门沿用统计源的 asOf 时刻；都没有就诚实地显示「截至 —」。
+  const v2Resolved = denom
+    .map((e) => {
+      const l = evidence?.configs[e.employeeId];
+      return l && l.k === "ready" ? l.data.resolvedAt : null;
+    })
+    .filter((s): s is string => Boolean(s))
+    .sort();
+
+  const v1 = roll("V1", "群@", "E_GROUP_WHITELIST", "工位绑定（群 + active）· 渠道事件列表 BFF 未代理，仅工位腿", v1Verdicts);
+  const v2 = roll(
+    "V2",
+    "ReBAC",
+    "E_SCOPE_MISS",
+    "有效配置 scopes/grants 投影 · 策略校验未接读口",
+    v2Verdicts,
+    v2Resolved.length > 0 ? beijing(v2Resolved[v2Resolved.length - 1]) : null,
+  );
+  const v3 = roll("V3", "引用", "E_NO_CITATION", v3Source, v3Verdicts);
+  const v6 = roll("V6", "审批", "E_NO_APPROVER", "审批 message_send 有效决策（有审批人且未过期）", v6Verdicts);
 
   const gates = [v1, v2, v3, v6];
   const unknownGates = gates.filter((g) => g.state === "unknown").length;
-  const confirmed = unknownGates > 0 ? null : gates.reduce((n, g) => Math.min(n, g.pass ?? 0), total ?? 0);
+  // 可上岗分子：四门全部显式通过的员工；任何一门 fail/unknown/无证据都不入。
+  // 仍有 unknown 门时不给出伪权威总数（PRD v4 风险表 #1：GAP-01 前不显示单一权威可上岗率）。
+  const confirmed =
+    unknownGates > 0 || !complete || evidence === null
+      ? null
+      : denom.reduce(
+          (n, _e, i) =>
+            n + (v1Verdicts[i] === "pass" && v2Verdicts[i] === "pass" && v3Verdicts[i] === "pass" && v6Verdicts[i] === "pass" ? 1 : 0),
+          0,
+        );
   const failing = gates.filter((g) => g.state !== "unknown" && (g.fail ?? 0) > 0);
   const narrowest = failing.sort((a, b) => (b.fail ?? 0) - (a.fail ?? 0))[0] ?? null;
   const deltaToNext =

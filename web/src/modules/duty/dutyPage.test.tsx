@@ -129,7 +129,25 @@ async function render(ui: React.ReactNode) {
 
 describe("DutyPage", () => {
   it("renders the fixed eight cards and keeps unknown gates out of the numerator", async () => {
-    fetchJSON.mockImplementation((url: string) => Promise.resolve(ok(url)));
+    fetchJSON.mockImplementation((url: string) => {
+      // 四门证据源未接线：逐门应显示「待核实」，主数字不给伪权威总数。
+      if (
+        url.includes("/workstations") ||
+        url.includes("/effective-config") ||
+        url.includes("/knowledge/documents") ||
+        (url.includes("/approvals") && url.includes("status=all"))
+      ) {
+        return Promise.reject(
+          new ApiError("source not wired", {
+            status: 404,
+            body: '{"code":"documents.read_not_wired"}',
+            url,
+            requestId: "req-unknown-gate",
+          }),
+        );
+      }
+      return Promise.resolve(ok(url));
+    });
     await render(<DutyPage />);
     const text = container.textContent ?? "";
     for (const title of ["可上岗", "今日运行", "今日成本", "近 14 天运行", "近 14 天活跃", "阻塞", "待我处理", "最近运行"]) {
@@ -211,7 +229,11 @@ describe("DutyPage", () => {
     expect(seen.filter((u) => u.includes("/workbench/queue"))).toHaveLength(1);
     expect(seen.some((u) => u.includes("/run-stats"))).toBe(false);
     expect(seen.some((u) => u.includes("/approval-stats"))).toBe(false);
-    expect(seen.some((u) => u.includes("/approvals"))).toBe(false);
+    // 队列卡不再打 /approvals?status=pending；四门证据腿读 status=all 是有意为之。
+    expect(seen.some((u) => u.includes("/approvals?status=pending") || u.includes("/approvals?limit"))).toBe(false);
+    expect(seen.some((u) => u.includes("/approvals?status=all"))).toBe(true);
+    expect(seen.some((u) => u.includes("/workstations?"))).toBe(true);
+    expect(seen.some((u) => u.includes("/effective-config?"))).toBe(true);
     const asof = container.querySelector('[data-testid="ov6-asof"]');
     expect(asof?.textContent).toContain("采集时刻 北京时间 2026-11-18 14:00");
     expect(container.querySelector('[data-testid="ov6-pending-value"]')?.textContent ?? container.textContent).toBeTruthy();

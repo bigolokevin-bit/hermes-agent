@@ -11,7 +11,14 @@ import type {
   RunStatsBody,
   TaskRow,
 } from "./types";
-import { asArray, normalizeApproval, normalizeEmployee, normalizeRun, normalizeTask } from "./types";
+import { asArray, isRecord, normalizeApproval, normalizeEmployee, normalizeRun, normalizeTask, text } from "./types";
+import type {
+  ApprovalEvidence,
+  ConfigView,
+  KnowledgeProbe,
+  ReadinessEvidence,
+  StationBinding,
+} from "./readiness";
 
 export const BFF = "/agent-api/api";
 
@@ -103,6 +110,111 @@ export async function fetchBlockedTasks(limit = 3): Promise<TaskRow[]> {
 export async function fetchMatrix(limit = 50): Promise<MatrixBody> {
   const body = await get("/matrix", { limit });
   return body && typeof body === "object" ? (body as MatrixBody) : {};
+}
+
+/* ── 四门证据读口（PRD v4 §2）：V1 工位 / V2 有效配置 / V3 知识 / V6 审批 ── */
+
+function normalizeStation(v: unknown): StationBinding | null {
+  if (!isRecord(v)) return null;
+  return {
+    bindingType: text(v.bindingType) ?? undefined,
+    channel: text(v.channel) ?? undefined,
+    status: text(v.status) ?? undefined,
+    capabilities: Array.isArray(v.capabilities)
+      ? v.capabilities.filter((c): c is string => typeof c === "string")
+      : undefined,
+  };
+}
+
+export async function fetchWorkstations(employeeId: string): Promise<StationBinding[]> {
+  const body = await get("/workstations", { id: employeeId });
+  return asArray(body)
+    .map(normalizeStation)
+    .filter((x): x is StationBinding => x !== null);
+}
+
+export async function fetchEffectiveConfig(employeeId: string): Promise<ConfigView> {
+  const body = await get("/effective-config", { id: employeeId });
+  const rec = isRecord(body) ? body : {};
+  const version = isRecord(rec.version) ? rec.version : {};
+  return {
+    scopes: Array.isArray(version.knowledgeScopes)
+      ? version.knowledgeScopes.filter((s): s is string => typeof s === "string")
+      : [],
+    grants: asArray(rec.grants).map((g) => ({
+      expiresAt: isRecord(g) ? text(g.expiresAt) : null,
+    })),
+    resolvedAt: text(rec.resolvedAt),
+  };
+}
+
+/** 全部审批里属于「该员工 message_send 决策」的行；其余行与四门无关，丢弃。 */
+export async function fetchApprovalsEvidence(limit = 100): Promise<ApprovalEvidence[]> {
+  const body = await get("/approvals", { status: "all", limit });
+  const out: ApprovalEvidence[] = [];
+  for (const row of asArray(body)) {
+    if (!isRecord(row)) continue;
+    const binding = isRecord(row.binding) ? row.binding : {};
+    if (text(binding.subjectType) !== "employee") continue;
+    const subjectId = text(binding.subjectId) ?? "";
+    const kind = text(binding.changeKind) ?? text(row.action) ?? "";
+    if (!subjectId || (kind !== "message_send" && kind !== "message.send")) continue;
+    out.push({
+      subjectId,
+      status: text(row.status) ?? "",
+      expiresAt: text(row.expiresAt),
+      hasApprover: Array.isArray(row.approvers) ? row.approvers.length > 0 : false,
+    });
+  }
+  return out;
+}
+
+/**
+ * V3 文档腿探测。读侧未接线时 BFF 返回 404 `*.not_wired` 信封——那不是失败，
+ * 是「未接」：返回 wired=false 且不编造 count。其它错误照抛，由 load() 落 error。
+ */
+export async function fetchKnowledgeProbe(): Promise<KnowledgeProbe> {
+  try {
+    const body = await get("/knowledge/documents", { limit: 100 });
+    const rec = isRecord(body) ? body : {};
+    return { wired: true, count: asArray(body).length, asOf: text(rec.asOf) };
+  } catch (err) {
+    if (err instanceof ApiError && (err.status === 404 || err.status === 503) && err.body.includes("not_wired")) {
+      let asOf: string | null = null;
+      try {
+        asOf = text((JSON.parse(err.body) as Record<string, unknown>).asOf);
+      } catch {
+        /* 信封没带采集时间就是没有，不猜。 */
+      }
+      return { wired: false, count: null, asOf };
+    }
+    throw err;
+  }
+}
+
+/** 分母员工逐一读工位与有效配置；单员工失败只影响该员工该门。 */
+export async function fetchReadinessEvidence(employeeIds: string[]): Promise<ReadinessEvidence> {
+  const ids = employeeIds.slice(0, 32);
+  const perEmployee = await Promise.all(
+    ids.map(async (id) => {
+      const [stations, config] = await Promise.all([
+        load(() => fetchWorkstations(id)),
+        load(() => fetchEffectiveConfig(id)),
+      ]);
+      return [id, stations, config] as const;
+    }),
+  );
+  const [approvals, knowledge] = await Promise.all([
+    load(() => fetchApprovalsEvidence()),
+    load(fetchKnowledgeProbe),
+  ]);
+  const stations: Record<string, Loadable<StationBinding[]>> = {};
+  const configs: Record<string, Loadable<ConfigView>> = {};
+  for (const [id, st, cfg] of perEmployee) {
+    stations[id] = st;
+    configs[id] = cfg;
+  }
+  return { stations, configs, approvals, knowledge };
 }
 
 /** Convert a promise into a card-sized Loadable; the loader never throws. */
