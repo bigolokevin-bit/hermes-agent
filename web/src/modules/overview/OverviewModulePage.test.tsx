@@ -283,6 +283,18 @@ describe('OverviewModulePage 合同：KPI 只走现网 BFF 两端口', () => {
     expect(container.querySelector('[data-testid="ov6-trend"]')?.textContent).toContain('run-stats');
   });
 
+  it('OM-03/OM-10：五卡齐挂且健康卡标注 BFF fan-out 真来源（非本页取数成败）', async () => {
+    await render(
+      <OverviewView state={viewState({})} todayDate="2026-11-23" onRetry={() => {}} />,
+    );
+    expect(
+      container.querySelectorAll('[data-testid^="ov6-kpi-"][data-duty-testid^="duty-kpi-"]'),
+    ).toHaveLength(5);
+    const health = container.querySelector('[data-testid="ov6-kpi-health"]');
+    expect(health?.textContent).toContain('bff fan-out probe');
+    expect(health?.textContent).not.toContain('来源正常'); // 禁「n/6 本页读数」话术回潮
+  });
+
   it('原始响应面板展示接口原文', async () => {
     await render(
       <OverviewView state={viewState({})} todayDate="2026-11-23" onRetry={() => {}} />,

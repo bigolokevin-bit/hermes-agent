@@ -36,7 +36,8 @@
 
 .ov5-kpis {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  /* OM-03 裁定：5 卡（overview/summary 五路独立来源+run-stats），主档 auto-fit 等宽，禁孤列 */
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 12px;
 }
 

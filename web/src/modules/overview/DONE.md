@@ -59,15 +59,39 @@
 
 取证时页面读数（与 raw 逐字一致）：员工 3、今日运行 0、待审批 0、成本 $0.00、健康 正常；
 请求日志三路全 200（`raw/endpoint-log.json`）。observer 两轮核验通过；轻微遗留（不阻塞）：
-趋势末柱贴容器右缘（右内边距偏小）、柱形无值标注（数值以原文面板为准）。
+趋势末柱贴容器右缘（右内边距偏小）、柱形无值标注（数值以原文面板为准）；
+observer 第三轮（OM-03 五列网格）判定 PASS，另记 1440 五列变窄后来源串 CJK 折行增多
+（词中断行，观感级，建议后续统一 `overflow-wrap:anywhere` 或缩短来源文案，不在本单动）。
 
 ## 测试与构建
 
-- `cd web && node_modules/.bin/vitest run src/modules/overview` → **10 passed / 10**
+- `cd web && node_modules/.bin/vitest run src/modules/overview` → **11 passed / 11**
   （合同：forced 态零请求；只打两端口且 bucket=day；真 0 带来源原文；失败率同源 20%；
   summary 挂→各卡未接入+编号+重试；今日窗挂只影响运行卡；全挂整页错误声明不编造；
-  采集时间行；日桶渲染；原文面板无 innerHTML）
+  采集时间行；日桶渲染；原文面板无 innerHTML；OM-03/10 五卡等宽+健康卡真来源钉）
 - `cd web && node_modules/.bin/vite build` → 通过（产物 `<tree>/hermes_cli/web_dist`）。
+
+## OM-02 前提复核（2026-11-23 21:2x 现网实测，未动主仓 BFF）
+
+backlog `docs/product/backlogs/overview-metrics.md` OM-02 断言「`/api/workbench/*` BFF 0 命中→404」。
+现网 9122 带登录态实测三条腿全部 **200**，且形态已合 OM-02 DoD：
+
+- `workbench/summary?range=1d` → kpis:[{key:runs,label,value,previous,delta,available,reason}]，含 window/previousWindow
+- `workbench/timeseries?range=7d&bucket=day&metric=runs` → points:[{ts,label,value}]、totals、缺桶语义在
+- `workbench/queue?page_size=5` → `{items:[],total:0,available:true,asOf,asOfSource:"bff-read-time",note:"…不造数"}`
+
+判读：**OM-02 工单前提失真（backlog 落后于现网），不新建死代码**；请 L0 按 rubric 更新 backlog 后
+OM-02 可径直标 VERIFIED（腿已在）。P-OM-3 的「workbench 0 命中」同此失效。
+
+## OM-03 / OM-10 同批裁定（本车道，前端侧）
+
+- **OM-03 裁定：保持 5 卡**（employeeTotal/activeTotal 合卡、runs、pending、cost、health 各对应
+  `overview/summary` 独立来源字段，撤任何一张即丢一路真读数）。网格 `repeat(auto-fit,minmax(200px,1fr))`
+  ——1440 五列等宽无孤列，窄档维持 2/1 列断点；截图 `overview-1440.png` 为证。
+- **OM-10 裁定：健康卡已是真读口**——值取 `overview/summary.healthStatus`，来源标注
+  `bff fan-out probe（本请求 employees/runs-stats/approvals 三路上游结果）`，不再用本页取数成败计数；
+  测试钉住卡面含该来源串且无「n/6 来源正常」话术。`/api/hermes-summary` 属 metrics 车道（MT 组），不在本写域重复接线。
+- P-OM-2（失败率同源同窗）在 4bf3097a91 已修：分子分母同取 run-stats 今日窗 totals。
 
 ## 已知边界（如实上报，非缺陷隐瞒）
 

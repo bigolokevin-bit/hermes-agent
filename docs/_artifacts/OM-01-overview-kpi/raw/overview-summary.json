@@ -2,33 +2,33 @@
   "employeeTotal": {
     "value": 3,
     "source": "domain GET /v1/employees?limit=100（单页）",
-    "asOf": "2026-11-23T13:20:21Z"
+    "asOf": "2026-11-23T13:26:54Z"
   },
   "activeTotal": {
     "value": 2,
     "source": "domain GET /v1/employees?limit=100（单页）（lifecycleState=active 计数）",
-    "asOf": "2026-11-23T13:20:21Z"
+    "asOf": "2026-11-23T13:26:54Z"
   },
   "todayRuns": {
     "value": 0,
     "source": "runtime GET /v1/runs/stats（from/to=北京日窗 bucket=day）",
-    "asOf": "2026-11-23T13:20:21Z"
+    "asOf": "2026-11-23T13:26:54Z"
   },
   "todayCostUsd": {
     "value": 0,
     "source": "runtime GET /v1/runs/stats（from/to=北京日窗 bucket=day）",
-    "asOf": "2026-11-23T13:20:21Z"
+    "asOf": "2026-11-23T13:26:54Z"
   },
   "pendingApprovals": {
     "value": 0,
     "source": "domain GET /v1/approvals?status=pending&scope=tenant（租户收件箱）",
-    "asOf": "2026-11-23T13:20:21Z"
+    "asOf": "2026-11-23T13:26:54Z"
   },
   "healthStatus": {
     "value": "ok",
     "source": "bff fan-out probe（本请求 employees/runs-stats/approvals 三路上游结果）",
-    "asOf": "2026-11-23T13:20:21Z"
+    "asOf": "2026-11-23T13:26:54Z"
   },
-  "asOf": "2026-11-23T13:20:21Z",
+  "asOf": "2026-11-23T13:26:54Z",
   "asOfSource": "bff-aggregation-read-time"
 }
