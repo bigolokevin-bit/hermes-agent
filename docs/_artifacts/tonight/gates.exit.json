@@ -1,67 +1,296 @@
 {
-  "script": "lane-D gate ledger",
-  "stamped": "stamped at 5710116161",
-  "head": "571011616189edbb153c6fd2203c03882a2f9f39",
-  "stampTime": "2026-11-23 16:14 +0800",
-  "servedBase": "http://127.0.0.1:9122",
-  "entry": "index-CiJcZ4mg.js",
-  "provenance": "legs re-run 16:12-16:14 at HEAD 5710116161; dist mtime 14:57 ≤ HEAD(16:02, docs-only 追加段) → 同一产品代次；章后仅 docs 单文件，同波豁免口径",
-  "legs": [
-    {
-      "leg": "assert-ia-react",
-      "cwd": "web/",
-      "command": "cd web && node scripts/assert-ia.mjs --source=react",
-      "artifact": "docs/_artifacts/tonight/_l0-ia-react.stdout.txt",
-      "exit": 0,
-      "digest": { "ok": true, "headHash": "5710116161", "routes": 51, "tabs": 22, "chatHosts": 1, "modules": 8, "badCode": [], "missing": [] }
+ "script": "lane-D gate ledger, stamped at e46b45bede (收缩令终版：波次收敛后单笔补章)",
+ "head": "e46b45bede9a6baa2d525ce4e343b22973237d0c",
+ "provenance": "dist rebuilt 16:51 from e46b45bede via node26 scripts/build/web.mjs (no-arg default out=hermes_cli/web_dist, gitignored); 9122 restarted PID 49666; served entry index-DZVbT_9g.js, console-topbar grep=1",
+ "legs": [
+  {
+   "leg": "assert-ia-html",
+   "cwd": "web",
+   "command": "node scripts/assert-ia.mjs",
+   "artifact": "docs/_artifacts/tonight/_l0-ia-html.stdout.txt",
+   "exit": 0,
+   "digest": {
+    "script": "assert-ia",
+    "file": "docs/console-v4-skeleton.html",
+    "counts": {
+     "routes": 51,
+     "tabs": 22,
+     "tabsAll": 23,
+     "chatHosts": 1,
+     "modules": 8
     },
-    {
-      "leg": "assert-ia-html",
-      "cwd": "web/",
-      "command": "cd web && node scripts/assert-ia.mjs",
-      "artifact": "docs/_artifacts/tonight/_l0-ia-html.stdout.txt",
-      "exit": 0,
-      "digest": { "ok": true, "headHash": "5710116161", "routes": 51, "tabs": 22, "tabsAll": 23, "chatHosts": 1, "modules": 8, "badCode": [] }
+    "badCode": [],
+    "checks": [
+     {
+      "name": "routes",
+      "ok": true,
+      "actual": 51,
+      "expected": ">=51"
+     },
+     {
+      "name": "tabs",
+      "ok": true,
+      "actual": 22,
+      "expected": 22
+     },
+     {
+      "name": "chatHosts",
+      "ok": true,
+      "actual": 1,
+      "expected": 1
+     },
+     {
+      "name": "modules",
+      "ok": true,
+      "actual": 8,
+      "expected": 8
+     },
+     {
+      "name": "badCode",
+      "ok": true,
+      "actual": [],
+      "expected": []
+     }
+    ],
+    "ok": true,
+    "headHash": "e46b45bede",
+    "exitCode": 0
+   }
+  },
+  {
+   "leg": "assert-ia-react",
+   "cwd": "web",
+   "command": "node scripts/assert-ia.mjs --source=react",
+   "artifact": "docs/_artifacts/tonight/_l0-ia-react.stdout.txt",
+   "exit": 0,
+   "digest": {
+    "script": "assert-ia",
+    "mode": "react",
+    "file": [
+     "web/src/shell/routes.ts",
+     "web/src/modules/*/manifest.ts"
+    ],
+    "sources": {
+     "routesTs": true,
+     "routeForm": "hash-rows",
+     "manifests": [
+      "web/src/modules/approvals/manifest.ts",
+      "web/src/modules/capabilities/manifest.ts",
+      "web/src/modules/employees/manifest.ts",
+      "web/src/modules/identity/manifest.ts",
+      "web/src/modules/knowledge/manifest.ts",
+      "web/src/modules/overview/manifest.ts",
+      "web/src/modules/system/manifest.ts",
+      "web/src/modules/work/manifest.ts"
+     ],
+     "scannedFiles": 201,
+     "chatHostMarkers": [
+      "web/src/modules/chat/ChatModulePage.tsx attrs=1 mounts=1"
+     ]
     },
-    {
-      "leg": "lint-fake-success",
-      "cwd": "web/",
-      "command": "cd web && node scripts/lint-fake-success.mjs",
-      "artifact": "docs/_artifacts/tonight/_l0-lint-fake.stdout.txt",
-      "exit": 0,
-      "digest": { "ok": true, "linesScanned": 9252, "violations": [], "allowedInfo": { "规划中": 188, "不会保存": 1, "未接入": 22 } }
+    "missing": [],
+    "counts": {
+     "routes": 51,
+     "tabs": 22,
+     "chatHosts": 1,
+     "modules": 8
     },
-    {
-      "leg": "lint-reuse",
-      "cwd": "web/",
-      "command": "cd web && node scripts/lint-reuse.mjs",
-      "artifact": "docs/_artifacts/tonight/lint-reuse.json",
-      "exit": 0,
-      "digest": { "ok": true, "scanned": 584, "reuseMarkers": 28, "violations": [], "count": 0, "exemptionCount": 1 }
+    "badCode": [],
+    "checks": [
+     {
+      "name": "routes",
+      "ok": true,
+      "actual": 51,
+      "expected": 51
+     },
+     {
+      "name": "tabs",
+      "ok": true,
+      "actual": 22,
+      "expected": 22
+     },
+     {
+      "name": "chatHosts",
+      "ok": true,
+      "actual": 1,
+      "expected": 1
+     },
+     {
+      "name": "modules",
+      "ok": true,
+      "actual": 8,
+      "expected": 8
+     },
+     {
+      "name": "badCode",
+      "ok": true,
+      "actual": [],
+      "expected": []
+     }
+    ],
+    "ok": true,
+    "headHash": "e46b45bede",
+    "exitCode": 0
+   }
+  },
+  {
+   "leg": "lint-fake-success",
+   "cwd": "web",
+   "command": "node scripts/lint-fake-success.mjs",
+   "artifact": "docs/_artifacts/tonight/_l0-lint-fake.stdout.txt",
+   "exit": 0,
+   "digest": {
+    "script": "lint-fake-success",
+    "file": "docs/console-v4-skeleton.html",
+    "linesScanned": 9252,
+    "allowedInfo": {
+     "规划中": 188,
+     "不会保存": 1,
+     "未接入": 22
     },
-    {
-      "leg": "vitest",
-      "cwd": "web/",
-      "command": "cd web && node_modules/.bin/vitest run",
-      "artifact": "docs/_artifacts/tonight/vitest.txt",
-      "exit": 0,
-      "digest": { "testFiles": 502, "tests": 3699, "failed": 0, "durationS": 53.79 }
-    },
-    {
-      "leg": "crawl-routes",
-      "cwd": "web/",
-      "command": "cd web && node scripts/crawl-routes.mjs --base http://127.0.0.1:9122",
-      "artifact": "docs/_artifacts/tonight/_l0-crawl.stdout.txt",
-      "exit": 0,
-      "digest": { "ok": true, "headHash": "5710116161", "probed": 75, "mainRows": 51, "redirectRows": 24, "deadLinks": 0, "contentEmpty": 0, "probeErrors": 0, "parseErrors": 0, "contentVerified": true, "routesRenderedWithoutMainEl": 0, "routesWithConsoleErrors": 51, "ceAuthority": "login-state", "notes": ["redirects=24 vs 门定值23：routes.ts 并发新增形态，归因非判红；门值更新归 L0/A", "routesWithConsoleErrors=51 属登录态控制台错误既有基线；ok 以 deadLinks/contentEmpty/parseErrors 为准"] }
-    },
-    {
-      "leg": "state-quad",
-      "cwd": "repo-root",
-      "command": "node docs/_artifacts/tonight/state-quad.mjs http://127.0.0.1:9122",
-      "artifact": "docs/_artifacts/tonight/state-quad.json",
-      "exit": 0,
-      "digest": { "ok": true, "headHash": "57101161", "entry": "index-CiJcZ4mg.js", "sampled": 20, "passed": 20, "method": "playwright hash-form 5路由×4态" }
-    }
-  ]
+    "violations": [],
+    "ok": true
+   }
+  },
+  {
+   "leg": "lint-reuse",
+   "cwd": "web",
+   "command": "node scripts/lint-reuse.mjs",
+   "artifact": "docs/_artifacts/tonight/lint-reuse.json",
+   "exit": 0,
+   "digest": {
+    "script": "lint-reuse",
+    "root": "web/src/modules",
+    "scanned": 584,
+    "reuseMarkers": 28,
+    "chatHostFiles": [
+     {
+      "file": "web/src/modules/chat/ChatModulePage.tsx",
+      "via": "<ChatHost> mount"
+     }
+    ],
+    "modulesWithManifest": [
+     "approvals",
+     "capabilities",
+     "employees",
+     "identity",
+     "knowledge",
+     "overview",
+     "system",
+     "work"
+    ],
+    "reuseKindModules": [
+     "approvals",
+     "capabilities",
+     "employees",
+     "identity",
+     "knowledge",
+     "overview",
+     "system",
+     "work"
+    ],
+    "exemptionFile": "present",
+    "exemptionCount": 1,
+    "exempted": [
+     {
+      "surface": "对话 ChatPage",
+      "module": "chat",
+      "pending": "T40",
+      "reason": "复用已落地（web/src/modules/chat/ChatModulePage.tsx:59 lazy import @/pages/ChatPage），缺的是 reuse 声明本身；chat/ 目录没有 manifest.ts，只能靠标记声明，补声明属 web/src 写域，非 D 车道可改。落地（补上声明）后从本清单删除。",
+      "evidence": "web/src/modules/chat/ChatModulePage.tsx:59；App.tsx:121 + App.tsx:245-262 renderConsoleChatHost 单宿主；T02-ENDPOINT-RECONCILIATION.md L33 记 G8=T40 chat 宿主"
+     }
+    ],
+    "surfaces": [
+     {
+      "surface": "对话 ChatPage",
+      "owner": "chat",
+      "declaredWhere": "web/src/modules/chat/（该目录无 manifest.ts，只能靠 reuse: 标记声明）",
+      "declared": false,
+      "codeMentions": 3,
+      "via": null
+     },
+     {
+      "surface": "运行详情 RunDetailPage",
+      "owner": "work",
+      "declaredWhere": "web/src/modules/work/manifest.ts（row 6 runs tab）",
+      "declared": true,
+      "codeMentions": 21,
+      "via": "marker web/src/modules/work/manifest.ts:32"
+     },
+     {
+      "surface": "任务看板 TasksListPage",
+      "owner": "work",
+      "declaredWhere": "web/src/modules/work/manifest.ts（row 5 board tab）",
+      "declared": true,
+      "codeMentions": 4,
+      "via": "marker web/src/modules/work/manifest.ts:21"
+     },
+     {
+      "surface": "schema 表单 AutoField",
+      "owner": "system",
+      "declaredWhere": "web/src/modules/system/manifest.ts",
+      "declared": true,
+      "codeMentions": 0,
+      "via": "manifest kind:'reuse' (system)"
+     },
+     {
+      "surface": "能力矩阵 /v1/matrix/employees 数据口",
+      "owner": "employees",
+      "declaredWhere": "web/src/modules/employees/manifest.ts（matrix tab）",
+      "declared": true,
+      "codeMentions": 3,
+      "via": "marker web/src/modules/employee-detail/EmployeeDetailModulePage.test.tsx:241"
+     }
+    ],
+    "violations": [],
+    "count": 0,
+    "ok": true
+   }
+  },
+  {
+   "leg": "vitest",
+   "cwd": "web",
+   "command": "node_modules/.bin/vitest run",
+   "artifact": "docs/_artifacts/tonight/vitest.txt",
+   "exit": 0,
+   "digest": {
+    "testFiles": 502,
+    "tests": 3700,
+    "allPassed": true,
+    "duration": "45.94s"
+   }
+  },
+  {
+   "leg": "crawl-routes",
+   "cwd": "web",
+   "command": "node scripts/crawl-routes.mjs --base http://127.0.0.1:9122",
+   "artifact": "docs/_artifacts/tonight/_l0-crawl.stdout.txt",
+   "exit": 0,
+   "digest": {
+    "ok": true,
+    "probed": 75,
+    "deadLinks": [],
+    "contentEmpty": [],
+    "parseErrors": [],
+    "notes": [
+     "redirects=24 vs 门定值 23（routes.ts 并发新增形态，归因非判红；门值更新归 L0/A）"
+    ],
+    "headHash": "e46b45bede"
+   }
+  },
+  {
+   "leg": "state-quad",
+   "cwd": ".",
+   "command": "node docs/_artifacts/tonight/state-quad.mjs http://127.0.0.1:9122",
+   "artifact": "docs/_artifacts/tonight/state-quad.json",
+   "exit": 0,
+   "digest": {
+    "ok": true,
+    "entry": "index-DZVbT_9g.js",
+    "sampled": 20,
+    "passed": 20,
+    "headHash": "e46b45be"
+   }
+  }
+ ]
 }
