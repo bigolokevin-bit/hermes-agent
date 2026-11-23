@@ -236,3 +236,28 @@ a596b7f045b49b4a579ee6fda3a86c72965da429
 门禁与取证读数以 `a596b7f045` 的树为测，其后的笔只动 markdown（不碰源码，不影响任何判据读数）。
 栈合基关系：本笔落在 `task/DU-08-infohint`（父＝`6a8cb80203`），写完即交不等合并；AP-04 正被重取基属总控并窗动作，
 L0 合并顺序 DU-01..07→DU-08 不变。
+
+### rebase 后的推送（原始输出）
+
+```
+$ git push origin task/DU-08-infohint
+ ! [rejected]              task/DU-08-infohint -> task/DU-08-infohint (non-fast-forward)   # rebase 重写本道历史，预期
+$ git show 96e7ffa143:SCOPE-DU-08.md | git hash-object --stdin
+bd80fa0a61b689e57b6ac5c8f59f6cae8548ff47
+$ git show HEAD:SCOPE-DU-08.md | git hash-object --stdin
+bd80fa0a61b689e57b6ac5c8f59f6cae8548ff47      # 参谋已采纳的 SCOPE 说明件逐字保留，未被换基丢掉
+$ git diff --name-only 6a8cb80203 96e7ffa143 | sort > /tmp/old-set.txt
+$ git diff --name-only 5191a706cd HEAD | sort > /tmp/new-set.txt
+$ diff /tmp/old-set.txt /tmp/new-set.txt      # 空＝新旧两版改动文件集合完全相同
+$ git push --force-with-lease=refs/heads/task/DU-08-infohint:96e7ffa143d94a743563ebedd0c40914c12119fe origin task/DU-08-infohint
+ + 96e7ffa143...c5a5c382a1 task/DU-08-infohint -> task/DU-08-infohint (forced update)
+PUSH_EXIT=0
+$ git rev-parse HEAD
+c5a5c382a16efc569bed698d9f52881d43f0f64e
+$ git ls-remote origin refs/heads/task/DU-08-infohint
+c5a5c382a16efc569bed698d9f52881d43f0f64e	refs/heads/task/DU-08-infohint
+```
+
+**偏离如实**：本次推送用了 `--force-with-lease`（不是裸 `--force`，也不是 `--no-verify`；lease 值＝远端当时现读 `96e7ffa143`）。
+理由＝参谋 05:0x 令要求 rebase 至新 face 并「单推新 tip」，重写历史必然 non-fast-forward；推送前已用上面三条硬证
+（SCOPE 件 blob 同 hash、新旧改动文件集合 diff 为空）确认**不吞他人/前一笔**，未新增任何远端 ref。
