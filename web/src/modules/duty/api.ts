@@ -20,6 +20,39 @@ import type {
   StationBinding,
 } from "./readiness";
 import { EMPLOYEES_PAGE_LIMIT, READINESS_FANOUT_LIMIT } from "./aggregate";
+import type { ServerRowCount } from "./dutySlots";
+import { serverRowsOf } from "./dutySlots";
+
+/** 运行明细一页要几条；三卡的截断披露与请求上限共用这一个源（DU-02①）。 */
+export const DUTY_RUNS_PAGE_LIMIT = 3;
+
+/** 一页行数据＋服务端真给行数（DU-02：卡上的 N 只能来自这里）。 */
+export interface RowPage<T> {
+  rows: T[];
+  count: ServerRowCount;
+}
+
+/**
+ * 数响应带回的行、再逐行归一化。计数走 serverRowsOf（漂移→null，不给假 0），
+ * 归一化丢掉的条数记进 unreadable，卡外折叠区要披露。
+ */
+function pageOf<T>(body: unknown, normalize: (v: unknown) => T | null, requestLimit: number | null): RowPage<T> {
+  const raw = Array.isArray(body)
+    ? (body as unknown[])
+    : body && typeof body === "object" && Array.isArray((body as { items?: unknown }).items)
+      ? ((body as { items: unknown[] }).items as unknown[])
+      : null;
+  const rows = raw === null ? [] : raw.map(normalize).filter((x): x is T => x !== null);
+  const serverRows = serverRowsOf(body);
+  return {
+    rows,
+    count: {
+      serverRows,
+      unreadable: serverRows === null ? null : serverRows - rows.length,
+      requestLimit,
+    },
+  };
+}
 
 export const BFF = "/agent-api/api";
 
@@ -57,9 +90,9 @@ export function humanError(err: unknown): string {
   return "本次数据读取失败，请重试。";
 }
 
-export async function fetchEmployees(): Promise<EmployeeRow[]> {
+export async function fetchEmployees(): Promise<RowPage<EmployeeRow>> {
   const body = await get("/employees", { limit: EMPLOYEES_PAGE_LIMIT });
-  return asArray(body).map(normalizeEmployee).filter((x): x is EmployeeRow => x !== null);
+  return pageOf(body, normalizeEmployee, EMPLOYEES_PAGE_LIMIT);
 }
 
 export async function fetchEmployeeStats(): Promise<Record<string, unknown>> {
@@ -98,9 +131,9 @@ export async function fetchApprovals(limit = 3): Promise<ApprovalRow[]> {
   return asArray(body).map(normalizeApproval).filter((x): x is ApprovalRow => x !== null);
 }
 
-export async function fetchRuns(limit: number, since: string, status?: string): Promise<RunRow[]> {
+export async function fetchRuns(limit: number, since: string, status?: string): Promise<RowPage<RunRow>> {
   const body = await get("/runs", { since, limit, status });
-  return asArray(body).map(normalizeRun).filter((x): x is RunRow => x !== null);
+  return pageOf(body, normalizeRun, limit);
 }
 
 export async function fetchBlockedTasks(limit = 3): Promise<TaskRow[]> {
