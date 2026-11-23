@@ -2,8 +2,9 @@
  * V1/V2/V3/V6 gate evidence for 可上岗 (PRD v4 §2 北极星与四门).
  *
  * 每条判定都来自真读口，但诚实程度按门各不相同，注释只描述代码现状：
- * V1 是单腿（工位）——第二腿渠道事件列表属 BFF 红线「有意不代理、勿补」，
- * 等 DU-04 裁定，本轮不接。V2/V6 逐员工可判 pass/fail。V3 的真 pass 分支
+ * V1 是单腿（工位）——第二腿渠道事件列表属 BFF 红线「有意不代理、勿补」；
+ * DU-04 已按 A 路交付（本车道不建第二套读口，V1 保持单腿如实标注），B 路
+ * GET-only 只读列表口仍挂起待 D 车道/参谋裁定。V2/V6 逐员工可判 pass/fail。V3 的真 pass 分支
  * 需要「可引用文档 > 0」与「强制引用策略可读」两腿同时有真读数；2026-11-23
  * 实测策略腿在 BFF 没有任何读口，所以现网 V3 恒「待核实」——这是给不出的
  * 原因，不是可以硬造的数字。
@@ -73,8 +74,9 @@ function alive(expiresAt: string | null, now: number): boolean {
 
 /**
  * V1 群@：工位里存在「群绑定 + active」。第二腿（最近一次群内成功应答）需要
- * 渠道事件列表读口，BFF 红线「有意不代理、勿补」（server.py 写死），等 DU-04
- * 裁定——所以 V1 按已接入的单腿工位判定，并在 source 里注明单腿口径。
+ * 渠道事件列表读口，BFF 红线「有意不代理、勿补」（server.py 写死）；DU-04 按
+ * A 路裁定不在本车道造第二套读口——所以 V1 按已接入的单腿工位判定，并在
+ * source 里注明单腿口径。函数体里没有第二腿逻辑，注释与代码一致。
  */
 export function v1Verdict(stations: StationBinding[]): GateVerdict {
   const ok = stations.some((s) => s.bindingType === "group" && s.status === "active");

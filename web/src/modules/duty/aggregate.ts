@@ -45,7 +45,8 @@ export function activeCount(stats: Record<string, unknown> | null): number | nul
 
 /**
  * Four gates, computed from live BFF evidence (PRD v4 §2). 每门的诚实程度写
- * 在卡上：V1 是单腿（渠道事件列表属 BFF 红线，等 DU-04 裁定，不接）；V3 只有
+ * 在卡上：V1 是单腿（渠道事件列表读口属 BFF 红线；DU-04 已按 A 路交付=不接，
+ * B 路只读列表口仍挂起待裁定，屏上不写「等裁定」）；V3 只有
  * 「可引用文档>0 ∧ 强制引用策略可读」才可能 pass，而策略腿 2026-11-23 实测无
  * 读口 ⇒ 现网恒「待核实」；V2/V6 逐员工可判。证据源没回答的员工按「待核实」
  * 计、unknown 永不进分子；目录拉满单页或分母对不上时整组按证据不完整处理
@@ -146,7 +147,7 @@ export function buildReadiness(
     "工位绑定（群 + active）· 渠道事件列表 BFF 未代理，仅工位腿",
     v1Verdicts,
     null,
-    "第二腿（最近一次群内成功应答）属 BFF 红线「勿补」，等 DU-04 裁定；本轮只按工位单腿判定",
+    "第二腿（最近一次群内成功应答）当前无只读列表口（列表读口属内部服务面红线），本卡只按工位单腿判定",
   );
   const v2 = roll(
     "V2",
