@@ -217,14 +217,25 @@ grep 'error TS' l4-build.clean.log | grep -cE "src/shell/|src/App\.tsx|TopBar|co
 
 ## 提交与推送
 
+提交时 lefthook `pre-commit` 的 `lint web`（`pnpm exec eslint`）**通过：0 error**，带 1 条既有 warning —— `TopBar.tsx:71` `setSlot(...)` 在 effect 内同步 setState（`react-hooks/set-state-in-effect`）。那行是改造前就有的 portal 槽挂载逻辑，本车道未动它，也不为凑绿去改语义。未使用 `--no-verify`。
+
 见本分支提交（`git log --oneline -1`），推送后定向 ref 回读：
 
 ```
 $ git add web/src/shell/TopBar.tsx web/src/shell/console-chrome.css web/src/shell/topbar.contract.test.ts docs/_artifacts/L4-shell/DONE.md
 $ git commit -m "feat(shell): 顶栏铸出验收锚点 console-topbar（类名+样式表规则+组件导 CSS+源码闸），并留 1440/375 量测读数"
+5edb59c579 feat(shell): 顶栏铸出验收锚点 console-topbar（类名+样式表规则+组件导入 CSS+源码闸），附 1440/375 量测读数
 $ git push origin lane/L4-shell
-$ git ls-remote origin refs/heads/lane/L4-shell     # 看输出行判存在（本机 ls-remote 全量走管道会被截）
+To github.com:bigolokevin-bit/hermes-agent.git
+ * [new branch]            lane/L4-shell -> lane/L4-shell
+PUSH_EXIT=0
+$ git ls-remote origin refs/heads/lane/L4-shell
+5edb59c5797ac2855da1e9032a336c36d6d9ceaa	refs/heads/lane/L4-shell
+$ git rev-parse HEAD
+5edb59c5797ac2855da1e9032a336c36d6d9ceaa   # 与定向 ref 逐字一致
 ```
+
+（定向 ref 回读是必须的一步：`git ls-remote origin | grep <sha>` 在本机把 3500+ 行走管道会被截，恒返回空 ⇒ 会误判"这笔没推"。）
 
 ## 遗留（不在本车道写域内）
 
