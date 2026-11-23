@@ -263,7 +263,7 @@ async function mountEmployeeShare(ledger: unknown, entry = '/metrics?groupBy=emp
 }
 
 const drillLinks = (): HTMLAnchorElement[] =>
-  [...document.querySelectorAll('[data-testid^="met9-link-"]')];
+  [...document.querySelectorAll<HTMLAnchorElement>('[data-testid^="met9-link-"]')];
 
 describe('met9 mounted — no link promises a filter /runs cannot apply', () => {
   beforeEach(() => {
