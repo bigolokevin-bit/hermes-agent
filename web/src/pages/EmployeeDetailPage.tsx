@@ -306,7 +306,7 @@ export default function EmployeeDetailPage() {
                   {active === "overview" && <OverviewPane detail={detail} rawId={rawId} enc={enc} />}
                   {active === "assignment" && <AssignmentPane rawId={rawId} enc={enc} />}
                   {active === "access" && <AccessPane rawId={rawId} enc={enc} />}
-                  {active === "identity" && <IdentityPane />}
+                  {active === "identity" && <IdentityPane rawId={rawId} enc={enc} />}
                   {active === "activity" && (
                     <ActivityPane key={resolved.block ?? "chat"} rawId={rawId} enc={enc} initialBlock={resolved.block} />
                   )}
