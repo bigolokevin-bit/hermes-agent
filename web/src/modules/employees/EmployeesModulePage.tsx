@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link, useSearchParams } from "react-router";
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronRight, Inbox, Pencil, Plus, RefreshCw, Search, ShieldAlert, TriangleAlert, Users } from "lucide-react";
@@ -10,14 +10,50 @@ import { RequestIdCopy } from "@/components/RequestIdCopy";
 
 import { fetchJSON } from "@/lib/api";
 import { API_UNREACHABLE_MESSAGE, ApiError, errorMessage, humanizeStatus } from "@/lib/api-error";
+import { csrfWriteHeaders } from "@/lib/csrf";
 import { ConsoleSelect } from "@/shell/ConsoleSelect";
 import { CreateEmployeeModal, EMP_NAME_MAX, type CreatedRef, type VerifyOutcome } from "./CreateEmployeeModal";
+import {
+  BATCH_CONCURRENCY,
+  batchHeadline,
+  batchLine,
+  EMPLOYEE_TRANSITION_ENDPOINT,
+  LIFECYCLE_TARGET_STATES,
+  runBatchTransitions,
+  TRANSITION_WRITE_NOTE,
+  type BatchSummary,
+} from "./employees-batch";
 import "./employees-density.css";
 
 /** PE-08①：编辑保存的写口现实（PATCH 405 console.read_only，现网实测 2026-11-24）——
  *  抽屉与编辑钮如实渲染，保存钮 disabled+title 把原因钉在触点上；解除等 T-PE-D。 */
 const EDIT_WRITE_NOTE =
   "写接口未接入（等 T-PE-D，PATCH 现 405 console.read_only）";
+
+/** PE-09：批量流转的写口现实。域 `POST /v1/employees/{id}/transitions` 已活
+ *  （services/domain/http_app.py:166-184），BFF 侧 `/api/employee-transition`
+ *  未注册（curl 实测 405 console.read_only，原文见 DONE-PE-09.md）⇒ 按钮
+ *  disabled + aria-disabled + title 原因，点击零请求零 toast；解除等 T-PE-E。 */
+const BATCH_TRANSITION_ENABLED = false;
+
+/** PE-09①：选择口径句。游标分页下服务端不回传「这一页之外还选了谁」，
+ *  跨页记忆只能靠前端缓存——那会让「已选 n 人」与屏上所见脱节，故当场清空并写明。 */
+const BATCH_SELECTION_SCOPE =
+  "选择只在当前已加载的行内有效：翻页即清空，换筛选与刷新同样清空，不跨页记忆。";
+
+/** PE-09：分母披露（CONSOLE-PRD-v4 §2）。draft/onboarding/archived 不入可上岗率分母。 */
+const BATCH_DENOMINATOR_NOTE =
+  "流转到「在岗 / 已暂停 / 离职中」计入可上岗率分母；「草稿 / 入职中 / 已归档」不入分母。";
+
+/** PE-09：目标态词汇 = employee_models.py:102-108 冻结六态，文案报目标态本身，
+ *  禁「启用/停用」这类臆造动作词。 */
+const BATCH_TARGET_STATES = LIFECYCLE_TARGET_STATES.map((value) => ({
+  value,
+  label: `${lifecycleLabel(value)}（${value}）`,
+}));
+
+/** 冻结集里「不入分母」的三态，与 BATCH_DENOMINATOR_NOTE 同一词汇源。 */
+const OUT_OF_DENOMINATOR = new Set(["draft", "onboarding", "archived"]);
 
 /** T12 · employee list module (`#/employees`). Read-only. */
 
@@ -79,6 +115,9 @@ function restoreNoteText(info: RestoreInfo): string {
 }
 
 const PAGE_SIZE = 50;
+
+/** PE-09: 选择集合的空值单例——所有「当场清空」走同一引用，React 能认出无变化。 */
+const EMPTY_SELECTED: ReadonlySet<string> = new Set<string>();
 
 /** ② / ③ 数据与动作的形状分工：计数用胶囊（等宽数字、无 hover、不可点），
  *  动作才用按钮三级。标题行与导出组共用同一枚形状，避免「共 N 行」被读成幽灵按钮。 */
@@ -639,8 +678,23 @@ export function EmployeesModulePage() {
   // PE-08①：新建模态 + 编辑抽屉（禁用预接）。
   const [createOpen, setCreateOpen] = useState(false);
   const [editingRow, setEditingRow] = useState<EmployeeRow | null>(null);
+  // PE-09：行选择模型。键=employeeId，值集合只描述「当前已加载且当前可见」的行；
+  // 任何列表替换（首页取数、翻页续取、换筛选、刷新）都当场清空 —— 见 BATCH_SELECTION_SCOPE。
+  const [selected, setSelected] = useState<ReadonlySet<string>>(() => new Set());
+  const [batchTarget, setBatchTarget] = useState<string>("");
+  const [batchRunning, setBatchRunning] = useState(false);
+  const [batchSummary, setBatchSummary] = useState<BatchSummary | null>(null);
+  const [batchError, setBatchError] = useState<string | null>(null);
+  const [batchCopyStatus, setBatchCopyStatus] = useState<"idle" | "done" | "failed">("idle");
   // success toast 归页面：模态关闭卸载吞不掉回执（toast 仅在重读确认后由 onConfirmed 触发）。
   const { toast, showToast } = useToast();
+  /** PE-09: 列表替换点的统一清空（选择 + 上一批回执 + 复制读数）。引用恒等，重复调用不触发额外渲染。 */
+  const clearSelection = useCallback(() => {
+    setSelected(EMPTY_SELECTED);
+    setBatchSummary(null);
+    setBatchError(null);
+    setBatchCopyStatus("idle");
+  }, []);
   const focusRow = (id: string | undefined) => {
     if (!id) return;
     rowRefs.current.get(id)?.focus();
@@ -679,8 +733,10 @@ export function EmployeesModulePage() {
   };
 
   /** R58/PE-01 共用的续取处置：按工号去重追加，并把服务端最新给出的下一页游标
-   *  写回 URL（null 即清键 —— 与「已到末页」同一口径，不留陈旧位置）。 */
+   *  写回 URL（null 即清键 —— 与「已到末页」同一口径，不留陈旧位置）。
+   *  PE-09：翻页即清空选择（口径句 BATCH_SELECTION_SCOPE 同步上屏）。 */
   const mergeAppended = (parsed: ReturnType<typeof readRows>) => {
+    clearSelection();
     setState((prev) => {
       const seen = new Set(prev.items.map((row) => row.employeeId));
       const fresh = parsed.rows.filter((row) => !seen.has(row.employeeId));
@@ -732,11 +788,20 @@ export function EmployeesModulePage() {
     if (debounced !== q) patchParams({ q: debounced || null, cursor: null });
   }, [debounced]);
 
+  // PE-09: 换筛选（keyword / lifecycle / 部门桶）即清空选择。部门桶是前端本地过滤、
+  // 不走取数腿，单列在这里；取数腿自己也会清，两处同引用不产生额外渲染。
+  useEffect(() => {
+    clearSelection();
+  }, [q, lifecycle, dept, clearSelection]);
+
   useEffect(() => {
     // PE-01: 恢复目标只在挂载那一趟生效；换筛选/重试都算从头开始。
     const target = restoreTargetRef.current;
     restoreTargetRef.current = null;
     setRestoreInfo(null);
+    // PE-09: 列表一换（首取/换筛选/刷新）即清空选择与上一批回执——
+    // 屏上的行已经不是刚才那批行了。
+    clearSelection();
     if (forced === "loading" || forced === "empty" || forced === "error" || forced === "denied") {
       setState({
         phase: forced,
@@ -837,6 +902,116 @@ export function EmployeesModulePage() {
         : sortedItems.filter((row) => (row.department?.trim() || NONE_DEPT) === dept),
     [sortedItems, dept],
   );
+
+  /* ------------------------------------------------------------------ *
+   * PE-09①：选择模型。键=employeeId，计数只认屏上可见行——被部门桶滤掉的行
+   * 不记进「已选 n」，免得读数与一屏所见自相矛盾。列表替换点（首取/翻页/
+   * 换筛选/刷新）统一 clearSelection()，口径句见 BATCH_SELECTION_SCOPE。
+   * ------------------------------------------------------------------ */
+  const selectedRows = useMemo(
+    () => visibleItems.filter((row) => selected.has(row.employeeId)),
+    [visibleItems, selected],
+  );
+  const selectedCount = selectedRows.length;
+  const allVisibleSelected =
+    state.phase === "ready" && visibleItems.length > 0 && selectedCount === visibleItems.length;
+
+  const toggleRow = (employeeId: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(employeeId)) next.delete(employeeId);
+      else next.add(employeeId);
+      return next;
+    });
+    setBatchSummary(null);
+    setBatchCopyStatus("idle");
+  };
+
+  const toggleAllVisible = () => {
+    setSelected(
+      allVisibleSelected ? EMPTY_SELECTED : new Set(visibleItems.map((row) => row.employeeId)),
+    );
+    setBatchSummary(null);
+    setBatchCopyStatus("idle");
+  };
+
+  /* PE-09②：批量复制/导出——纯前端，值与屏上逐字同源（同一个 copy/CSV builder），
+   * 只作用在勾选行上；零新端点、零额外请求，剪贴板被拒时给可手动复制的文本框。 */
+  const batchCopyText = useMemo(
+    () => buildEmployeesCopyText(selectedRows),
+    [selectedRows],
+  );
+  const copySelected = () => {
+    const write = navigator.clipboard?.writeText;
+    if (!write) {
+      setBatchCopyStatus("failed");
+      return;
+    }
+    write.call(navigator.clipboard, batchCopyText.text).then(
+      () => setBatchCopyStatus("done"),
+      () => setBatchCopyStatus("failed"),
+    );
+  };
+
+  const exportSelected = () => {
+    if (typeof URL.createObjectURL !== "function") return;
+    const blob = new Blob([buildEmployeesCsv(selectedRows)], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = csvTimestamp(new Date());
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  /* PE-09③④：批量流转。写路由未注册期直接返回——零请求、零 toast、零改写；
+   * 按钮另以 disabled + aria-disabled + title 把原因钉在触点上。
+   * 接入后：逐 id 串行提交、前端限并发 BATCH_CONCURRENCY、一单失败不断整批、
+   * 聚合报「成功 n / 失败 m」并逐字附各失败原因；成功后重读列表（禁乐观改写）。 */
+  const submitBatchTransition = async () => {
+    if (!BATCH_TRANSITION_ENABLED) return;
+    if (selectedCount === 0 || !batchTarget) return;
+    const csrf = csrfWriteHeaders();
+    if (!csrf) {
+      setBatchError("需要登录后才能提交流转。当前没有可用的写入会话，请先登录。");
+      return;
+    }
+    setBatchRunning(true);
+    setBatchError(null);
+    setBatchSummary(null);
+    const summary = await runBatchTransitions(
+      selectedRows.map((row) => row.employeeId),
+      {
+        to: batchTarget,
+        reason: `管理台批量流转 → ${lifecycleLabel(batchTarget)}`,
+        concurrency: BATCH_CONCURRENCY,
+        post: async (_employeeId, body) => {
+          // 幂等键按「这一单」生成（每轮新键）；_employeeId 已在 body.employeeId 里，
+          // 路由是 path_from_body 形制，URL 本身不带 id。
+          const idem =
+            typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `idem-${Date.now()}`;
+          return fetchJSON<unknown>(EMPLOYEE_TRANSITION_ENDPOINT, {
+            method: "POST",
+            headers: {
+              "content-type": "application/json",
+              "Idempotency-Key": idem,
+              "X-Request-Id": idem,
+              ...csrf,
+            },
+            body: JSON.stringify(body),
+          });
+        },
+      },
+    );
+    setBatchSummary(summary);
+    setBatchRunning(false);
+    // 屏上在职态仍是本次读取时的值：写口不给「新状态」读列，故不乐观改写、也不自动重取，
+    // 由人点「刷新」按服务端重读（刷新会按口径清掉这批回执）。
+  };
+
+  const batchTargetLabel = BATCH_TARGET_STATES.find((s) => s.value === batchTarget)?.label ?? null;
 
   const retry = () => {
     // PE-01: 刷新是从第一页重取，链接里的位置键当场作废（不留陈旧游标冒充原位）。
@@ -1074,6 +1249,160 @@ export function EmployeesModulePage() {
         关键字与在职态筛选走服务端真参数（命中数与本页计数同源）；不是「仅在当前已加载 N 人内搜索」的本地过滤。
       </p>
 
+      {/* PE-09①②③：批量动作条。只在有行可勾的 ready 态出现；
+          复制/导出是纯前端（勾选范围内零新请求），流转是写路径（未接入期禁用+原因）。 */}
+      {state.phase === "ready" && visibleItems.length > 0 ? (
+        <Card data-testid="emp-batch-bar">
+          <CardContent className="min-w-0 space-y-2 p-3">
+            <div className="flex min-w-0 flex-wrap items-center gap-[var(--space-2)]">
+              <button
+                type="button"
+                data-testid="emp-batch-select-all"
+                role="checkbox"
+                aria-checked={allVisibleSelected}
+                onClick={toggleAllVisible}
+                title={`勾选或取消屏上全部 ${visibleItems.length} 行（只作用当前可见行；不发请求）`}
+                className="h-6 min-w-0 rounded-md border border-white/15 px-2 text-xs hover:bg-white/5 focus-visible:outline focus-visible:outline-1 focus-visible:outline-white/60"
+              >
+                {allVisibleSelected ? "取消全选" : "全选本页"}
+              </button>
+              <span className={COUNT_CHIP} data-testid="emp-batch-count">
+                已选 {selectedCount} / {visibleItems.length}
+              </span>
+              <Button
+                size="sm"
+                outlined
+                data-testid="emp-batch-copy"
+                disabled={selectedCount === 0}
+                onClick={copySelected}
+                title={
+                  selectedCount === 0
+                    ? "没有勾选任何行：先在左侧勾选，再复制。"
+                    : `复制勾选的 ${selectedCount} 行（纯前端，按屏上行序，零新请求）；范围不含未勾选与未加载的人。`
+                }
+              >
+                复制所选
+              </Button>
+              <Button
+                size="sm"
+                outlined
+                data-testid="emp-batch-export"
+                disabled={selectedCount === 0}
+                onClick={exportSelected}
+                title={
+                  selectedCount === 0
+                    ? "没有勾选任何行：先在左侧勾选，再导出。"
+                    : `导出勾选的 ${selectedCount} 行为 CSV（纯前端 Blob，零新端点）；导出的是所选，不是全量。`
+                }
+              >
+                导出所选 CSV
+              </Button>
+              <span data-testid="emp-batch-copy-status" aria-live="polite" className="text-xs text-white/55">
+                {batchCopyStatus === "done"
+                  ? `已复制 ${selectedCount} 行`
+                  : batchCopyStatus === "failed"
+                    ? "剪贴板写入被拒绝，可下方文本框手动复制。"
+                    : ""}
+              </span>
+              {batchCopyStatus === "failed" ? (
+                <textarea
+                  data-testid="emp-batch-copy-fallback"
+                  readOnly
+                  rows={4}
+                  value={batchCopyText.text}
+                  onFocus={(e) => e.currentTarget.select()}
+                  className="w-full min-w-0 rounded-sm border border-white/15 bg-transparent p-2 font-mono text-xs"
+                  aria-label="批量复制兜底文本框"
+                  title="内容与点击复制的目标逐字相同；手动选择后复制。"
+                />
+              ) : null}
+            </div>
+            <div className="flex min-w-0 flex-wrap items-center gap-[var(--space-2)]">
+              <ConsoleSelect
+                value={batchTarget}
+                onChange={(next) => {
+                  setBatchTarget(next);
+                  setBatchSummary(null);
+                }}
+                options={[
+                  { value: "", label: "选择目标在职态", disabled: true },
+                  ...BATCH_TARGET_STATES.map((item) => ({
+                    value: item.value,
+                    label: item.label,
+                  })),
+                ]}
+                data-testid="emp-batch-target"
+                aria-label="批量流转目标在职态"
+                title={
+                  "目标态取自域冻结六态（employee_models.py），文案报的是目标态本身；" +
+                  `选到「草稿 / 入职中 / 已归档」会把该员工移出可上岗率分母。提交钮原因：${TRANSITION_WRITE_NOTE}`
+                }
+                className="rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm"
+              />
+              <Button
+                size="sm"
+                data-testid="emp-batch-transition"
+                disabled
+                aria-disabled="true"
+                title={
+                  `${TRANSITION_WRITE_NOTE}；` +
+                  (selectedCount === 0
+                    ? "并且没有勾选任何行。"
+                    : `已勾 ${selectedCount} 行，接入后按目标态${batchTargetLabel ? `「${batchTargetLabel}」` : "（未选）"}逐单提交。`)
+                }
+                onClick={() => {
+                  // 禁用预接：BATCH_TRANSITION_ENABLED=false 时 submit 当场返回，
+                  // 零请求零 toast（原生 disabled 已挡点击，这里再兜一层合成事件）。
+                  void submitBatchTransition();
+                }}
+              >
+                批量流转
+              </Button>
+              {/* 原因不能只活在 title 里：触屏没有 hover（PRD §8.3），这里同句常驻上屏。 */}
+              <span data-testid="emp-batch-write-note" className="min-w-0 break-words text-xs text-amber-200">
+                {BATCH_TRANSITION_ENABLED
+                  ? `接入后逐单提交：并发上限 ${BATCH_CONCURRENCY}，一单失败不断整批，回执逐字附原因。`
+                  : `${TRANSITION_WRITE_NOTE}。按钮已禁用，点击不发请求也不报成功。`}
+              </span>
+              <span data-testid="emp-batch-denominator" className="text-xs text-white/45">
+                {BATCH_DENOMINATOR_NOTE}
+              </span>
+              {batchTarget && OUT_OF_DENOMINATOR.has(batchTarget) ? (
+                <span data-testid="emp-batch-denominator-flag" className="text-xs text-amber-200">
+                  已选目标态「{batchTargetLabel}」不入分母。
+                </span>
+              ) : null}
+            </div>
+            <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="emp-batch-scope">
+              {BATCH_SELECTION_SCOPE} 勾选与批量动作都不出屏上所见：共 {state.items.length} 人已加载，
+              其中 {visibleItems.length} 行可见、{selectedCount} 行已选。
+            </p>
+            {batchError ? (
+              <p className="text-xs text-red-200" data-testid="emp-batch-error" role="alert">
+                {batchError}
+              </p>
+            ) : null}
+            {batchSummary ? (
+              <div className="min-w-0 space-y-1" data-testid="emp-batch-result">
+                <p className="text-xs" data-testid="emp-batch-result-headline">
+                  {batchRunning ? "提交中…" : batchHeadline(batchSummary)}
+                </p>
+                <ul className="min-w-0 space-y-0.5 text-xs text-white/55" data-testid="emp-batch-result-lines">
+                  {batchSummary.results.map((item) => (
+                    <li key={item.employeeId}>
+                      {batchLine(item, (id) => {
+                        const row = state.items.find((r) => r.employeeId === id);
+                        return row ? displayName(row) : shortCode(id);
+                      })}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </CardContent>
+        </Card>
+      ) : null}
+
       {/* R69: 四态+分页条统一容器，data-phase 供自动化锁定当前态。 */}
       <div className="space-y-4" data-testid="emp-list-state" data-phase={state.phase}>
       {state.phase === "loading" ? (
@@ -1197,6 +1526,25 @@ export function EmployeesModulePage() {
               {visibleItems.map((row) => (
                 <li key={row.employeeId} data-testid={`employees-row-${row.employeeId}`}>
                   <div className="flex min-w-0 items-stretch">
+                    {/* PE-09①：行选择。勾选是纯本地状态，不发请求、不跳转。 */}
+                    <label
+                      className="flex shrink-0 cursor-pointer items-center justify-center border-r border-white/5 px-2 hover:bg-white/5"
+                      data-testid={`emp-row-select-label-${row.employeeId}`}
+                    >
+                      <input
+                        type="checkbox"
+                        data-testid={`emp-row-select-${row.employeeId}`}
+                        checked={selected.has(row.employeeId)}
+                        onChange={() => toggleRow(row.employeeId)}
+                        aria-label={`选择：${displayName(row)}`}
+                        title={
+                          selected.has(row.employeeId)
+                            ? "取消勾选这一行"
+                            : `勾选这一行进批量动作（当前已加载 ${state.items.length} 人内；翻页即清空）`
+                        }
+                        className="h-4 w-4 shrink-0 accent-white"
+                      />
+                    </label>
                     <button
                       type="button"
                       data-testid={`emp-row-preview-toggle-${row.employeeId}`}
