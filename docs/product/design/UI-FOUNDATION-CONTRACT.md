@@ -29,6 +29,43 @@
 第 1-7 条＝T1/T2 原六类口径的展开；第 8-10 条＝用户第二批现场意见四条的并入
 （第四条「字号与控件继续收」已落在条款 1/6/7）。
 
+### 1.1 字阶收敛映射表（2026-11-23 现查实测，唯一真值＝`web/src/components/ui/font-scale.test.ts` 的棘轮基线）
+
+现查口径：扫 `web/src/**/*.css|scss` 的 `font-size:` 声明（剥注释后逐处判定），看是否写成 `var(--font-size-ls-[1-6])`/`var(--font-size-[1-6])`。
+读数：**声明共 383 处；非令牌写法 323 处；其中离阶（不等于 12/13/14/16/20/24）185 处**；`web/src/styles/**` 与 `web/src/components/ui/**` 内非令牌写法 **0 处**（基元层已达标）。
+最重靶子：`11px ×60`、`0.6875rem(=11px) ×35`、`10px ×8`、`11.5px ×8`、`0.66rem(=10.56px) ×8`，另 `0.64/0.7/0.72/0.74/0.76/0.78rem` 各 5-7 处。
+重要结论：**没有 calc / em / 百分比继承缩放源**（全仓此类写法 0 处），离阶值全是「手填 px」或「按 16px 基准手算的 rem 字面量」⇒ 正解＝逐处换成令牌，不需要拆缩放机制。
+
+| 现值（字面量） | 折算 | 归入令牌 | 处数量级 |
+| --- | --- | --- | --- |
+| `9.0/9.6/9.92/10.0/10.24/10.56/10.88/11.0/11.2/11.5/11.84px`、`0.64/0.66/0.6875/0.7/0.72/0.74rem` | 9.0-11.84px | `--font-size-ls-1`（12px） | ≈110（含 11px×60、0.6875rem×35） |
+| `12.16/12.48/12.5px`、`0.76/0.78rem` | 12.16-12.5px | `--font-size-ls-2`（13px） | ≈13 |
+| `13.12/14.4px`、`0.8125/0.875rem` | 13.12-14.4px | `--font-size-ls-3`（14px） | ≈11 |
+| `15/16.8/17px`、`1.05rem` | 15-16.8px | `--font-size-ls-4`（16px） | ≈6 |
+| `19px` | 19px | `--font-size-ls-5`（20px） | 1 |
+| `22/22.4/26/30.4px` | ≥22px | `--font-size-ls-6`（24px）；唯一页标题处取 `-ls-5`(20px) | ≈5 |
+
+- 归整规则：**向下取最近档，但不得低于 12px**（11px 归 12，不归 13——13 是表格正文档，把说明文字升到 13 会反向挤版式）。
+- 同档不同写法（`0.75rem`=12px、`0.875rem`=14px）也必须换成令牌写法，否则机检门继续红。
+- 后果披露：11px→12px 会带来行高/宽度重排 ⇒ 每文件一笔、每笔附 1440/375 双档截图对照；缺值仍走「—」，不许借收敛之名塞内容改动。
+
+逐文件靶子（非令牌写法处数，即收敛顺序）：
+
+| 文件 | 处数 | 归属 |
+| --- | --- | --- |
+| `modules/health/health.css` | 59 | L2 线 |
+| `modules/metrics/metrics.css` | 59 | L5 线 |
+| `modules/duty/duty.css` | 47 | UI-KD（本车道点单） |
+| `modules/knowledge/knowledge.css` | 32 | UI-KD（本车道点单） |
+| `modules/capabilities/counts.css` | 23 | UI-SHELL |
+| `modules/access/access.css` | 20 | UI-P2 |
+| `modules/overview/overview.css` | 18 | UI-SHELL |
+| `modules/tenant/tenant.css` | 18 | UI-P2 |
+| 其余 `org/skills/people/approvals-density/index.css` | 27 | 各 owner |
+
+执行门（已入库，纯源码层，未部署 worktree 也绿）：`cd web && node_modules/.bin/vitest run src/components/ui/font-scale.test.ts`
+甲 基元层与令牌层零字面量（硬钉 0）；乙 全仓 323 / 离阶 185 只准下调；丙 扫描面非空（CSS>20、声明>300）；丁 四大靶子文件归属不得偷换。
+
 ## 二、令牌与骨架落点（T1）
 
 - 字阶：`web/src/styles/tokens.css` 的 `--font-size-ls-*`（px 统一，禁 rem 混写）。
