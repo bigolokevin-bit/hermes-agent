@@ -9,7 +9,7 @@
 - 本机自建只读脸：v4_proxy，`SEAKOI_V4_DIST=<worktree>/hermes_cli/web_dist`，端口 9125，BFF 上游 127.0.0.1:8092（现网）；9122 未动。
 - 登录态：opsadmin-evidence-login → `~/.seakoi/opsadmin-token.txt`，cookie `access_token_cookie` 注入域 127.0.0.1；前置断言 `/agent-api/api/employees` = **200**（原始输出 `precondition /employees = 200`）。
 - 取图：playwright（channel:chrome，deviceScaleFactor 2，domcontentloaded + 2.5s settle），视口 1440×900 / 375×812。
-- 原始指标全量 JSON：`/private/var/folders/2b/bnpsyz450pn98w375q_803yw0000gn/T/opencode/q9-metrics.json`（修复后轮）。
+- 原始指标全量 JSON：`docs/_artifacts/q9-sample-compare/q9-metrics.json`（修复后轮；BEFORE 轮关键行已逐条抄录于下）。
 
 ## 四张对照图
 

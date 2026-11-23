@@ -1,0 +1,946 @@
+{
+ "duty@1440": {
+  "rootFs": "15px",
+  "gridRows": [
+   {
+    "cls": "font-mono group relative grid cursor-pointer grid-cols-[auto",
+    "ai": "center",
+    "tc": "18.75px 24.5156px 0px",
+    "kids": [
+     34,
+     0,
+     13
+    ]
+   },
+   {
+    "cls": "duty-grid duty-grid-3",
+    "ai": "stretch",
+    "tc": "381.328px 381.328px 381.344px",
+    "kids": [
+     222,
+     222,
+     222
+    ]
+   },
+   {
+    "cls": "duty-grid duty-grid-2",
+    "ai": "stretch",
+    "tc": "580px 580px",
+    "kids": [
+     382,
+     382
+    ]
+   },
+   {
+    "cls": "font-mono group relative grid cursor-pointer grid-cols-[auto",
+    "ai": "center",
+    "tc": "61.2656px 462.234px 0px",
+    "kids": [
+     34
+    ]
+   },
+   {
+    "cls": "duty-grid duty-grid-3",
+    "ai": "stretch",
+    "tc": "381.328px 381.328px 381.344px",
+    "kids": [
+     163,
+     163,
+     163
+    ]
+   }
+  ],
+  "fleet": [
+   {
+    "h": 176,
+    "w": 320
+   },
+   {
+    "h": 176,
+    "w": 320
+   },
+   {
+    "h": 176,
+    "w": 320
+   }
+  ],
+  "fontSet": {
+   "12": 174,
+   "13": 3,
+   "14": 74,
+   "15": 6,
+   "16": 1,
+   "20": 4,
+   "24": 12,
+   "13.13": 2
+  },
+  "offenders": [
+   {
+    "fs": 15,
+    "cls": "relative z-2 flex min-w-0 min-h-0 flex-1 flex-col ",
+    "txt": "值班台用量与成本值班台运营总览 · "
+   },
+   {
+    "fs": 15,
+    "cls": "w-full min-w-0 pb-[calc(2rem+env(safe-area-inset-b",
+    "txt": "值班台用量与成本值班台运营总览 · "
+   },
+   {
+    "fs": 15,
+    "cls": "contents",
+    "txt": "值班台用量与成本值班台运营总览 · "
+   },
+   {
+    "fs": 15,
+    "cls": "flex min-h-0 flex-1 flex-col gap-3",
+    "txt": "值班台用量与成本值班台运营总览 · "
+   },
+   {
+    "fs": 15,
+    "cls": "console-tablist flex min-w-0 flex-wrap gap-1 borde",
+    "txt": "值班台用量与成本"
+   },
+   {
+    "fs": 13.13,
+    "cls": "console-tab rounded-t-[var(--radius-1)] border bor",
+    "txt": "值班台"
+   },
+   {
+    "fs": 13.13,
+    "cls": "console-tab rounded-t-[var(--radius-1)] border bor",
+    "txt": "用量与成本"
+   },
+   {
+    "fs": 15,
+    "cls": "pane min-w-0 flex-1",
+    "txt": "值班台运营总览 · 只读采集时刻 北"
+   }
+  ],
+  "truncStats": {
+   "total": 30,
+   "ellipsisCut": 9,
+   "nowrap": 30,
+   "sample": [
+    {
+     "te": "ellipsis",
+     "ws": "nowrap",
+     "ov": "hidden",
+     "sw": 174,
+     "cw": 98,
+     "cls": "duty-fleet-name",
+     "cut": true,
+     "txt": "QA2 契约验证 17948"
+    },
+    {
+     "te": "ellipsis",
+     "ws": "nowrap",
+     "ov": "hidden",
+     "sw": 183,
+     "cw": 103,
+     "cls": "duty-fleet-role",
+     "cut": true,
+     "txt": "QA2 契约验证（dev 库"
+    },
+    {
+     "te": "ellipsis",
+     "ws": "nowrap",
+     "ov": "hidden",
+     "sw": 24,
+     "cw": 13,
+     "cls": "duty-fleet-state",
+     "cut": true,
+     "txt": "草稿"
+    },
+    {
+     "te": "ellipsis",
+     "ws": "nowrap",
+     "ov": "hidden",
+     "sw": 48,
+     "cw": 48,
+     "cls": "duty-fleet-metric-label",
+     "cut": false,
+     "txt": "今日处理"
+    }
+   ]
+  },
+  "leaks": [
+   {
+    "cls": "w-full min-w-0 pb-[calc(2rem+env(safe-area-inset-b",
+    "sw": 1178,
+    "cw": 1176,
+    "txt": "值班台用量与成本值班台运营总览 "
+   },
+   {
+    "cls": "flex min-h-0 flex-1 flex-col gap-3",
+    "sw": 1178,
+    "cw": 1176,
+    "txt": "值班台用量与成本值班台运营总览 "
+   },
+   {
+    "cls": "pane min-w-0 flex-1",
+    "sw": 1178,
+    "cw": 1176,
+    "txt": "值班台运营总览 · 只读采集时刻"
+   },
+   {
+    "cls": "duty-page",
+    "sw": 1178,
+    "cw": 1176,
+    "txt": "值班台运营总览 · 只读采集时刻"
+   },
+   {
+    "cls": "duty-head",
+    "sw": 1178,
+    "cw": 1176,
+    "txt": "值班台运营总览 · 只读采集时刻"
+   },
+   {
+    "cls": "duty-head-actions",
+    "sw": 344,
+    "cw": 342,
+    "txt": "近 24 小时近 7 天近 14"
+   },
+   {
+    "cls": "font-mono group relative grid cursor-pointer grid-",
+    "sw": 68,
+    "cw": 66,
+    "txt": "刷新"
+   },
+   {
+    "cls": "font-mono group relative grid cursor-pointer grid-",
+    "sw": 548,
+    "cw": 546,
+    "txt": "以表格查看"
+   }
+  ],
+  "docScrollW": 1440,
+  "vw": 1440
+ },
+ "duty@375": {
+  "rootFs": "15px",
+  "gridRows": [
+   {
+    "cls": "font-mono group relative grid cursor-pointer grid-cols-[auto",
+    "ai": "center",
+    "tc": "18.75px 300.25px 0px",
+    "kids": [
+     34,
+     0,
+     13
+    ]
+   },
+   {
+    "cls": "duty-grid duty-grid-3",
+    "ai": "stretch",
+    "tc": "341.5px",
+    "kids": [
+     151,
+     237,
+     151
+    ]
+   },
+   {
+    "cls": "duty-grid duty-grid-2",
+    "ai": "stretch",
+    "tc": "341.5px",
+    "kids": [
+     387,
+     227
+    ]
+   },
+   {
+    "cls": "font-mono group relative grid cursor-pointer grid-cols-[auto",
+    "ai": "center",
+    "tc": "61.2656px 231.734px 0px",
+    "kids": [
+     34
+    ]
+   },
+   {
+    "cls": "duty-grid duty-grid-3",
+    "ai": "stretch",
+    "tc": "341.5px",
+    "kids": [
+     138,
+     151,
+     146
+    ]
+   }
+  ],
+  "fleet": [
+   {
+    "h": 160,
+    "w": 260
+   },
+   {
+    "h": 160,
+    "w": 260
+   },
+   {
+    "h": 160,
+    "w": 260
+   }
+  ],
+  "fontSet": {
+   "12": 174,
+   "13": 4,
+   "14": 74,
+   "15": 6,
+   "16": 1,
+   "20": 10,
+   "24": 6,
+   "13.13": 2
+  },
+  "offenders": [
+   {
+    "fs": 15,
+    "cls": "relative z-2 flex min-w-0 min-h-0 flex-1 flex-col ",
+    "txt": "值班台用量与成本值班台运营总览 · "
+   },
+   {
+    "fs": 15,
+    "cls": "w-full min-w-0 pb-[calc(2rem+env(safe-area-inset-b",
+    "txt": "值班台用量与成本值班台运营总览 · "
+   },
+   {
+    "fs": 15,
+    "cls": "contents",
+    "txt": "值班台用量与成本值班台运营总览 · "
+   },
+   {
+    "fs": 15,
+    "cls": "flex min-h-0 flex-1 flex-col gap-3",
+    "txt": "值班台用量与成本值班台运营总览 · "
+   },
+   {
+    "fs": 15,
+    "cls": "console-tablist flex min-w-0 flex-wrap gap-1 borde",
+    "txt": "值班台用量与成本"
+   },
+   {
+    "fs": 13.13,
+    "cls": "console-tab rounded-t-[var(--radius-1)] border bor",
+    "txt": "值班台"
+   },
+   {
+    "fs": 13.13,
+    "cls": "console-tab rounded-t-[var(--radius-1)] border bor",
+    "txt": "用量与成本"
+   },
+   {
+    "fs": 15,
+    "cls": "pane min-w-0 flex-1",
+    "txt": "值班台运营总览 · 只读采集时刻 北"
+   }
+  ],
+  "truncStats": {
+   "total": 30,
+   "ellipsisCut": 9,
+   "nowrap": 30,
+   "sample": [
+    {
+     "te": "ellipsis",
+     "ws": "nowrap",
+     "ov": "hidden",
+     "sw": 174,
+     "cw": 70,
+     "cls": "duty-fleet-name",
+     "cut": true,
+     "txt": "QA2 契约验证 17948"
+    },
+    {
+     "te": "ellipsis",
+     "ws": "nowrap",
+     "ov": "hidden",
+     "sw": 183,
+     "cw": 74,
+     "cls": "duty-fleet-role",
+     "cut": true,
+     "txt": "QA2 契约验证（dev 库"
+    },
+    {
+     "te": "ellipsis",
+     "ws": "nowrap",
+     "ov": "hidden",
+     "sw": 24,
+     "cw": 10,
+     "cls": "duty-fleet-state",
+     "cut": true,
+     "txt": "草稿"
+    },
+    {
+     "te": "ellipsis",
+     "ws": "nowrap",
+     "ov": "hidden",
+     "sw": 48,
+     "cw": 48,
+     "cls": "duty-fleet-metric-label",
+     "cut": false,
+     "txt": "今日处理"
+    }
+   ]
+  },
+  "leaks": [
+   {
+    "cls": "w-full min-w-0 pb-[calc(2rem+env(safe-area-inset-b",
+    "sw": 344,
+    "cw": 342,
+    "txt": "值班台用量与成本值班台运营总览 "
+   },
+   {
+    "cls": "flex min-h-0 flex-1 flex-col gap-3",
+    "sw": 344,
+    "cw": 342,
+    "txt": "值班台用量与成本值班台运营总览 "
+   },
+   {
+    "cls": "pane min-w-0 flex-1",
+    "sw": 344,
+    "cw": 342,
+    "txt": "值班台运营总览 · 只读采集时刻"
+   },
+   {
+    "cls": "duty-page",
+    "sw": 344,
+    "cw": 342,
+    "txt": "值班台运营总览 · 只读采集时刻"
+   },
+   {
+    "cls": "duty-head",
+    "sw": 344,
+    "cw": 342,
+    "txt": "值班台运营总览 · 只读采集时刻"
+   },
+   {
+    "cls": "duty-head-actions",
+    "sw": 344,
+    "cw": 342,
+    "txt": "近 24 小时近 7 天近 14"
+   },
+   {
+    "cls": "font-mono group relative grid cursor-pointer grid-",
+    "sw": 344,
+    "cw": 342,
+    "txt": "刷新"
+   },
+   {
+    "cls": "font-mono group relative grid cursor-pointer grid-",
+    "sw": 318,
+    "cw": 316,
+    "txt": "以表格查看"
+   }
+  ],
+  "docScrollW": 375,
+  "vw": 375
+ },
+ "employees@1440": {
+  "rootFs": "15px",
+  "gridRows": [
+   {
+    "cls": "font-mono group relative grid cursor-pointer grid-cols-[auto",
+    "ai": "center",
+    "tc": "49.0156px 0px 0px",
+    "kids": [
+     34
+    ]
+   },
+   {
+    "cls": "font-mono group relative grid cursor-pointer grid-cols-[auto",
+    "ai": "center",
+    "tc": "53.4062px 0px 0px",
+    "kids": [
+     34
+    ]
+   },
+   {
+    "cls": "font-mono group relative grid cursor-pointer grid-cols-[auto",
+    "ai": "center",
+    "tc": "18.75px 24.5156px 0px",
+    "kids": [
+     34,
+     11
+    ]
+   },
+   {
+    "cls": "grid grid-cols-1 gap-[var(--space-3)] sm:grid-cols-3",
+    "ai": "normal",
+    "tc": "384px 384px 384px",
+    "kids": [
+     75,
+     75,
+     75
+    ]
+   },
+   {
+    "cls": "grid grid-cols-3 gap-[var(--space-2)]",
+    "ai": "normal",
+    "tc": "111.328px 111.328px 111.344px",
+    "kids": [
+     41,
+     41,
+     41
+    ]
+   },
+   {
+    "cls": "hidden grid-cols-[minmax(0,1.5fr)_minmax(0,0.9fr)_minmax(0,0",
+    "ai": "normal",
+    "tc": "265.875px 159.531px 124.078px 124.094px 177.25px 106.359px 141.797px",
+    "kids": [
+     17,
+     17,
+     17,
+     17,
+     17,
+     17,
+     17
+    ]
+   },
+   {
+    "cls": "grid min-w-0 flex-1 grid-cols-1 gap-1 px-4 py-3 hover:bg-whi",
+    "ai": "center",
+    "tc": "258.828px 155.312px 120.781px 120.797px 172.562px 103.531px 138.047px",
+    "kids": [
+     35,
+     16,
+     22,
+     16,
+     16,
+     16,
+     16,
+     0
+    ]
+   },
+   {
+    "cls": "grid min-w-0 flex-1 grid-cols-1 gap-1 px-4 py-3 hover:bg-whi",
+    "ai": "center",
+    "tc": "258.828px 155.312px 120.781px 120.797px 172.562px 103.531px 138.047px",
+    "kids": [
+     35,
+     16,
+     24,
+     16,
+     16,
+     16,
+     16,
+     0
+    ]
+   }
+  ],
+  "fleet": [],
+  "fontSet": {
+   "12": 45,
+   "13": 19,
+   "14": 50,
+   "15": 6,
+   "20": 1,
+   "13.13": 2
+  },
+  "offenders": [
+   {
+    "fs": 15,
+    "cls": "relative z-2 flex min-w-0 min-h-0 flex-1 flex-col ",
+    "txt": "列表能力与权限数字员工3复制列表导出"
+   },
+   {
+    "fs": 15,
+    "cls": "w-full min-w-0 pb-[calc(2rem+env(safe-area-inset-b",
+    "txt": "列表能力与权限数字员工3复制列表导出"
+   },
+   {
+    "fs": 15,
+    "cls": "contents",
+    "txt": "列表能力与权限数字员工3复制列表导出"
+   },
+   {
+    "fs": 15,
+    "cls": "flex min-h-0 flex-1 flex-col gap-3",
+    "txt": "列表能力与权限数字员工3复制列表导出"
+   },
+   {
+    "fs": 15,
+    "cls": "console-tablist flex min-w-0 flex-wrap gap-1 borde",
+    "txt": "列表能力与权限"
+   },
+   {
+    "fs": 13.13,
+    "cls": "console-tab rounded-t-[var(--radius-1)] border bor",
+    "txt": "列表"
+   },
+   {
+    "fs": 13.13,
+    "cls": "console-tab rounded-t-[var(--radius-1)] border bor",
+    "txt": "能力与权限"
+   },
+   {
+    "fs": 15,
+    "cls": "pane min-w-0 flex-1",
+    "txt": "数字员工3复制列表导出 CSV共 3"
+   }
+  ],
+  "truncStats": {
+   "total": 3,
+   "ellipsisCut": 0,
+   "nowrap": 3,
+   "sample": [
+    {
+     "te": "ellipsis",
+     "ws": "nowrap",
+     "ov": "hidden",
+     "sw": 26,
+     "cw": 26,
+     "cls": "min-w-0 flex-1 truncate",
+     "cut": false,
+     "txt": "全部"
+    },
+    {
+     "te": "ellipsis",
+     "ws": "nowrap",
+     "ov": "hidden",
+     "sw": 85,
+     "cw": 85,
+     "cls": "h-6 min-w-0 max-w-full truncate rounded-",
+     "cut": false,
+     "txt": "未标注部门 2"
+    },
+    {
+     "te": "ellipsis",
+     "ws": "nowrap",
+     "ov": "hidden",
+     "sw": 61,
+     "cw": 61,
+     "cls": "h-6 min-w-0 max-w-full truncate rounded-",
+     "cut": false,
+     "txt": "产品部 1"
+    }
+   ]
+  },
+  "leaks": [
+   {
+    "cls": "w-full min-w-0 pb-[calc(2rem+env(safe-area-inset-b",
+    "sw": 1178,
+    "cw": 1176,
+    "txt": "列表能力与权限数字员工3复制列表"
+   },
+   {
+    "cls": "flex min-h-0 flex-1 flex-col gap-3",
+    "sw": 1178,
+    "cw": 1176,
+    "txt": "列表能力与权限数字员工3复制列表"
+   },
+   {
+    "cls": "pane min-w-0 flex-1",
+    "sw": 1178,
+    "cw": 1176,
+    "txt": "数字员工3复制列表导出 CSV共"
+   },
+   {
+    "cls": "employees-page space-y-4",
+    "sw": 1178,
+    "cw": 1176,
+    "txt": "数字员工3复制列表导出 CSV共"
+   },
+   {
+    "cls": "flex flex-col gap-[var(--space-3)] sm:flex-row sm:",
+    "sw": 1178,
+    "cw": 1176,
+    "txt": "数字员工3复制列表导出 CSV共"
+   },
+   {
+    "cls": "flex min-w-0 flex-wrap items-center justify-betwee",
+    "sw": 300,
+    "cw": 298,
+    "txt": "复制列表导出 CSV共 3 行刷"
+   },
+   {
+    "cls": "font-mono group relative grid cursor-pointer grid-",
+    "sw": 74,
+    "cw": 72,
+    "txt": "复制列表"
+   },
+   {
+    "cls": "font-mono group relative grid cursor-pointer grid-",
+    "sw": 78,
+    "cw": 76,
+    "txt": "导出 CSV"
+   },
+   {
+    "cls": "font-mono group relative grid cursor-pointer grid-",
+    "sw": 68,
+    "cw": 66,
+    "txt": "刷新"
+   },
+   {
+    "cls": "font-mono group relative grid cursor-pointer grid-",
+    "sw": 74,
+    "cw": 72,
+    "txt": "加载更多"
+   }
+  ],
+  "docScrollW": 1440,
+  "vw": 1440
+ },
+ "employees@375": {
+  "rootFs": "15px",
+  "gridRows": [
+   {
+    "cls": "font-mono group relative grid cursor-pointer grid-cols-[auto",
+    "ai": "center",
+    "tc": "49.0156px 0px 0px",
+    "kids": [
+     34
+    ]
+   },
+   {
+    "cls": "font-mono group relative grid cursor-pointer grid-cols-[auto",
+    "ai": "center",
+    "tc": "53.4062px 0px 0px",
+    "kids": [
+     34
+    ]
+   },
+   {
+    "cls": "font-mono group relative grid cursor-pointer grid-cols-[auto",
+    "ai": "center",
+    "tc": "18.75px 24.5156px 0px",
+    "kids": [
+     34,
+     11
+    ]
+   },
+   {
+    "cls": "grid grid-cols-1 gap-[var(--space-3)] sm:grid-cols-3",
+    "ai": "normal",
+    "tc": "341.5px",
+    "kids": [
+     75,
+     72,
+     72
+    ]
+   },
+   {
+    "cls": "grid grid-cols-3 gap-[var(--space-2)]",
+    "ai": "normal",
+    "tc": "97.1562px 97.1719px 97.1562px",
+    "kids": [
+     41,
+     41,
+     41
+    ]
+   },
+   {
+    "cls": "hidden grid-cols-[minmax(0,1.5fr)_minmax(0,0.9fr)_minmax(0,0",
+    "ai": "normal",
+    "tc": "minmax(0px, 1.5fr) minmax(0px, 0.9fr) minmax(0px, 0.7fr) minmax(0px, 0.7fr) minmax(0px, 1fr) minmax(0px, 0.6fr) minmax(0px, 0.8fr)",
+    "kids": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ]
+   },
+   {
+    "cls": "grid min-w-0 flex-1 grid-cols-1 gap-1 px-4 py-3 hover:bg-whi",
+    "ai": "normal",
+    "tc": "280.375px",
+    "kids": [
+     35,
+     16,
+     22,
+     16,
+     16,
+     16,
+     16,
+     44
+    ]
+   },
+   {
+    "cls": "grid min-w-0 flex-1 grid-cols-1 gap-1 px-4 py-3 hover:bg-whi",
+    "ai": "normal",
+    "tc": "280.375px",
+    "kids": [
+     35,
+     16,
+     24,
+     16,
+     16,
+     16,
+     16,
+     44
+    ]
+   }
+  ],
+  "fleet": [],
+  "fontSet": {
+   "12": 45,
+   "13": 19,
+   "14": 50,
+   "15": 6,
+   "20": 1,
+   "13.13": 2
+  },
+  "offenders": [
+   {
+    "fs": 15,
+    "cls": "relative z-2 flex min-w-0 min-h-0 flex-1 flex-col ",
+    "txt": "列表能力与权限数字员工3复制列表导出"
+   },
+   {
+    "fs": 15,
+    "cls": "w-full min-w-0 pb-[calc(2rem+env(safe-area-inset-b",
+    "txt": "列表能力与权限数字员工3复制列表导出"
+   },
+   {
+    "fs": 15,
+    "cls": "contents",
+    "txt": "列表能力与权限数字员工3复制列表导出"
+   },
+   {
+    "fs": 15,
+    "cls": "flex min-h-0 flex-1 flex-col gap-3",
+    "txt": "列表能力与权限数字员工3复制列表导出"
+   },
+   {
+    "fs": 15,
+    "cls": "console-tablist flex min-w-0 flex-wrap gap-1 borde",
+    "txt": "列表能力与权限"
+   },
+   {
+    "fs": 13.13,
+    "cls": "console-tab rounded-t-[var(--radius-1)] border bor",
+    "txt": "列表"
+   },
+   {
+    "fs": 13.13,
+    "cls": "console-tab rounded-t-[var(--radius-1)] border bor",
+    "txt": "能力与权限"
+   },
+   {
+    "fs": 15,
+    "cls": "pane min-w-0 flex-1",
+    "txt": "数字员工3复制列表导出 CSV共 3"
+   }
+  ],
+  "truncStats": {
+   "total": 3,
+   "ellipsisCut": 1,
+   "nowrap": 3,
+   "sample": [
+    {
+     "te": "ellipsis",
+     "ws": "nowrap",
+     "ov": "hidden",
+     "sw": 26,
+     "cw": 0,
+     "cls": "min-w-0 flex-1 truncate",
+     "cut": true,
+     "txt": "全部"
+    },
+    {
+     "te": "ellipsis",
+     "ws": "nowrap",
+     "ov": "hidden",
+     "sw": 85,
+     "cw": 85,
+     "cls": "h-6 min-w-0 max-w-full truncate rounded-",
+     "cut": false,
+     "txt": "未标注部门 2"
+    },
+    {
+     "te": "ellipsis",
+     "ws": "nowrap",
+     "ov": "hidden",
+     "sw": 61,
+     "cw": 61,
+     "cls": "h-6 min-w-0 max-w-full truncate rounded-",
+     "cut": false,
+     "txt": "产品部 1"
+    }
+   ]
+  },
+  "leaks": [
+   {
+    "cls": "w-full min-w-0 pb-[calc(2rem+env(safe-area-inset-b",
+    "sw": 344,
+    "cw": 342,
+    "txt": "列表能力与权限数字员工3复制列表"
+   },
+   {
+    "cls": "flex min-h-0 flex-1 flex-col gap-3",
+    "sw": 344,
+    "cw": 342,
+    "txt": "列表能力与权限数字员工3复制列表"
+   },
+   {
+    "cls": "pane min-w-0 flex-1",
+    "sw": 344,
+    "cw": 342,
+    "txt": "数字员工3复制列表导出 CSV共"
+   },
+   {
+    "cls": "employees-page space-y-4",
+    "sw": 344,
+    "cw": 342,
+    "txt": "数字员工3复制列表导出 CSV共"
+   },
+   {
+    "cls": "flex flex-col gap-[var(--space-3)] sm:flex-row sm:",
+    "sw": 344,
+    "cw": 342,
+    "txt": "数字员工3复制列表导出 CSV共"
+   },
+   {
+    "cls": "flex min-w-0 flex-wrap items-center justify-betwee",
+    "sw": 344,
+    "cw": 342,
+    "txt": "复制列表导出 CSV共 3 行刷"
+   },
+   {
+    "cls": "font-mono group relative grid cursor-pointer grid-",
+    "sw": 74,
+    "cw": 72,
+    "txt": "复制列表"
+   },
+   {
+    "cls": "font-mono group relative grid cursor-pointer grid-",
+    "sw": 78,
+    "cw": 76,
+    "txt": "导出 CSV"
+   },
+   {
+    "cls": "font-mono group relative grid cursor-pointer grid-",
+    "sw": 68,
+    "cw": 66,
+    "txt": "刷新"
+   },
+   {
+    "cls": "relative flex min-w-0 max-w-full",
+    "sw": 32,
+    "cw": 29,
+    "txt": "全部"
+   },
+   {
+    "cls": "min-w-0 flex-1 cursor-pointer items-center justify",
+    "sw": 31,
+    "cw": 27,
+    "txt": "全部"
+   },
+   {
+    "cls": "emp-dept-rail flex min-w-0 items-center gap-1.5 te",
+    "sw": 232,
+    "cw": 100,
+    "txt": "部门：全部未标注部门 2产品部 "
+   },
+   {
+    "cls": "font-mono group relative grid cursor-pointer grid-",
+    "sw": 74,
+    "cw": 72,
+    "txt": "加载更多"
+   }
+  ],
+  "docScrollW": 375,
+  "vw": 375
+ }
+}
