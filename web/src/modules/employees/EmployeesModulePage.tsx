@@ -1,14 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Link, useSearchParams } from "react-router";
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronRight, Inbox, RefreshCw, Search, ShieldAlert, TriangleAlert, Users } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronRight, Inbox, Pencil, Plus, RefreshCw, Search, ShieldAlert, TriangleAlert, Users } from "lucide-react";
 import { Badge, Button, Card, CardContent } from "@nous-research/ui";
+import { useToast } from "@nous-research/ui/hooks/use-toast";
+import { Toast } from "@nous-research/ui/ui/components/toast";
 
 import { RequestIdCopy } from "@/components/RequestIdCopy";
 
 import { fetchJSON } from "@/lib/api";
-import { API_UNREACHABLE_MESSAGE, ApiError, humanizeStatus } from "@/lib/api-error";
+import { API_UNREACHABLE_MESSAGE, ApiError, errorMessage, humanizeStatus } from "@/lib/api-error";
 import { ConsoleSelect } from "@/shell/ConsoleSelect";
+import { CreateEmployeeModal, EMP_NAME_MAX, type CreatedRef, type VerifyOutcome } from "./CreateEmployeeModal";
 import "./employees-density.css";
+
+/** PE-08①：编辑保存的写口现实（PATCH 405 console.read_only，现网实测 2026-11-24）——
+ *  抽屉与编辑钮如实渲染，保存钮 disabled+title 把原因钉在触点上；解除等 T-PE-D。 */
+const EDIT_WRITE_NOTE =
+  "写接口未接入（等 T-PE-D，PATCH 现 405 console.read_only）";
 
 /** T12 · employee list module (`#/employees`). Read-only. */
 
@@ -516,6 +525,91 @@ function ListExportButton({ rows, totalLoaded, phase }: { rows: EmployeeRow[]; t
   );
 }
 
+/* ------------------------------------------------------------------ *
+ * PE-08①：编辑抽屉（写路径预接）。T-PE-D 才开放 PATCH，本次只渲染形状：
+ * 字段预填可读值，保存钮 disabled + aria-disabled + title 写明原因；
+ * 点击零请求零 toast（jsdom 钉在 employees.create-modal.test.tsx）。
+ * ------------------------------------------------------------------ */
+function EditEmployeeDrawer({ row, onClose }: { row: EmployeeRow; onClose: () => void }) {
+  const [name, setName] = useState(row.name ?? "");
+  const [title, setTitle] = useState(row.title ?? "");
+  const [department, setDepartment] = useState(row.department ?? "");
+  return createPortal(
+    <div
+      className="fixed inset-0 z-40 flex justify-end bg-black/50"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={`编辑员工：${displayName(row)}`}
+        data-testid="emp-edit-drawer"
+        className="flex h-full w-full max-w-sm flex-col gap-3 overflow-y-auto border-l border-white/15 bg-[#141414] p-4"
+      >
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="font-mondwest text-base">编辑员工</h2>
+          <span className="font-mono text-xs text-white/45" title={row.employeeId}>
+            员工 · {shortCode(row.employeeId)}
+          </span>
+        </div>
+        <label className="flex min-w-0 flex-col gap-1 text-xs">
+          <span className="text-white/55">姓名</span>
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            maxLength={EMP_NAME_MAX}
+            className="min-w-0 rounded-md border border-white/10 bg-white/5 px-2 py-1.5 text-sm"
+            data-testid="emp-edit-name"
+          />
+        </label>
+        <label className="flex min-w-0 flex-col gap-1 text-xs">
+          <span className="text-white/55">岗位</span>
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            maxLength={120}
+            className="min-w-0 rounded-md border border-white/10 bg-white/5 px-2 py-1.5 text-sm"
+            data-testid="emp-edit-title"
+          />
+        </label>
+        <label className="flex min-w-0 flex-col gap-1 text-xs">
+          <span className="text-white/55">部门</span>
+          <input
+            value={department}
+            onChange={(e) => setDepartment(e.target.value)}
+            maxLength={120}
+            className="min-w-0 rounded-md border border-white/10 bg-white/5 px-2 py-1.5 text-sm"
+            data-testid="emp-edit-department"
+          />
+        </label>
+        <p className="text-xs text-white/45" data-testid="emp-edit-note">
+          编辑保存写入口尚未开放（现网 PATCH 一律 405 console.read_only）。表单先就位，接入随 T-PE-D 一并放开，改动不会被静默丢弃。
+        </p>
+        <div className="mt-auto flex flex-wrap items-center gap-2">
+          <Button
+            size="sm"
+            disabled
+            aria-disabled="true"
+            title={EDIT_WRITE_NOTE}
+            data-testid="emp-edit-save"
+            onClick={() => {
+              /* 禁用预接：解锁前点击必须零请求零 toast；此处刻意什么都不做。 */
+            }}
+          >
+            保存
+          </Button>
+          <Button size="sm" outlined onClick={onClose} data-testid="emp-edit-close">
+            关闭
+          </Button>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
 export function EmployeesModulePage() {
   const [params, setParams] = useSearchParams();
   const forced = params.get("state");
@@ -542,6 +636,11 @@ export function EmployeesModulePage() {
   // Enter 展开该行预览（拦截跳转），Esc 收起并把焦点还给该行。
   const [activeRowKey, setActiveRowKey] = useState<string | null>(null);
   const rowRefs = useRef(new Map<string, HTMLAnchorElement>());
+  // PE-08①：新建模态 + 编辑抽屉（禁用预接）。
+  const [createOpen, setCreateOpen] = useState(false);
+  const [editingRow, setEditingRow] = useState<EmployeeRow | null>(null);
+  // success toast 归页面：模态关闭卸载吞不掉回执（toast 仅在重读确认后由 onConfirmed 触发）。
+  const { toast, showToast } = useToast();
   const focusRow = (id: string | undefined) => {
     if (!id) return;
     rowRefs.current.get(id)?.focus();
@@ -761,6 +860,34 @@ export function EmployeesModulePage() {
       .catch((err: unknown) => setState((prev) => ({ ...errorState(err), items: prev.items })));
   };
 
+  /** PE-08① 成功语义：POST 2xx 后重读列表第一页（禁乐观插入——行只可能来自
+   *  这次真实应答），按回执 id 或提交名核对新员工是否在列。 */
+  const verifyCreated = async (created: CreatedRef): Promise<VerifyOutcome> => {
+    if (forced) {
+      // ?state= 预览壳没有真列表可重读：不假验，如实回报。
+      return { k: "refetch-failed", message: "当前是状态预览（?state=），列表未真实重读。" };
+    }
+    try {
+      const body = await fetchJSON<unknown>(pageQuery(null));
+      const parsed = readRows(body);
+      setState({
+        phase: parsed.rows.length ? "ready" : "empty",
+        items: parsed.rows,
+        status: 200,
+        nextCursor: parsed.nextCursor,
+        total: parsed.total,
+        loadingMore: false,
+      });
+      const targetName = created.name.trim();
+      const found = parsed.rows.some(
+        (row) => (created.id !== null && row.employeeId === created.id) || row.name?.trim() === targetName,
+      );
+      return found ? { k: "found" } : { k: "absent" };
+    } catch (err: unknown) {
+      return { k: "refetch-failed", message: errorMessage(err) };
+    }
+  };
+
   return (
     <section className="employees-page space-y-4" data-testid="employees-module">
       <header className="flex flex-col gap-[var(--space-3)] sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-[var(--space-4)]">
@@ -785,6 +912,22 @@ export function EmployeesModulePage() {
         <div className="flex min-w-0 flex-wrap items-center justify-between gap-[var(--space-2)] max-md:w-full sm:justify-end">
           <ListCopyButton rows={visibleItems} totalLoaded={state.items.length} phase={state.phase} />
           <ListExportButton rows={visibleItems} totalLoaded={state.items.length} phase={state.phase} />
+          {/* PE-08①：新建入口常驻标题行；非 ready/empty 态带原因禁用（与其余控件同口径）。 */}
+          <Button
+            size="sm"
+            outlined
+            data-testid="employees-create-open"
+            disabled={state.phase !== "ready" && state.phase !== "empty"}
+            title={
+              state.phase === "ready" || state.phase === "empty"
+                ? "打开新建员工模态（POST 走员工服务真接口）"
+                : `暂不能新建：${phaseReason(state.phase) ?? ""}列表恢复后自动可用。`
+            }
+            onClick={() => setCreateOpen(true)}
+          >
+            <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
+            新建员工
+          </Button>
           <Button size="sm" onClick={retry} data-testid="employees-refresh">
             <RefreshCw className="mr-2 h-4 w-4" aria-hidden="true" />
             刷新
@@ -986,23 +1129,33 @@ export function EmployeesModulePage() {
           <CardContent className="flex flex-col items-center gap-3 p-8 text-center" data-testid="emp-list-state-empty">
             <Inbox className="h-6 w-6 text-white/40" />
             <p className="text-sm" data-testid="emp-list-empty-text"><span data-testid="emp-list-state-empty-text">{filtered ? "没有匹配的员工" : "还没有数字员工"}</span></p>
-            <p className="text-xs text-white/50">
-              {filtered ? "换个关键词或放宽筛选条件后再试。" : "员工创建后会出现在这里。"}
-            </p>
             {filtered ? (
-              <Button
-                size="sm"
-                outlined
-                data-testid="emp-list-state-clear"
-                onClick={() => {
-                  setKeyword("");
-                  setDebounced("");
-                  patchParams({ q: null, lifecycle: null, dept: null, cursor: null });
-                }}
-              >
-                清除筛选
-              </Button>
-            ) : null}
+              <>
+                <p className="text-xs text-white/50">换个关键词或放宽筛选条件后再试。</p>
+                <Button
+                  size="sm"
+                  outlined
+                  data-testid="emp-list-state-clear"
+                  onClick={() => {
+                    setKeyword("");
+                    setDebounced("");
+                    patchParams({ q: null, lifecycle: null, dept: null, cursor: null });
+                  }}
+                >
+                  清除筛选
+                </Button>
+              </>
+            ) : (
+              <>
+                {/* PE-08①：旧文案「员工创建后会出现在这里」指向不存在入口——
+                    名册为空时根因出口就是创建本身，按钮直开新建模态。 */}
+                <p className="text-xs text-white/50">点「新建员工」创建第一位数字员工，创建确认后会出现在这里。</p>
+                <Button size="sm" data-testid="employees-empty-create" onClick={() => setCreateOpen(true)}>
+                  <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
+                  新建员工
+                </Button>
+              </>
+            )}
           </CardContent>
         </Card>
       ) : null}
@@ -1140,6 +1293,17 @@ export function EmployeesModulePage() {
                     <span className="flex min-h-[44px] items-center text-xs text-white/45 md:hidden">查看详情 →</span>
                   </Link>
                   </span>
+                  {/* PE-08①：行级编辑钮（抽屉预接，保存禁用中）。 */}
+                  <button
+                    type="button"
+                    data-testid={`emp-row-edit-${row.employeeId}`}
+                    aria-label={`编辑：${displayName(row)}`}
+                    title={`打开编辑抽屉（${EDIT_WRITE_NOTE}）`}
+                    className="flex min-w-[44px] shrink-0 items-center justify-center border-l border-white/5 px-2 text-white/40 hover:text-white/80 focus-visible:outline focus-visible:outline-1 focus-visible:outline-white/60"
+                    onClick={() => setEditingRow(row)}
+                  >
+                    <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+                  </button>
                   </div>
                   {previewKey === row.employeeId ? <RowPreview row={row} /> : null}
                 </li>
@@ -1204,6 +1368,18 @@ export function EmployeesModulePage() {
         ) : null}
       </div>
       </div>
+      {createOpen ? (
+        <CreateEmployeeModal
+          open={createOpen}
+          onClose={() => setCreateOpen(false)}
+          onVerifyCreated={verifyCreated}
+          onConfirmed={(createdName) => showToast(`新员工「${createdName}」已出现在名册`, "success")}
+        />
+      ) : null}
+      <Toast toast={toast} />
+      {editingRow ? (
+        <EditEmployeeDrawer row={editingRow} onClose={() => setEditingRow(null)} key={editingRow.employeeId} />
+      ) : null}
     </section>
   );
 }
