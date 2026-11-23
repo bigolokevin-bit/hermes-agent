@@ -23,6 +23,9 @@ import {
   type Verdict,
 } from "./api";
 import {
+  CODE_ALREADY_DECIDED,
+  CODE_EXPIRED,
+  alreadyDecidedFaceCopy,
   pendingReadbackCopy,
   replayFaceCopy,
   settledReadbackCopy,
@@ -45,7 +48,12 @@ export type SubmitOutcome =
   /** ②同键重放/双击：200＋票面已落定 ⇒ 成功侧回填票面，不进错误弹窗、不当失败。 */
   | { kind: "replay"; face: FailureCopy; reloadTicket: true; reloadList: true }
   /** 已知失败（4xx/5xx/CSRF 拦截/连不上之外的确定答复）：逐码人话句。 */
-  | { kind: "failure"; copy: FailureCopy; reloadTicket: boolean }
+  | { kind: "failure"; copy: FailureCopy; reloadTicket: boolean; reloadList: boolean }
+  /**
+   * AP-06 ① 409 `approval.already_decided`＝回填票面（成功侧，不当失败）：
+   * 票面来自恰好一次 GET 读回（重读不是重试，POST 计数仍为 1）。
+   */
+  | { kind: "already-decided-face"; face: FailureCopy; reloadList: true }
   /** ③超时后读回：票面已落定——以服务读回为准，成功侧呈现，不重发。 */
   | { kind: "readback-settled"; face: FailureCopy; reloadTicket: true; reloadList: true }
   /** ③超时后读回：票面没落定——结果未知交人工，不重发、不乐观放行。 */
@@ -81,12 +89,28 @@ export async function submitDecisionWithRecovery(
       }
       return { kind: "readback-pending", copy: pendingReadbackCopy(back) };
     }
-    // 已知答复：逐码句原样走 writeFailure（409＝冲突句，不重试；读票面是
-    // 重读不是重试，与既有 R73 语义一致）。
+    // 已知答复：逐码句走 writeFailure 单点。409 族在此分流——
+    // · `approval.already_decided`＝服务已有票面 ⇒ 回填票面（成功侧），恰好一次
+    //   GET 读回；读不回就不猜票面，退回逐码句。POST 计数恒 1（不重试）。
+    // · 其余 409（如 key 复用且请求体不一致）＝人话冲突句、零读回（AP-05f 形制）。
+    if (info.code === CODE_ALREADY_DECIDED) {
+      let decided: ApprovalDetail | null = null;
+      try {
+        decided = await deps.readBack(id);
+      } catch {
+        decided = null; // 读回没答成＝票面给不出，不用猜测的票面冒充回填。
+      }
+      if (decided !== null) {
+        return { kind: "already-decided-face", face: alreadyDecidedFaceCopy(decided, verdict, info.requestId), reloadList: true };
+      }
+    }
     return {
       kind: "failure",
       copy: writeFailure(err, verdict, info),
       reloadTicket: info.status === 409 || info.status === 404 || isWriteUnavailable(info.status),
+      // AP-06 ①：过期与已决都改了队列的事实（单据不再是待处理）⇒ 触发列表重读；
+      // 其余失败（含 503 服务不可用）不动队列读数，屏上保持服务上次给的样子。
+      reloadList: info.code === CODE_EXPIRED || info.code === CODE_ALREADY_DECIDED,
     };
   }
   const ticket = approvalDetailFrom(payload);

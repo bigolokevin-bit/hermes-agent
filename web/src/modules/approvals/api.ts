@@ -160,6 +160,57 @@ export class CsrfMissingError extends Error {
   }
 }
 
+/**
+ * AP-06 ① — the service's own error envelope, read the way the BFF reads it.
+ *
+ * 板仓只读核对（`apps/console/server.py`，2026-11-24）：
+ * - `_error_code_of` L298-304 只认**顶层 `code` 字符串**；
+ * - 域信封平铺 `{code, message, details?}`（`services/domain/http_app.py:36-41`，
+ *   `details` 仅在有值时出现——409 `approval.expired` 带 `{expiredFrom}`，
+ *   `services/domain/approvals.py:962-967`）；
+ * - 保留透传族 `approval.not_approver|already_decided|expired|service_unavailable`
+ *   （`PASSTHROUGH_ERROR_CODES` L216-221）＝上游码与体逐字转给浏览器；
+ * - 折叠族 `approval.not_found` ＋ consume 四码（`FOLDED_ERROR_CODES` L223-228）
+ *   ＝统一 404 `{"code":"approval.unavailable","message":"approval not found or
+ *   not actionable"}`（`_UNAVAILABLE` L230、写腿 L1975-1977）。
+ *
+ * 码只用来选句子；它本身永远不上屏（裸码/裸枚举属工程值，见 copy.ts 单点句）。
+ */
+export interface ErrorEnvelope {
+  code: string | null;
+  details: Record<string, unknown> | null;
+}
+
+const NO_ENVELOPE: ErrorEnvelope = { code: null, details: null };
+
+function textOf(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function recordOf(value: unknown): Record<string, unknown> | null {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+export function errorEnvelopeOf(body: string | null | undefined): ErrorEnvelope {
+  if (!body) return NO_ENVELOPE;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    return NO_ENVELOPE; // 非 JSON（代理 HTML 页等）：没有码可认，走状态码句。
+  }
+  const rec = recordOf(parsed);
+  if (!rec) return NO_ENVELOPE;
+  // 平铺信封是真形制；`detail` 嵌套只作兼容腿（csrf.ts 同款容忍），不改判据。
+  const nested = recordOf(rec.detail);
+  const code = textOf(rec.code) ?? textOf(nested?.code);
+  const details = recordOf(rec.details) ?? recordOf(nested?.details);
+  if (code === null && details === null) return NO_ENVELOPE;
+  return { code, details };
+}
+
 /** Status + trace id of a failure, for the panels that have to speak to a person. */
 export interface FailureInfo {
   status: number;
@@ -168,20 +219,38 @@ export interface FailureInfo {
   sentence?: string;
   /** Raw multi-line detail — for the 「详情」 disclosure only, never on the surface. */
   technical: string | null;
+  /** AP-06 ①：服务错误信封的码（`approval.*` 等），选句子用，不上屏。 */
+  code?: string | null;
+  /** AP-06 ①：信封 `details`（如 409 expired 的 `expiredFrom`），只进详情披露。 */
+  details?: Record<string, unknown> | null;
 }
 
 export function failureInfo(err: unknown): FailureInfo {
   if (err instanceof CsrfMissingError) {
-    return { status: -1, requestId: null, technical: null, sentence: err.message };
+    return { status: -1, requestId: null, technical: null, sentence: err.message, code: null, details: null };
   }
   if (err instanceof ApiError) {
+    const envelope = errorEnvelopeOf(err.body);
     const csrfCopy = csrfFailureCopy(err.status, err.body, err.requestId);
     if (csrfCopy) {
-      return { status: err.status, requestId: csrfCopy.requestId, technical: err.details, sentence: csrfCopy.sentence };
+      return {
+        status: err.status,
+        requestId: csrfCopy.requestId,
+        technical: err.details,
+        sentence: csrfCopy.sentence,
+        code: envelope.code,
+        details: envelope.details,
+      };
     }
-    return { status: err.status, requestId: err.requestId ?? null, technical: err.details };
+    return {
+      status: err.status,
+      requestId: err.requestId ?? null,
+      technical: err.details,
+      code: envelope.code,
+      details: envelope.details,
+    };
   }
-  return { status: -1, requestId: null, technical: err instanceof Error ? err.message : String(err) };
+  return { status: -1, requestId: null, technical: err instanceof Error ? err.message : String(err), code: null, details: null };
 }
 
 /** 403 and 404 are one and the same body: both mean "this is not reachable for you". */
