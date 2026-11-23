@@ -13,6 +13,12 @@
  * Q12: each roster row carries a `ppl5d-open-<id>` control that swaps in the
  * in-page five-tab detail view (`EmployeeDetailPanel`, zero routing); 返回名册
  * restores this list without refetching it.
+ *
+ * PE-07: `?state=loading|empty|error|denied` forces honest preview legs without
+ * any fetch. 未接入 (GAP-02) and 无权限 are two exclusive legs: the denied
+ * screen never says 「未接入」, the unwired screen never says 「无权限」 — the
+ * denied body copies the benchmark sentence from `EmployeesPage.tsx`
+ * (ErrorStateBlock, L625-655).
  */
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router";
@@ -31,12 +37,20 @@ type Resource<T> =
   | { phase: "empty" }
   | { phase: "ready"; data: T }
   | { phase: "unavailable"; message: string }
-  | { phase: "denied"; message: string }
+  | { phase: "denied"; message: string; requestId: string | null }
   | { phase: "error"; message: string; requestId: string | null };
 
 export const PEOPLE_GAP = "GAP-02";
 export const PEOPLE_GAP_MESSAGE =
   "人员目录未接入：上游用户中心接口尚未对控制台开放。接入后这里显示真实名单；现在不展示样例，也不把缺失值写成 0。";
+
+/**
+ * denied 腿话术：逐字抄 EmployeesPage.tsx ErrorStateBlock 的 403/404 整页标杆
+ * （L625-655「无权限或未开放」口径）。屏上不出现「未接入」，与 GAP-02 未接入
+ * 腿互斥。
+ */
+export const PEOPLE_DENIED_MESSAGE =
+  "该数据源尚未开放，或你没有查看权限。请确认后台已接入对应服务，或联系管理员开通权限。";
 
 export const PEOPLE_ENDPOINTS = [
   "/agent-api/api/v1/user/list",
@@ -178,16 +192,24 @@ async function loadPeople(): Promise<Resource<Rec[]>> {
   return { phase: "unavailable", message: PEOPLE_GAP_MESSAGE };
 }
 
-type Forced = "loading" | "empty" | "error" | "ready";
+type Forced = "loading" | "empty" | "error" | "denied" | "ready";
 
 function readForced(raw: string | null): Forced | null {
-  return raw === "loading" || raw === "empty" || raw === "error" || raw === "ready" ? raw : null;
+  return raw === "loading" || raw === "empty" || raw === "error" || raw === "denied" || raw === "ready"
+    ? raw
+    : null;
 }
 
-function previewResource(forced: Exclude<Forced, "ready">): Resource<Rec[]> {
+/** 强制预览腿：与 EmployeesModulePage 同形制（?rid= 透传，缺省 preview-request）。 */
+function previewResource(forced: Exclude<Forced, "ready">, rid: string): Resource<Rec[]> {
   if (forced === "loading") return { phase: "loading" };
   if (forced === "empty") return { phase: "empty" };
-  return { phase: "error", message: "预览错误：这次读取没有成功，页面没有编造人员数据。", requestId: null };
+  if (forced === "denied") return { phase: "denied", message: PEOPLE_DENIED_MESSAGE, requestId: rid };
+  return {
+    phase: "error",
+    message: "预览错误：这次读取没有成功，页面没有编造人员数据。",
+    requestId: rid,
+  };
 }
 
 function usePeople(nonce: number, enabled: boolean): Resource<Rec[]> {
@@ -290,7 +312,8 @@ export default function PeopleModulePage() {
   // 不重新拉名单。
   const [openId, setOpenId] = useState<string | null>(null);
   const live = usePeople(reload, forced === null || forced === "ready");
-  const people = forced && forced !== "ready" ? previewResource(forced) : live;
+  const previewRid = sp.get("rid") ?? "preview-request";
+  const people = forced && forced !== "ready" ? previewResource(forced, previewRid) : live;
 
   // buglist P0-4（#5）：数据源整列皆缺的可选列（账号/部门/最后活跃）连同表头
   // 一起裁掉，缺列信息由来源注记一行承载；个别行缺值仍渲染该列，格内 `—` +
@@ -373,7 +396,7 @@ export default function PeopleModulePage() {
         </section>
       ) : null}
 
-      {people.phase === "unavailable" || people.phase === "denied" ? (
+      {people.phase === "unavailable" ? (
         <StateShell
           testid="ppl5-unwired"
           icon={<ShieldAlert className="h-4 w-4 text-amber-300/80" aria-hidden />}
@@ -382,6 +405,24 @@ export default function PeopleModulePage() {
           gapTitle={PEOPLE_GAP}
           onRetry={() => setReload((n) => n + 1)}
         >
+          <Link to="/approvals" data-testid="ppl5-apply" className="text-xs underline underline-offset-4">
+            去审批中心提交开通申请
+          </Link>
+        </StateShell>
+      ) : null}
+
+      {/* PE-07：denied 独立腿（?state=denied 预览）。屏上永不出现「未接入」，
+        * GAP-02 只属于未接入腿；话术逐字抄 EmployeesPage.tsx:625-655 标杆，
+        * rid 沿用本组件 RequestId 模式（L209-234）。 */}
+      {people.phase === "denied" ? (
+        <StateShell
+          testid="ppl5-denied"
+          icon={<ShieldAlert className="h-4 w-4 text-amber-300/80" aria-hidden />}
+          title="人员目录暂不可见"
+          body={people.message}
+          onRetry={() => setReload((n) => n + 1)}
+        >
+          <RequestId id={people.requestId} />
           <Link to="/approvals" data-testid="ppl5-apply" className="text-xs underline underline-offset-4">
             去审批中心提交开通申请
           </Link>

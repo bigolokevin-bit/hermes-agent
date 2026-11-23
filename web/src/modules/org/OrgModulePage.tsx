@@ -477,19 +477,24 @@ function DeptRow({
 
 type Forced = "loading" | "empty" | "error" | "denied";
 
-function readState(value: string): string | null {
+function readHashParam(value: string, name: string): string | null {
   const mark = value.indexOf("?");
   if (mark < 0) return null;
   try {
-    return new URLSearchParams(value.slice(mark + 1)).get("state");
+    return new URLSearchParams(value.slice(mark + 1)).get(name);
   } catch {
     return null;
   }
 }
 
-function forcedState(): Forced | null {
+/** 强制参数：hash 内查询优先（深链壳形制），回落全局 search（PE-07 与 state 同源）。 */
+function forcedParam(name: string): string | null {
   if (typeof window === "undefined") return null;
-  const value = readState(window.location.hash) ?? new URLSearchParams(window.location.search).get("state");
+  return readHashParam(window.location.hash, name) ?? new URLSearchParams(window.location.search).get(name);
+}
+
+function forcedState(): Forced | null {
+  const value = forcedParam("state");
   return value === "loading" || value === "empty" || value === "error" || value === "denied" ? value : null;
 }
 
@@ -601,29 +606,36 @@ export default function OrgModulePage() {
         icon={<TriangleAlert className="h-4 w-4 text-rose-300/80" aria-hidden />}
         title="没能加载出组织架构"
         body="本次数据读取失败，请重试。"
-        extra={<RequestId id={null} />}
+        extra={<RequestId id={forcedParam("rid")} />}
         onRetry={() => {
           const url = new URL(window.location.href);
           url.searchParams.delete("state");
+          url.searchParams.delete("rid");
           window.location.assign(url.toString());
         }}
       />,
     );
   }
 
+  // PE-07：denied 独立腿——话术逐字抄 EmployeesPage.tsx:625-655 标杆（403/404
+  // 整页口径），屏上永不出现「未接入」；GAP-02 只属于活体 403/404 的未接入腿
+  // （那条腿与其测试钉由 OrgModulePage.test.tsx L190 原样保留）。
   if (forced === "denied") {
     return shell(
       <StateShell
         testid="org5-denied"
         icon={<ShieldAlert className="h-4 w-4 text-amber-300/80" aria-hidden />}
-        title="组织与部门未接入"
-        reason={MISSING_REASON}
-        gapTitle={GAP02}
+        title="组织与部门暂不可见"
+        body="该数据源尚未开放，或你没有查看权限。请确认后台已接入对应服务，或联系管理员开通权限。"
         extra={
-          <a className="org5-apply" data-testid="org5-apply" href="#/approvals">
-            去审批中心提交开通申请
-          </a>
+          <>
+            <a className="org5-apply" data-testid="org5-apply" href="#/approvals">
+              去审批中心提交开通申请
+            </a>
+            <RequestId id={forcedParam("rid")} />
+          </>
         }
+        onRetry={refresh}
       />,
     );
   }

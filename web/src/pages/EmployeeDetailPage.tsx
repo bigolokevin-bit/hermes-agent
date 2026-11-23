@@ -67,8 +67,14 @@ function failedState(err: unknown): EmployeeState {
   };
 }
 
-/** 详情主体：先 /employees/:id，再退到 /matrix/:id。 */
-function useEmployeeDetail(rawId: string): { state: EmployeeState; reload: () => void } {
+/**
+ * 详情主体：先 /employees/:id，再退到 /matrix/:id。
+ * PE-07：`enabled=false`（?state= 强制预览在场）时一根请求都不发。
+ */
+function useEmployeeDetail(
+  rawId: string,
+  enabled: boolean,
+): { state: EmployeeState; reload: () => void } {
   const [nonce, setNonce] = useState(0);
   const [state, setState] = useState<EmployeeState>({ k: "loading" });
   const id = encodeURIComponent(rawId);
@@ -78,6 +84,7 @@ function useEmployeeDetail(rawId: string): { state: EmployeeState; reload: () =>
       setState({ k: "ready", data: {} });
       return;
     }
+    if (!enabled) return;
     let alive = true;
     setState({ k: "loading" });
     const primary = `/agent-api/api/employees/${id}`;
@@ -98,7 +105,7 @@ function useEmployeeDetail(rawId: string): { state: EmployeeState; reload: () =>
     return () => {
       alive = false;
     };
-  }, [id, rawId, nonce]);
+  }, [id, rawId, nonce, enabled]);
 
   return { state, reload: () => setNonce((n) => n + 1) };
 }
@@ -138,6 +145,19 @@ function resolveZone(raw: string): { zone: ZoneValue; block?: string } {
   return { zone: DEFAULT_ZONE };
 }
 
+// ── PE-07：?state= 四态强制预览 ──────────────────────────────────────────
+//
+// 与深链壳（shell/console.tsx，A 车道预嵌，本笔不动）同口径的页内实现：
+// 强制态整块替换，分区 Tab 与五分区一律不渲染；一根请求都不发。
+// denied 腿抄 EmployeesPage.tsx:391,625-655 标杆——「暂不可见」+403/404 合并
+// 话术，屏上永不出现「未接入」；error 腿带请求号且可复制（RequestIdCopy）。
+
+type DetailForced = "loading" | "empty" | "error" | "denied";
+
+function readForcedState(raw: string | null): DetailForced | null {
+  return raw === "loading" || raw === "empty" || raw === "error" || raw === "denied" ? raw : null;
+}
+
 // ── 页面 ─────────────────────────────────────────────────────────────────
 
 export default function EmployeeDetailPage() {
@@ -151,10 +171,18 @@ export default function EmployeeDetailPage() {
   const rawParam = params.employeeId ?? params.id ?? "";
   const rawId = rawParam !== "" ? decodeURIComponent(rawParam) : "";
   const enc = encodeURIComponent(rawId);
-  const { state, reload } = useEmployeeDetail(rawId);
-
-  const [sp] = useSearchParams();
+  const [sp, setSp] = useSearchParams();
+  const forced = readForcedState(sp.get("state"));
+  const { state, reload } = useEmployeeDetail(rawId, forced === null);
   const resolved = resolveZone(sp.get("zone") ?? "");
+
+  // 强制态要有真出口（shell T42-1 同条款）：重试即摘掉 ?state=/?rid= 回活体读取。
+  const leavePreview = () => {
+    const next = new URLSearchParams(sp);
+    next.delete("state");
+    next.delete("rid");
+    setSp(next, { replace: true });
+  };
 
   const detail = state.k === "ready" ? state.data : null;
   const dn = detail ? displayName(nameOf(detail), (idOf(detail) ?? rawId) || null) : null;
@@ -171,18 +199,60 @@ export default function EmployeeDetailPage() {
         </Link>
       </div>
 
-      {!rawId && (
+      {forced !== null && (
+        <div data-testid="emp-detail-preview" data-phase={forced}>
+          {forced === "loading" && (
+            <div data-testid="emp-detail-loading" aria-label="正在加载员工详情">
+              <DetailHeaderSkeleton />
+              <RowsSkeleton rows={3} />
+            </div>
+          )}
+
+          {forced === "empty" && (
+            <EmptyBlock
+              text="还没找到这位员工的档案"
+              hint="后台还没有该员工的档案记录；这里不伪造样例，也不把缺失写成 0。"
+            />
+          )}
+
+          {forced === "error" && (
+            <ErrorStateBlock
+              status={502}
+              message="预览错误：这次读取没有成功，页面没有编造员工数据。"
+              requestId={sp.get("rid") ?? "preview-request"}
+              deniedTitle="无法打开该员工"
+              errorTitle="该员工档案没能加载出来"
+              onRetry={leavePreview}
+            />
+          )}
+
+          {forced === "denied" && (
+            // 标杆口径（EmployeesPage.tsx:625-655）：403/404 同一整页话术，
+            // 屏上永不出现「未接入」；GAP 编号不上本腿。
+            <ErrorStateBlock
+              status={403}
+              message=""
+              requestId={sp.get("rid") ?? "preview-request"}
+              deniedTitle="该员工档案暂不可见"
+              errorTitle="无法打开该员工"
+              onRetry={leavePreview}
+            />
+          )}
+        </div>
+      )}
+
+      {forced === null && !rawId && (
         <EmptyBlock text="无法确定要查看的员工" hint="链接里缺少员工编号。请回到数字员工列表，从列表中重新进入。" />
       )}
 
-      {rawId && state.k === "loading" && (
+      {forced === null && rawId && state.k === "loading" && (
         <>
           <DetailHeaderSkeleton />
           <RowsSkeleton rows={3} />
         </>
       )}
 
-      {rawId && state.k === "error" && (
+      {forced === null && rawId && state.k === "error" && (
         <ErrorStateBlock
           status={state.status}
           message={state.message}
@@ -193,7 +263,7 @@ export default function EmployeeDetailPage() {
         />
       )}
 
-      {rawId && detail && (
+      {forced === null && rawId && detail && (
         <>
           <header className="flex flex-wrap items-start justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
