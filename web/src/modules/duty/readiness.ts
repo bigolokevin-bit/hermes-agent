@@ -59,7 +59,7 @@ export interface ReadinessEvidence {
   configs: Record<string, Loadable<ConfigView>>;
   approvals: Loadable<ApprovalEvidence[]>;
   knowledge: Loadable<KnowledgeProbe>;
-  /** 逐员工扇出的真口径：covered 是本轮实际逐一判定的行数（api.ts 有 32 上限），
+  /** 逐员工扇出的真数范围：covered 是本轮实际逐一判定的行数（api.ts 有 32 上限），
    * requested 是分母行数；covered<requested 时其余行没有判定、按待核实，卡上必须披露。 */
   coverage: { covered: number; requested: number };
 }
@@ -76,7 +76,7 @@ function alive(expiresAt: string | null, now: number): boolean {
  * V1 群@：工位里存在「群绑定 + active」。第二腿（最近一次群内成功应答）需要
  * 渠道事件列表读口，BFF 红线「有意不代理、勿补」（server.py 写死）；DU-04 按
  * A 路裁定不在本车道造第二套读口——所以 V1 按已接入的单腿工位判定，并在
- * source 里注明单腿口径。函数体里没有第二腿逻辑，注释与代码一致。
+ * source 里注明单腿读口。函数体里没有第二腿逻辑，注释与代码一致。
  */
 export function v1Verdict(stations: StationBinding[]): GateVerdict {
   const ok = stations.some((s) => s.bindingType === "group" && s.status === "active");
@@ -91,7 +91,7 @@ export function v2Verdict(cfg: ConfigView, now: number): GateVerdict {
 }
 
 /**
- * V3 引用最小真口径（工单 DU-01②）：可引用文档 > 0 ∧ 强制引用策略可读 → pass。
+ * V3 引用最小真判据（工单 DU-01②）：可引用文档 > 0 ∧ 强制引用策略可读 → pass。
  * 文档腿未接线或回包形状漂移 → unknown；已接线且目录为 0 → fail（真读数）；
  * 文档 > 0 但策略腿不可读 → unknown，绝不假 pass、绝不给权威通过数。
  */
@@ -104,7 +104,7 @@ export function v3Verdict(knowledge: KnowledgeProbe): GateVerdict {
 
 /**
  * V6 审批：该员工存在「message_send 决策 + 有审批人 + 未过期」。
- * 口径取 status=approved；consumed/expired/pending/denied 均不构成有效审批。
+ * 判定取 status=approved；consumed/expired/pending/denied 均不构成有效审批。
  */
 export function v6Verdict(rows: ApprovalEvidence[], subjectId: string, now: number): GateVerdict {
   const ok = rows.some(

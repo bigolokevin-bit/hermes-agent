@@ -18,7 +18,7 @@ export function parseDutyStatusFilter(raw: string | null): DutyStatusFilterId {
   return DUTY_STATUS_FILTERS.some((f) => f.id === raw) ? (raw as DutyStatusFilterId) : "all";
 }
 
-/** 与 runs 模块 status 口径对齐：completed 同时认服务端两种写法。 */
+/** 与 runs 模块 status 判定对齐：completed 同时认服务端两种写法。 */
 export function filterDutyRuns<T extends { status?: string }>(rows: T[], id: DutyStatusFilterId): T[] {
   if (id === "all") return rows;
   if (id === "running") return rows.filter((r) => r.status === "running" || r.status === "pending");

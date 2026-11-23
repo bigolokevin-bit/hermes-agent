@@ -78,7 +78,7 @@ export function statusOf(err: unknown): number {
 }
 
 /**
- * 「未接入」判定（DU-05①）：与 fetchKnowledgeProbe 同一口径——404/503 且信封带
+ * 「未接入」判定（DU-05①）：与 fetchKnowledgeProbe 同一判据——404/503 且信封带
  * `not_wired`。这一形制归「未接入」，绝不进「读取失败」的文案；其余错误才是失败。
  */
 export function isNotWiredError(err: unknown): boolean {
@@ -93,7 +93,7 @@ export function isNotWiredError(err: unknown): boolean {
 export function humanError(err: unknown): string {
   const status = statusOf(err);
   if (status === 401) return "登录状态已过期，请重新登录后再刷新。";
-  // DU-05① 口径不混用：403 是没有权限（失败类），404 是没接这个口（未接入类），
+  // DU-05① 三态不混用：403 是没有权限（失败类），404 是没接这个口（未接入类），
   // 一句只说一件事，不再「权限或尚未接入」二义并列。
   if (status === 403) return "你没有查看这块数据的权限。";
   if (status === 404) return "这块数据的来源尚未接入。";

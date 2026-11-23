@@ -36,10 +36,10 @@
   color: var(--color-text-muted);
 }
 
-/* UI-A wave-73 2026-11-22：/approvals 队列表密度收尾（承 wave-71 audit 卡片流映射口径）。
+/* UI-A wave-73 2026-11-22：/approvals 队列表密度收尾（承 wave-71 audit 卡片流映射形制）。
  * 本轮现查结论——已在位只回证据、不重复声明：行高 40/36（本文件前三条规则）；
  * 时间（提交/决定 clock）与涉及金额单元格走 Field num=true 挂全局 ui-c-num
- * （detail.css tabular-nums）；右对齐不适用（卡片流 label/value 非固定列，沿既有口径）；
+ * （detail.css tabular-nums）；右对齐不适用（卡片流 label/value 非固定列，沿既有形制）；
  * 标题列定宽省略 + title 全量由 R80 truncateDisplay 在 tsx 完成（apv-trunc-row-title，
  * min-w-0 flex-1，title 恒全文）；状态徽章首行容器 flex items-center 已垂直居中；
  * 375 flex-wrap 自然折行不撑破。本笔补两处真缺口： */
@@ -64,7 +64,7 @@
 /* UI-A wave-73 勘误 2026-11-22：observer 像素核验判 375 视口横溢（列内容裁切、
  * 卡片右缘在视口外）。根因：apv-state 双栏 grid 在 lg 以下走隐式 1fr 轨道，
  * 其 min=auto 被不可断长 token（CSV 文件名、汇总桶项）撑大，整列超宽——
- * flex-wrap 口径救不了 grid 轨道。修复全在样式层：窄档显式 minmax(0,1fr) 单列、
+ * flex-wrap 思路救不了 grid 轨道。修复全在样式层：窄档显式 minmax(0,1fr) 单列、
  * 直接子级 min-width:0、长 token 容器内 anywhere 折行。 */
 @media (max-width: 1023.98px) {
   [data-testid="apv-state"] {
@@ -93,7 +93,7 @@
 /* P1-A1（wave-128）：待处理页把「汇总条 + 生效筛选 chips」合并为一行
  * （apv-summary-row），并把三行元说明收进筛选折叠面板（apv-filter-panel）。
  * 两容器沿用 b7ad5f01 同款窄档纪律：直接子级 min-width:0、长 token
- * （桶名、关键字回显、口径句）anywhere 折行，保证 375 视口不横溢。 */
+ * （桶名、关键字回显、范围句）anywhere 折行，保证 375 视口不横溢。 */
 @media (max-width: 1023.98px) {
   [data-testid="apv-summary-row"] > * {
     min-width: 0;
