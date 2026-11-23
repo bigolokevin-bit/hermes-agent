@@ -1,0 +1,39 @@
+{
+  "tag": "before",
+  "page": "/overview",
+  "base": "http://127.0.0.1:5299",
+  "shots": [
+    {
+      "w": 1440,
+      "fp": "shots/q10-duty-1440-before-fullpage.png",
+      "tp": "shots/q10-duty-1440-before-tall.png",
+      "metrics": {
+        "VW": 1440,
+        "scrollWidth": 1440,
+        "scrollHeight": 900,
+        "clientHeight": 900,
+        "docLevelOverflow": false,
+        "textLen": 1555
+      }
+    },
+    {
+      "w": 375,
+      "fp": "shots/q10-duty-375-before-fullpage.png",
+      "tp": "shots/q10-duty-375-before-tall.png",
+      "metrics": {
+        "VW": 375,
+        "scrollWidth": 375,
+        "scrollHeight": 900,
+        "clientHeight": 900,
+        "docLevelOverflow": false,
+        "textLen": 1561
+      }
+    }
+  ],
+  "whoami": {
+    "status": 200,
+    "ok": true
+  },
+  "error": null,
+  "dutyMounted": true
+}
