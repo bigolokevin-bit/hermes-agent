@@ -549,12 +549,9 @@ export function ConsoleModulePage({ module, live }: ConsoleModulePageProps) {
 
   return (
     <ConsoleModulesFrame activeModule={module} pageTestId={pageTestId}>
-      <header className="flex min-w-0 flex-col gap-1">
-        <span className="console-note text-xs tracking-[0.12em]">
-          {meta.group} · 控制台
-        </span>
-        <h1 className="text-lg font-semibold">{meta.label}</h1>
-      </header>
+      {/* n17 (UI-SHELL): the module breadcrumb and page title moved
+         to shell/TopBar.tsx — the gate counts one h1 app-wide and it must
+         live in the top bar, not in main. */}
       {roView && auditorDenied(active, true) ? null : (
         <ConsoleTabStrip module={module} activeTabId={active.tabId} />
       )}

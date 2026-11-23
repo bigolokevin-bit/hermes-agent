@@ -12,7 +12,8 @@
  *
  * It also pins three things that were free-floating before: the collapse control's
  * discoverability hook (must not depend on a locale, since the gate matches
- * `[aria-label*="折叠"]` only in Chinese), the geometry constants against the
+ * `[aria-label*="折叠"]` only in Chinese; as of n17 that control lives in
+ * `shell/TopBar.tsx`, not the sidebar header), the geometry constants against the
  * frozen skeleton token `--side`, and the rule that this lane mints no new token
  * name (token freeze 2026-11-23T20:57+08:00; the defining file
  * `web/src/styles/tokens.css` is not in this lane's write scope).
@@ -40,6 +41,7 @@ import {
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const APP = readFileSync(join(HERE, "../App.tsx"), "utf8");
+const TOPBAR = readFileSync(join(HERE, "TopBar.tsx"), "utf8");
 const GATE = readFileSync(join(HERE, "../../../scripts/assert-ui-contract.mjs"), "utf8");
 const TOKENS = readFileSync(join(HERE, "../styles/tokens.css"), "utf8");
 const SELF = readFileSync(join(HERE, "shell-layout.ts"), "utf8");
@@ -80,10 +82,18 @@ describe("n16 shell-layout: one persisted name, gate-readable, no minted tokens"
     expect(appCode).toContain("writeSidebarCollapsed(next)");
   });
 
+  // n17 behaviour change, declared: the collapse control left the sidebar header
+  // for the new top bar, so this pin reads TopBar.tsx now. The count stays at one
+  // across BOTH files — a duplicated testid would make the gate's click target
+  // ambiguous, and a missing one would send clause 8 back to null delta.
   it("the collapse control is discoverable without depending on a locale", () => {
-    expect(APP).toContain('data-testid="shell-sidebar-collapse"');
-    const sites = APP.match(/data-testid="shell-sidebar-collapse"/g) ?? [];
-    expect(sites.length).toBe(1);
+    expect(TOPBAR).toContain('data-testid="shell-sidebar-collapse"');
+    expect(TOPBAR).toContain("t.common.expand");
+    expect(TOPBAR).toContain("t.common.collapse");
+    const sites =
+      (TOPBAR.match(/data-testid="shell-sidebar-collapse"/g) ?? []).length +
+      (bare(APP).match(/data-testid="shell-sidebar-collapse"/g) ?? []).length;
+    expect(sites).toBe(1);
   });
 
   it("geometry constants mirror the frozen skeleton token and the v2 section 3 arithmetic", () => {

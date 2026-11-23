@@ -44,8 +44,6 @@ import {
   Menu,
   MessageSquare,
   Package,
-  PanelLeftClose,
-  PanelLeftOpen,
   Plug,
   Puzzle,
   Radio,
@@ -238,6 +236,7 @@ import {
   readSidebarCollapsed,
   writeSidebarCollapsed,
 } from "@/shell/shell-layout";
+import { ConsoleTopBar, SHELL_TOPBAR_SLOT_ID } from "@/shell/TopBar";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { useI18n } from "@/i18n";
@@ -1020,22 +1019,9 @@ export default function App() {
                 <X />
               </Button>
 
-              <Button
-                ghost
-                size="icon"
-                onClick={toggleCollapsed}
-                data-testid="shell-sidebar-collapse"
-                aria-label={
-                  collapsed ? t.common.expand : t.common.collapse
-                }
-                className="hidden lg:flex text-text-secondary hover:text-midground"
-              >
-                {collapsed ? (
-                  <PanelLeftOpen className="h-4 w-4" />
-                ) : (
-                  <PanelLeftClose className="h-4 w-4" />
-                )}
-              </Button>
+              {/* n17 (UI-SHELL): the collapse control moved to the top bar
+                 (shell/TopBar.tsx) — v2 §3 puts it first in the 56px row, and one
+                 test id must not exist on two surfaces. */}
             </div>
 
             <div className="shrink-0">
@@ -1147,307 +1133,318 @@ export default function App() {
             </div>
           </aside>
 
-          <PageHeaderProvider pluginTabs={pluginTabMeta}>
-            <div
-              className={cn(
-                "relative z-2 flex min-w-0 min-h-0 flex-1 flex-col",
-                // T42 item 3: 375 safety net — clip any overflowing module
-                // body at the shell container so document scrollWidth never
-                // exceeds the viewport (page bodies are other lanes' files).
-                "overflow-x-hidden",
-                "px-3 sm:px-6",
-                isChatRoute
-                  ? "pb-0 pt-1 sm:pt-2 lg:pt-4"
-                  : "pt-2 sm:pt-4 lg:pt-6",
-                isDocsRoute && "min-h-0 flex-1",
-              )}
-            >
-              <PluginSlot name="pre-main" />
+          {/* n17 (UI-SHELL): the main column becomes a stack — top bar,
+          then the routed surface. The slot is a sibling of the provider root,
+          never inside its <main>: the acceptance gate reads an h1 inside
+          main as a duplicate (clause 6 single-h1-in-topbar). */}
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+            <div id={SHELL_TOPBAR_SLOT_ID} className="shrink-0" />
+            <ConsoleTopBar
+              collapsed={collapsed}
+              onToggleCollapse={toggleCollapsed}
+            />
+            <PageHeaderProvider pluginTabs={pluginTabMeta}>
               <div
                 className={cn(
-                  "w-full min-w-0",
-                  !isChatRoute &&
-                    "pb-[calc(2rem+env(safe-area-inset-bottom,0px))] lg:pb-8",
-                  (isDocsRoute || isChatRoute) &&
-                    "min-h-0 flex flex-1 flex-col",
+                  "relative z-2 flex min-w-0 min-h-0 flex-1 flex-col",
+                  // T42 item 3: 375 safety net — clip any overflowing module
+                  // body at the shell container so document scrollWidth never
+                  // exceeds the viewport (page bodies are other lanes' files).
+                  "overflow-x-hidden",
+                  "px-3 sm:px-6",
+                  isChatRoute
+                    ? "pb-0 pt-1 sm:pt-2 lg:pt-4"
+                    : "pt-2 sm:pt-4 lg:pt-6",
+                  isDocsRoute && "min-h-0 flex-1",
                 )}
               >
-                <ProfileKeyedRoutes>
-                  <Suspense fallback={<RouteFallback />}>
-                    <Routes>
-                      {/* v4 console shell routes (M0 lane A stage 2). React
-                          Router picks the highest-ranked match, first-in-tree
-                          on ties: these front the generic builtin entries for
-                          the overlapping paths (/employees, /approvals,
-                          /system, /employees/:employeeId) WITHOUT touching
-                          BUILTIN_ROUTES_CORE, buildRoutes, or the plugin
-                          override plumbing below them. */}
-                      <Route
-                        path="/overview"
-                        element={
-                          <ConsoleModulePage
-                            module="overview"
-                            live={{ duty: <DutyConsolePage />, usage: <UsageConsolePage /> }}
-                          />
-                        }
-                      />
-                      <Route
-                        path="/work"
-                        element={<CronAwareWork />}
-                      />
-                      <Route
-                        path="/identity"
-                        element={<AdminsAwareIdentity />}
-                      />
-                      <Route
-                        path="/knowledge"
-                        element={
-                          <ConsoleModulePage
-                            module="knowledge"
-                            live={{ evidence: <EvidenceConsolePage />, spaces: <KnowledgeConsolePage />, sources: <KnowledgeConsolePage /> }}
-                          />
-                        }
-                      />
-                      {/* R4 item 3: '/matrix' was NOHOST — it is the matrix
-                          tab of the employees module, so it redirects there
-                          (mirrors the '#/matrix' REDIRECTS row in routes.ts). */}
-                      <Route
-                        path="/matrix"
-                        element={<Navigate to="/employees?tab=matrix" replace />}
-                      />
-                      <Route
-                        path="/capabilities"
-                        element={
-                          <ConsoleModulePage
-                            module="capabilities"
-                            live={{
-                              skills: <CapSkillsConsolePage />,
-                              tools: <CapToolsConsolePage />,
-                              models: <CapModelsConsolePage />,
-                              channels: <CapChannelsConsolePage />,
-                            }}
-                          />
-                        }
-                      />
-                      {!overriddenPaths.has("/employees") && (
+                <PluginSlot name="pre-main" />
+                <div
+                  className={cn(
+                    "w-full min-w-0",
+                    !isChatRoute &&
+                      "pb-[calc(2rem+env(safe-area-inset-bottom,0px))] lg:pb-8",
+                    (isDocsRoute || isChatRoute) &&
+                      "min-h-0 flex flex-1 flex-col",
+                  )}
+                >
+                  <ProfileKeyedRoutes>
+                    <Suspense fallback={<RouteFallback />}>
+                      <Routes>
+                        {/* v4 console shell routes (M0 lane A stage 2). React
+                            Router picks the highest-ranked match, first-in-tree
+                            on ties: these front the generic builtin entries for
+                            the overlapping paths (/employees, /approvals,
+                            /system, /employees/:employeeId) WITHOUT touching
+                            BUILTIN_ROUTES_CORE, buildRoutes, or the plugin
+                            override plumbing below them. */}
                         <Route
-                          path="/employees"
+                          path="/overview"
                           element={
                             <ConsoleModulePage
-                              module="employees"
-                              live={{ list: <EmployeesModulePage />, matrix: <MatrixConsolePage /> }}
+                              module="overview"
+                              live={{ duty: <DutyConsolePage />, usage: <UsageConsolePage /> }}
                             />
                           }
                         />
-                      )}
-                      {!overriddenPaths.has("/approvals") && (
                         <Route
-                          path="/approvals"
+                          path="/work"
+                          element={<CronAwareWork />}
+                        />
+                        <Route
+                          path="/identity"
+                          element={<AdminsAwareIdentity />}
+                        />
+                        <Route
+                          path="/knowledge"
                           element={
                             <ConsoleModulePage
-                              module="approvals"
+                              module="knowledge"
+                              live={{ evidence: <EvidenceConsolePage />, spaces: <KnowledgeConsolePage />, sources: <KnowledgeConsolePage /> }}
+                            />
+                          }
+                        />
+                        {/* R4 item 3: '/matrix' was NOHOST — it is the matrix
+                            tab of the employees module, so it redirects there
+                            (mirrors the '#/matrix' REDIRECTS row in routes.ts). */}
+                        <Route
+                          path="/matrix"
+                          element={<Navigate to="/employees?tab=matrix" replace />}
+                        />
+                        <Route
+                          path="/capabilities"
+                          element={
+                            <ConsoleModulePage
+                              module="capabilities"
                               live={{
-                                pending: <ApprovalsPendingConsolePage />,
-                                history: <ApprovalsHistoryConsolePage />,
+                                skills: <CapSkillsConsolePage />,
+                                tools: <CapToolsConsolePage />,
+                                models: <CapModelsConsolePage />,
+                                channels: <CapChannelsConsolePage />,
                               }}
                             />
                           }
                         />
-                      )}
-                      {!overriddenPaths.has("/system") && (
-                        <Route
-                          path="/system"
-                          element={<SystemAwareTabs />}
-                        />
-                      )}
-                      {/* R10 item 7: compat routes mirroring the frozen
-                          routes.ts table — /audit reaches the /system audit
-                          live slot (routes.ts:257), and /channels defers to
-                          the V4 capabilities?tab=channels surface (routes.ts:
-                          171) instead of the bare upstream English shell.
-                          First-in-tree wins, so these front the generic
-                          builtin entries without touching the route map. */}
-                      {/* R21 b: /audit mounts the audit page itself. The old
-                          <Navigate to="/system?tab=events"> left the URL rewritten
-                          and the page body unreachable, so QA measured
-                          techDetails:false on a page that never rendered.
-                          `?tab=events` needs no special case: the module reads
-                          only the params it owns and ignores the rest. */}
-                      <Route path="/audit" element={<AuditAwareEntry />} />
-                      {/* R28 gov slot contract: the top-level '/cron' alias
-                        lands on the gov cron module page (cron5-*), never the
-                        upstream shell. */}
-                      <Route path="/cron" element={<CronConsolePage />} />
-                      <Route
-                        path="/channels"
-                        element={<Navigate to="/capabilities?tab=channels" replace />}
-                      />
-                      {/* R11 item 2: /models renders the gov V4 models module
-                        through the same capabilities tab it mirrors in
-                        routes.ts (#/capabilities?tab=models), not the upstream
-                        page with the raw parse error. */}
-                      <Route
-                        path="/models"
-                        element={<Navigate to="/capabilities?tab=models" replace />}
-                      />
-                      {/* R15 item 1: /skills renders the gov skills module
-                        (skl4-*, real data) through its capabilities tab,
-                        mirroring routes.ts — not the upstream English shell. */}
-                      <Route
-                        path="/skills"
-                        element={<Navigate to="/capabilities?tab=skills" replace />}
-                      />
-                      {/* R15 item 2: /metrics carries the gov metrics module
-                        (met5-* heat table) as its own page body, mirroring
-                        routes.ts #/metrics without falling to upstream pages. */}
-                      <Route
-                        path="/metrics"
-                        element={<MetricsConsolePage />}
-                      />
-                      {/* R17 collab: /collab and /collaboration mount the aud
-                        delegation page directly (col4-* reaches the screen),
-                        and /org lands on the departments view — replacing the
-                        old fall-through to /overview. */}
-                      {/* R17 auth5: the console sign-in page; the bridge
-                        cookie is set by the same-origin /auth/login proxy. */}
-                      <Route path="/login" element={<LoginPage />} />
-                      <Route path="/collab" element={<CollabConsolePage />} />
-                      <Route
-                        path="/collaboration"
-                        element={<CollabConsolePage />}
-                      />
-                      <Route
-                        path="/org"
-                        element={
-                          <Navigate to="/identity?tab=departments" replace />
-                        }
-                      />
-                      {/* R32 item 3: the seven bare paths no longer fall
-                          through to /overview silently. duty IS the /overview
-                          default tab; tasks/settings/events normalize onto
-                          real surfaces; the rest state 未接入 in plain words
-                          instead of showing the duty console. */}
-                      <Route path="/duty" element={<DutyRedirect />} />
-                      <Route path="/tasks" element={<Navigate to="/work?tab=board" replace />} />
-                      {/* R40: /tasks/<taskId> deep link renders the task
-                          module itself; the detail drawer opens straight from
-                          the URL (more specific path wins over /tasks). */}
-                      <Route path="/tasks/:taskId" element={<TasksBoardConsolePage />} />
-                      <Route path="/settings" element={<Navigate to="/system?tab=defaults" replace />} />
-                      <Route
-                        path="/events"
-                        element={
-                          <Navigate to="/system?tab=events" replace />
-                        }
-                      />
-                      <Route path="/calendar" element={<NotWiredPage label="日历" testId="cal-page" />} />
-                      <Route path="/integrations" element={<NotWiredPage label="集成" testId="int-page" />} />
-                      <Route path="/forms" element={<NotWiredPage label="表单" testId="frm-page" />} />
-                      {!overriddenPaths.has("/employees/:employeeId") && (
-                        <>
+                        {!overriddenPaths.has("/employees") && (
                           <Route
-                            path="/employees/:employeeId"
+                            path="/employees"
                             element={
-                              <ConsoleEmployeeDetailPage
-                                fallback={<EmployeeDetailPage />}
-                                renderChatHost={renderConsoleChatHost}
+                              <ConsoleModulePage
+                                module="employees"
+                                live={{ list: <EmployeesModulePage />, matrix: <MatrixConsolePage /> }}
                               />
                             }
-                          />
-                          <Route
-                            path="/employees/:employeeId/config"
-                            element={
-                              <ConsoleEmployeeDetailPage
-                                zone="config"
-                                fallback={<EmployeeDetailPage />}
-                                renderChatHost={renderConsoleChatHost}
-                              />
-                            }
-                          />
-                          <Route
-                            path="/employees/:employeeId/tasks"
-                            element={
-                              <ConsoleEmployeeDetailPage
-                                zone="tasks"
-                                fallback={<EmployeeDetailPage />}
-                                renderChatHost={renderConsoleChatHost}
-                              />
-                            }
-                          />
-                          <Route
-                            path="/employees/:employeeId/runs"
-                            element={
-                              <ConsoleEmployeeDetailPage
-                                zone="runs"
-                                fallback={<EmployeeDetailPage />}
-                                renderChatHost={renderConsoleChatHost}
-                              />
-                            }
-                          />
-                          <Route
-                            path="/employees/:employeeId/evidence"
-                            element={
-                              <ConsoleEmployeeDetailPage
-                                zone="evidence"
-                                fallback={<EmployeeDetailPage />}
-                                renderChatHost={renderConsoleChatHost}
-                              />
-                            }
-                          />
-                        </>
-                      )}
-                      {runsModulePageAvailable() &&
-                        !overriddenPaths.has("/runs") && (
-                          <Route
-                            path="/runs"
-                            element={<ConsoleRunsAdapter fallback={<RunsPage />} />}
                           />
                         )}
-                      {routes.map(({ key, path, element }) => (
-                        <Route key={key} path={path} element={element} />
-                      ))}
-                      <Route
-                        path="*"
-                        element={
-                          <UnknownRouteFallback pluginsLoading={pluginsLoading} />
-                        }
-                      />
-                    </Routes>
-                  </Suspense>
-                </ProfileKeyedRoutes>
+                        {!overriddenPaths.has("/approvals") && (
+                          <Route
+                            path="/approvals"
+                            element={
+                              <ConsoleModulePage
+                                module="approvals"
+                                live={{
+                                  pending: <ApprovalsPendingConsolePage />,
+                                  history: <ApprovalsHistoryConsolePage />,
+                                }}
+                              />
+                            }
+                          />
+                        )}
+                        {!overriddenPaths.has("/system") && (
+                          <Route
+                            path="/system"
+                            element={<SystemAwareTabs />}
+                          />
+                        )}
+                        {/* R10 item 7: compat routes mirroring the frozen
+                            routes.ts table — /audit reaches the /system audit
+                            live slot (routes.ts:257), and /channels defers to
+                            the V4 capabilities?tab=channels surface (routes.ts:
+                            171) instead of the bare upstream English shell.
+                            First-in-tree wins, so these front the generic
+                            builtin entries without touching the route map. */}
+                        {/* R21 b: /audit mounts the audit page itself. The old
+                            <Navigate to="/system?tab=events"> left the URL rewritten
+                            and the page body unreachable, so QA measured
+                            techDetails:false on a page that never rendered.
+                            `?tab=events` needs no special case: the module reads
+                            only the params it owns and ignores the rest. */}
+                        <Route path="/audit" element={<AuditAwareEntry />} />
+                        {/* R28 gov slot contract: the top-level '/cron' alias
+                          lands on the gov cron module page (cron5-*), never the
+                          upstream shell. */}
+                        <Route path="/cron" element={<CronConsolePage />} />
+                        <Route
+                          path="/channels"
+                          element={<Navigate to="/capabilities?tab=channels" replace />}
+                        />
+                        {/* R11 item 2: /models renders the gov V4 models module
+                          through the same capabilities tab it mirrors in
+                          routes.ts (#/capabilities?tab=models), not the upstream
+                          page with the raw parse error. */}
+                        <Route
+                          path="/models"
+                          element={<Navigate to="/capabilities?tab=models" replace />}
+                        />
+                        {/* R15 item 1: /skills renders the gov skills module
+                          (skl4-*, real data) through its capabilities tab,
+                          mirroring routes.ts — not the upstream English shell. */}
+                        <Route
+                          path="/skills"
+                          element={<Navigate to="/capabilities?tab=skills" replace />}
+                        />
+                        {/* R15 item 2: /metrics carries the gov metrics module
+                          (met5-* heat table) as its own page body, mirroring
+                          routes.ts #/metrics without falling to upstream pages. */}
+                        <Route
+                          path="/metrics"
+                          element={<MetricsConsolePage />}
+                        />
+                        {/* R17 collab: /collab and /collaboration mount the aud
+                          delegation page directly (col4-* reaches the screen),
+                          and /org lands on the departments view — replacing the
+                          old fall-through to /overview. */}
+                        {/* R17 auth5: the console sign-in page; the bridge
+                          cookie is set by the same-origin /auth/login proxy. */}
+                        <Route path="/login" element={<LoginPage />} />
+                        <Route path="/collab" element={<CollabConsolePage />} />
+                        <Route
+                          path="/collaboration"
+                          element={<CollabConsolePage />}
+                        />
+                        <Route
+                          path="/org"
+                          element={
+                            <Navigate to="/identity?tab=departments" replace />
+                          }
+                        />
+                        {/* R32 item 3: the seven bare paths no longer fall
+                            through to /overview silently. duty IS the /overview
+                            default tab; tasks/settings/events normalize onto
+                            real surfaces; the rest state 未接入 in plain words
+                            instead of showing the duty console. */}
+                        <Route path="/duty" element={<DutyRedirect />} />
+                        <Route path="/tasks" element={<Navigate to="/work?tab=board" replace />} />
+                        {/* R40: /tasks/<taskId> deep link renders the task
+                            module itself; the detail drawer opens straight from
+                            the URL (more specific path wins over /tasks). */}
+                        <Route path="/tasks/:taskId" element={<TasksBoardConsolePage />} />
+                        <Route path="/settings" element={<Navigate to="/system?tab=defaults" replace />} />
+                        <Route
+                          path="/events"
+                          element={
+                            <Navigate to="/system?tab=events" replace />
+                          }
+                        />
+                        <Route path="/calendar" element={<NotWiredPage label="日历" testId="cal-page" />} />
+                        <Route path="/integrations" element={<NotWiredPage label="集成" testId="int-page" />} />
+                        <Route path="/forms" element={<NotWiredPage label="表单" testId="frm-page" />} />
+                        {!overriddenPaths.has("/employees/:employeeId") && (
+                          <>
+                            <Route
+                              path="/employees/:employeeId"
+                              element={
+                                <ConsoleEmployeeDetailPage
+                                  fallback={<EmployeeDetailPage />}
+                                  renderChatHost={renderConsoleChatHost}
+                                />
+                              }
+                            />
+                            <Route
+                              path="/employees/:employeeId/config"
+                              element={
+                                <ConsoleEmployeeDetailPage
+                                  zone="config"
+                                  fallback={<EmployeeDetailPage />}
+                                  renderChatHost={renderConsoleChatHost}
+                                />
+                              }
+                            />
+                            <Route
+                              path="/employees/:employeeId/tasks"
+                              element={
+                                <ConsoleEmployeeDetailPage
+                                  zone="tasks"
+                                  fallback={<EmployeeDetailPage />}
+                                  renderChatHost={renderConsoleChatHost}
+                                />
+                              }
+                            />
+                            <Route
+                              path="/employees/:employeeId/runs"
+                              element={
+                                <ConsoleEmployeeDetailPage
+                                  zone="runs"
+                                  fallback={<EmployeeDetailPage />}
+                                  renderChatHost={renderConsoleChatHost}
+                                />
+                              }
+                            />
+                            <Route
+                              path="/employees/:employeeId/evidence"
+                              element={
+                                <ConsoleEmployeeDetailPage
+                                  zone="evidence"
+                                  fallback={<EmployeeDetailPage />}
+                                  renderChatHost={renderConsoleChatHost}
+                                />
+                              }
+                            />
+                          </>
+                        )}
+                        {runsModulePageAvailable() &&
+                          !overriddenPaths.has("/runs") && (
+                            <Route
+                              path="/runs"
+                              element={<ConsoleRunsAdapter fallback={<RunsPage />} />}
+                            />
+                          )}
+                        {routes.map(({ key, path, element }) => (
+                          <Route key={key} path={path} element={element} />
+                        ))}
+                        <Route
+                          path="*"
+                          element={
+                            <UnknownRouteFallback pluginsLoading={pluginsLoading} />
+                          }
+                        />
+                      </Routes>
+                    </Suspense>
+                  </ProfileKeyedRoutes>
 
-                {embeddedChat &&
-                  !chatOverriddenByPlugin &&
-                  (pluginsLoading ? (
-                    isChatRoute ? (
-                      <RouteFallback label="Loading chat…" />
-                    ) : null
-                  ) : chatHostMounted ? (
-                    <div
-                      data-chat-active={isChatRoute ? "true" : "false"}
-                      className={cn(
-                        "min-h-0 min-w-0",
-                        isChatRoute ? "flex flex-1 flex-col" : "hidden",
-                      )}
-                      aria-hidden={!isChatRoute}
-                    >
-                      <Suspense
-                        fallback={
-                          isChatRoute ? (
-                            <RouteFallback label="Loading chat…" />
-                          ) : null
-                        }
+                  {embeddedChat &&
+                    !chatOverriddenByPlugin &&
+                    (pluginsLoading ? (
+                      isChatRoute ? (
+                        <RouteFallback label="Loading chat…" />
+                      ) : null
+                    ) : chatHostMounted ? (
+                      <div
+                        data-chat-active={isChatRoute ? "true" : "false"}
+                        className={cn(
+                          "min-h-0 min-w-0",
+                          isChatRoute ? "flex flex-1 flex-col" : "hidden",
+                        )}
+                        aria-hidden={!isChatRoute}
                       >
-                        <ChatPage isActive={isChatRoute} />
-                      </Suspense>
-                    </div>
-                  ) : isChatRoute ? (
-                    <RouteFallback label="Loading chat…" />
-                  ) : null)}
+                        <Suspense
+                          fallback={
+                            isChatRoute ? (
+                              <RouteFallback label="Loading chat…" />
+                            ) : null
+                          }
+                        >
+                          <ChatPage isActive={isChatRoute} />
+                        </Suspense>
+                      </div>
+                    ) : isChatRoute ? (
+                      <RouteFallback label="Loading chat…" />
+                    ) : null)}
+                </div>
+                <PluginSlot name="post-main" />
               </div>
-              <PluginSlot name="post-main" />
+            </PageHeaderProvider>
             </div>
-          </PageHeaderProvider>
         </div>
       </div>
 
