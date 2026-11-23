@@ -124,8 +124,28 @@ AssertionError: served entry drifted from the dist on disk: expected 'assets/ind
 4. **未做**：DU-04 裁定项（渠道事件流 A/B）不受本单影响；审批历史页与 `states.tsx` 空态长文按台账 A3/A7 判「留内联」，未接线（不是遗漏，是有判据的处置）。
 5. **未跑**：`e2e/ia-smoke.spec.ts`（playwright e2e）未跑——本单验证面＝工单点名的 vitest/grep/lint/tsc/build ＋ 取证腿；四态强制判据由 DU-05 既有件覆盖，未改其语义。
 
-## 八、交付
+## 八、交付（原始输出）
 
-- commit：只 add 写域文件＋COPY-INVENTORY＋本文件（禁 `add -A`；`evidence/` 不入库）。
-- push：`git push origin task/DU-08-infohint`（禁 force／--no-verify），随后 `git ls-remote origin refs/heads/task/DU-08-infohint` 定向回读原文行＝`git rev-parse HEAD`。
-- 与在跑 rebase 波的关系：本基已含 AP-04 tip `30ffd33c58`；AP-04 正被重取基属总控并窗动作，本笔只落在 `task/DU-08-infohint`，写完即交不等合并。L0 合并顺序 DU-01..07→DU-08 不变。
+```
+$ git add web/src/components/ui/InfoHint.tsx web/src/components/ui/glossary.ts web/src/modules/duty \
+    web/src/modules/approvals docs/product/design/COPY-INVENTORY-20261123.md DONE-DU-08.md
+$ git status --porcelain | grep -v "^??" | wc -l      # 只 add 写域＋两份文档，evidence/ 留在未跟踪
+35
+$ git diff --cached --stat | tail -1
+ 35 files changed, 971 insertions(+), 90 deletions(-)
+$ git commit -m "feat(DU-08): 解释性文字收口 InfoHint＋glossary 单源，键盘序与 aria-expanded 钉测"
+lefthook pre-commit → lint web ✔（pnpm exec eslint，0 errors／19 warnings 全部为既有 react-hooks 条，
+本笔未新增任何 error；未用 --no-verify）
+a596b7f045b49b4a579ee6fda3a86c72965da429
+$ git push origin task/DU-08-infohint                 # 禁 force，普通 push；同批完成
+ * [new branch]            task/DU-08-infohint -> task/DU-08-infohint
+PUSH_EXIT=0
+$ git ls-remote origin refs/heads/task/DU-08-infohint
+a596b7f045b49b4a579ee6fda3a86c72965da429	refs/heads/task/DU-08-infohint
+$ git rev-parse HEAD
+a596b7f045b49b4a579ee6fda3a86c72965da429
+```
+
+定向 ref 回读行与 `rev-parse HEAD` 逐字相等（同 sha 二次复读亦相等），原文另存 `evidence/du08-ls-remote.txt`。
+栈合基关系：本笔落在 `task/DU-08-infohint`（父＝`6a8cb80203`），写完即交不等合并；AP-04 正被重取基属总控并窗动作，
+L0 合并顺序 DU-01..07→DU-08 不变。
