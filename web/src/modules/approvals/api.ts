@@ -6,6 +6,8 @@
  *   list    `GET  /agent-api/api/approvals`        (`?status=&limit=&cursor=`)
  *   detail  `GET  /agent-api/api/approval?id=`     (web/src/shell/routes.ts row 7,
  *                                                    docs/_artifacts/D/T02-ENDPOINT-RECONCILIATION.md)
+ *   records `GET  /agent-api/api/audit?resourceId=` — AP-03 处理记录腿，走审计
+ *                                                    车道既有读口（见下方 AUDIT_LIST_PATH）
  *   decision `POST /agent-api/api/approval/decision?id=` — the BFF's single approval
  *   write route (`X-Console-Write: 1`, body `{verdict, comment?}`).
  *
@@ -25,6 +27,7 @@ import {
   type ApprovalPage,
   type EmployeeVersionRef,
 } from "./model";
+import { auditPageFrom, type AuditPage } from "@/modules/audit/model";
 
 export const LIST_PATH = "/agent-api/api/approvals";
 export const DETAIL_PATH = "/agent-api/api/approval";
@@ -72,6 +75,34 @@ export function employeeVersionsUrl(employeeId: string, limit = PAGE_LIMIT): str
   let url = appendQuery(EMPLOYEE_VERSIONS_PATH, "id", employeeId);
   url = appendQuery(url, "limit", String(limit));
   return url;
+}
+
+/**
+ * AP-03 ② 处理记录读腿。审计车道既有读口 GET /api/audit（modules/audit/api.ts
+ * 的 LIST_PATH 同一路径），本模块只拼自己的 query、不改它的面。
+ * 本机 2026-11-23 真登录腿实测（evidence/raw-audit-*.json，BFF 8092）：
+ *   `?resourceId=ap_0C67930A766D4AA49E4B5B44EC&limit=50` → **200**，顶层
+ *   keys=[events,limit,cursor,hasMore,total,totalSource]，3 行，行内带
+ *   eventId/occurredAt/actor{type,id}/action/outcome；
+ *   `?limit=50`（无过滤）→ **400** `console.missing_filter`（七个过滤键至少给
+ *   一个），所以 resourceId 必带；
+ *   无会话 cookie → **401** `console.unauthenticated`（带 X-Console-Request-Id）。
+ * 行解析复用 `auditPageFrom`（单点），不在此另起一套审计行模型。
+ */
+export const AUDIT_LIST_PATH = "/agent-api/api/audit";
+/** 一次读多少行：与审计面板同档（audit/api.ts PAGE_LIMIT），不新造尺寸。 */
+export const RECORDS_LIMIT = 50;
+
+export function auditResourceUrl(resourceId: string, limit = RECORDS_LIMIT): string {
+  let url = appendQuery(AUDIT_LIST_PATH, "resourceId", resourceId);
+  url = appendQuery(url, "limit", String(limit));
+  return url;
+}
+
+/** null = 这一条读口没答成列表（失败/无权），屏上说「暂不可用」，不画空列表。 */
+export async function fetchProcessingRecords(resourceId: string): Promise<AuditPage | null> {
+  const payload = await fetchJSON<unknown>(auditResourceUrl(resourceId));
+  return auditPageFrom(payload);
 }
 
 /** One page of the queue. `null` page = the answer is not a list at all (a failure). */

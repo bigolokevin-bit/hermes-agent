@@ -802,6 +802,71 @@ function decisionEntries(rec: Record<string, unknown>): DecisionEntry[] {
 }
 
 /* ------------------------------------------------------------------ *
+ * AP-03 ① — 时间线事件合流（提交 → 各票 → 到期/替代）。
+ * 三个来源全部只认这条详情响应真带回的值：`decisions[]`、expiresAt 一族
+ * （DEADLINE_KEYS，与「处理期限」字段同一把尺）、supersededBy 一族。
+ * 排序按各事件自己的 `atRaw`（epochOf 单点解析）升序；读不出时间的排末尾，
+ * 彼此保持服务返回的相对次序（稳定排序，同值不重排）。
+ * 没有值就没有节点：不带 expiresAt 不造「到期」，不带 supersededBy 不造「替代」，
+ * 时间缺失只写「该字段未返回」，绝不拿当前时间补一个看似合理的时刻。
+ * ------------------------------------------------------------------ */
+
+export type TrailEventKind = "submitted" | "decision" | "deadline" | "superseded";
+
+export interface TrailEvent {
+  kind: TrailEventKind;
+  /** 事件时间原值（绝对/相对读数的同一输入）；缺= null，不是 0、不是「现在」。 */
+  atRaw: string | null;
+  /** 只有 decision 事件带票面，其它为 null。 */
+  entry: DecisionEntry | null;
+  /** 该票在 `decisions[]` 中的序号——屏上「节点 N」= N+1，服务返回序权威。 */
+  nodeIndex: number;
+  /** 只有 superseded 事件带替代单标识（原值只进 title，不上屏）。 */
+  refId: string | null;
+}
+
+/**
+ * 稳定升序：`atRaw` 解析不出的（含 null）一律排末尾，彼此按原序；
+ * 两边都能解析时才按时针比较，同值仍按原序。排序绝不发明时间。
+ */
+function stableSortByAtRaw<T>(events: readonly T[], atOf: (event: T) => string | null): T[] {
+  return events
+    .map((event, index) => ({ event, index }))
+    .sort((a, b) => {
+      const va = epochOf(atOf(a.event));
+      const vb = epochOf(atOf(b.event));
+      if (va === null && vb === null) return a.index - b.index;
+      if (va === null) return 1;
+      if (vb === null) return -1;
+      return va === vb ? a.index - b.index : va - vb;
+    })
+    .map((wrapped) => wrapped.event);
+}
+
+/**
+ * AP-03 ② 处理记录的时间正序。行的形状由审计车道的模型给出（本模块只借用
+ * `occurredAtRaw` 这一条腿，不另起一套审计行模型）：正序＝事件先后，
+ * 读不出时间的排末尾并保持服务返回的相对次序——不补时钟、不重编号。
+ */
+export function sortRecordsByTime<T extends { occurredAtRaw?: string | null }>(rows: readonly T[]): T[] {
+  return stableSortByAtRaw(rows, (row) => row.occurredAtRaw ?? null);
+}
+
+export function trailEventsFrom(detail: ApprovalDetail): TrailEvent[] {
+  const events: TrailEvent[] = [
+    { kind: "submitted", atRaw: detail.submittedAt, entry: null, nodeIndex: -1, refId: null },
+    ...detail.decisions.map(
+      (entry, nodeIndex): TrailEvent => ({ kind: "decision", atRaw: entry.atRaw, entry, nodeIndex, refId: null }),
+    ),
+  ];
+  if (detail.deadlineAt !== null)
+    events.push({ kind: "deadline", atRaw: detail.deadlineAt, entry: null, nodeIndex: -1, refId: null });
+  if (detail.supersededBy !== null)
+    events.push({ kind: "superseded", atRaw: null, entry: null, nodeIndex: -1, refId: detail.supersededBy });
+  return stableSortByAtRaw(events, (event) => event.atRaw);
+}
+
+/* ------------------------------------------------------------------ *
  * Q13 字段级差异读取。键形制全部来自 2026-11-23 本机金标准实测
  * （GET /agent-api/api/approval?id=ap_AEEC…，原文见 worktree evidence/）：
  *   detail.changeDetail { fromVersionId, toVersionNo, addedGrants[],

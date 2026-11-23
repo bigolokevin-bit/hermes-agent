@@ -9,12 +9,21 @@
  */
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ChevronRight } from "lucide-react";
-import { Link, useLocation } from "react-router";
+import { Link } from "react-router";
 
 import { PermalinkCopy } from "./PermalinkCopy";
 import { RowCopy } from "./RowCopy";
-import { saveCorrelationReturn } from "./correlationReturn";
-import { fetchVersionChain } from "./api";
+import { useLeaveWithSnapshot } from "./correlationReturn";
+import { fetchProcessingRecords, fetchVersionChain, failureInfo } from "./api";
+import {
+  RECORDS_EMPTY_SENTENCE,
+  RECORDS_IDLE_SENTENCE,
+  RECORDS_LOADING_SENTENCE,
+  RECORDS_UNAVAILABLE_SENTENCE,
+  TRAIL_FACE_RECORDED,
+  requestIdLine,
+  recordsFailureSentence,
+} from "./copy";
 
 import { Badge } from "@nous-research/ui/ui/components/badge";
 import { Button } from "@nous-research/ui/ui/components/button";
@@ -26,11 +35,15 @@ import {
   diffBranchFor,
   humanizeHandles,
   money,
+  sortRecordsByTime,
+  trailEventsFrom,
   versionChainNote,
   type ApprovalDetail,
   type ApprovalRow,
   type VersionChainNote,
 } from "./model";
+import type { AuditPage } from "@/modules/audit/model";
+import { AUDIT_PATH, DEEP_LINK_PARAM } from "@/modules/audit/permalink";
 import { DetailsDisclosure, RequestIdCopyField } from "./states";
 import { APPROVAL_RID_MISSING, FIELD_MISSING_SENTENCE } from "./stateCopy";
 import { RelativeTime } from "./RelativeTime";
@@ -384,10 +397,14 @@ export function ApprovalRowCard({
 
 /* ------------------------------------------------------------------ *
  * R46 apd6 — the decision trail. Same data, one honest timeline:
- * submitted → every recorded decision (service order, never re-sorted
- * here) → approvers still outstanding → terminal state → related
- * run/task/evidence. Any segment without backing data says 该段无记录
- * with the reason in the title; nothing is invented.
+ * submitted → every recorded decision → the 处理期限 (expiresAt) and
+ * 被替代 (supersededBy) events when the ticket names them → approvers
+ * still outstanding → terminal state → related run/task/evidence.
+ * AP-03 ① merges those sources into ONE ordered stream: 节点先后只由
+ * 服务带回的 `atRaw` 决定（同一把 epochOf 尺），读不出时间的落末尾并
+ * 保持服务返回序；没有 expiresAt 就没有到期节点，没有 supersededBy 就
+ * 没有替代节点——一个都不编。任何缺数据的位置照旧说 该段无记录，原因
+ * 写在 title 里。
  * ------------------------------------------------------------------ */
 
 function NoSeg({ reason }: { reason: string }) {
@@ -403,20 +420,32 @@ function NoSeg({ reason }: { reason: string }) {
  * screen shows it. Raw ids never enter the copy; missing segments keep the
  * 「该段无记录」 wording, missing comments keep 「未填」. Nothing new is
  * asked of the server — this reads only the detail already on screen.
+ *
+ * AP-03 ①：合流后的事件（提交/票/到期/替代）按时间线同一顺序落文本，与屏上
+ * 逐字同序；到期与替代节点没有「意见」段，就不编一个。已结束单据的票面带
+ * 「票面已记录」标注（回填票面不是失败，措辞单点走 copy.ts），且替代节点只
+ * 给短码——全值原码留在 title 里。
  */
 function trailToText(detail: ApprovalDetail): string {
-  const lines: string[] = [
-    `提交 · ${detail.requester.label} · ${detail.submitted ?? "该段无记录"}`,
-  ];
-  if (detail.decisions.length === 0) {
-    lines.push("审批节点 · 该段无记录");
-  } else {
-    detail.decisions.forEach((entry, index) => {
+  const settled = detail.status.settled;
+  const lines: string[] = [];
+  for (const event of trailEventsFrom(detail)) {
+    if (event.kind === "submitted") {
+      lines.push(`提交 · ${detail.requester.label} · ${detail.submitted ?? "该段无记录"}`);
+    } else if (event.kind === "decision" && event.entry) {
+      const entry = event.entry;
       lines.push(
-        `节点 ${index + 1} · ${entry.who} · ${entry.verdict} · ${entry.at ?? "该段无记录"} · 意见：${entry.note ?? "未填"}`,
+        `节点 ${event.nodeIndex + 1} · ${entry.who} · ${entry.verdict} · ${entry.at ?? "该段无记录"} · 意见：${
+          entry.note ?? "未填"
+        }${settled ? ` · ${TRAIL_FACE_RECORDED}` : ""}`,
       );
-    });
+    } else if (event.kind === "deadline") {
+      lines.push(`处理期限 · ${detail.deadline ?? "该段无记录"}`);
+    } else if (event.kind === "superseded") {
+      lines.push(`被替代 · ${shortRef(event.refId ?? "")}`);
+    }
   }
+  if (detail.decisions.length === 0) lines.push("审批节点 · 该段无记录");
   const pending = detail.approvers.labels.filter(
     (label) => !detail.decisions.some((entry) => entry.who === label),
   );
@@ -426,10 +455,11 @@ function trailToText(detail: ApprovalDetail): string {
 }
 
 export function DecisionTrail({ detail }: { detail: ApprovalDetail }): ReactNode {
-  // R94: 点关联链离开前记下当前视图（完整 search+滚动位），返回时同页还原。
-  const location = useLocation();
-  const leaveWithSnapshot = () => saveCorrelationReturn(location.search, window.scrollY ?? 0);
+  // R94/AP-03: 点关联链（运行/任务/新单）离开前记下当前视图，返回时同页还原。
+  const leaveWithSnapshot = useLeaveWithSnapshot();
   const acted = detail.decisions;
+  const settled = detail.status.settled;
+  const events = useMemo(() => trailEventsFrom(detail), [detail]);
   const pending = detail.approvers.labels.filter((label) => !acted.some((entry) => entry.who === label));
   const copyText = useMemo(() => trailToText(detail), [detail]);
   const emptyTrail = acted.length === 0 && pending.length === 0;
@@ -455,9 +485,10 @@ export function DecisionTrail({ detail }: { detail: ApprovalDetail }): ReactNode
   };
   return (
     <section className="ui-c-section" data-testid="apd6-trail" aria-label="决策链路（只读）">
-      {/* UI-C: 区块头在上，复制入口收到右上；链路节点顺序仍由服务返回决定。 */}
+      {/* UI-C: 区块头在上，复制入口收到右上；节点先后由服务带回的时间决定，
+        * 同值/缺时间的保持服务返回序（AP-03 ①）。 */}
       <div className="ui-c-section-head">
-        <h3 className="ui-c-section-title">决策链路 · 只读（节点顺序即服务返回顺序）</h3>
+        <h3 className="ui-c-section-title">决策链路 · 只读（节点按服务带回的时间先后）</h3>
         <span className="ui-c-section-actions">
           <Button
             size="sm"
@@ -485,34 +516,89 @@ export function DecisionTrail({ detail }: { detail: ApprovalDetail }): ReactNode
         </span>
       </div>
       <ol className="flex min-w-0 flex-col gap-1 text-xs">
-        <li className="min-w-0 break-words" data-testid="apd6-step-submitted" title={detail.requester.raw ?? undefined}>
-          提交 · {detail.requester.label} ·{" "}
-          <RelativeTime iso={detail.submittedAt} testid="apv-time-detail-submitted" />
-        </li>
+        {events.map((event) => {
+          if (event.kind === "submitted") {
+            return (
+              <li key="submitted" className="min-w-0 break-words" data-testid="apd6-step-submitted" title={detail.requester.raw ?? undefined}>
+                提交 · {detail.requester.label} ·{" "}
+                <RelativeTime iso={detail.submittedAt} testid="apv-time-detail-submitted" />
+              </li>
+            );
+          }
+          if (event.kind === "decision" && event.entry) {
+            const entry = event.entry;
+            const index = event.nodeIndex;
+            return (
+              <li
+                key={`node-${index}`}
+                className="min-w-0 break-words"
+                data-testid={`apd6-step-node-${index}`}
+                title={entry.whoRaw ?? undefined}
+              >
+                节点 {index + 1} · {entry.who} · {entry.verdict} ·{" "}
+                <RelativeTime iso={entry.atRaw} testid={`apv-time-detail-node-${index}`} /> · 意见：
+                {entry.note == null ? (
+                  "未填"
+                ) : (
+                  <span data-testid={`apv-trunc-note-${index}`} title={truncateDisplay(entry.note).full ?? undefined}>
+                    {truncateDisplay(entry.note).shown}
+                  </span>
+                )}
+                {settled ? (
+                  <>
+                    {" · "}
+                    <span
+                      className="text-muted-foreground"
+                      data-testid={`apd6-step-node-face-${index}`}
+                      title="这张票由服务随单据带回；再次提交回到的是同一张已有票面（回填票面），票面内容不变。"
+                    >
+                      {TRAIL_FACE_RECORDED}
+                    </span>
+                  </>
+                ) : null}
+              </li>
+            );
+          }
+          if (event.kind === "deadline") {
+            // 到期标记只报服务带回的处理期限时刻；「是否真的过期」以单据状态为准，
+            // 这里不拿浏览器时钟推断成已过期/未过期两种事实。
+            return (
+              <li
+                key="deadline"
+                className="min-w-0 break-words"
+                data-testid="apd6-step-deadline"
+                title={`处理期限原值（expiresAt 一族）：${detail.deadlineAt ?? "未带回"}。到期与否由单据状态宣布，本节点只标出服务给的时刻。`}
+              >
+                处理期限 ·{" "}
+                <RelativeTime iso={detail.deadlineAt} testid="apv-time-detail-deadline" />
+              </li>
+            );
+          }
+          if (event.kind === "superseded") {
+            const ref = event.refId ?? "";
+            return (
+              <li key="superseded" className="min-w-0 break-words" data-testid="apd6-step-superseded" title={ref}>
+                被替代 · {shortRef(ref)} · 时间{" "}
+                <RelativeTime iso={event.atRaw} testid="apv-time-detail-superseded" /> ·{" "}
+                <Link
+                  className="underline underline-offset-2"
+                  to={`/approvals?id=${encodeURIComponent(ref)}`}
+                  title={ref}
+                  data-testid="apd6-link-superseded"
+                  onClick={leaveWithSnapshot}
+                >
+                  查看新单
+                </Link>
+              </li>
+            );
+          }
+          return null;
+        })}
         {acted.length === 0 ? (
           <li className="min-w-0 break-words" data-testid="apd6-step-nodes-none">
             审批节点 · <NoSeg reason="服务未返回任何决策记录。" />
           </li>
-        ) : (
-          acted.map((entry, index) => (
-            <li
-              key={`${entry.who}-${index}`}
-              className="min-w-0 break-words"
-              data-testid={`apd6-step-node-${index}`}
-              title={entry.whoRaw ?? undefined}
-            >
-              节点 {index + 1} · {entry.who} · {entry.verdict} ·{" "}
-              <RelativeTime iso={entry.atRaw} testid={`apv-time-detail-node-${index}`} /> · 意见：
-              {entry.note == null ? (
-                "未填"
-              ) : (
-                <span data-testid={`apv-trunc-note-${index}`} title={truncateDisplay(entry.note).full ?? undefined}>
-                  {truncateDisplay(entry.note).shown}
-                </span>
-              )}
-            </li>
-          ))
-        )}
+        ) : null}
         {pending.map((label, index) => (
           <li
             key={`pending-${label}-${index}`}
@@ -579,6 +665,213 @@ export function DecisionTrail({ detail }: { detail: ApprovalDetail }): ReactNode
           onFocus={(e) => e.currentTarget.select()}
         />
       ) : null}
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ * AP-03 ② — 内联「处理记录」小段（审计事件）。
+ *
+ * 读腿：GET /agent-api/api/audit?resourceId=<ap_id>&limit=50（审计车道既有
+ * 读口，行模型复用 audit/model.ts 的 auditPageFrom，本模块不另起一套）。
+ * 本机 2026-11-23 真登录腿实测形制见 api.ts 注释与 worktree evidence/。
+ *
+ * 四条纪律：
+ *  ① 不做轮询、不自动多发请求——GAP-APR-11 没有状态读口，这一段由人一键
+ *     读取（「打开详情恰一次读取」是既有契约，钉在 approvals.detail.fields2）；
+ *  ② 真读回 0 行 ≠ 读不到：两档各有句子，互不冒充；
+ *  ③ 读不到 ⇒ 「处理记录暂不可用」+ 这一条读口的实情 + 可复制请求号，
+ *     绝不静默隐藏、绝不画空列表当成功；
+ *  ④ 定位链只在响应真带回 eventId 时给出（/audit?event= 是审计页认的深链
+ *     形制）；没有 id 就明说不给链，禁编造。
+ * ------------------------------------------------------------------ */
+
+type RecordsReading =
+  | { key: string; phase: "loading" }
+  | { key: string; phase: "ready"; page: AuditPage }
+  | { key: string; phase: "failed"; status: number; sentence: string; requestId: string | null };
+
+/** 失败档的请求编号载体：与 apr5 同词不同 testid，避免一屏两个同名编号位。 */
+function RecordsRequestId({ requestId }: { requestId: string | null }): ReactNode {
+  const [copied, setCopied] = useState<"idle" | "ok" | "fail">("idle");
+  if (!requestId) {
+    return (
+      <span className="min-w-0 break-words" data-testid="apd12-rid-missing">
+        {requestIdLine(null)}
+      </span>
+    );
+  }
+  const copy = (): void => {
+    const clip = navigator.clipboard;
+    if (!clip?.writeText) {
+      setCopied("fail");
+      return;
+    }
+    clip.writeText(requestId).then(
+      () => setCopied("ok"),
+      () => setCopied("fail"),
+    );
+  };
+  return (
+    <span className="inline-flex min-w-0 flex-wrap items-center gap-1">
+      请求编号：
+      <code className="ui-c-id min-w-0 break-all" data-testid="apd12-rid" title={requestId}>
+        {requestId}
+      </code>
+      <button
+        type="button"
+        aria-label="复制处理记录读取的请求编号"
+        data-testid="apd12-copy-rid"
+        className="shrink-0 whitespace-nowrap rounded-sm border border-border px-1.5 py-0.5 text-[11px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline focus-visible:outline-1 focus-visible:outline-primary/40"
+        onClick={copy}
+      >
+        复制
+      </button>
+      <span data-testid="apd12-rid-state" role="status" className="text-[11px] text-muted-foreground">
+        {copied === "ok" ? "已复制" : copied === "fail" ? "复制失败，请手动选择" : ""}
+      </span>
+    </span>
+  );
+}
+
+export function ProcessingRecords({ detail }: { detail: ApprovalDetail }): ReactNode {
+  const id = detail.rawId;
+  const key = id ?? "";
+  const [reading, setReading] = useState<RecordsReading | null>(null);
+  // 换单即作废旧读数：上一张单的行绝不挂到这一张单上（keyed 派生，不串台）。
+  const fresh = reading && reading.key === key ? reading : null;
+  const leaveWithSnapshot = useLeaveWithSnapshot();
+
+  const read = (): void => {
+    if (!id) return;
+    setReading({ key, phase: "loading" });
+    fetchProcessingRecords(id).then(
+      (page) => {
+        if (page === null) {
+          // 答回来的不是列表：这一条没读成，归「暂不可用」，不算 0 行成功。
+          setReading({ key, phase: "failed", status: -1, sentence: recordsFailureSentence(-1), requestId: null });
+          return;
+        }
+        setReading({ key, phase: "ready", page });
+      },
+      (err: unknown) => {
+        const info = failureInfo(err);
+        setReading({
+          key,
+          phase: "failed",
+          status: info.status,
+          sentence: info.sentence ?? recordsFailureSentence(info.status),
+          requestId: info.requestId,
+        });
+      },
+    );
+  };
+
+  const rows = fresh?.phase === "ready" ? sortRecordsByTime(fresh.page.rows) : [];
+  const loaded = fresh !== null && fresh.phase !== "loading";
+  const buttonTitle = id === null
+    ? "读口要求按审批单号过滤（实测只带 limit 会 400），这条单没带回单号，处理记录读不了——不编造 id。"
+    : fresh?.phase === "loading"
+      ? "这一轮读完成前重复点没有意义。"
+      : loaded
+        ? "再向审计读口读一次这条单的处理记录（单次 GET，不轮询）。"
+        : "按这条单的审批单号向审计读口读一次处理记录；这是唯一读口的真数据，打开详情不会自动多发请求。";
+
+  return (
+    <section className="ui-c-section" data-testid="apd12-records" aria-label="处理记录（审计事件·只读）">
+      <div className="ui-c-section-head">
+        <h3 className="ui-c-section-title">处理记录 · 只读（审计事件，按时间正序）</h3>
+        <span className="ui-c-section-actions">
+          <Button
+            size="sm"
+            outlined
+            className="shrink-0 whitespace-nowrap"
+            data-testid="apd12-load"
+            disabled={id === null || fresh?.phase === "loading"}
+            title={buttonTitle}
+            onClick={read}
+          >
+            {loaded ? "重新读取" : "读取处理记录"}
+          </Button>
+        </span>
+      </div>
+
+      {id === null ? (
+        <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="apd12-no-id" title="审计读口的过滤条件里，审批侧只有 resourceId 这一条腿；单据号没回传就没有合法输入，这里不猜一个号去查。">
+          {RECORDS_UNAVAILABLE_SENTENCE}——这条单没带回审批单号，读口没有可过滤的输入。
+        </p>
+      ) : fresh === null ? (
+        <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="apd12-idle" title="审批状态没有单独的事件读口（GAP-APR-11），这一段保持手动读取：点上面的钮按本单号真读一次，不轮询、不自动叠加请求。">
+          {RECORDS_IDLE_SENTENCE}——点「读取处理记录」按本单号向审计读口读一次（手动，不轮询）。
+        </p>
+      ) : fresh.phase === "loading" ? (
+        <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="apd12-loading">
+          {RECORDS_LOADING_SENTENCE}
+        </p>
+      ) : fresh.phase === "failed" ? (
+        <div className="flex min-w-0 flex-col gap-1 text-xs" data-testid="apd12-failed">
+          <p className="min-w-0 break-words" title={`审计读口这一条的返回码：${fresh.status === -1 ? "响应形制不是列表" : `HTTP ${fresh.status}`}。审批主链路的读数不受影响，本段只说这一条腿。`}>
+            <span className="text-warning">{RECORDS_UNAVAILABLE_SENTENCE}</span>——{fresh.sentence}
+          </p>
+          <p className="min-w-0 break-words">
+            <RecordsRequestId requestId={fresh.requestId} />
+          </p>
+        </div>
+      ) : rows.length === 0 ? (
+        <p
+          className="min-w-0 break-words text-xs text-muted-foreground"
+          data-testid="apd12-empty"
+          title={
+            fresh.page.total === null
+              ? "读口这一条答 200，且没有带回事件列表以外的总数说明；这是「本次没有记录」，不是「读不到」。"
+              : `读口这一条答 200 并称共 ${fresh.page.total} 条；本单没有带回处理记录行。`
+          }
+        >
+          {RECORDS_EMPTY_SENTENCE}
+        </p>
+      ) : (
+        <>
+          <ul className="flex min-w-0 flex-col gap-1 text-xs" data-testid="apd12-list">
+            {rows.map((row, index) => (
+              <li
+                key={`${row.key}-${index}`}
+                className="min-w-0 break-words"
+                data-testid={`apd12-row-${index}`}
+                title={row.action.raw ?? undefined}
+              >
+                {row.action.label} ·{" "}
+                <span title={row.actor.raw ?? undefined}>{row.actor.label}</span> ·{" "}
+                <RelativeTime iso={row.occurredAtRaw} testid={`apv-time-detail-record-${index}`} />
+                {/* 行面只给工单点名的三件（action/actor/occurredAt）。审计行的
+                  * reason 腿实测会带回工程句（"…raw message not stored in audit"），
+                  * 那句话属于审计页的技术折，不进这张中文屏。 */}
+                {" "}
+                {row.rawId ? (
+                  <Link
+                    className="underline underline-offset-2"
+                    to={`${AUDIT_PATH}?${DEEP_LINK_PARAM}=${encodeURIComponent(row.rawId)}`}
+                    title={row.rawId}
+                    data-testid={`apd12-row-event-${index}`}
+                    onClick={leaveWithSnapshot}
+                  >
+                    在台账里定位这条
+                  </Link>
+                ) : (
+                  <span className="text-muted-foreground" data-testid={`apd12-row-event-none-${index}`}>
+                    （这条没带回事件标识，故不给定位链。）
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+          <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="apd12-count">
+            本次读回 {rows.length} 行
+            {fresh.page.total === null ? "（读口没给总数）" : `，读口称共 ${fresh.page.total} 条`}
+            {fresh.page.unreadable > 0 ? `；另有 ${fresh.page.unreadable} 行没能读成记录` : ""}
+            {fresh.page.next ? "；还有下一页（本段只贴这一页，翻页请到审计台账）" : ""}。
+          </p>
+        </>
+      )}
     </section>
   );
 }
@@ -1004,12 +1297,16 @@ export function ApprovalDetailBody({
 
       <DecisionTrail detail={detail} />
 
+      {/* AP-03 ②: 内联处理记录——审计车道既有读口，一键真读，读不到就说读不到。 */}
+      <ProcessingRecords detail={detail} />
+
       {/* R82: 审计台账真链——audit 读口按 resourceId=审批单号真过滤
         * （活体实测：resourceId=ap_… → 200 n=1 命中 approval.expired；
         * resourceId=资源路径 → 200 n=0；limit 单参 → 400 需过滤）。
         * 页级消费 ?resource= → 线上 resourceId=（aud8 契约），并带默认时间窗。
         * ?event= 需要审计事件 id——审批对象不带该字段，禁编造：这里给的是
-        * 过滤真链，不是假事件定位链。 */}
+        * 过滤真链，不是假事件定位链。AP-03 起，事件级定位链改由上方「处理记录」
+        * 段在响应真带回 eventId 时给出，这一段仍是单据级的过滤链，两链不混。 */}
       <section className="ui-c-section text-xs" data-testid="apd9-correlation" aria-label="相关记录">
         <h3 className="ui-c-section-title">相关记录 · 只读</h3>
         {detail.rawId ? (
