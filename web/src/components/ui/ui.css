@@ -283,3 +283,21 @@
   outline: var(--focus-ring-ls);
   outline-offset: var(--focus-ring-offset-ls);
 }
+
+/* ── InfoHint：全站唯一解释性文字载体（用户契约 2026-11-23）──
+   数值门：图标 14px（lucide h-3.5）、距标签 4px、hover 120ms、
+   弹层宽 240–320px、字号 12px（--font-size-ls-1）、行高 1.6。
+   240/320/1.6 是契约规定值，令牌层暂无对应名（新增令牌要走冻结线并窗）。 */
+.ui-hint { display: inline-flex; align-items: center; gap: var(--space-ls-1); position: relative; min-width: 0; }
+.ui-hint-label { min-width: 0; }
+.ui-hint-trigger { display: inline-flex; align-items: center; justify-content: center; inline-size: 18px; block-size: 18px; padding: 0; border: 0; background: none; color: var(--color-text-subtle-ls); cursor: help; }
+.ui-hint-trigger:focus-visible { outline: var(--focus-ring-ls); outline-offset: var(--focus-ring-offset-ls); border-radius: var(--radius-ls-1); }
+.ui-hint-pop { position: absolute; inset-block-start: calc(100% + var(--space-ls-1)); inset-inline-start: 0; z-index: var(--z-ls-dropdown); display: none; inline-size: 280px; min-inline-size: 240px; max-inline-size: 320px; padding: var(--space-ls-2); border: var(--border-ls-1); border-radius: var(--radius-ls-2); background: var(--color-surface-raised-ls); color: var(--color-text-ls); box-shadow: var(--shadow-ls-2); font-size: var(--font-size-ls-1); line-height: 1.6; transition: opacity var(--duration-ls-fast) var(--ease-ls-standard); }
+.ui-hint:hover > .ui-hint-pop, .ui-hint-trigger:focus-visible ~ .ui-hint-pop, .ui-hint-pop[data-open="true"] { display: block; }
+.ui-hint-text { display: block; }
+.ui-hint-src { display: block; margin-block-start: var(--space-ls-1); color: var(--color-text-muted-ls); }
+@media (max-width: 767.98px) {
+  .ui-hint-pop { position: fixed; inset-block: auto 0; inset-inline: 0; inline-size: auto; max-inline-size: none; border-radius: var(--radius-ls-3) var(--radius-ls-3) 0 0; }
+  /* 44px 是移动端触控下限的字面值：令牌层暂无该档，新增令牌名须走冻结线并窗。 */
+  .ui-hint-trigger { inline-size: 44px; block-size: 44px; }
+}
