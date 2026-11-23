@@ -364,3 +364,41 @@
     grid-auto-columns: minmax(6px, 1fr);
   }
 }
+/* OM-04：头部时间窗分段控件（复用 duty 的档位语义，样式本地化）。 */
+.ov5-head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.ov5-seg {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.ov5-seg-btn {
+  font-size: 12px;
+  line-height: 1;
+  padding: 6px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-muted-foreground);
+  cursor: pointer;
+}
+
+.ov5-seg-btn.is-active {
+  color: var(--color-foreground);
+  border-color: var(--color-foreground);
+  background: var(--color-muted);
+}
+
+.ov5-range-fallback {
+  font-size: 12px;
+  color: var(--color-muted-foreground);
+  border-bottom: 1px dashed var(--color-border);
+  cursor: help;
+}
