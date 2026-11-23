@@ -6,6 +6,9 @@
  * 门控按「判不了就保守禁用」处置（2026-11-16 批量保守启用验收口径），绝不推断。
  * 每个非 ok 键固定配一条诚实文案，组件不得再自算原因句；writeOff 态整句复用
  * DECISION_GATE——逐单抽屉与批量条说的是同一个环境事实，同一句话的两个出口。
+ * AP-04① 起 DECISION_GATE 不再是常量而是「服务端探测 ∧ 构建期旗标 ∧ AP-05/06
+ * 负例证明」的合取活视图：本文件按调用时读属性，自动跟着当下事实走，
+ * writeOff 分支的原句一个字不动（禁第二套词汇）。
  */
 import type { ApprovalRow } from "./model";
 import { DECISION_GATE } from "./writeGate";

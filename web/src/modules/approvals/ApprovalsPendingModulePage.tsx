@@ -40,6 +40,7 @@ import { APPROVAL_RID_FALLBACK } from "./stateCopy";
 import { useApprovalDetail, useApprovalsList, type ForcedState } from "./useApprovalsData";
 import { actionGates, announcement, crossPageLoadHint } from "./gates";
 import { DECISION_GATE, missingHashReasonFor } from "./writeGate";
+import { WriteGateChip } from "./WriteGateChip";
 import { QueueSummaryBar, denominatorReadout } from "./QueueSummaryBar";
 import { clearFilterParams, hasActiveFilters, resetTitle } from "./FilterReset";
 import { FilterSummary } from "./FilterSummary";
@@ -609,8 +610,9 @@ export function ApprovalsPendingModulePage(): ReactNode {
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           {/* P1-375-1: 同屏主按钮唯一——批准是这张单的最主操作，保持实心；
               驳回降为次级（既有 outlined×destructive 组合样式），文案与 testid 不动。
-              P0-1r: 三属性同源于 DECISION_GATE（runs 的 run5-retry-new 口径），
-              onClick 保留——开闸后代去掉 gate 常量即可恢复整条确认流。 */}
+              P0-1r/AP-04①: 三属性同源于 DECISION_GATE（runs 的 run5-retry-new 口径），
+              它自 AP-04 起是「探测 ∧ 旗标 ∧ 负例证明」的合取活视图——开闸后代不再删
+              常量，而是让三输入各自变真；onClick 与确认流原样保留。 */}
           <Button
             size="sm"
             onClick={() => setConfirming("approve")}
@@ -640,10 +642,13 @@ export function ApprovalsPendingModulePage(): ReactNode {
         </div>
         {/* AP-07②：写通道关时，逐单抽屉的可见禁用说明与两个钮的 title、批量钮的禁用
             title 同读 DECISION_GATE.title 这一个来源——环境只读这一句，全模块只有一个出口，
-            不再分叉第二套措辞。 */}
-        <p className="max-w-prose min-w-0 break-words text-xs text-muted-foreground" data-testid="apr5-actions-readonly-note">
-          {DECISION_GATE.title}
-        </p>
+            不再分叉第二套措辞。AP-04① 起 DECISION_GATE 是合取活视图：任一输入缺位
+            （探测未开/旗标未置/负例未过）都落回这句，原句逐字未动。 */}
+        {DECISION_GATE.disabled ? (
+          <p className="max-w-prose min-w-0 break-words text-xs text-muted-foreground" data-testid="apr5-actions-readonly-note">
+            {DECISION_GATE.title}
+          </p>
+        ) : null}
         {/* AP-05 ①（总控裁定偏差见 DONE-AP-05）：本轮未开闸，「指纹缺失」不接按钮
             合取，落为禁用原因段的第二条数据侧原因，与上一句同屏并存；判据只认
             详情读回的 actionHash（actionHash/action_hash/argsDigest 一族），缺即说、
@@ -687,6 +692,8 @@ export function ApprovalsPendingModulePage(): ReactNode {
           )}
           筛选条件（{filterState.count > 0 ? filterState.count : "无"}）
         </button>
+        {/* AP-04③：写开关合取值＋两条来源＋采集时刻的只读 chip（缺数「—」＋原因，不猜）。 */}
+        <WriteGateChip />
       </div>
       {/* P1-A1（wave-128）：375 首屏控制带瘦身——汇总条与重置/chips 收拢成一行
           （内部结构与 testid 原样，只是外面并带；窄档 flex 自动换行不溢出）。
