@@ -1,0 +1,103 @@
+/*
+ * SE-06 · 会话列表 375 收口样式。
+ *
+ * 口径（backlog §SE-06）：
+ * 1. 375 无横向滚动：行内所有列 `min-width: 0` + `overflow-wrap: anywhere`，
+ *    编号用等宽字体但不撑宽容器（截断交给 JS 的 shortSessionId，这里只兜底换行）。
+ * 2. 触控目标 ≥44px：筛选框、加载更多、重试按钮在窄屏统一抬到 44px。
+ * 3. 不做抽屉/焦点圈闭（那属 modules/employee-detail 的 SessionDrawer，写域外）。
+ */
+
+.se6-sessions {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.se6-sessions__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid rgb(255 255 255 / 0.1);
+}
+
+.se6-sessions__filter {
+  flex: 1 1 14rem;
+  min-width: 0;
+  border-radius: 0.375rem;
+  border: 1px solid rgb(255 255 255 / 0.15);
+  background: rgb(255 255 255 / 0.04);
+  padding: 0.375rem 0.625rem;
+  font-size: 0.8125rem;
+  color: inherit;
+  min-height: 2.25rem;
+}
+
+.se6-sessions__filter::placeholder {
+  color: rgb(255 255 255 / 0.4);
+}
+
+.se6-sessions__note {
+  flex: 1 1 100%;
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: rgb(255 255 255 / 0.45);
+  overflow-wrap: anywhere;
+}
+
+.se6-sessions__row {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.se6-sessions__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  min-width: 0;
+}
+
+.se6-sessions__button {
+  min-height: 2.25rem;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  border-radius: 0.375rem;
+  border: 1px solid rgb(255 255 255 / 0.15);
+  color: rgb(255 255 255 / 0.8);
+}
+
+.se6-sessions__button:hover {
+  background: rgb(255 255 255 / 0.1);
+}
+
+@media (max-width: 480px) {
+  .se6-sessions__toolbar {
+    padding: 0.5rem 0.75rem;
+    gap: 0.5rem;
+  }
+
+  .se6-sessions__filter,
+  .se6-sessions__button {
+    /* 375 基线：触控目标 ≥44px，且不因内边距撑出横向滚动 */
+    min-height: 44px;
+    box-sizing: border-box;
+    width: 100%;
+  }
+
+  .se6-sessions__actions {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 0.5rem 0.75rem;
+  }
+
+  .se6-sessions__row {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+}

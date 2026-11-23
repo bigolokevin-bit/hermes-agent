@@ -6,17 +6,23 @@
  * 2. 分页只认 `nextCursor`：有游标才显示「加载更多」，点一次追加一页、按 sessionId 去重；
  * 3. 空态与失败态分离；401/403/404/501 各有诚实文案，**任何状态都不渲染样例行**。
  *
+ * SE-06 追加：本页筛选（客户端、只筛已加载行，明写「本页筛选」不谎称全局搜索）、
+ * 375 无横滚 + 44px 触控目标（见 sessions.css）、列表/筛选的 a11y 语义。
+ *
  * 数据全部来自 `fetchSessionsPage()` ⇒ 现网 BFF 真转发
  * （`GET /agent-api/api/console-sessions?employeeId&limit&cursor`）。
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 
 import { ApiError } from "@/lib/api-error";
+
+import "./sessions.css";
 
 import {
   DEFAULT_SESSIONS_LIMIT,
   fetchSessionsPage,
+  filterSessionRows,
   formatMessageCount,
   formatSessionTime,
   shortSessionId,
@@ -73,7 +79,11 @@ export interface SessionsListProps {
 export function SessionsList({ employeeId, pageSize = DEFAULT_SESSIONS_LIMIT }: SessionsListProps) {
   const [state, setState] = useState<ListState>(INITIAL);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [query, setQuery] = useState("");
   const reqRef = useRef(0);
+  const uid = useId();
+  const filterId = `se6-filter-${uid}`;
+  const listId = `se6-list-${uid}`;
 
   const load = useCallback(
     (cursor: string | null) => {
@@ -180,23 +190,64 @@ export function SessionsList({ employeeId, pageSize = DEFAULT_SESSIONS_LIMIT }: 
     );
   }
 
+  const visible = filterSessionRows(state.rows, query);
+  const queryActive = query.trim().length > 0;
+
   return (
-    <div className="flex flex-col" data-testid="se2-sessions">
+    <section
+      className="se6-sessions flex flex-col"
+      data-testid="se2-sessions"
+      aria-label="员工会话列表"
+    >
+      <div className="se6-sessions__toolbar">
+        <label className="sr-only" htmlFor={filterId}>
+          筛选已加载的会话（按会话编号或员工编号）
+        </label>
+        <input
+          id={filterId}
+          type="search"
+          className="se6-sessions__filter"
+          data-testid="se6-sessions-filter"
+          placeholder="筛选已加载的会话（会话编号）"
+          value={query}
+          aria-controls={listId}
+          aria-describedby={`${filterId}-note`}
+          onChange={(event) => setQuery(event.target.value)}
+        />
+        <p
+          id={`${filterId}-note`}
+          className="se6-sessions__note"
+          data-testid="se6-sessions-scope-note"
+          aria-live="polite"
+        >
+          本页筛选：只在已加载的 {state.rows.length} 条里找；全局搜索待后端支持（上游需加 q 或 search
+          端点）。
+        </p>
+      </div>
       <div className="hidden grid-cols-[minmax(0,1.4fr)_minmax(0,0.7fr)_minmax(0,1fr)] gap-2 border-b border-white/10 px-4 py-2 text-xs text-white/45 md:grid">
         <span title="会话编号短形；悬停看完整编号">会话</span>
         <span title="该会话累计消息条数；上游没回传时显示「—」，不折成 0">消息数</span>
         <span title="口径：updatedAt（Asia/Shanghai 切到分钟）">最近活动</span>
       </div>
-      <ul className="divide-y divide-white/5" data-testid="se2-sessions-list">
-        {state.rows.map((row, index) => (
+      <ul
+        id={listId}
+        role="list"
+        aria-busy={loadingMore}
+        aria-label="已加载的会话"
+        className="divide-y divide-white/5"
+        data-testid="se2-sessions-list"
+      >
+        {visible.map((row, index) => (
           <li
             key={row.sessionId}
+            role="listitem"
             data-testid={`se2-sessions-row-${index}`}
-            className="grid grid-cols-1 gap-1 px-4 py-3 md:grid-cols-[minmax(0,1.4fr)_minmax(0,0.7fr)_minmax(0,1fr)] md:items-center md:gap-2"
+            className="se6-sessions__row grid grid-cols-1 gap-1 px-4 py-3 md:grid-cols-[minmax(0,1.4fr)_minmax(0,0.7fr)_minmax(0,1fr)] md:items-center md:gap-2"
           >
             <span
               className="min-w-0 truncate font-mono text-sm"
               title={row.sessionId}
+              aria-label={`会话 ${row.sessionId}`}
               data-testid={`se2-sessions-id-${index}`}
             >
               {shortSessionId(row.sessionId)}
@@ -218,16 +269,25 @@ export function SessionsList({ employeeId, pageSize = DEFAULT_SESSIONS_LIMIT }: 
           </li>
         ))}
       </ul>
-      <div className="flex items-center justify-between gap-3 px-4 py-3">
+      {queryActive && visible.length === 0 ? (
+        <p
+          className="px-4 py-3 text-sm text-white/70"
+          data-testid="se6-sessions-filter-empty"
+        >
+          本页已加载的 {state.rows.length} 条里没有匹配「{query.trim()}」的会话。换个关键词或清空筛选；全局搜索待后端。
+        </p>
+      ) : null}
+      <div className="se6-sessions__actions">
         <p className="text-xs text-white/45" data-testid="se2-sessions-note">
           只读列表 · 排序由上游给定（updatedAt DESC）；上游没有总数，只有「加载更多」。
         </p>
         {state.nextCursor ? (
           <button
             type="button"
-            className="rounded border border-white/15 px-3 py-1 text-xs text-white/80 hover:bg-white/10 disabled:opacity-50"
+            className="se6-sessions__button rounded border border-white/15 px-3 py-1 text-xs text-white/80 disabled:opacity-50"
             data-testid="se2-sessions-more"
             disabled={loadingMore}
+            aria-controls={listId}
             onClick={() => load(state.nextCursor)}
           >
             {loadingMore ? "加载中…" : "加载更多"}
@@ -239,7 +299,7 @@ export function SessionsList({ employeeId, pageSize = DEFAULT_SESSIONS_LIMIT }: 
           {state.message}
         </p>
       ) : null}
-    </div>
+    </section>
   );
 }
 

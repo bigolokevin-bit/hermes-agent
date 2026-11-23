@@ -14,6 +14,7 @@ export {
   MISSING_PLACEHOLDER,
   buildSessionsUrl,
   fetchSessionsPage,
+  filterSessionRows,
   formatMessageCount,
   formatSessionTime,
   parseSessionsPage,

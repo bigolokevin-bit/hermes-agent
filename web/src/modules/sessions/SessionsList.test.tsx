@@ -4,6 +4,7 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
 
 import { ApiError } from "@/lib/api-error";
 
@@ -238,5 +239,91 @@ describe("SessionsList 真行列表", () => {
     expect(fetchMock).not.toHaveBeenCalled();
     expect(q("se2-sessions-error")).toBeTruthy();
     expect(container.textContent).toContain("缺少员工编号");
+  });
+});
+// ─────────────────────────── SE-06：本页筛选 / 375 / a11y ───────────────────────────
+
+/** 受控 input 要走原生 setter + input 事件，React 才会收到变更。 */
+async function typeFilter(value: string): Promise<void> {
+  const input = q("se6-sessions-filter") as HTMLInputElement | null;
+  if (!input) throw new Error("找不到筛选框");
+  const setter = Object.getOwnPropertyDescriptor(
+    window.HTMLInputElement.prototype,
+    "value",
+  )?.set;
+  if (!setter) throw new Error("取不到原生 value setter");
+  await act(async () => {
+    setter.call(input, value);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+}
+
+describe("SE-06 本页筛选（不是全局搜索）", () => {
+  beforeEach(() => {
+    fetchMock.mockReset();
+    fetchMock.mockResolvedValue({ items: [ROW_A, ROW_B], nextCursor: null });
+  });
+
+  it("按会话编号子串筛已加载行，注记明写「本页筛选」与上游缺口", async () => {
+    await render();
+    expect(container.querySelectorAll('[data-testid^="se2-sessions-row-"]')).toHaveLength(2);
+
+    await typeFilter("pt69jd"); // 大小写不敏感
+    const rows = container.querySelectorAll('[data-testid^="se2-sessions-row-"]');
+    expect(rows).toHaveLength(1);
+    expect(q("se2-sessions-id-0")?.getAttribute("title")).toBe(ROW_A.sessionId);
+
+    const note = q("se6-sessions-scope-note")?.textContent ?? "";
+    expect(note).toContain("本页筛选");
+    expect(note).toContain("在已加载的 2 条里");
+    expect(note).toContain("上游需加 q 或 search 端点");
+    // 不许出现「搜索全部」类暗示
+    expect(note).not.toContain("搜索全部");
+    expect(note).not.toContain("全部会话");
+    // 筛选不发新请求：仍是首屏那一次
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("筛不到时给「本页无匹配」而非服务端空集，清空筛选后行回来", async () => {
+    await render();
+    await typeFilter("zzz-not-there");
+    const empty = q("se6-sessions-filter-empty");
+    expect(empty).toBeTruthy();
+    expect(empty?.textContent ?? "").toContain("本页已加载的 2 条里没有匹配");
+    expect(q("se2-sessions-empty")).toBeNull();
+
+    await typeFilter("   ");
+    expect(q("se6-sessions-filter-empty")).toBeNull();
+    expect(container.querySelectorAll('[data-testid^="se2-sessions-row-"]')).toHaveLength(2);
+  });
+
+  it("a11y：列表有 role=list、行有 aria-label 全量编号、注记 aria-live、筛选框有 label", async () => {
+    await render();
+    const list = q("se2-sessions-list");
+    expect(list?.getAttribute("role")).toBe("list");
+    expect(list?.getAttribute("aria-busy")).toBe("false");
+    expect(q("se2-sessions-id-0")?.getAttribute("aria-label")).toBe(
+      `会话 ${ROW_A.sessionId}`,
+    );
+    expect(q("se6-sessions-scope-note")?.getAttribute("aria-live")).toBe("polite");
+
+    const input = q("se6-sessions-filter") as HTMLInputElement;
+    const label = container.querySelector(`label[for="${input.id}"]`);
+    expect(label?.textContent ?? "").toContain("筛选已加载的会话");
+    expect(input.getAttribute("aria-controls")).toBe(list?.id);
+    expect(input.getAttribute("aria-describedby")).toBe(q("se6-sessions-scope-note")?.id);
+  });
+});
+
+describe("SE-06 375 样式口径（静态断言，非截图）", () => {
+  it("sessions.css 声明 480px 断点与 44px 触控目标，且行允许换行不撑宽", () => {
+    // jsdom 下 import.meta.url 是 http://localhost/…，不能用；vitest 的 cwd 即 web/
+    const css = readFileSync(`${process.cwd()}/src/modules/sessions/sessions.css`, "utf8");
+    expect(css).toContain("@media (max-width: 480px)");
+    expect(css).toContain("min-height: 44px");
+    expect(css).toContain("overflow-wrap: anywhere");
+    // 不许靠横向滚动兜底
+    expect(css).not.toContain("overflow-x: scroll");
+    expect(css).not.toContain("overflow-x: auto");
   });
 });
