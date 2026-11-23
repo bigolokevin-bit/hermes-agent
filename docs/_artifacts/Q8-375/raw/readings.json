@@ -1,0 +1,936 @@
+{
+  "knowledge-base": {
+    "label": "知识库",
+    "url": "http://127.0.0.1:5199/knowledge",
+    "finalUrl": "http://127.0.0.1:5199/knowledge",
+    "navErr": null,
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "data": {
+      "whoami": {
+        "status": 200
+      },
+      "skeleton": {
+        "rootChildren": 1,
+        "textLen": 1124
+      },
+      "overflow": {
+        "scrollWidth": 375,
+        "docClientWidth": 375,
+        "hits": []
+      },
+      "interactiveCount": 46,
+      "onscreenCount": 11,
+      "offscreenCount": 35,
+      "globalFocusRing": true,
+      "focusRingSelectors": [
+        ".knw5-input:focus-visible",
+        ".k3-docs-name:focus-visible",
+        ".knw5-page a[data-testid$=\"-name\"]:focus-visible, .knw5-page a[data-testid=\"kn-space-open\"]:focus-visible",
+        ".knB-link:focus-visible, .knB-current:focus-visible",
+        ".knC-sort:focus-visible",
+        ".kn-group-toggle:focus-visible",
+        ".kn-doc-preview-toggle:focus-visible",
+        ".kn-type-bucket:focus-visible",
+        ".knM-toggle:focus-visible",
+        ".kn-space-toggle:focus-visible",
+        ".knw5-req-toggle:focus-visible",
+        ".ha-share-trigger:focus-visible",
+        ".hermes-kanban-textarea:focus",
+        ".hermes-kanban-docs-link:hover, .hermes-kanban-docs-link:focus-visible"
+      ],
+      "touch": [
+        {
+          "sel": "a \"Details\"",
+          "rect": {
+            "x": 169,
+            "y": 359,
+            "w": 37,
+            "h": 13,
+            "right": 206,
+            "bottom": 372
+          },
+          "min": 13,
+          "disabled": false,
+          "tag": "a",
+          "chrome": true
+        },
+        {
+          "sel": "button \"Dismiss\"",
+          "rect": {
+            "x": 15,
+            "y": 381,
+            "w": 13,
+            "h": 13,
+            "right": 28,
+            "bottom": 394
+          },
+          "min": 13,
+          "disabled": false,
+          "tag": "button",
+          "chrome": true
+        },
+        {
+          "sel": "button \"Share with Nous\"",
+          "rect": {
+            "x": 177,
+            "y": 205,
+            "w": 104,
+            "h": 21,
+            "right": 282,
+            "bottom": 226
+          },
+          "min": 21,
+          "disabled": false,
+          "tag": "button",
+          "chrome": true
+        },
+        {
+          "sel": "button \"No thanks\"",
+          "rect": {
+            "x": 289,
+            "y": 205,
+            "w": 71,
+            "h": 21,
+            "right": 360,
+            "bottom": 226
+          },
+          "min": 21,
+          "disabled": false,
+          "tag": "button",
+          "chrome": true
+        },
+        {
+          "sel": "button \"刷新\"",
+          "rect": {
+            "x": 11,
+            "y": 573,
+            "w": 342,
+            "h": 28,
+            "right": 353,
+            "bottom": 600
+          },
+          "min": 28,
+          "disabled": false,
+          "tag": "button",
+          "chrome": false
+        },
+        {
+          "sel": "button[data-testid=kn6-search-submit] \"搜索\"",
+          "rect": {
+            "x": 11,
+            "y": 657,
+            "w": 63,
+            "h": 28,
+            "right": 74,
+            "bottom": 684
+          },
+          "min": 28,
+          "disabled": false,
+          "tag": "button",
+          "chrome": false
+        },
+        {
+          "sel": "input#kn6-input[data-testid=kn6-search-input]",
+          "rect": {
+            "x": 11,
+            "y": 614,
+            "w": 342,
+            "h": 34,
+            "right": 353,
+            "bottom": 649
+          },
+          "min": 34,
+          "disabled": false,
+          "tag": "input",
+          "chrome": false
+        },
+        {
+          "sel": "a[role=tab] \"知识空间\"",
+          "rect": {
+            "x": 11,
+            "y": 487,
+            "w": 77,
+            "h": 35,
+            "right": 88,
+            "bottom": 522
+          },
+          "min": 35,
+          "disabled": false,
+          "tag": "a",
+          "chrome": false
+        },
+        {
+          "sel": "a[role=tab] \"数据源\"",
+          "rect": {
+            "x": 92,
+            "y": 487,
+            "w": 64,
+            "h": 35,
+            "right": 155,
+            "bottom": 522
+          },
+          "min": 35,
+          "disabled": false,
+          "tag": "a",
+          "chrome": false
+        },
+        {
+          "sel": "a[role=tab] \"审计证据\"",
+          "rect": {
+            "x": 159,
+            "y": 487,
+            "w": 77,
+            "h": 35,
+            "right": 235,
+            "bottom": 522
+          },
+          "min": 35,
+          "disabled": false,
+          "tag": "a",
+          "chrome": false
+        }
+      ],
+      "hoverOnly": [],
+      "activeTab": "知识空间",
+      "heading": "知识与数据"
+    }
+  },
+  "knowledge-qa": {
+    "label": "知识问答",
+    "url": "http://127.0.0.1:5199/knowledge?tab=spaces&panel=retrieval",
+    "finalUrl": "http://127.0.0.1:5199/knowledge?tab=spaces&panel=retrieval",
+    "navErr": null,
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "data": {
+      "whoami": {
+        "status": 200
+      },
+      "skeleton": {
+        "rootChildren": 1,
+        "textLen": 1084
+      },
+      "overflow": {
+        "scrollWidth": 375,
+        "docClientWidth": 375,
+        "hits": []
+      },
+      "interactiveCount": 44,
+      "onscreenCount": 11,
+      "offscreenCount": 33,
+      "globalFocusRing": true,
+      "focusRingSelectors": [
+        ".knw5-input:focus-visible",
+        ".k3-docs-name:focus-visible",
+        ".knw5-page a[data-testid$=\"-name\"]:focus-visible, .knw5-page a[data-testid=\"kn-space-open\"]:focus-visible",
+        ".knB-link:focus-visible, .knB-current:focus-visible",
+        ".knC-sort:focus-visible",
+        ".kn-group-toggle:focus-visible",
+        ".kn-doc-preview-toggle:focus-visible",
+        ".kn-type-bucket:focus-visible",
+        ".knM-toggle:focus-visible",
+        ".kn-space-toggle:focus-visible",
+        ".knw5-req-toggle:focus-visible",
+        ".ha-share-trigger:focus-visible",
+        ".hermes-kanban-textarea:focus",
+        ".hermes-kanban-docs-link:hover, .hermes-kanban-docs-link:focus-visible"
+      ],
+      "touch": [
+        {
+          "sel": "a \"Details\"",
+          "rect": {
+            "x": 169,
+            "y": 359,
+            "w": 37,
+            "h": 13,
+            "right": 206,
+            "bottom": 372
+          },
+          "min": 13,
+          "disabled": false,
+          "tag": "a",
+          "chrome": true
+        },
+        {
+          "sel": "button \"Dismiss\"",
+          "rect": {
+            "x": 15,
+            "y": 381,
+            "w": 13,
+            "h": 13,
+            "right": 28,
+            "bottom": 394
+          },
+          "min": 13,
+          "disabled": false,
+          "tag": "button",
+          "chrome": true
+        },
+        {
+          "sel": "button \"Share with Nous\"",
+          "rect": {
+            "x": 177,
+            "y": 205,
+            "w": 104,
+            "h": 21,
+            "right": 282,
+            "bottom": 226
+          },
+          "min": 21,
+          "disabled": false,
+          "tag": "button",
+          "chrome": true
+        },
+        {
+          "sel": "button \"No thanks\"",
+          "rect": {
+            "x": 289,
+            "y": 205,
+            "w": 71,
+            "h": 21,
+            "right": 360,
+            "bottom": 226
+          },
+          "min": 21,
+          "disabled": false,
+          "tag": "button",
+          "chrome": true
+        },
+        {
+          "sel": "button \"刷新\"",
+          "rect": {
+            "x": 11,
+            "y": 573,
+            "w": 342,
+            "h": 28,
+            "right": 353,
+            "bottom": 600
+          },
+          "min": 28,
+          "disabled": false,
+          "tag": "button",
+          "chrome": false
+        },
+        {
+          "sel": "button[data-testid=kn6-search-submit] \"搜索\"",
+          "rect": {
+            "x": 11,
+            "y": 657,
+            "w": 63,
+            "h": 28,
+            "right": 74,
+            "bottom": 684
+          },
+          "min": 28,
+          "disabled": false,
+          "tag": "button",
+          "chrome": false
+        },
+        {
+          "sel": "input#kn6-input[data-testid=kn6-search-input]",
+          "rect": {
+            "x": 11,
+            "y": 614,
+            "w": 342,
+            "h": 34,
+            "right": 353,
+            "bottom": 649
+          },
+          "min": 34,
+          "disabled": false,
+          "tag": "input",
+          "chrome": false
+        },
+        {
+          "sel": "a[role=tab] \"知识空间\"",
+          "rect": {
+            "x": 11,
+            "y": 487,
+            "w": 77,
+            "h": 35,
+            "right": 88,
+            "bottom": 522
+          },
+          "min": 35,
+          "disabled": false,
+          "tag": "a",
+          "chrome": false
+        },
+        {
+          "sel": "a[role=tab] \"数据源\"",
+          "rect": {
+            "x": 92,
+            "y": 487,
+            "w": 64,
+            "h": 35,
+            "right": 155,
+            "bottom": 522
+          },
+          "min": 35,
+          "disabled": false,
+          "tag": "a",
+          "chrome": false
+        },
+        {
+          "sel": "a[role=tab] \"审计证据\"",
+          "rect": {
+            "x": 159,
+            "y": 487,
+            "w": 77,
+            "h": 35,
+            "right": 235,
+            "bottom": 522
+          },
+          "min": 35,
+          "disabled": false,
+          "tag": "a",
+          "chrome": false
+        }
+      ],
+      "hoverOnly": [],
+      "activeTab": "知识空间",
+      "heading": "知识与数据"
+    }
+  },
+  "docs": {
+    "label": "文档",
+    "url": "http://127.0.0.1:5199/docs",
+    "finalUrl": "http://127.0.0.1:5199/docs",
+    "navErr": null,
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    ],
+    "data": {
+      "whoami": {
+        "status": 200
+      },
+      "skeleton": {
+        "rootChildren": 1,
+        "textLen": 419
+      },
+      "overflow": {
+        "scrollWidth": 375,
+        "docClientWidth": 375,
+        "hits": []
+      },
+      "interactiveCount": 23,
+      "onscreenCount": 6,
+      "offscreenCount": 17,
+      "globalFocusRing": true,
+      "focusRingSelectors": [
+        ".ha-share-trigger:focus-visible",
+        ".hermes-kanban-textarea:focus",
+        ".hermes-kanban-docs-link:hover, .hermes-kanban-docs-link:focus-visible"
+      ],
+      "touch": [
+        {
+          "sel": "a \"Details\"",
+          "rect": {
+            "x": 169,
+            "y": 359,
+            "w": 37,
+            "h": 13,
+            "right": 206,
+            "bottom": 372
+          },
+          "min": 13,
+          "disabled": false,
+          "tag": "a",
+          "chrome": true
+        },
+        {
+          "sel": "button \"Dismiss\"",
+          "rect": {
+            "x": 15,
+            "y": 381,
+            "w": 13,
+            "h": 13,
+            "right": 28,
+            "bottom": 394
+          },
+          "min": 13,
+          "disabled": false,
+          "tag": "button",
+          "chrome": true
+        },
+        {
+          "sel": "button \"Share with Nous\"",
+          "rect": {
+            "x": 177,
+            "y": 205,
+            "w": 104,
+            "h": 21,
+            "right": 282,
+            "bottom": 226
+          },
+          "min": 21,
+          "disabled": false,
+          "tag": "button",
+          "chrome": true
+        },
+        {
+          "sel": "button \"No thanks\"",
+          "rect": {
+            "x": 289,
+            "y": 205,
+            "w": 71,
+            "h": 21,
+            "right": 360,
+            "bottom": 226
+          },
+          "min": 21,
+          "disabled": false,
+          "tag": "button",
+          "chrome": true
+        }
+      ],
+      "hoverOnly": [],
+      "activeTab": null,
+      "heading": "Documentation"
+    }
+  },
+  "tasks": {
+    "label": "任务",
+    "url": "http://127.0.0.1:5199/tasks",
+    "finalUrl": "http://127.0.0.1:5199/tasks",
+    "navErr": null,
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    ],
+    "data": {
+      "whoami": {
+        "status": 200
+      },
+      "skeleton": {
+        "rootChildren": 1,
+        "textLen": 2197
+      },
+      "overflow": {
+        "scrollWidth": 375,
+        "docClientWidth": 375,
+        "hits": []
+      },
+      "interactiveCount": 50,
+      "onscreenCount": 13,
+      "offscreenCount": 37,
+      "globalFocusRing": true,
+      "focusRingSelectors": [
+        ".ha-share-trigger:focus-visible",
+        ".hermes-kanban-textarea:focus",
+        ".hermes-kanban-docs-link:hover, .hermes-kanban-docs-link:focus-visible"
+      ],
+      "touch": [
+        {
+          "sel": "a \"Details\"",
+          "rect": {
+            "x": 169,
+            "y": 359,
+            "w": 37,
+            "h": 13,
+            "right": 206,
+            "bottom": 372
+          },
+          "min": 13,
+          "disabled": false,
+          "tag": "a",
+          "chrome": true
+        },
+        {
+          "sel": "button \"Dismiss\"",
+          "rect": {
+            "x": 15,
+            "y": 381,
+            "w": 13,
+            "h": 13,
+            "right": 28,
+            "bottom": 394
+          },
+          "min": 13,
+          "disabled": false,
+          "tag": "button",
+          "chrome": true
+        },
+        {
+          "sel": "button \"Share with Nous\"",
+          "rect": {
+            "x": 177,
+            "y": 205,
+            "w": 104,
+            "h": 21,
+            "right": 282,
+            "bottom": 226
+          },
+          "min": 21,
+          "disabled": false,
+          "tag": "button",
+          "chrome": true
+        },
+        {
+          "sel": "button \"No thanks\"",
+          "rect": {
+            "x": 289,
+            "y": 205,
+            "w": 71,
+            "h": 21,
+            "right": 360,
+            "bottom": 226
+          },
+          "min": 21,
+          "disabled": false,
+          "tag": "button",
+          "chrome": true
+        },
+        {
+          "sel": "button[data-testid=tsk4-filter-status][role=combobox] \"按状态筛选\"",
+          "rect": {
+            "x": 11,
+            "y": 663,
+            "w": 137,
+            "h": 25,
+            "right": 148,
+            "bottom": 688
+          },
+          "min": 25,
+          "disabled": false,
+          "tag": "button",
+          "chrome": false
+        },
+        {
+          "sel": "button[data-testid=tsk4-filter-assignee][role=combobox] \"按负责人筛选\"",
+          "rect": {
+            "x": 156,
+            "y": 663,
+            "w": 104,
+            "h": 25,
+            "right": 259,
+            "bottom": 688
+          },
+          "min": 25,
+          "disabled": false,
+          "tag": "button",
+          "chrome": false
+        },
+        {
+          "sel": "button[data-testid=tsk4-filter-priority][role=combobox] \"按优先级筛选\"",
+          "rect": {
+            "x": 11,
+            "y": 696,
+            "w": 126,
+            "h": 25,
+            "right": 137,
+            "bottom": 720
+          },
+          "min": 25,
+          "disabled": true,
+          "tag": "button",
+          "chrome": false
+        },
+        {
+          "sel": "button[data-testid=tsk4-filter-clear] \"清空筛选\"",
+          "rect": {
+            "x": 145,
+            "y": 695,
+            "w": 65,
+            "h": 25,
+            "right": 210,
+            "bottom": 720
+          },
+          "min": 25,
+          "disabled": true,
+          "tag": "button",
+          "chrome": false
+        },
+        {
+          "sel": "button[data-testid=tsk4-create-open] \"新建任务\"",
+          "rect": {
+            "x": 11,
+            "y": 621,
+            "w": 65,
+            "h": 28,
+            "right": 77,
+            "bottom": 648
+          },
+          "min": 28,
+          "disabled": false,
+          "tag": "button",
+          "chrome": false
+        },
+        {
+          "sel": "button \"刷新\"",
+          "rect": {
+            "x": 84,
+            "y": 621,
+            "w": 63,
+            "h": 28,
+            "right": 147,
+            "bottom": 648
+          },
+          "min": 28,
+          "disabled": false,
+          "tag": "button",
+          "chrome": false
+        },
+        {
+          "sel": "a[role=tab] \"任务\"",
+          "rect": {
+            "x": 11,
+            "y": 487,
+            "w": 51,
+            "h": 35,
+            "right": 62,
+            "bottom": 522
+          },
+          "min": 35,
+          "disabled": false,
+          "tag": "a",
+          "chrome": false
+        },
+        {
+          "sel": "a[role=tab] \"运行\"",
+          "rect": {
+            "x": 66,
+            "y": 487,
+            "w": 51,
+            "h": 35,
+            "right": 116,
+            "bottom": 522
+          },
+          "min": 35,
+          "disabled": false,
+          "tag": "a",
+          "chrome": false
+        }
+      ],
+      "hoverOnly": [],
+      "activeTab": "任务",
+      "heading": "任务与运行"
+    }
+  },
+  "sessions": {
+    "label": "会话",
+    "url": "http://127.0.0.1:5199/sessions",
+    "finalUrl": "http://127.0.0.1:5199/sessions",
+    "navErr": null,
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "Each child in a list should have a unique \"key\" prop.%s%s See https://react.dev/link/warning-keys for more information. \n\nCheck the render method of `CardConten",
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    ],
+    "data": {
+      "whoami": {
+        "status": 200
+      },
+      "skeleton": {
+        "rootChildren": 1,
+        "textLen": 571
+      },
+      "overflow": {
+        "scrollWidth": 375,
+        "docClientWidth": 375,
+        "hits": []
+      },
+      "interactiveCount": 30,
+      "onscreenCount": 13,
+      "offscreenCount": 17,
+      "globalFocusRing": true,
+      "focusRingSelectors": [
+        ".ha-share-trigger:focus-visible",
+        ".hermes-kanban-textarea:focus",
+        ".hermes-kanban-docs-link:hover, .hermes-kanban-docs-link:focus-visible"
+      ],
+      "touch": [
+        {
+          "sel": "a \"Details\"",
+          "rect": {
+            "x": 169,
+            "y": 359,
+            "w": 37,
+            "h": 13,
+            "right": 206,
+            "bottom": 372
+          },
+          "min": 13,
+          "disabled": false,
+          "tag": "a",
+          "chrome": true
+        },
+        {
+          "sel": "button \"Dismiss\"",
+          "rect": {
+            "x": 15,
+            "y": 381,
+            "w": 13,
+            "h": 13,
+            "right": 28,
+            "bottom": 394
+          },
+          "min": 13,
+          "disabled": false,
+          "tag": "button",
+          "chrome": true
+        },
+        {
+          "sel": "button \"Share with Nous\"",
+          "rect": {
+            "x": 177,
+            "y": 205,
+            "w": 104,
+            "h": 21,
+            "right": 282,
+            "bottom": 226
+          },
+          "min": 21,
+          "disabled": false,
+          "tag": "button",
+          "chrome": true
+        },
+        {
+          "sel": "button \"No thanks\"",
+          "rect": {
+            "x": 289,
+            "y": 205,
+            "w": 71,
+            "h": 21,
+            "right": 360,
+            "bottom": 226
+          },
+          "min": 21,
+          "disabled": false,
+          "tag": "button",
+          "chrome": true
+        },
+        {
+          "sel": "button \"Import exported sessions\"",
+          "rect": {
+            "x": 149,
+            "y": 705,
+            "w": 128,
+            "h": 26,
+            "right": 276,
+            "bottom": 731
+          },
+          "min": 26,
+          "disabled": true,
+          "tag": "button",
+          "chrome": false
+        },
+        {
+          "sel": "button \"Prune old sessions\"",
+          "rect": {
+            "x": 11,
+            "y": 505,
+            "w": 155,
+            "h": 28,
+            "right": 166,
+            "bottom": 532
+          },
+          "min": 28,
+          "disabled": true,
+          "tag": "button",
+          "chrome": false
+        },
+        {
+          "sel": "button[role=radio] \"Chats\"",
+          "rect": {
+            "x": 12,
+            "y": 664,
+            "w": 53,
+            "h": 30,
+            "right": 65,
+            "bottom": 694
+          },
+          "min": 30,
+          "disabled": false,
+          "tag": "button",
+          "chrome": false
+        },
+        {
+          "sel": "button[role=radio] \"Automation\"",
+          "rect": {
+            "x": 65,
+            "y": 664,
+            "w": 80,
+            "h": 30,
+            "right": 146,
+            "bottom": 694
+          },
+          "min": 30,
+          "disabled": false,
+          "tag": "button",
+          "chrome": false
+        },
+        {
+          "sel": "button[role=radio] \"All\"",
+          "rect": {
+            "x": 146,
+            "y": 664,
+            "w": 35,
+            "h": 30,
+            "right": 181,
+            "bottom": 694
+          },
+          "min": 30,
+          "disabled": false,
+          "tag": "button",
+          "chrome": false
+        },
+        {
+          "sel": "button \"Session source\"",
+          "rect": {
+            "x": 189,
+            "y": 664,
+            "w": 162,
+            "h": 30,
+            "right": 351,
+            "bottom": 694
+          },
+          "min": 30,
+          "disabled": false,
+          "tag": "button",
+          "chrome": false
+        },
+        {
+          "sel": "button[role=radio] \"Overview\"",
+          "rect": {
+            "x": 12,
+            "y": 703,
+            "w": 70,
+            "h": 30,
+            "right": 83,
+            "bottom": 733
+          },
+          "min": 30,
+          "disabled": false,
+          "tag": "button",
+          "chrome": false
+        },
+        {
+          "sel": "button[role=radio] \"History\"",
+          "rect": {
+            "x": 83,
+            "y": 703,
+            "w": 58,
+            "h": 30,
+            "right": 140,
+            "bottom": 733
+          },
+          "min": 30,
+          "disabled": false,
+          "tag": "button",
+          "chrome": false
+        }
+      ],
+      "hoverOnly": [],
+      "activeTab": null,
+      "heading": "数字员工"
+    }
+  }
+}
