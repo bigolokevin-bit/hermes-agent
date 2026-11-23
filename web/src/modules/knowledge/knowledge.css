@@ -35,14 +35,14 @@
 }
 
 .knw5-title h1 {
-  font-size: 1.05rem;
+  font-size: var(--font-size-ls-4);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .knw5-title > span {
   color: var(--color-muted-foreground);
-  font-size: 0.76rem;
+  font-size: var(--font-size-ls-2);
 }
 
 .knw5-seg {
@@ -58,7 +58,7 @@
   border: 0;
   background: transparent;
   cursor: pointer;
-  font-size: 0.76rem;
+  font-size: var(--font-size-ls-2);
   padding: 6px 12px;
 }
 
@@ -90,7 +90,7 @@
 .knw5-note {
   margin: 0;
   color: var(--color-muted-foreground);
-  font-size: 0.7rem;
+  font-size: var(--font-size-ls-1);
   line-height: 1.5;
   overflow-wrap: anywhere;
 }
@@ -99,7 +99,7 @@
   display: block;
   margin-top: 2px;
   color: var(--color-muted-foreground);
-  font-size: 0.66rem;
+  font-size: var(--font-size-ls-1);
   line-height: 1.4;
   overflow-wrap: anywhere;
 }
@@ -161,7 +161,7 @@
   align-items: flex-start;
   gap: 6px;
   padding: 6px 0;
-  font-size: 0.78rem;
+  font-size: var(--font-size-ls-2);
   line-height: 1.5;
 }
 
@@ -183,7 +183,7 @@
   align-items: center;
   gap: 3px;
   color: var(--color-primary);
-  font-size: 0.72rem;
+  font-size: var(--font-size-ls-1);
   text-decoration: none;
 }
 
@@ -397,7 +397,7 @@
   gap: 6px;
   color: var(--color-muted-foreground);
   font-family: var(--font-mono, monospace);
-  font-size: 0.66rem;
+  font-size: var(--font-size-ls-1);
   overflow-wrap: anywhere;
 }
 
@@ -425,7 +425,7 @@
   background: transparent;
   color: var(--color-foreground);
   cursor: pointer;
-  font-size: 0.66rem;
+  font-size: var(--font-size-ls-1);
   padding: 2px 6px;
 }
 
@@ -538,7 +538,7 @@
   border-radius: 6px;
   background: transparent;
   color: var(--color-foreground);
-  font-size: 0.76rem;
+  font-size: var(--font-size-ls-2);
   padding: 6px 8px;
 }
 
@@ -581,7 +581,7 @@
 
 .k3-docs-title {
   color: var(--color-foreground);
-  font-size: 0.76rem;
+  font-size: var(--font-size-ls-2);
   overflow-wrap: anywhere;
 }
 
@@ -662,7 +662,7 @@
 
 .kn7-preview-head h2 {
   min-width: 0;
-  font-size: 0.9rem;
+  font-size: var(--font-size-ls-3);
   font-weight: 600;
   overflow-wrap: anywhere;
 }
@@ -675,7 +675,7 @@
   margin: 0;
   padding: 10px 0 0;
   border-top: 1px dashed var(--color-border);
-  font-size: 0.74rem;
+  font-size: var(--font-size-ls-1);
   line-height: 1.5;
 }
 
@@ -689,7 +689,7 @@
 
 .kn7-preview-fields dt {
   color: var(--color-muted-foreground);
-  font-size: 0.66rem;
+  font-size: var(--font-size-ls-1);
   letter-spacing: 0.04em;
 }
 
@@ -762,7 +762,7 @@
   margin: 0;
   padding: 0;
   list-style: none;
-  font-size: 0.74rem;
+  font-size: var(--font-size-ls-1);
 }
 
 .knB-item {
@@ -891,7 +891,7 @@
   background: var(--color-muted);
   color: var(--color-foreground);
   font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 0.6875rem;
+  font-size: var(--font-size-ls-1);
   line-height: 1.5;
   resize: vertical;
 }
@@ -922,7 +922,7 @@
   background: var(--color-muted);
   color: var(--color-foreground);
   font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 0.6875rem;
+  font-size: var(--font-size-ls-1);
   line-height: 1.5;
   resize: vertical;
 }
@@ -962,7 +962,7 @@
 }
 .kn-group-count,
 .kn-group-action {
-  font-size: 0.75rem;
+  font-size: var(--font-size-ls-1);
   color: var(--color-muted-foreground);
 }
 .kn-group-action {
@@ -992,7 +992,7 @@
   background: var(--color-muted);
   color: var(--color-foreground);
   font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 0.6875rem;
+  font-size: var(--font-size-ls-1);
   line-height: 1.5;
   resize: vertical;
 }
@@ -1021,7 +1021,7 @@
   background: var(--color-muted);
   color: var(--color-foreground);
   font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 0.6875rem;
+  font-size: var(--font-size-ls-1);
   line-height: 1.5;
   resize: vertical;
 }
@@ -1033,7 +1033,7 @@
 .kn-doc-preview-toggle {
   margin-left: 8px;
   padding: 2px 8px;
-  font-size: 0.75rem;
+  font-size: var(--font-size-ls-1);
   background: none;
   border: 1px solid var(--color-border);
   border-radius: 8px;
@@ -1058,12 +1058,12 @@
   min-width: 0;
 }
 .kn-doc-preview dt {
-  font-size: 0.6875rem;
+  font-size: var(--font-size-ls-1);
   color: var(--color-muted-foreground);
 }
 .kn-doc-preview dd {
   margin: 0;
-  font-size: 0.75rem;
+  font-size: var(--font-size-ls-1);
   overflow-wrap: anywhere;
 }
 
@@ -1081,7 +1081,7 @@
   min-width: 0;
   max-width: 100%;
   font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 0.6875rem;
+  font-size: var(--font-size-ls-1);
   color: var(--color-muted-foreground);
   white-space: nowrap;
   overflow: hidden;
@@ -1099,7 +1099,7 @@
   background: var(--color-muted);
   color: var(--color-foreground);
   font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 0.6875rem;
+  font-size: var(--font-size-ls-1);
   resize: vertical;
 }
 /* R73 — 类型桶：flex-wrap 不横溢；aria-pressed 选中态高亮；:focus-visible 走现成 token；
@@ -1119,7 +1119,7 @@
   min-width: 0;
   padding: 4px 10px;
   font: inherit;
-  font-size: 0.75rem;
+  font-size: var(--font-size-ls-1);
   background: none;
   border: 1px solid var(--color-border);
   border-radius: 999px;
@@ -1142,7 +1142,7 @@
 }
 .kn-type-count {
   font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 0.6875rem;
+  font-size: var(--font-size-ls-1);
   color: var(--color-muted-foreground);
 }
 @media (max-width: 560px) {
@@ -1180,7 +1180,7 @@
 }
 .knM-path {
   font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 0.6875rem;
+  font-size: var(--font-size-ls-1);
   overflow-wrap: anywhere;
 }
 
@@ -1188,7 +1188,7 @@
 .kn-space-toggle {
   margin-left: 8px;
   padding: 2px 8px;
-  font-size: 0.75rem;
+  font-size: var(--font-size-ls-1);
   background: none;
   border: 1px solid var(--color-border);
   border-radius: 8px;
@@ -1216,12 +1216,12 @@
   min-width: 0;
 }
 .kn-space-preview dt {
-  font-size: 0.6875rem;
+  font-size: var(--font-size-ls-1);
   color: var(--color-muted-foreground);
 }
 .kn-space-preview dd {
   margin: 0;
-  font-size: 0.75rem;
+  font-size: var(--font-size-ls-1);
   overflow-wrap: anywhere;
 }
 

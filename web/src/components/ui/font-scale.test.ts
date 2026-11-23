@@ -59,10 +59,10 @@ function scan(): { hits: Hit[]; files: number; declarations: number } {
   return { hits, files: cssFiles("").length, declarations };
 }
 
-/** 全仓字面量站点冻结基线（2026-11-23 现查）；迁移后必须下调本数。 */
-const BASELINE_LITERAL = 323;
-/** 离阶（不等于六档）字面量站点冻结基线。 */
-const BASELINE_OFF_LADDER = 185;
+/** 全仓字面量站点冻结基线（批1 knowledge.css 收敛后 2026-11-23 现查 323→292）；迁移后必须继续下调。 */
+const BASELINE_LITERAL = 292;
+/** 离阶（不等于六档）字面量站点冻结基线（批1 后 185→160，余 160 处含 1 处 0.7em 相对值）。 */
+const BASELINE_OFF_LADDER = 160;
 /** 基元层与令牌层允许的字面量站点数——恒为 0，不参与棘轮。 */
 const MY_SCOPE = /^(styles|components\/ui)\//;
 
@@ -99,9 +99,9 @@ describe("字阶棘轮门（字号集合 ⊆ 6 档令牌）", () => {
     // 这四个文件是收敛主力，若归属突然变化说明有人绕过台账动手，先红再对。
     expect(top.map(([f]) => f).sort()).toEqual(
       [
+        "modules/capabilities/counts.css",
         "modules/duty/duty.css",
         "modules/health/health.css",
-        "modules/knowledge/knowledge.css",
         "modules/metrics/metrics.css",
       ].sort(),
     );
