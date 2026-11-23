@@ -42,6 +42,7 @@ import type {
   RunStatsBody,
   TaskRow,
 } from "./types";
+import type { ReadinessEvidence } from "./readiness";
 import { useDutyData } from "./useDutyData";
 import {
   DEFAULT_DUTY_RANGE,
@@ -301,6 +302,7 @@ function GateRow({ gate, narrowest }: { gate: GateView; narrowest: boolean }) {
 function readinessView(
   employees: Loadable<EmployeeRow[]>,
   stats: Loadable<Record<string, unknown>>,
+  evidence?: Loadable<ReadinessEvidence>,
 ) {
   const rawStamp =
     stats.k === "ready"
@@ -311,14 +313,22 @@ function readinessView(
   const readiness = buildReadiness(
     employees.k === "ready" ? employees.data : null,
     stats.k === "ready" ? stats.data : null,
+    evidence && evidence.k === "ready" ? evidence.data : null,
     rawStamp ? beijing(rawStamp) : null,
   );
-  const state = employees.k === "error" ? employees : stats.k === "error" ? stats : employees;
+  const state =
+    employees.k === "error"
+      ? employees
+      : stats.k === "error"
+        ? stats
+        : evidence && evidence.k === "error"
+          ? evidence
+          : employees;
   return { readiness, rawStamp, state };
 }
 
-function ReadinessCard({ employees, stats, onRetry }: { employees: Loadable<EmployeeRow[]>; stats: Loadable<Record<string, unknown>>; onRetry: () => void }) {
-  const { readiness, rawStamp, state } = readinessView(employees, stats);
+function ReadinessCard({ employees, stats, evidence, onRetry }: { employees: Loadable<EmployeeRow[]>; stats: Loadable<Record<string, unknown>>; evidence?: Loadable<ReadinessEvidence>; onRetry: () => void }) {
+  const { readiness, rawStamp, state } = readinessView(employees, stats, evidence);
   return (
     <HCard
       title="可上岗"
@@ -357,6 +367,7 @@ function ReadinessCard({ employees, stats, onRetry }: { employees: Loadable<Empl
 function DutyDetailsSection({
   employees,
   stats,
+  evidence,
   todayStats,
   todayRuns,
   day,
@@ -372,6 +383,7 @@ function DutyDetailsSection({
 }: {
   employees: Loadable<EmployeeRow[]>;
   stats: Loadable<Record<string, unknown>>;
+  evidence?: Loadable<ReadinessEvidence>;
   todayStats: Loadable<RunStatsBody>;
   todayRuns: Loadable<RunRow[]>;
   day: Loadable<BudgetBody>;
@@ -385,7 +397,7 @@ function DutyDetailsSection({
   approvalStats: Loadable<ApprovalStatsBody>;
   recentRuns: Loadable<RunRow[]>;
 }) {
-  const { readiness } = readinessView(employees, stats);
+  const { readiness } = readinessView(employees, stats, evidence);
   const totals = todayStats.k === "ready" ? runTotals(todayStats.data) : null;
   const caliberAsOf = todayStats.k === "ready" ? asOfOf(todayStats.data) : null;
   const caliber = runsCaliber({
@@ -1299,7 +1311,7 @@ export default function DutyPage() {
       </div>
 
       <div className="duty-grid duty-grid-3">
-        <ReadinessCard employees={data.employees} stats={data.stats} onRetry={reload} />
+        <ReadinessCard employees={data.employees} stats={data.stats} evidence={data.readiness} onRetry={reload} />
         <TodayRunsCard
           stats={data.todayStats}
           runs={data.todayRuns}
@@ -1323,6 +1335,7 @@ export default function DutyPage() {
       <DutyDetailsSection
         employees={data.employees}
         stats={data.stats}
+        evidence={data.readiness}
         todayStats={data.todayStats}
         todayRuns={data.todayRuns}
         day={data.budgetDay}
