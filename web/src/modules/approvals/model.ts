@@ -583,6 +583,152 @@ export interface ApprovalDiff {
   source: "real" | "absent";
 }
 
+/* ------------------------------------------------------------------ *
+ * AP-02 ① — changeKind 分支：差异有没有数据源。
+ * 形制来自 2026-11-23 本机金标准实测（evidence/raw-detail-*.json）：
+ * 只有 employee_version_create 的单带回 detail.changeDetail/resource 的
+ * 字段级前后值；message_send / grant_escalation 实测没有差异载体。
+ * 分支只认 changeKind|change_kind|binding.changeKind（R25 口径，顶层
+ * type=business_action 是审批类不是变更类型），未知类型不推断成任何已知类。
+ * ------------------------------------------------------------------ */
+
+/** The one change kind that has a field-level diff source in this deployment. */
+export const VERSION_CHANGE_KIND = "employee_version_create";
+
+export type DiffBranch =
+  /** 员工版本变更：响应载体出字段级行；缺载体时按相邻版本口径说「未提供」。 */
+  | { kind: "version"; state: "rows" | "carrier-empty" | "no-carrier" }
+  /** 已知但不带差异数据源的变更类型（message_send / grant_escalation / …）。 */
+  | { kind: "no-source"; label: string; raw: string }
+  /** 单据没写明变更类型：不能猜它有没有差异数据源。 */
+  | { kind: "unknown-kind" };
+
+export function diffBranchFor(detail: ApprovalDetail): DiffBranch {
+  const raw = detail.kind.raw?.trim().toLowerCase() ?? "";
+  if (raw === VERSION_CHANGE_KIND) {
+    const diff = detail.diff;
+    if (diff === null) return { kind: "version", state: "no-carrier" };
+    return { kind: "version", state: diff.fields.length ? "rows" : "carrier-empty" };
+  }
+  if (!raw) return { kind: "unknown-kind" };
+  return { kind: "no-source", label: detail.kind.label, raw };
+}
+
+/* ------------------------------------------------------------------ *
+ * AP-02 ② — consumedAt 读取腿与两态（E52/E53）。
+ * 实测形制：consumed 单顶层带 `consumedAt`（ap_AEEC…=2026-11-15T04:21:52.961Z），
+ * expired 单该键缺席；run 标识在 `binding.runId`（message_send 实测
+ * rn_01P07E2E…），顶层 `runId` 也存在（R46 契约）。读不到就是 null，
+ * 屏上只给文案、不画回链。
+ * ------------------------------------------------------------------ */
+
+/** status 原值中「批准已过」的两族：APPROVED 族等待消费，CONSUMED 族已执行。 */
+const APPROVED_FAMILY = new Set(["approved", "accept", "accepted", "granted", "allowed"]);
+const CONSUMED_FAMILY = new Set(["consumed", "executed", "completed"]);
+
+export interface ConsumptionState {
+  /** waiting=已批准未消费（E52）；used=已被运行时使用（E53）。 */
+  state: "waiting" | "used";
+  /** consumedAt 的北京时间读数；null=服务没带回使用时间。 */
+  at: string | null;
+  atRaw: string | null;
+  /** true= consumedAt 缺席但状态已宣布执行，只说「使用时间未回传」。 */
+  timeMissing: boolean;
+}
+
+export function consumptionStateFrom(statusRaw: string | null, consumedAt: string | null): ConsumptionState | null {
+  const key = statusRaw?.trim().toLowerCase() ?? "";
+  const at = beijing(consumedAt);
+  if (consumedAt !== null) return { state: "used", at, atRaw: consumedAt, timeMissing: false };
+  if (APPROVED_FAMILY.has(key)) return { state: "waiting", at: null, atRaw: null, timeMissing: false };
+  if (CONSUMED_FAMILY.has(key)) return { state: "used", at: null, atRaw: null, timeMissing: true };
+  return null;
+}
+
+/* ------------------------------------------------------------------ *
+ * AP-02 ① — 相邻版本核对腿（GET /api/employee-versions?id=，BFF 既有端点）。
+ * 用途只有一件事：把 changeDetail 里的 fromVersionId 对进版本链，
+ * 屏上能说「v几 → v几」以及目标版本是否真在链上。读不到就写读不到。
+ * ------------------------------------------------------------------ */
+
+const ANCHOR_EMPLOYEE_KEYS = ["employeeId", "employee_id", "subjectId", "subject_id"] as const;
+const ANCHOR_FROM_KEYS = ["fromVersionId", "from_version_id"] as const;
+const ANCHOR_TO_KEYS = ["toVersionNo", "to_version_no"] as const;
+
+export interface VersionAnchor {
+  employeeId: string | null;
+  fromVersionId: string | null;
+  /** 文本形制（"3"），服务给数字或字符串都收；读不到 = null。 */
+  toVersionNo: string | null;
+}
+
+export interface EmployeeVersionRef {
+  id: string | null;
+  versionNo: string | null;
+  effectiveFrom: string | null;
+}
+
+/** 详情响应里的版本锚：carrier(detail.changeDetail)/resource/binding 任一处读到即算。 */
+export function versionAnchorFrom(payload: unknown): VersionAnchor | null {
+  const rec = asRecord(payload);
+  if (!rec) return null;
+  let employeeId: string | null = null;
+  let fromVersionId: string | null = null;
+  let toVersionNo: string | null = null;
+  for (const carrier of diffCarrierRecords(rec)) {
+    employeeId ??= pickText(carrier, ANCHOR_EMPLOYEE_KEYS);
+    fromVersionId ??= pickText(carrier, ANCHOR_FROM_KEYS);
+    toVersionNo ??= pickText(carrier, ANCHOR_TO_KEYS);
+  }
+  const binding = asRecord(rec.binding);
+  if (binding) employeeId ??= pickText(binding, ["subjectId", "subject_id"]);
+  if (!employeeId && !fromVersionId && !toVersionNo) return null;
+  return { employeeId, fromVersionId, toVersionNo };
+}
+
+/** /api/employee-versions 的响应形制：顶层 items（实测 keys=[items]）。 */
+export function employeeVersionRefsFrom(payload: unknown): EmployeeVersionRef[] | null {
+  const rec = asRecord(payload);
+  const list = Array.isArray(payload) ? payload : Array.isArray(rec?.items) ? (rec.items as unknown[]) : null;
+  if (!list) return null;
+  const out: EmployeeVersionRef[] = [];
+  for (const item of list) {
+    const one = asRecord(item);
+    if (!one) continue;
+    const id = pickText(one, ["id", "versionId", "version_id"]);
+    const versionNo = pickText(one, ["versionNo", "version_no"]);
+    if (!id && !versionNo) continue;
+    out.push({ id, versionNo, effectiveFrom: beijing(pick(one, ["effectiveFrom", "effective_from"])) });
+  }
+  return out;
+}
+
+/** 锚对进版本链的读数——只报读到的事实；读不回就标 readable:false。 */
+export interface VersionChainNote {
+  /** false=相邻版本读口这一条没答成版本列表（失败/无权/形制不符），链上位置不判定。 */
+  readable: boolean;
+  /** fromVersionId 在链上的版本号（人话「v2」）；没对上= null。 */
+  fromLabel: string | null;
+  /** 单据宣布的目标版本是否已在链上出现；目标版本号未带回= unknown。 */
+  target: "present" | "absent" | "unknown";
+  /** 链上真实读回的版数（readable 时才是数；0=真读到空链，不是缺读补 0）。 */
+  chainSize: number | null;
+}
+
+export function versionChainNote(refs: EmployeeVersionRef[] | null, anchor: VersionAnchor | null): VersionChainNote | null {
+  if (!anchor) return null;
+  if (refs === null) return { readable: false, fromLabel: null, target: "unknown", chainSize: null };
+  const from = anchor.fromVersionId ? refs.find((r) => r.id === anchor.fromVersionId) ?? null : null;
+  const fromLabel = from?.versionNo ? `v${from.versionNo}` : null;
+  const target =
+    anchor.toVersionNo === null
+      ? "unknown"
+      : refs.some((r) => r.versionNo === anchor.toVersionNo)
+        ? "present"
+        : "absent";
+  return { readable: true, fromLabel, target, chainSize: refs.length };
+}
+
 export interface ApprovalDetail {
   rawId: string | null;
   title: string;
@@ -615,6 +761,17 @@ export interface ApprovalDetail {
   taskId: string | null;
   /** Q13: 字段级前后差异；null=该单据响应未带回任何差异键（界面「未接」+原因）。 */
   diff: ApprovalDiff | null;
+  /**
+   * AP-02 ②: consumedAt 原值（缺即 null——不是 0、不是猜测）。E52/E53 两态
+   * 由 consumptionStateFrom(status.raw, consumedAt) 派生，视图不自己摸键。
+   */
+  consumedAt: string | null;
+  /** AP-02 ②: 「已被运行时使用」回链的 run 标识（顶层或 binding，缺即 null）。 */
+  consumptionRunId: string | null;
+  /** AP-02 ④: 不可逆摘要原值（argsDigest 一族）；界面必须标「非差异」。 */
+  digest: string | null;
+  /** AP-02 ①: 版本锚（employee_version_create 的相邻版本核对腿输入）。 */
+  versionAnchor: VersionAnchor | null;
   /** Raw technical lines for the 「详情」 disclosure only. */
   technical: string[];
 }
@@ -642,6 +799,71 @@ function decisionEntries(rec: Record<string, unknown>): DecisionEntry[] {
     });
   }
   return out;
+}
+
+/* ------------------------------------------------------------------ *
+ * AP-03 ① — 时间线事件合流（提交 → 各票 → 到期/替代）。
+ * 三个来源全部只认这条详情响应真带回的值：`decisions[]`、expiresAt 一族
+ * （DEADLINE_KEYS，与「处理期限」字段同一把尺）、supersededBy 一族。
+ * 排序按各事件自己的 `atRaw`（epochOf 单点解析）升序；读不出时间的排末尾，
+ * 彼此保持服务返回的相对次序（稳定排序，同值不重排）。
+ * 没有值就没有节点：不带 expiresAt 不造「到期」，不带 supersededBy 不造「替代」，
+ * 时间缺失只写「该字段未返回」，绝不拿当前时间补一个看似合理的时刻。
+ * ------------------------------------------------------------------ */
+
+export type TrailEventKind = "submitted" | "decision" | "deadline" | "superseded";
+
+export interface TrailEvent {
+  kind: TrailEventKind;
+  /** 事件时间原值（绝对/相对读数的同一输入）；缺= null，不是 0、不是「现在」。 */
+  atRaw: string | null;
+  /** 只有 decision 事件带票面，其它为 null。 */
+  entry: DecisionEntry | null;
+  /** 该票在 `decisions[]` 中的序号——屏上「节点 N」= N+1，服务返回序权威。 */
+  nodeIndex: number;
+  /** 只有 superseded 事件带替代单标识（原值只进 title，不上屏）。 */
+  refId: string | null;
+}
+
+/**
+ * 稳定升序：`atRaw` 解析不出的（含 null）一律排末尾，彼此按原序；
+ * 两边都能解析时才按时针比较，同值仍按原序。排序绝不发明时间。
+ */
+function stableSortByAtRaw<T>(events: readonly T[], atOf: (event: T) => string | null): T[] {
+  return events
+    .map((event, index) => ({ event, index }))
+    .sort((a, b) => {
+      const va = epochOf(atOf(a.event));
+      const vb = epochOf(atOf(b.event));
+      if (va === null && vb === null) return a.index - b.index;
+      if (va === null) return 1;
+      if (vb === null) return -1;
+      return va === vb ? a.index - b.index : va - vb;
+    })
+    .map((wrapped) => wrapped.event);
+}
+
+/**
+ * AP-03 ② 处理记录的时间正序。行的形状由审计车道的模型给出（本模块只借用
+ * `occurredAtRaw` 这一条腿，不另起一套审计行模型）：正序＝事件先后，
+ * 读不出时间的排末尾并保持服务返回的相对次序——不补时钟、不重编号。
+ */
+export function sortRecordsByTime<T extends { occurredAtRaw?: string | null }>(rows: readonly T[]): T[] {
+  return stableSortByAtRaw(rows, (row) => row.occurredAtRaw ?? null);
+}
+
+export function trailEventsFrom(detail: ApprovalDetail): TrailEvent[] {
+  const events: TrailEvent[] = [
+    { kind: "submitted", atRaw: detail.submittedAt, entry: null, nodeIndex: -1, refId: null },
+    ...detail.decisions.map(
+      (entry, nodeIndex): TrailEvent => ({ kind: "decision", atRaw: entry.atRaw, entry, nodeIndex, refId: null }),
+    ),
+  ];
+  if (detail.deadlineAt !== null)
+    events.push({ kind: "deadline", atRaw: detail.deadlineAt, entry: null, nodeIndex: -1, refId: null });
+  if (detail.supersededBy !== null)
+    events.push({ kind: "superseded", atRaw: null, entry: null, nodeIndex: -1, refId: detail.supersededBy });
+  return stableSortByAtRaw(events, (event) => event.atRaw);
 }
 
 /* ------------------------------------------------------------------ *
@@ -754,13 +976,14 @@ export function approvalDetailFrom(payload: unknown): ApprovalDetail | null {
   const status = statusView(pickText(body, STATUS_KEYS));
   const technical: string[] = [];
   const digest = pickText(body, ["payloadHash", "payload_hash", "argsDigest", "targetHash", "target_hash"]);
-  if (digest) technical.push(`参数摘要：${digest}`);
+  // AP-02 ④: 摘要值不是差异——技术行里就把它说明白，不让它被读成前后值。
+  if (digest) technical.push(`参数摘要：${digest}（不可逆摘要，非差异）`);
   technical.push(`状态原值：${status.raw ?? "未提供"}`);
   if (rawId) technical.push(`单据标识：${rawId}`);
   // R15 apd5: PRD §4.2 frozen fields, extracted honestly.
   const actionHash = pickText(body, ["actionHash", "action_hash", "argsDigest"]);
   const requestId = pickText(body, ["requestId", "request_id", "consoleRequestId"]);
-  if (actionHash) technical.push(`操作指纹：${actionHash}`);
+  if (actionHash) technical.push(`操作指纹：${actionHash}（不可逆摘要，非差异）`);
   if (requestId) technical.push(`请求编号：${requestId}`);
   // P1-A2 ①: 「剩 X」与绝对/相对读数走同一把尺——有可读的 deadline 原值时
   // 现场推导剩余；服务端 remainingSeconds 只是快照（两次取数之间已走表），
@@ -809,6 +1032,21 @@ export function approvalDetailFrom(payload: unknown): ApprovalDetail | null {
     runId: pickText(body, ["runId", "run_id"]),
     taskId: pickText(body, ["taskId", "task_id"]),
     diff: approvalDiffFrom(body),
+    // AP-02 ②: consumedAt 缺键就是 null；run 回链只认响应真带回的 run 标识
+    //（实测 message_send 的 run 在 binding.runId，顶层键不存在）。
+    consumedAt: pickText(body, ["consumedAt", "consumed_at"]),
+    consumptionRunId:
+      pickText(body, ["runId", "run_id"]) ?? pickText(asRecord(body.binding) ?? {}, ["runId", "run_id"]),
+    // AP-02 ④: argsDigest 一族单独留一条腿，供差异分区标注「不可逆摘要，非差异」。
+    digest: pickText(body, ["argsDigest", "args_digest", "payloadHash", "payload_hash"]) ?? null,
+    // AP-02 ①: 版本锚只在 employee_version_create 类读取——别的类型没有这个数据源。
+    versionAnchor:
+      (pickText(body, ["changeKind", "change_kind"]) ??
+        pickText(asRecord(body.binding) ?? {}, ["changeKind", "change_kind"]))
+        ?.trim()
+        .toLowerCase() === VERSION_CHANGE_KIND
+        ? versionAnchorFrom(body)
+        : null,
     technical,
   };
 }

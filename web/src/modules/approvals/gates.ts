@@ -21,6 +21,21 @@ export interface ApprovalsGates {
   retry: Gate;
 }
 
+/**
+ * AP-07① — 本地过滤器「跨页需先加载」提示的单点措辞。
+ *
+ * 读口实测只有 status/limit/cursor 真发服务端（见 api.ts listUrl）；q/actor/since/
+ * risk/排序全是「当前已加载行」上的本地过滤。服务端还给着下一页游标（hasMore）时，
+ * 本地过滤的范围本身就还没到底，光说「已加载 n 条内」不够——必须再点一句「需先加载」，
+ * 否则用户会以为筛完的就是全部。这里给唯一一句措辞，各过滤器接在同一句后头。
+ * 返回空串＝没有下一页（到底/无游标），不追加任何假提示。
+ */
+export function crossPageLoadHint(hasMore: boolean): string {
+  return hasMore
+    ? "还有未加载的行不在本次过滤范围内：先点「加载更多」把它们取回来，才谈得上按这个条件筛全量。"
+    : "";
+}
+
 export function gateReason(phase: Phase): string {
   switch (phase) {
     case "loading":
