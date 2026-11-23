@@ -2967,6 +2967,16 @@ export function MetricsModulePage() {
               <Button
                 size="sm"
                 outlined
+                disabled
+                aria-disabled="true"
+                title={`按供应商拆分未接入：缺模型→供应商映射读口（${USAGE_GAP}）`}
+                data-testid="met8-view-provider"
+              >
+                按供应商
+              </Button>
+              <Button
+                size="sm"
+                outlined
                 disabled={!gates.shareExport.enabled}
                 title={gates.shareExport.title ?? undefined}
                 onClick={exportShare}
