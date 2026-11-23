@@ -134,13 +134,13 @@ describe("DutyPage", () => {
       if (
         url.includes("/workstations") ||
         url.includes("/effective-config") ||
-        url.includes("/knowledge/documents") ||
+        url.includes("/knowledge/citations") ||
         (url.includes("/approvals") && url.includes("status=all"))
       ) {
         return Promise.reject(
           new ApiError("source not wired", {
             status: 404,
-            body: '{"code":"documents.read_not_wired"}',
+            body: '{"code":"knowledge.not_wired","asOf":"2026-11-23T15:11:05Z"}',
             url,
             requestId: "req-unknown-gate",
           }),
@@ -154,8 +154,14 @@ describe("DutyPage", () => {
       expect(text).toContain(title);
     }
     expect(container.querySelectorAll('[data-card="duty"]')).toHaveLength(8);
-    expect(container.querySelector('[data-duty-testid="duty-ready-value"]')?.textContent).toContain("—");
+    // 三分态取代单一权威数字：证据没回答的行归「待核实」，绝不冒充百分比。
+    const readyValue = container.querySelector('[data-duty-testid="duty-ready-value"]')?.textContent ?? "";
+    expect(readyValue).toContain("已确认 0 · 待核实 1 · 未达 0");
+    expect(readyValue).not.toMatch(/\d+(\.\d+)?%/);
     expect(text).toContain("待核实");
+    expect(container.querySelector('[data-testid="duty-ready-denominator"]')?.textContent ?? "").toContain(
+      "分母口径：目录已加载 1 条",
+    );
     expect(text).not.toContain("HTTP");
   });
 
