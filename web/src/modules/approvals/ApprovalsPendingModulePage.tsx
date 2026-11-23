@@ -35,7 +35,8 @@ import { writeFailure, type FailureCopy } from "./copy";
 import { submitDecisionWithRecovery } from "./decisionOutcome";
 import type { ApprovalRow } from "./model";
 import { approvalSortKeyOf, approvalsRowSearchText, sortApprovalRows, type ApprovalSortDir, type ApprovalSortKey } from "./model";
-import { DeniedPanel, EmptyPanel, ErrorPanel, InlineFailure, LoadingPanel } from "./states";
+import { DeniedPanel, EmptyPanel, ErrorPanel, InlineFailure, LoadingPanel, RequestIdCopyField } from "./states";
+import { APPROVAL_RID_FALLBACK } from "./stateCopy";
 import { useApprovalDetail, useApprovalsList, type ForcedState } from "./useApprovalsData";
 import { actionGates, announcement, crossPageLoadHint } from "./gates";
 import { DECISION_GATE, missingHashReasonFor } from "./writeGate";
@@ -484,9 +485,20 @@ export function ApprovalsPendingModulePage(): ReactNode {
           list.reload();
           detail.reload();
           break;
+        case "already-decided-face":
+          // AP-06 ①：409 already_decided 不是失败——回填票面走成功侧载体
+          // （role=status、无 alert、无「重新提交」）。票面就是这一次 GET 读回的结果，
+          // 所以详情不再二次 GET（再 GET 会把决策区换成「非待处理」只读态、
+          // 把刚回填的票面从屏上抹掉）；队列照旧重读，屏上永远是服务说的。
+          setComment("");
+          setDecisionFace(outcome.face);
+          list.reload();
+          break;
         case "failure":
           setRefused({ copy: outcome.copy, action: "决定没有提交" });
           if (outcome.reloadTicket) detail.reload();
+          // AP-06 ①：409 expired（及读不回票面的已决兜底）改了队列事实 ⇒ 列表重读。
+          if (outcome.reloadList) list.reload();
           break;
         case "readback-pending":
         case "readback-unreadable":
@@ -566,6 +578,14 @@ export function ApprovalsPendingModulePage(): ReactNode {
             <p className="max-w-prose min-w-0 break-words text-xs" data-testid="apr5-decision-face-sentence">
               {decisionFace.sentence}
             </p>
+            {/* AP-06 ②：只有这条腿真带回了请求号才给复制载体（already_decided 的
+                409 响应头）；200 重放/读回落定腿没有失败请求号，不编一个、不摆空行，
+                载体 DOM 与 AP-05f 同形（无 requestId ⇒ 不新增任何节点）。 */}
+            {decisionFace.requestId ? (
+              <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="apv-state-rid">
+                <RequestIdCopyField requestId={decisionFace.requestId} fallback={APPROVAL_RID_FALLBACK} />
+              </p>
+            ) : null}
           </div>
         ) : refused ? (
           <InlineFailure
