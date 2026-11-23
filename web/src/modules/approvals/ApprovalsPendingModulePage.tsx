@@ -30,14 +30,16 @@ import { Input } from "@nous-research/ui/ui/components/input";
 import { Spinner } from "@nous-research/ui/ui/components/spinner";
 
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { failureInfo, isWriteUnavailable, postDecision, type Verdict } from "./api";
+import { failureInfo, postDecision, readBackDecisionTicket, type Verdict } from "./api";
 import { writeFailure, type FailureCopy } from "./copy";
+import { submitDecisionWithRecovery } from "./decisionOutcome";
 import type { ApprovalRow } from "./model";
 import { approvalSortKeyOf, approvalsRowSearchText, sortApprovalRows, type ApprovalSortDir, type ApprovalSortKey } from "./model";
-import { DeniedPanel, EmptyPanel, ErrorPanel, InlineFailure, LoadingPanel } from "./states";
+import { DeniedPanel, EmptyPanel, ErrorPanel, InlineFailure, LoadingPanel, RequestIdCopyField } from "./states";
+import { APPROVAL_RID_FALLBACK } from "./stateCopy";
 import { useApprovalDetail, useApprovalsList, type ForcedState } from "./useApprovalsData";
-import { actionGates, announcement } from "./gates";
-import { DECISION_GATE } from "./writeGate";
+import { actionGates, announcement, crossPageLoadHint } from "./gates";
+import { DECISION_GATE, missingHashReasonFor } from "./writeGate";
 import { QueueSummaryBar, denominatorReadout } from "./QueueSummaryBar";
 import { clearFilterParams, hasActiveFilters, resetTitle } from "./FilterReset";
 import { FilterSummary } from "./FilterSummary";
@@ -143,7 +145,10 @@ export function ApprovalsPendingModulePage(): ReactNode {
   const [comment, setComment] = useState("");
   const [confirming, setConfirming] = useState<Verdict | null>(null);
   const [inFlight, setInFlight] = useState(false);
-  const [refused, setRefused] = useState<FailureCopy | null>(null);
+  // AP-05: 「知道没成」与「结果未知」分两个 action 前缀——未知腿绝不写成失败。
+  const [refused, setRefused] = useState<{ copy: FailureCopy; action: string } | null>(null);
+  // AP-05 ②③: 成功侧回填票面（重放/读回落定），role=status，不是弹窗不是错误。
+  const [decisionFace, setDecisionFace] = useState<FailureCopy | null>(null);
 
   const list = useApprovalsList("pending", forced);
   const detail = useApprovalDetail(selected, forced);
@@ -164,6 +169,9 @@ export function ApprovalsPendingModulePage(): ReactNode {
     [list.rows.length, list.total, list.next],
   );
   const readout = denominatorReadout(denominator);
+  // AP-07①: 服务端给了下一页游标＝本地过滤的作用域还没到底，各过滤器作用域句据此
+  // 追加「需先加载」提示；status 是唯一真服务端筛选（listUrl 实测只发 status/limit/cursor）。
+  const hasMore = list.next !== null;
 
   // R59: keyword search is a local filter over the loaded rows (the read
   // port ignores q/keyword/title — measured), so typing never fetches.
@@ -390,6 +398,7 @@ export function ApprovalsPendingModulePage(): ReactNode {
       // R60: 打开详情与行内预览互斥，收起所有预览。
       setPreviewKey(null);
       setRefused(null);
+      setDecisionFace(null);
       setComment("");
       setConfirming(null);
       // R55: stash the list scroll so 返回列表 restores it.
@@ -446,29 +455,59 @@ export function ApprovalsPendingModulePage(): ReactNode {
     setActiveRowKey(null);
   }, [firstRowKey]);
 
+  /**
+   * AP-05：提交的分支判定收进 submitDecisionWithRecovery 单点（②重放回填票面、
+   * ③未知结果先 GET 读回、绝不盲发第二次 POST）；这里只做结局→状态的映射。
+   * 409/404 语义不变：单据动过了就重读它，而不是把服务已不认同的票面留在屏上。
+   */
   const send = useCallback(
     async (verdict: Verdict) => {
       if (!selected) return;
       setInFlight(true);
       setRefused(null);
-      try {
-        await postDecision(selected, verdict, comment);
-        setConfirming(null);
-        setComment("");
-        list.reload();
-        detail.reload();
-      } catch (err) {
-        const info = failureInfo(err);
-        setConfirming(null);
-        setRefused(writeFailure(err, verdict, info));
-        // 409/404 mean the ticket moved without us: re-read it rather than keep
-        // a body on screen that the service no longer agrees with.
-        if (info.status === 409 || info.status === 404 || isWriteUnavailable(info.status)) {
+      setDecisionFace(null);
+      const outcome = await submitDecisionWithRecovery(selected, verdict, comment, {
+        post: postDecision,
+        readBack: readBackDecisionTicket,
+      });
+      setConfirming(null);
+      switch (outcome.kind) {
+        case "recorded":
+          setComment("");
+          list.reload();
           detail.reload();
-        }
-      } finally {
-        setInFlight(false);
+          break;
+        case "replay":
+        case "readback-settled":
+          // 成功侧：回填票面渲染，不进错误弹窗、不当失败；照旧重读，屏上永远是服务说的。
+          setComment("");
+          setDecisionFace(outcome.face);
+          list.reload();
+          detail.reload();
+          break;
+        case "already-decided-face":
+          // AP-06 ①：409 already_decided 不是失败——回填票面走成功侧载体
+          // （role=status、无 alert、无「重新提交」）。票面就是这一次 GET 读回的结果，
+          // 所以详情不再二次 GET（再 GET 会把决策区换成「非待处理」只读态、
+          // 把刚回填的票面从屏上抹掉）；队列照旧重读，屏上永远是服务说的。
+          setComment("");
+          setDecisionFace(outcome.face);
+          list.reload();
+          break;
+        case "failure":
+          setRefused({ copy: outcome.copy, action: "决定没有提交" });
+          if (outcome.reloadTicket) detail.reload();
+          // AP-06 ①：409 expired（及读不回票面的已决兜底）改了队列事实 ⇒ 列表重读。
+          if (outcome.reloadList) list.reload();
+          break;
+        case "readback-pending":
+        case "readback-unreadable":
+          // 结果未知：如实说未知，不写「决定没有提交」，也不自动补发——
+          // 出口只剩人工重读（InlineFailure 的「重新读取这张单」按钮走 detail.reload）。
+          setRefused({ copy: outcome.copy, action: "提交结果未知" });
+          break;
       }
+      setInFlight(false);
     },
     [comment, detail, list, selected],
   );
@@ -528,10 +567,30 @@ export function ApprovalsPendingModulePage(): ReactNode {
     }
     const actions = detail.detail.status.pending ? (
       <div className="flex min-w-0 flex-col gap-2 border-t border-border pt-3" data-testid="apr5-actions">
-        {refused ? (
+        {decisionFace ? (
+          // AP-05 ②③: 重放/读回落定走成功侧票面回填——role=status、无 alert、
+          // 无「重新提交」钮；措辞单点在 copy.ts（复用 DecisionTrail 票面词）。
+          <div
+            className="flex min-w-0 flex-col items-start gap-1 rounded-md border border-border bg-card px-3 py-2"
+            role="status"
+            data-testid="apr5-decision-face"
+          >
+            <p className="max-w-prose min-w-0 break-words text-xs" data-testid="apr5-decision-face-sentence">
+              {decisionFace.sentence}
+            </p>
+            {/* AP-06 ②：只有这条腿真带回了请求号才给复制载体（already_decided 的
+                409 响应头）；200 重放/读回落定腿没有失败请求号，不编一个、不摆空行，
+                载体 DOM 与 AP-05f 同形（无 requestId ⇒ 不新增任何节点）。 */}
+            {decisionFace.requestId ? (
+              <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="apv-state-rid">
+                <RequestIdCopyField requestId={decisionFace.requestId} fallback={APPROVAL_RID_FALLBACK} />
+              </p>
+            ) : null}
+          </div>
+        ) : refused ? (
           <InlineFailure
-            failure={refused}
-            action="决定没有提交"
+            failure={refused.copy}
+            action={refused.action}
             onRetry={detail.reload}
             retryLabel="重新读取这张单"
           />
@@ -579,9 +638,25 @@ export function ApprovalsPendingModulePage(): ReactNode {
             </span>
           ) : null}
         </div>
+        {/* AP-07②：写通道关时，逐单抽屉的可见禁用说明与两个钮的 title、批量钮的禁用
+            title 同读 DECISION_GATE.title 这一个来源——环境只读这一句，全模块只有一个出口，
+            不再分叉第二套措辞。 */}
         <p className="max-w-prose min-w-0 break-words text-xs text-muted-foreground" data-testid="apr5-actions-readonly-note">
-          当前环境的控制台是只读的：批准、驳回在这里点了也不会生效，所以两个按钮先禁用了。要处理这张单，请走它原本产生决定的渠道。
+          {DECISION_GATE.title}
         </p>
+        {/* AP-05 ①（总控裁定偏差见 DONE-AP-05）：本轮未开闸，「指纹缺失」不接按钮
+            合取，落为禁用原因段的第二条数据侧原因，与上一句同屏并存；判据只认
+            详情读回的 actionHash（actionHash/action_hash/argsDigest 一族），缺即说、
+            有即不说——不推断、不补造。钮的 title 仍单源 DECISION_GATE（AP-07② 契约）。 */}
+        {missingHashReasonFor(detail.detail.actionHash) ? (
+          <p
+            className="max-w-prose min-w-0 break-words text-xs text-muted-foreground"
+            data-testid="apr5-actions-hash-missing-note"
+            title="判据源：详情响应的 actionHash/action_hash/argsDigest 一族键；缺值即缺失，不从其它字段推断。"
+          >
+            {missingHashReasonFor(detail.detail.actionHash)}
+          </p>
+        ) : null}
       </div>
     ) : (
       <p className="min-w-0 break-words border-t border-border pt-3 text-xs text-muted-foreground">
@@ -674,25 +749,31 @@ export function ApprovalsPendingModulePage(): ReactNode {
             title="实测：本页读口带 q/keyword/title 任一参数都与不带时返回同一全量（同集合），后台不做关键字过滤；为避免「假服务端搜索」，这里只做前端本地过滤。"
           >
             仅在当前已加载 {list.rows.length} 条内搜索；关键字是前端本地过滤，不产生新请求（实测后台 q/keyword/title 参数被忽略）。
+            {hasMore ? (
+              <span data-testid="apv8-search-crosspage" data-apv8-search-crosspage="needs-load">
+                {` ${crossPageLoadHint(true)}`}
+              </span>
+            ) : null}
           </p>
           <p
             className="min-w-0 break-words text-xs text-muted-foreground"
             data-testid="apv-status-note"
+            data-apv-status-scope="server"
             title="待处理页的数据腿固定读取 pending 队列（实测 status=pending&limit=50 → 200/0）；status 参数在本页不生效，切到「决策历史」页签后按状态筛选。"
           >
-            待办视图只列待办，status 筛选在历史 tab 生效。
+            status 是唯一在服务端生效的筛选（读口实测只发 status/limit/cursor）；待办视图只列待办，status 筛选在历史 tab 生效。
           </p>
-          <ActorBuckets rows={riskBaseRows} phase={list.phase} actor={actor} onPick={pickActor} />
-          <SinceQuickFilter phase={list.phase} since={since} loadedCount={list.rows.length} onPick={pickSince} />
-          <RiskQuickFilter rows={actorBaseRows} phase={list.phase} risk={risk} onPick={pickRisk} />
+          <ActorBuckets rows={riskBaseRows} phase={list.phase} actor={actor} onPick={pickActor} hasMore={hasMore} />
+          <SinceQuickFilter phase={list.phase} since={since} loadedCount={list.rows.length} onPick={pickSince} hasMore={hasMore} />
+          <RiskQuickFilter rows={actorBaseRows} phase={list.phase} risk={risk} onPick={pickRisk} hasMore={hasMore} />
           {/* P1-A1: 三行元说明（动作矩阵/键盘导航/本地排序口径）收进面板尾——
               testid 与文案逐字不变，收起时随面板卸载，展开即见。 */}
-          <QueueMetaNotes phase={list.phase} loadedCount={list.rows.length} />
+          <QueueMetaNotes phase={list.phase} loadedCount={list.rows.length} hasMore={hasMore} />
         </div>
       ) : null}
 
       <QueueCsvExport rows={visibleRows} tab="pending" status="pending" phase={list.phase} sort={asort} dir={asort ? adir : null} />
-      <QueueSortBar phase={list.phase} sort={asort} dir={adir} loadedCount={list.rows.length} onCycle={cycleSort} hideNotes />
+      <QueueSortBar phase={list.phase} sort={asort} dir={adir} loadedCount={list.rows.length} onCycle={cycleSort} hideNotes hasMore={hasMore} />
       <RowDetailCopy row={visibleRows.find((r) => r.key === previewKey) ?? null} />
 
       <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">

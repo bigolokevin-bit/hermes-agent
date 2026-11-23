@@ -40,6 +40,18 @@
   font-size: var(--font-size-1);
 }
 
+/* DU-05①：页头 health chip（三态：ok / degraded / 未接入，词表见 health.ts）。
+   只借 Badge 的面，状态色由 data-state 决定语义，pending 减一档存在感——
+   「还没回答」不许比「失败」更抢眼。 */
+.duty-health-chip {
+  display: inline-flex;
+  align-items: center;
+}
+
+.duty-health-chip[data-state="pending"] {
+  opacity: 0.85;
+}
+
 .duty-head-actions {
   display: flex;
   flex-wrap: wrap;
@@ -178,6 +190,17 @@
   white-space: nowrap;
 }
 
+/* DU-07①③：窄屏不许用省略号把「读哪个口」裁掉——被裁的那半句原文只活在 title（悬停）里。
+   375 实测本行 scrollWidth=367 vs 可视 296（裁掉 71px），改成换行：整句上屏、零裁切。 */
+@media (max-width: 420px) {
+  .duty-gate-source {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}
+
 .duty-dot {
   width: 7px;
   height: 7px;
@@ -277,6 +300,21 @@
 .duty-cell.is-l3 { background: color-mix(in srgb, var(--color-primary) 62%, transparent); }
 .duty-cell.is-l4 { background: var(--color-primary); }
 .duty-cell.is-future { background: transparent; box-shadow: inset 0 0 0 1px var(--color-border); }
+
+/* DU-07①：逐时读数文字替代（「以文字查看逐时」点开）。两列短文本，
+   窄屏不横溢；数字与色块共用同一份 heatCellText 字符串。 */
+.duty-heat-text {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px 12px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--color-muted-foreground);
+  font-size: var(--font-size-1);
+  font-variant-numeric: tabular-nums;
+}
+.duty-heat-text li { min-width: 0; overflow-wrap: anywhere; }
 
 .duty-axis-row {
   display: flex;
@@ -569,6 +607,14 @@
 }
 
 /* duty refresh: one batch, old numbers stay until the new ones land. */
+/* DU-06①：节流窗口内与在飞时的刷新钮要**看得出来**「现在点没用」。
+   刻意不用原生 disabled——原生 disabled 的按钮拿不到焦点，读屏和键盘都念不出
+   dutyGates 那句原因；这里用 aria-disabled＋这一条形制，牙齿在 useDutyData
+   （按下去既不发请求也不排队）。 */
+.duty-refresh-btn[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 .duty-refreshbar { display: flex; flex-direction: column; gap: 6px; }
 .duty-refresh-error {
   display: flex;
@@ -789,6 +835,14 @@
   font-style: normal;
 }
 
+/* DU-02②：今日运行卡的三格搬到卡外折叠区后一行排开（窄屏仍按上面两列），
+   卡片本体只留一个主数字，高度与明细行数无关。 */
+@media (min-width: 821px) {
+  .duty-details-kpis {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 /* 卡外明细折叠区 */
 .duty-details {
   margin-block-start: 8px;
@@ -821,12 +875,33 @@
 }
 
 /* 手机档：单列、触控高不低于 44px（rubric 触达底线，暂无对应令牌，用字面值并注明） */
+/* DU-07②：刷新钮/折叠钮（口径说明・以表格查看・以文字查看）/舰队控件/卡头与行内
+   深链/检查项行同档补 44px。选择器插在原四者的相对次序之间，保持钉形断言
+   （dutyPage.test「手机档」取本文件最后一个 820px 块、要求 .duty-range 紧贴 {）不破。 */
 @media (max-width: 820px) {
   .duty-kpi,
+  .duty-refresh-btn,
+  .duty-notes-toggle,
   .duty-card-foot,
+  .duty-disclosure-toggle,
   .duty-details-summary,
+  .duty-fleet-arrow,
+  .duty-fleet-pause,
+  .duty-card-hd .duty-link,
+  .duty-gate,
+  .duty-list > li,
+  .duty-list > li .duty-row-title,
   .duty-range {
     min-block-size: 44px;
+  }
+  /* 行内深链本体只有文字宽：整行 44px＋行内仅此一个可点目标，
+     相邻目标中心距 ≥44+gap，走判据的「间距 ≥44」腿。 */
+  .duty-list > li .duty-row-title {
+    display: inline-flex;
+    align-items: center;
+  }
+  .duty-fleet-arrow {
+    min-inline-size: 44px;
   }
 }
 
@@ -985,6 +1060,12 @@
 }
 .duty-fleet-arrow:focus-visible,
 .duty-fleet-pause:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+/* DU-03③：轨道本身可 Tab 进入（tabIndex=0），键盘步进必须看得见落点——
+   focus 可见样式与前后箭头同源同值（--color-primary 描边 2px）。 */
+.duty-fleet-viewport:focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }

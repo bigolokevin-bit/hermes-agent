@@ -64,9 +64,18 @@ describe("V3 引用", () => {
   it("知识读侧未接线 → unknown（未接），不编造 0", () => {
     expect(v3Verdict({ wired: false, count: null, asOf: null })).toBe("unknown");
   });
-  it("已接线且目录为空 → fail；有文档但策略/运行腿未接 → 仍待核实", () => {
+  it("已接线且目录为空 → fail；有文档但策略腿未接 → 仍待核实", () => {
     expect(v3Verdict({ wired: true, count: 0, asOf: null })).toBe("fail");
     expect(v3Verdict({ wired: true, count: 3, asOf: null })).toBe("unknown");
+  });
+  it("最小真口径：文档>0 ∧ 强制引用策略可读 → pass；策略不可读绝不假 pass", () => {
+    const docs = { wired: true, count: 3, asOf: null };
+    expect(v3Verdict({ ...docs, policy: { wired: true, reason: "" } })).toBe("pass");
+    expect(v3Verdict({ ...docs, policy: { wired: false, reason: "无读口" } })).toBe("unknown");
+    expect(v3Verdict({ ...docs, policy: null })).toBe("unknown");
+  });
+  it("回包形状漂移（wired 但 count 缺失）→ unknown，不把缺数当 0 判 fail", () => {
+    expect(v3Verdict({ wired: true, count: null, asOf: null })).toBe("unknown");
   });
 });
 
@@ -126,6 +135,7 @@ const evidence: ReadinessEvidence = {
     { subjectId: "emp_F2B540", status: "consumed", expiresAt: "2026-11-14T22:18:00Z", hasApprover: true },
   ]),
   knowledge: ready({ wired: false, count: null, asOf: null }),
+  coverage: { covered: 2, requested: 2 },
 };
 
 describe("buildReadiness — 2026-11-23 现网真实读数", () => {
@@ -182,5 +192,78 @@ describe("buildReadiness — 2026-11-23 现网真实读数", () => {
     const loading = buildReadiness(employees, stats, null, null, NOW);
     expect(loading.gates.every((g) => g.state === "unknown" && g.pass === null)).toBe(true);
     expect(loading.confirmed).toBeNull();
+  });
+});
+
+/* ── DU-01④⑤：三分态、分母与扇出披露、V3 结论句、禁假数字 ── */
+
+describe("三分态与分母披露（DU-01）", () => {
+  it("三桶之和恒等于分母；有显式 fail 归「未达」，不冒充百分比", () => {
+    const view = buildReadiness(employees, stats, evidence, "s", NOW);
+    const b = view.buckets;
+    expect(b).not.toBeNull();
+    expect(b!.confirmed + b!.pending + b!.failing).toBe(2);
+    // 真实形态：两人 V6 全 fail（决策过期）→ 双双「未达」；「已确认」一个不给。
+    expect(b).toEqual({ confirmed: 0, pending: 0, failing: 2 });
+    expect(view.confirmed).toBeNull(); // unknownGates>0 的 null 链保持
+  });
+
+  it("扇出未覆盖的分母行按待核实，并披露「本轮逐员工判定覆盖 n/N」", () => {
+    const three = [...employees, { employeeId: "emp_C3C3C3", name: "第三员工", lifecycleState: "active" }];
+    const stats3 = { total: 4, byLifecycle: { draft: 1, active: 3, paused: 0, offboarding: 0 } };
+    const ev = structuredClone(evidence);
+    ev.coverage = { covered: 2, requested: 3 };
+    // 审批腿本轮没回答：未覆盖行才真正落「待核实」（若审批腿回答了而缺该员工行，
+    // v6Verdict 给的是真 fail——「没有有效决策」是可证明的未达，不是猜测）。
+    ev.approvals = { k: "error", status: 0, message: "审批腿未回答", requestId: null };
+    const view = buildReadiness(three, stats3, ev, "s", NOW);
+    // F2B540：V1 pass、V3 unknown、V6 未回答 → 待核实；A22649：V1 fail 是真读数 → 未达；
+    // emp_C3C3C3：扇出未覆盖（工位/配置都没有回答）且无任何显式 fail → 待核实。
+    expect(view.buckets).toEqual({ confirmed: 0, pending: 2, failing: 1 });
+    expect(view.denominatorNote).toContain("本轮逐员工判定覆盖 2/3，其余 1 名按待核实");
+  });
+
+  it("目录单页拉满=证明不了全量：不给任何计数，整组按证据不完整并披露「非全量」", () => {
+    const rows = Array.from({ length: 100 }, (_, i) => ({
+      employeeId: `emp_${i}`,
+      name: `员工${i}`,
+      lifecycleState: "active",
+    }));
+    const bigStats = { total: 100, byLifecycle: { draft: 0, active: 100, paused: 0, offboarding: 0 } };
+    const view = buildReadiness(rows, bigStats, evidence, "s", NOW);
+    expect(view.buckets).toBeNull();
+    expect(view.confirmed).toBeNull();
+    expect(view.gates.every((g) => g.state === "unknown" && g.pass === null)).toBe(true);
+    expect(view.denominatorNote).toContain("非全量");
+  });
+
+  it("V3 unknown 的 whyNot 是给不出的原因句，source 不再谎称「取数失败」", () => {
+    const view = buildReadiness(employees, stats, evidence, "s", NOW);
+    const v3 = view.gates.find((g) => g.key === "V3");
+    expect(v3?.state).toBe("unknown");
+    expect(v3?.whyNot).toContain("可引用文档读口未接线");
+    expect(v3?.whyNot).toContain("强制引用策略");
+    expect(v3?.source).not.toContain("取数失败");
+  });
+
+  it("禁假数字：两腿真读数齐了 V3 才 pass，此时才报得出已确认", () => {
+    const wired = structuredClone(evidence);
+    wired.knowledge = ready({
+      wired: true,
+      count: 5,
+      asOf: "2026-11-23T15:00:00Z",
+      source: "bisheng:/api/v1/knowledge",
+      policy: { wired: true, reason: "" },
+    });
+    wired.approvals = ready([
+      { subjectId: "emp_F2B540", status: "approved", expiresAt: "2026-12-31T00:00:00Z", hasApprover: true },
+      { subjectId: "emp_A22649", status: "approved", expiresAt: null, hasApprover: true },
+    ]);
+    wired.stations.emp_A22649 = ready([groupStation]);
+    const view = buildReadiness(employees, stats, wired, "s", NOW);
+    expect(view.gates.find((g) => g.key === "V3")?.state).toBe("pass");
+    expect(view.unknownGates).toBe(0);
+    expect(view.confirmed).toBe(2);
+    expect(view.buckets).toEqual({ confirmed: 2, pending: 0, failing: 0 });
   });
 });

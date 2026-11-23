@@ -1,0 +1,133 @@
+vite v8.3.4 building client environment for production...
+transforming...
+✓ 3634 modules transformed.
+rendering chunks...
+computing gzip size...
+hermes_cli/.web_dist-build-BKmjal/product/index.html                                        1.08 kB │ gzip:   0.48 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/Mondwest-Regular-CWscgue7.woff2           23.82 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/RulesExpanded-Regular-l8uVympt.woff2      33.82 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/RulesExpanded-Bold-DZA7s8Pa.woff2         35.01 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/RulesCompressed-Regular-BSXFyF4x.woff2    37.76 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/RulesCompressed-Medium-CA76_CrB.woff2     38.84 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/Collapse-Bold-mgICk9-_.woff2              59.14 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/Collapse-Regular-DysayoTY.woff2           62.81 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/filler-bg0-DxMaWJpb.webp                 185.27 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/CronModulePage-BvNVr92Q.css                0.06 kB │ gzip:   0.07 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/SettingsPage-Dss3DVYF.css                  0.07 kB │ gzip:   0.09 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/MatrixModulePage-BtD1oKaq.css              0.13 kB │ gzip:   0.12 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/EvidenceModulePage-BwchnPy_.css            0.19 kB │ gzip:   0.12 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/ToolsPage-DbvXqQEt.css                     0.35 kB │ gzip:   0.22 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/TasksBoardModulePage-CvjO5dGL.css          0.48 kB │ gzip:   0.24 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/RunsModulePage-D2zKldN-.css                0.55 kB │ gzip:   0.26 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/EmployeesModulePage-6ETrNq9H.css           0.91 kB │ gzip:   0.44 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/approvals-density-Oo5oFPd5.css             1.18 kB │ gzip:   0.43 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/SkillsPage-DkgbMCxb.css                    2.54 kB │ gzip:   0.89 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/SecurityModulePage-D3u500su.css            2.89 kB │ gzip:   0.88 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/xterm-BrP-ENHg.css                         3.93 kB │ gzip:   1.01 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/OrgModulePage-DPhTIqXJ.css                 4.20 kB │ gzip:   1.27 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/AccessModulePage-AcA0clkm.css              6.10 kB │ gzip:   1.55 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/rowCopyText-B60CBkzJ.css                   6.59 kB │ gzip:   1.49 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/PeopleModulePage-DNVrmIFu.css              7.18 kB │ gzip:   1.54 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/HealthPage-Cx0O1WdJ.css                   15.74 kB │ gzip:   2.98 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/DutyPage-DAiPPv_F.css                     16.34 kB │ gzip:   3.24 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/MetricsModulePage-EuKvr4u3.css            18.90 kB │ gzip:   3.62 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/KnowledgeModulePage-Cnf7gdPn.css          20.27 kB │ gzip:   3.70 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/index-CrC1qwjv.css                       150.44 kB │ gzip:  23.13 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/usePageHeader-Dhf8bTSG.js                  0.28 kB │ gzip:   0.22 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/utils-3PR4A82B.js                          0.56 kB │ gzip:   0.31 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/DeleteConfirmDialog-DAGwlmB2.js            0.61 kB │ gzip:   0.37 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/useModalBehavior-ae_h4lqq.js               0.62 kB │ gzip:   0.39 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/pty-attach-token-BEyKweeP.js               0.64 kB │ gzip:   0.41 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/terminal-font-refit-Dmois6_8.js            0.83 kB │ gzip:   0.44 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/mcp-server-create-B0VgoYzF.js              0.92 kB │ gzip:   0.46 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/csrf-CtsQ1zbE.js                           1.03 kB │ gzip:   0.61 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/fetchJson-DFEKfnY1.js                      1.28 kB │ gzip:   0.80 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/window-DqrrZxRt.js                         1.44 kB │ gzip:   0.74 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/costCaliberNote-C789j_Sn.js                1.73 kB │ gzip:   1.03 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/LoadErrorNotice-DrRur7m9.js                1.77 kB │ gzip:   0.91 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/DocsPage-B1g2LSXL.js                       1.95 kB │ gzip:   1.08 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/ConfirmDialog-C0jyn_XT.js                  2.09 kB │ gzip:   1.01 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/api-error-BLmGh8VE.js                      2.96 kB │ gzip:   1.48 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/AuditDetailModulePage-CMQL4Fal.js          3.29 kB │ gzip:   1.55 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/ConsoleSelect-D5I0oFN4.js                  3.36 kB │ gzip:   1.54 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/models-BxWNnWmk.js                         3.70 kB │ gzip:   1.43 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/PairingPage-BBzvpRke.js                    4.88 kB │ gzip:   1.66 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/ChatModulePage-BEAp1U92.js                 5.42 kB │ gzip:   2.36 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/systemHealth-CEUueHW8.js                   5.65 kB │ gzip:   2.65 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/tasksBoard-bRGlQOxa.js                     6.17 kB │ gzip:   2.70 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/api-wgsIQoYJ.js                            7.24 kB │ gzip:   3.03 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/LogsPage-9CiKp35L.js                       7.50 kB │ gzip:   3.29 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/AuditVerifyModulePage-JIytSJnK.js          8.12 kB │ gzip:   3.41 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/SettingsPage-D059zsbs.js                   8.39 kB │ gzip:   3.03 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/FilesPage-DEs4Pexq.js                     10.16 kB │ gzip:   3.35 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/systemRefresh-DO3dxpTa.js                 12.65 kB │ gzip:   5.03 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/WebhooksPage-Bdw0HWxm.js                  12.67 kB │ gzip:   3.95 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/ModelReloadConfirm-DBAO2Ri8.js            12.97 kB │ gzip:   4.97 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/SecurityModulePage-CjXVWf50.js            14.65 kB │ gzip:   5.62 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/ProfileBuilderPage-C2X4pnsa.js            14.86 kB │ gzip:   4.49 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/SkillsPage-C1bfIqPh.js                    15.96 kB │ gzip:   5.63 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/OrgModulePage-IGOpJWL6.js                 16.16 kB │ gzip:   5.92 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/RunsPage-DqBGNcTn.js                      16.32 kB │ gzip:   6.56 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/ApprovalsPage-BpFSy53l.js                 16.52 kB │ gzip:   6.48 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/EvidenceModulePage-DGX8TdL7.js            16.83 kB │ gzip:   6.72 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/stateCopy-pDiebjWf.js                     16.90 kB │ gzip:   7.18 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/CronModulePage-BxD9GIXi.js                17.39 kB │ gzip:   6.74 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/ApprovalsHistoryModulePage-B6EuLavi.js    17.73 kB │ gzip:   6.17 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/McpPage-BiFZ-Bm1.js                       17.81 kB │ gzip:   5.23 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/ConfigPage-D484Wd64.js                    18.00 kB │ gzip:   6.02 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/EmployeesPage-OAGyspo5.js                 18.31 kB │ gzip:   7.04 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/MatrixModulePage-Ci73L-4B.js              19.12 kB │ gzip:   6.89 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/ModelsModulePage-C9hVqIlu.js              19.75 kB │ gzip:   5.96 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/AnalyticsPage-paN3Rb7H.js                 20.00 kB │ gzip:   5.90 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/RetentionModulePage-CxmQMwhR.js           20.40 kB │ gzip:   7.80 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/EmployeeDetailPage-CWAngFaM.js            22.04 kB │ gzip:   8.30 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/VersionPage-bpiF5QkQ.js                   22.34 kB │ gzip:   6.97 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/ApprovalsPendingModulePage-uBt9-oK4.js    24.17 kB │ gzip:   8.25 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/UsagePage-BtD0A6wW.js                     24.57 kB │ gzip:   8.42 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/ProfilesPage-CLfYG2q9.js                  25.18 kB │ gzip:   7.08 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/EnvPage-CZx5L9J9.js                       29.71 kB │ gzip:   7.93 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/ToolsPage-C3b4U8WC.js                     29.99 kB │ gzip:  10.68 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/AccessModulePage-KDvNfwM0.js              31.50 kB │ gzip:   9.38 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/TasksBoardModulePage-CuA5Jate.js          32.62 kB │ gzip:  10.67 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/EmployeesModulePage-DXwK0s3n.js           33.38 kB │ gzip:  11.37 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/useAuditData-D5d6ZW2K.js                  34.99 kB │ gzip:  12.15 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/ModelsPage-CT1nNytT.js                    35.08 kB │ gzip:  10.83 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/PluginsPage-8yukmIOP.js                   36.93 kB │ gzip:  10.89 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/rowCopyText-FnImwEnB.js                   37.06 kB │ gzip:  14.04 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/ChannelsPage-DLMohmxX.js                  37.89 kB │ gzip:  10.73 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/ChannelsPage-BbZ18ZHm.js                  38.20 kB │ gzip:  13.37 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/PeopleModulePage-BndIRXA_.js              39.99 kB │ gzip:  12.99 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/CollabDelegationsModulePage-B8eUdaLL.js   42.34 kB │ gzip:  14.65 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/SkillsPage-BfcdLbkG.js                    45.48 kB │ gzip:  12.98 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/CronPage-BfsJAWPx.js                      45.49 kB │ gzip:  14.77 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/SystemPage-B5p-u6GJ.js                    46.20 kB │ gzip:  13.17 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/states-DhleqU1p.js                        49.06 kB │ gzip:  16.26 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/SessionsPage-LB6e3P8e.js                  50.05 kB │ gzip:  15.31 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/ChatPage-CJWLQq1G.js                      53.79 kB │ gzip:  18.81 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/api-mDXZHoyt.js                           53.83 kB │ gzip:  14.31 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/HealthPage-Bn8RAZrv.js                    54.92 kB │ gzip:  16.66 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/vendor-THY9_VB2.js                        55.98 kB │ gzip:  19.55 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/AuditEventsModulePage-CAZqoSUn.js         62.35 kB │ gzip:  22.10 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/EmployeeDetailModulePage-ikDIawOF.js      65.72 kB │ gzip:  19.38 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/approvals-density-C51sNrr-.js             69.28 kB │ gzip:  22.16 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/DutyPage-vmtam6Hn.js                      77.71 kB │ gzip:  26.35 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/RunsModulePage-BU4x-gy2.js                93.29 kB │ gzip:  30.29 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/MetricsModulePage-Dfl4EV1U.js            131.09 kB │ gzip:  34.82 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/KnowledgeModulePage-CsOi_gU5.js          141.84 kB │ gzip:  43.03 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/index-_P6-d4dz.js                        174.88 kB │ gzip:  56.02 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/react-vendor-BJD0jftt.js                 257.75 kB │ gzip:  81.89 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/ui-BgBM5l3M.js                           292.18 kB │ gzip:  95.65 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/xterm-DL6ywjCu.js                        473.46 kB │ gzip: 122.31 kB
+hermes_cli/.web_dist-build-BKmjal/product/assets/i18n-Cho4Jw6X.js                         509.43 kB │ gzip: 152.31 kB
+
+✓ built in 5.88s
+[33m[PLUGIN_TIMINGS] [0mJavaScript callbacks ran for 5.7s of this 5.9s build (98%).
+The slowest callbacks, timed inside each callback (the wait before a callback starts is excluded, the time it awaits is included):
+  - plugin vite:build-html transform (94%, 5.5s, 1 call)
+  - plugin @rolldown/plugin-babel transform (93%, 5.5s, 175 calls)
+These rows add up to more than the total. Callbacks can overlap, so the same time counts for more than one row.
+1 callback is listed without a time. Its calls overlapped, so the time inside one call includes work from other calls. To find its cost, profile the build with `node --cpu-prof`:
+  - plugin @tailwindcss/vite:generate:build transform (27 calls)
+See https://rolldown.rs/reference/InputOptions.checks#bundlertimings for more details.
+
+built /Users/kevin_studio/Projects/forks/hermes-agent/hermes_cli/web_dist/index.html

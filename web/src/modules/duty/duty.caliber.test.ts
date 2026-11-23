@@ -110,7 +110,7 @@ describe("duty caliber — every block reads a real endpoint", () => {
     // 待审队列仍不打 /approval-stats 与 /approvals?status=pending；
     // 四门证据腿（approvals?status=all、workstations、effective-config、knowledge）是新增的真实读。
     expect(urls.some((u) => u.includes("/approval-stats") || u.includes("/approvals?status=pending") || u.includes("/approvals?limit"))).toBe(false);
-    for (const path of ["/approvals?status=all", "/workstations?", "/effective-config?", "/knowledge/documents"]) {
+    for (const path of ["/approvals?status=all", "/workstations?", "/effective-config?", "/knowledge/citations"]) {
       expect(urls.some((u) => u.includes(path))).toBe(true);
     }
     expect(container.innerHTML).not.toContain("MATRIX_FIXTURE");

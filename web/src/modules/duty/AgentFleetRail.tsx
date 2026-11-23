@@ -1,7 +1,9 @@
 /**
  * w189 样板 A — AgentFleetRail 舰队轨（UI-DIRECTION v2 §4 舰队轨/三层/交互、§6②③、§7 H1·H3·I4）。
  *
- * 卡面三层里第③层（能力标签/部门）字段在现有花名册端点上不存在，整层省略（禁编造）；
+ * 卡面三层里第③层（能力标签/部门）：能力标签列不在花名册端点，department 实测多为
+ * 空值（现网 3 条中 2 条 null），整层省略（禁编造、禁空壳）；缺口口径由卡外折叠区
+ * 说明行承接（DutyPage duty-fleet-l3-note，DU-03①，措辞以真响应为准）；
  * 「今日处理/成功率」缺逐人日聚合来源，按 §6④ 与 §8「缺来源先走未知态」显示破折号，
  * 且不画进度条（I4：未知成功率 ⇒ [role=progressbar] 数量 = 0）。原始 employee_id
  * 全值保留在卡 title 属性里可取回，屏上文本绝不裸 id（承 duty 短码判定）。
@@ -16,6 +18,16 @@ import type { EmployeeRow, Loadable } from "./types";
 
 const FLEET_INTERVAL_MS = 6000;
 const FLEET_GAP = 8;
+
+/**
+ * DU-07③：卡面两个缺数「—」的原因句（单一事实源）。
+ * 卡面 title 用它们，卡外折叠区（DutyPage duty-fleet-metric-note）也逐字用它们——
+ * 这样「title 原文有可点开的等价出口」不是近似，而是同串。
+ */
+export const FLEET_METRIC_REASONS = {
+  today: "今日处理还没有可用的逐人数据；接入后会自动显示。",
+  successRate: "成功率要等逐人日聚合接入；零分母或未齐时不显示，也不画进度条。",
+} as const;
 
 /** prefers-reduced-motion 查询串；命中时关自动滚动与过渡，保留手动滚动（v2 §4 交互）。 */
 const REDUCE_QUERY = "(prefers-reduced-motion: reduce)";
@@ -273,12 +285,12 @@ function FleetCard({ row }: { row: EmployeeRow }): JSX.Element {
       </div>
       <div className="duty-fleet-l2">
         <span className="duty-fleet-metric-label">今日处理</span>
-        <span className="duty-fleet-metric" title="今日处理还没有可用的逐人数据；接入后会自动显示。">
+        <span className="duty-fleet-metric" title={FLEET_METRIC_REASONS.today}>
           <span data-metric-value="">—</span>
           <span className="duty-fleet-metric-unit">次</span>
         </span>
         <span className="duty-fleet-metric-label">成功率</span>
-        <span className="duty-fleet-metric" title="成功率要等逐人日聚合接入；零分母或未齐时不显示，也不画进度条。">
+        <span className="duty-fleet-metric" title={FLEET_METRIC_REASONS.successRate}>
           <span data-metric-value="">—</span>
           <span className="duty-fleet-metric-unit">%</span>
         </span>
