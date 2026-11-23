@@ -218,7 +218,9 @@ function RecentActivity({ data, onRetry }: { data: DutyData; onRetry: () => void
       <CardContent className="ov5-block-bd">
         <div className="ov5-block-hd">
           <h2>最近活动</h2>
-          <Link to="/runs">全部运行<ArrowRight className="h-3.5 w-3.5" /></Link>
+          {/* OM-07：卡数据腿固定近 7 天（fetchRuns limit=3 + w7.from），
+              「全部运行」带 window=7d 与卡同窗（runs 页读 window|status|state|run|employee）。 */}
+          <Link to="/runs?window=7d">全部运行<ArrowRight className="h-3.5 w-3.5" /></Link>
         </div>
         <Freshness items={[{ source: '运行记录', state: runs }]} testid="ov6-activity-stamp" />
         {runs.k === 'loading' ? (
@@ -241,8 +243,12 @@ function RecentActivity({ data, onRetry }: { data: DutyData; onRetry: () => void
                 <Link to={`/runs/${encodeURIComponent(run.runId)}`} title={run.runId}>
                   {run.employeeId ? employeeLabel(undefined, run.employeeId) : `运行 ${shortId(run.runId)}`}
                 </Link>
-                <Badge tone={run.status === 'failed' ? 'destructive' : run.status === 'completed' ? 'success' : 'outline'}>
-                  {run.status === 'failed' ? '失败' : run.status === 'completed' ? '成功' : run.status === 'running' ? '运行中' : run.status ?? '—'}
+                <Badge
+                  tone={run.status === 'failed' ? 'destructive' : run.status === 'completed' ? 'success' : 'outline'}
+                  // OM-07 状态四词表封闭：成功/失败/运行中/—；未知原值不进徽标文本，落 title 供核对。
+                  title={run.status && !['failed', 'completed', 'running'].includes(run.status) ? `上游状态：${run.status}` : undefined}
+                >
+                  {run.status === 'failed' ? '失败' : run.status === 'completed' ? '成功' : run.status === 'running' ? '运行中' : '—'}
                 </Badge>
                 <span>{beijing(run.startedAt)}</span>
               </li>
