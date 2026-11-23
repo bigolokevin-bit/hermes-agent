@@ -185,15 +185,24 @@ describe("PE-03 档案分区", () => {
     expect(zone("overview")!.textContent).toContain("V1 换路收尾");
   });
 
-  it("最近流转读口 501 → 未接入腿（title 带 GAP 号），不阻塞其余字段", async () => {
-    serve({ "/api/employee-versions": { items: [] } }, { "/api/employee-versions": new ApiError("boom", { status: 501, body: "", url: "/agent-api" }) });
+  it("最近流转读口 501 → 未接入腿（Q41a 活腿：文案取服务端 code），不阻塞其余字段", async () => {
+    serve(
+      { "/api/employee-versions": { items: [] } },
+      {
+        "/transitions": new ApiError("501: not wired", {
+          status: 501,
+          body: '{"code":"employee_transitions.not_wired","message":"域服务当前没有员工生命周期流转的读口（仅有 POST /v1/employees/{id}/transitions 写口），如实返回未接线，不造数"}',
+          url: "/agent-api/api/employees/x/transitions",
+        }),
+      },
+    );
     await renderPage();
     await clickTab("档案");
     const flux = container.querySelector("[data-testid='emp-detail-flux-not-wired']");
     expect(flux, "最近流转未接入腿").toBeTruthy();
     expect(flux!.textContent).toContain("未接入");
-    expect(flux!.textContent).toContain("GAP");
-    // 版本腿挂了只降级自己：基本信息仍在。
+    expect(flux!.textContent).toContain("employee_transitions.not_wired");
+    // 流转腿未接入只降级自己：基本信息仍在。
     expect(zone("overview")!.textContent).toContain("小鲤");
     expect(zone("overview")!.textContent).toContain("基本信息");
   });
@@ -323,15 +332,24 @@ describe("PE-03 权限分区", () => {
   });
 });
 
-describe("PE-03 身份链接分区", () => {
-  it("整块未接入（GAP/PE-04 编号入 title），非错误非空态", async () => {
-    serve({});
+describe("PE-03 身份链接分区（Q41a 活腿）", () => {
+  it("读口 501 → 未接入态取服务端 code，非错误非空态", async () => {
+    serve(
+      {},
+      {
+        "/api/identity-links": new ApiError("501: not wired", {
+          status: 501,
+          body: '{"code":"identity.not_wired","message":"域服务当前没有身份链接的 HTTP 读口（仅有创建/撤销），如实返回未接线，不造数"}',
+          url: "/agent-api/api/identity-links",
+        }),
+      },
+    );
     await renderPage();
     await clickTab("身份链接");
     const notWired = container.querySelector("[data-testid='emp-detail-identity-not-wired']");
     expect(notWired).toBeTruthy();
     expect(notWired!.textContent).toContain("未接入");
-    expect(notWired!.textContent).toContain("PE-04");
+    expect(notWired!.textContent).toContain("identity.not_wired");
     expect(zone("identity")!.querySelector('[role="alert"]')).toBeNull();
     expect(fullText()).not.toContain("暂无生效授权");
   });

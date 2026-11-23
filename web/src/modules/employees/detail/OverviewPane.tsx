@@ -21,15 +21,18 @@ import {
 } from "@/pages/EmployeesPage";
 
 import { useGuardedRows } from "./fetchState";
+import { NotWiredBlock, cell, useNotWiredRead } from "./notWiredLeg";
 
 /**
  * 档案分区（PE-03 五分区之一）：基本信息 + 「当前版本」+「最近流转」小节。
  *
  * 「当前版本」独立走一条读腿 /agent-api/api/employee-versions?id=&limit=1
  * （现网 keyset 形状，items[0] 即最新生效版本），有自己的四态；这条腿挂了
- * 只降级它自己，绝不阻塞其余字段。「最近流转」的读口在现网返回 501
- * （未接线），因此整节按「未接入」呈现——那是「没接线」，不是错误，也不是空态，
- * 文案与两套既有语义严格分开。
+ * 只降级它自己，绝不阻塞其余字段。「最近流转」Q41a 接线为真实读腿
+ * GET /agent-api/api/employees/<id>/transitions：现网 BFF 恒 501
+ * employee_transitions.not_wired（域侧仅 POST 写口），未接入态文案逐字取
+ * 服务端信封 code+message+请求号——「没接线」不是错误也不是空态，三套语义
+ * 严格分开；上游读口落地后本腿零改动自动变真数据。禁造假 200。
  */
 
 /** 「最近流转」未接入腿的 GAP 台账号（待总控在 people.md 补正式号后替换）。 */
@@ -48,7 +51,7 @@ export default function OverviewPane({
     <div className="flex flex-col gap-4" data-testid="emp-detail-zone-overview">
       <BasicCard detail={detail} rawId={rawId} />
       <VersionCard enc={enc} rawId={rawId} />
-      <FluxCard />
+      <FluxCard rawId={rawId} enc={enc} />
     </div>
   );
 }
@@ -206,22 +209,63 @@ function VersionCard({ enc, rawId }: { enc: string; rawId: string }) {
   );
 }
 
-// ── 最近流转：读口 501，未接入腿 ─────────────────────────────────────────
+// ── 最近流转：Q41a 真实读腿（501 族→未接入；200→真行；失败→错误态） ──────
 
-function FluxCard() {
+function FluxCard({ rawId, enc }: { rawId: string; enc: string }) {
+  const { state, reload } = useNotWiredRead(`/agent-api/api/employees/${enc}/transitions`, rawId);
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-sm">
           <History className="h-4 w-4 text-muted-foreground" />
-          <span title={`${FLUX_GAP_ID}：版本流转读口现网 501，待 BFF 接线`}>最近流转</span>
+          <span title="Q41a：版本流转读腿——现网 501 显示未接入（域侧仅写口），上游读口落地后自动变真数据">
+            最近流转
+          </span>
+          {state.k === "ready" && state.rows.length > 0 && <span>（{state.rows.length}）</span>}
         </CardTitle>
       </CardHeader>
       <CardContent>
+        {state.k === "loading" && <RowsSkeleton rows={2} />}
+
         {/* 「未接入」≠ 错误 ≠ 空态：读口没上线，如实标注，不摆错误块也不摆空块。 */}
-        <p className="text-sm text-muted-foreground" data-testid="emp-detail-flux-not-wired">
-          未接入（{FLUX_GAP_ID}）：版本流转读口尚未上线，接线后此处显示版本生效/失效的流转记录。
-        </p>
+        {state.k === "notWired" && (
+          <NotWiredBlock state={state} testid="emp-detail-flux-not-wired" />
+        )}
+
+        {state.k === "error" && (
+          <ErrorStateBlock
+            status={state.status}
+            message={state.message}
+            requestId={state.requestId}
+            deniedTitle="无权查看流转记录"
+            errorTitle="流转记录读取失败"
+            onRetry={reload}
+          />
+        )}
+
+        {state.k === "ready" && state.rows.length === 0 && (
+          <p className="text-sm text-muted-foreground" data-testid="emp-detail-flux-empty">
+            暂无流转记录。
+          </p>
+        )}
+
+        {state.k === "ready" && state.rows.length > 0 && (
+          <ul className="flex flex-col gap-2" data-testid="emp-detail-flux-rows">
+            {state.rows.map((row, i) => (
+              <li key={`${cell(row, ["id", "transitionId"])}-${i}`} className="text-sm">
+                <span className="font-mono text-xs">
+                  {cell(row, ["fromStatus", "from", "fromLifecycle", "from_lifecycle"])} →{" "}
+                  {cell(row, ["toStatus", "to", "toLifecycle", "to_lifecycle"])}
+                </span>
+                <span className="ml-2 text-xs text-muted-foreground">
+                  {cell(row, ["occurredAt", "createdAt", "at", "effectiveFrom"])} ·{" "}
+                  {cell(row, ["actor", "createdBy", "operator"])} ·{" "}
+                  {cell(row, ["note", "changeNote", "reason"])}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
       </CardContent>
     </Card>
   );
