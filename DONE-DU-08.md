@@ -147,5 +147,9 @@ a596b7f045b49b4a579ee6fda3a86c72965da429
 ```
 
 定向 ref 回读行与 `rev-parse HEAD` 逐字相等（同 sha 二次复读亦相等），原文另存 `evidence/du08-ls-remote.txt`。
+**注意本文件会落后最终 tip 至多一笔**（把上面这串原始输出写进 §八 的动作本身要占一笔），
+因此**车道终 tip 以现读 `git ls-remote origin refs/heads/task/DU-08-infohint` 为唯一权威**，不以本文件里的 sha 为准。
+已知两笔：`a596b7f045`（施工＋两件新测试＋COPY-INVENTORY＋DONE 初版）、`3aff3acd56`（docs：交付节补原始输出）。
+门禁与取证读数以 `a596b7f045` 的树为测，其后的笔只动 markdown（不碰源码，不影响任何判据读数）。
 栈合基关系：本笔落在 `task/DU-08-infohint`（父＝`6a8cb80203`），写完即交不等合并；AP-04 正被重取基属总控并窗动作，
 L0 合并顺序 DU-01..07→DU-08 不变。
