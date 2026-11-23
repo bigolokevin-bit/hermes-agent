@@ -124,7 +124,90 @@ AssertionError: served entry drifted from the dist on disk: expected 'assets/ind
 4. **未做**：DU-04 裁定项（渠道事件流 A/B）不受本单影响；审批历史页与 `states.tsx` 空态长文按台账 A3/A7 判「留内联」，未接线（不是遗漏，是有判据的处置）。
 5. **未跑**：`e2e/ia-smoke.spec.ts`（playwright e2e）未跑——本单验证面＝工单点名的 vitest/grep/lint/tsc/build ＋ 取证腿；四态强制判据由 DU-05 既有件覆盖，未改其语义。
 
-## 八、交付（原始输出）
+## 八、参谋 05:0x rebase 单（本拍处置与读数）
+
+令：DU-08（4/40，B29 需先 rebase）→ rebase 至当拍 ls-remote face 现读 `5191a706cd19ab6561ea2e4970a683f9ccd439bd`。
+
+```
+$ git fetch origin && git ls-remote origin refs/heads/task/DU-08-infohint refs/heads/lane/hermes-console
+5191a706cd19ab6561ea2e4970a683f9ccd439bd	refs/heads/lane/hermes-console
+96e7ffa143d94a743563ebedd0c40914c12119fe	refs/heads/task/DU-08-infohint        # 参谋已收采纳的 SCOPE 说明件
+$ git rebase --onto 5191a706cd 6a8cb80203 task/DU-08-infohint
+Rebasing (1/4)Rebasing (2/4)Rebasing (3/4)Rebasing (4/4)Successfully rebased and updated refs/heads/task/DU-08-infohint
+REBASE_EXIT=0                      # 四笔全部干净重放，零冲突，未触发「真冲突 abort」
+$ git merge-base --is-ancestor 5191a706cd HEAD && echo FACE-ANCESTRY=OK
+FACE-ANCESTRY=OK
+$ git rev-parse HEAD HEAD~4
+21d23282226f0d546bc38b8e17f06989d54af5c6      # 新 tip
+5191a706cd19ab6561ea2e4970a683f9ccd439bd      # HEAD~4 ＝ face，逐字相等＝四笔平铺在新基上
+```
+
+写域文件在 face 侧 29 笔里**未被任何人改动**（`git diff --stat 6a8cb80203 5191a706cd -- web/src/modules/duty web/src/modules/approvals web/src/components/ui` 无输出），故 rebase 无冲突、我的接线逐字保留。换基内容等价性另以两条硬证：
+
+```
+$ git diff --stat 246aa4cec4 21d2328222 -- web/src/modules/duty web/src/modules/approvals \
+    web/src/components/ui/InfoHint.tsx web/src/components/ui/glossary.ts \
+    docs/product/design/COPY-INVENTORY-20261123.md DONE-DU-08.md
+（空＝我的写域在首基 tip 与新 tip 之间逐字相同）
+$ git diff 6a8cb80203 246aa4cec4 | git patch-id --stable
+6c3665d67cc8040baf88d358603dfcf7e58b5241
+$ git diff 5191a706cd 21d2328222 | git patch-id --stable
+7dd23485d4ca6ab7d0769ca6315252c341cda95f      # 两 id 不等＝第二个区间多含 SCOPE 说明件一笔＋基线不同，非我的源码差
+```
+
+新基复跑（全部原始 stdout 落 `evidence/du08-rebase-*.txt`）：
+
+```
+$ grep -rnE "口径|说明[:：]|注[:：]" web/src/modules/duty web/src/modules/approvals --include="*.ts" --include="*.tsx" --include="*.css" | grep -vE "\.test\.(ts|tsx):" | wc -l
+0
+$ node_modules/.bin/vitest run src/modules/duty src/modules/approvals      # GATE_EXIT=0
+ Test Files  111 passed (111)
+      Tests  770 passed (770)                                              # ＝换基前逐字相等
+$ node_modules/.bin/vitest run src                                          # FULL_EXIT=1
+ Test Files  1 failed | 537 passed (538)
+      Tests  1 failed | 4132 passed (4133)
+ FAIL  src/shell/e1Contract.test.ts            # 唯一红，同 §五 归因
+PORT=9122 DISK_ENTRY=assets/index-DaboawzZ.js SERVED_ENTRY=assets/index-CtA6doEj.js
+$ node_modules/.bin/vite build                  # BUILD_EXIT=0，新基产物 entry assets/index-TJhQv37I.js
+$ node scripts/lint-fake-success.mjs            # LINT_EXIT=0
+  "violations": [] / "ok": true
+$ npx tsc --noEmit -p tsconfig.app.json         # TSC_EXIT=2
+全仓 error TS = 49（＝基线）；写域（duty|approvals|InfoHint|glossary）命名 = 0
+```
+
+全量文件/用例数从 532/4045 涨到 **538/4133**，是 face 29 笔自带的新增测试件（`employee-detail/SessionDrawer.test.tsx`、`employees.*` 四件、`org/OrgModulePage.test.tsx`、`people.*` 两件等），非本支所加——本支在两个基线上的定向计数都是同一组 111件/770例。e1Contract 那条仍属 9122 服务侧代次漂移（本单期间 face 又换脸：`Bu0X2shS → Bnho7yZk → CtA6doEj`），未改未消解。
+
+### 三项裁定逐条处置
+
+1. **并入放行由 L0/参谋按 rebase 后新值裁**：本拍只交新值——tip `21d2328222`、face `5191a706cd`、定向 111件/770例、全量与 build/lint/tsc 读数见 §九末与 §四/§五 复跑件（`evidence/du08-rebase-*.txt`）。我不自签并入。
+2. **OM-01 接线归属（OM 旧栈已判废，OM-15 新基重放）**：本支**不依赖旧 OM 接线**——我的笔只动 `modules/duty/**`、`modules/approvals/**`、`ui/{InfoHint.tsx,glossary.ts}` 与两份文档，`git diff --name-only 5191a706cd HEAD` 里没有任何 `modules/overview/**`／`App.tsx`／`routes.ts` 文件。但换基后现读仍确认挂载事实未变：`5191a706cd:web/src/App.tsx:96-101`（#/overview duty tab 挂 OverviewPage，DutyPage 不再挂载）＋`5191a706cd:web/src/shell/routes.ts:124`（`"/duty": "/overview"`）。⇒ **点名回报**：并入后 duty 腿的 5 条 term 在现脸不可见（源码面与测试面成立），审批腿（`QueueSummaryBar` 的 `approvals.pending`）在现脸**已可服务**，故本支并入即把 `InfoHint` 从「主干零导入者」激活为**有真实挂载面的接线**（新基实测 `git grep -ln InfoHint 5191a706cd -- web/src` 只有 `InfoHint.tsx`／`InfoHint.test.tsx`／`glossary.ts`／`ui.css` 四件＝零页面导入者，与本支合并后导入者为 `DutyPage.tsx`＋`QueueSummaryBar.tsx`）。OM-15 重放若把 duty 面改回/改挂，只需在挂载面引同一批 key，不需我这支返工。
+3. **写域外禁词残留（随 rebase 清掉或回报说明）**：选择**回报说明**，不动——`overview/**` 与 `employee-detail/**` 不在本拍令重述的写域内（写域=duty＋approvals 文案接线＋ui/{InfoHint,glossary}＋COPY-INVENTORY＋DONE），越界即废道。新基逐字现读：
+   - `web/src/modules/overview/OverviewPage.tsx:437` `note={… ? '风险口径未接入' : null}`、`:446` `note={… ? '成本口径未齐' : null}`＝**屏上可见 2 处**（DU-08 取证腿曾在现脸 `/overview` 实测扫到其中 1 处，节点 `ov6-kpi-cost`）。
+   - `web/src/modules/employee-detail/EmployeeDetailModulePage.tsx` 屏上可见 3 处：`:555`「口径=按负责人过滤（服务端执行）…」、`:1001`「成本为账本实扣金额；与 /metrics 的成本视图口径一致，与运行次数口径不同」、`:1657`「本区按聚合口径读取，单页最多 20 条…」；另有 title 侧 4 处（`:725/:999/:1645/:1655/:1667`）与注释 3 处（`:955/:994/:1746`）属工单步骤⑤允许形态／非屏上。
+   - **耦合提醒**（交 L0 路由，本拍未动）：`web/src/modules/approvals/approvals.caliber.test.tsx:125` 与 `EmployeeDetailModulePage.test.tsx:1100` 逐字断言 `:1657` 那句——若 OM/ED 车道把该句收进 InfoHint，这两处测试件必须同步改，否则红在测试面。
+   - 建议落法（与 duty 腿同形制，10 分钟量级）：`:437/:446` 改 `note="风险未接入"/"成本未齐"`＋旁挂 `<InfoHint term="metrics.cost">`（`approvals.pending`/新增 `overview.risk` 由 L0 定 key）；`:555/:1657` 收进 InfoHint 或改「按负责人过滤（服务端执行）」去词面；`:1001` 拆成读数句＋glossary key。
+
+### 换基后取证腿（重跑，原始日志 `evidence/du08-rebase-shoot.log`）
+
+新基 `vite build` 产物（entry `assets/index-TJhQv37I.js`）＋临时反代 **9351**→真 BFF **8092**、`/auth/*`→真 **9122**，opsadmin 登录腿，`domcontentloaded`＋settle，每图前 `whoami==200`：
+
+```
+[apv08-1440] 在场提示=["approvals.pending"] 挂载={"ov6Page":false,"dutyPage":false,"apr5":true} 屏上禁词=[]
+             aria-expanded false→true 弹层={"display":"block","open":"true","describedByTarget":true,
+             "rect":{"x":253,"y":239,"w":280,"h":80}} 触发器 18×18 console error 产品面=0
+[apv08-375]  在场提示=["approvals.pending"] 屏上禁词=[] aria-expanded false→true
+             弹层=底部抽屉 rect 375×60；触发器 44×44
+[du08-1440]  在场提示=[] 挂载={"ov6Page":true,"dutyPage":false,"apr5":false} 屏上禁词=["口径"]（节点 ov6-kpi-cost）
+[du08-375]   同上
+```
+
+四图已按新基重拍：`evidence/apv08-1440.png`／`apv08-375.png`＝审批侧 InfoHint 实态（换基后仍成立）；
+`evidence/du08-1440.png`／`du08-375.png`＝`/overview` 面现状记录（duty 腿不可见，非 502／非下线，未 stub 冒充）。
+取证端口 9351 用完按 pid 精确杀（`lsof -nP -iTCP:9351 -sTCP:LISTEN -t` ⇒ pid 27853 → 复验 0 监听）；
+9122（41688）／9341（83751）／8092（740）全程未动。
+
+
+## 九、交付（原始输出）
 
 ```
 $ git add web/src/components/ui/InfoHint.tsx web/src/components/ui/glossary.ts web/src/modules/duty \
