@@ -1324,6 +1324,15 @@ export function ApprovalDetailBody({
             <NoSeg reason={`${FIELD_MISSING_SENTENCE}（审批单号没有回传，无法拼出过滤链接，禁编造 id）。`} />
           </p>
         )}
+        {/* AP-08 ②：作用域声明上屏。此前「按单据过滤、非事件行定位」只写在
+          * 链接 title 里（悬停才见），而同一屏的「处理记录」段确实会给事件行
+          * 定位链（响应真带回 eventId 时）——两条链形制不同、用途不同，必须
+          * 在屏上说明白，不能让人 hover 才知道。禁 ?event= 编造的既有纪律不变：
+          * 本链只有 resource=（服务端 resourceId 真过滤）。 */}
+        <p className="min-w-0 break-words text-muted-foreground" data-testid="apd9-audit-scope-note">
+          这条链接是按审批单号过滤该单的全部台账事件（服务端 resourceId 真过滤），不是定位到某一条事件行；
+          要定位具体事件，请用上方「处理记录」里各条在真带回事件标识时给出的定位链。
+        </p>
         <p className="min-w-0 break-words">
           <RequestIdCopyField requestId={detail.requestId} fallback={APPROVAL_RID_MISSING} />
           {" "}
