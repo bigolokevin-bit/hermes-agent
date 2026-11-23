@@ -234,6 +234,10 @@ import { ParkedAwareSystem } from "@/shell/ParkedPage";
 import { NotWiredPage } from "@/shell/NotWiredPage";
 import { Auth5Session } from "@/shell/Auth5Session";
 import { runsModulePageAvailable, useConsoleHashBridge } from "@/shell/bridge";
+import {
+  readSidebarCollapsed,
+  writeSidebarCollapsed,
+} from "@/shell/shell-layout";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { useI18n } from "@/i18n";
@@ -728,8 +732,6 @@ function buildRoutes(
   return routes;
 }
 
-const SIDEBAR_COLLAPSED_KEY = "hermes-sidebar-collapsed";
-
 export default function App() {
   const { t } = useI18n();
   const { pathname } = useLocation();
@@ -739,19 +741,11 @@ export default function App() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const closeMobile = useCallback(() => setMobileOpen(false), []);
 
-  const [collapsed, setCollapsed] = useState(() => {
-    try {
-      return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true";
-    } catch {
-      return false;
-    }
-  });
+  const [collapsed, setCollapsed] = useState(() => readSidebarCollapsed());
   const toggleCollapsed = useCallback(() => {
     setCollapsed((prev) => {
       const next = !prev;
-      try {
-        localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(next));
-      } catch { /* localStorage may be unavailable in private browsing */ }
+      writeSidebarCollapsed(next);
       return next;
     });
   }, []);
@@ -1030,6 +1024,7 @@ export default function App() {
                 ghost
                 size="icon"
                 onClick={toggleCollapsed}
+                data-testid="shell-sidebar-collapse"
                 aria-label={
                   collapsed ? t.common.expand : t.common.collapse
                 }
