@@ -19,8 +19,17 @@
  * screen never says 「未接入」, the unwired screen never says 「无权限」 — the
  * denied body copies the benchmark sentence from `EmployeesPage.tsx`
  * (ErrorStateBlock, L625-655).
+ *
+ * PE-10: search is a SERVER-side chain — 300ms debounce, then
+ * `?limit=20&keyword=<term>` against the resolved source, paging by the
+ * server's own `nextCursor` (never a locally filtered slice of the first 20
+ * rows, which is what hid everyone ranked 21+). A keyword reset supersedes an
+ * in-flight cursor page, so one debounce window fires at most one request and
+ * two cursors never run side by side. Empty results distinguish three causes:
+ * 未接入 (no source answers) / 检索空 (server found nothing for the keyword) /
+ * 真为空 (the ledger itself has no rows).
  */
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router";
 import { Inbox, RefreshCw, ShieldAlert, TriangleAlert, Users } from "lucide-react";
 import { Badge, Button, Card, CardContent } from "@nous-research/ui";
@@ -31,14 +40,6 @@ import { API_UNREACHABLE_MESSAGE, ApiError, humanizeStatus } from "@/lib/api-err
 import EmployeeDetailPanel from "./EmployeeDetailPanel";
 
 type Rec = Record<string, unknown>;
-
-type Resource<T> =
-  | { phase: "loading" }
-  | { phase: "empty" }
-  | { phase: "ready"; data: T }
-  | { phase: "unavailable"; message: string }
-  | { phase: "denied"; message: string; requestId: string | null }
-  | { phase: "error"; message: string; requestId: string | null };
 
 export const PEOPLE_GAP = "GAP-02";
 export const PEOPLE_GAP_MESSAGE =
@@ -55,8 +56,11 @@ export const PEOPLE_DENIED_MESSAGE =
 export const PEOPLE_ENDPOINTS = [
   "/agent-api/api/v1/user/list",
   "/agent-api/api/v1/user/all",
-  "/agent-api/api/employees?limit=20",
+  "/agent-api/api/employees",
 ];
+
+/** PE-10: 每页条数与 BFF 白名单上限对齐（服务端按 keyword 真过滤，本地不再切片）。 */
+export const PEOPLE_LIMIT = 20;
 
 function isRecord(value: unknown): value is Rec {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -165,31 +169,188 @@ function readPerson(row: Rec, index: number): PersonRow {
   };
 }
 
-async function loadPeople(): Promise<Resource<Rec[]>> {
+function cursorOf(body: unknown): string | null {
+  if (!isRecord(body)) return null;
+  const raw = body.nextCursor ?? body.next_cursor;
+  return typeof raw === "string" && raw.trim() ? raw : null;
+}
+
+/** PE-10: 一页请求 = limit + 服务端 keyword（非空才带）+ 续页游标（有则带）。 */
+function pageUrl(base: string, keyword: string, cursor: string | null): string {
+  const query = new URLSearchParams();
+  query.set("limit", String(PEOPLE_LIMIT));
+  if (keyword) query.set("keyword", keyword);
+  if (cursor) query.set("cursor", cursor);
+  return `${base}?${query.toString()}`;
+}
+
+type RosterPhase = "loading" | "ready" | "empty" | "unavailable" | "denied" | "error";
+
+type Roster = {
+  phase: RosterPhase;
+  items: Rec[];
+  nextCursor: string | null;
+  message: string;
+  requestId: string | null;
+  /** 续页请求在途（加载更多钮禁用中）。 */
+  loadingMore: boolean;
+};
+
+const ROSTER_LOADING: Roster = {
+  phase: "loading",
+  items: [],
+  nextCursor: null,
+  message: "",
+  requestId: null,
+  loadingMore: false,
+};
+
+function readPage(body: unknown): { items: Rec[]; nextCursor: string | null } {
+  return { items: itemsOf(body), nextCursor: cursorOf(body) };
+}
+
+function errorFrom(err: unknown): ApiError | null {
+  return err instanceof ApiError ? err : null;
+}
+
+function errorCopy(api: ApiError): string {
+  return api.status && api.status >= 500
+    ? API_UNREACHABLE_MESSAGE
+    : api.message || humanizeStatus(api.status ?? 0);
+}
+
+/** 从 from 开始依次尝试候选端点；命中即返回，全灭才按 403/404/5xx 归因。 */
+async function fetchRosterPage(
+  keyword: string,
+  cursor: string | null,
+  from: number,
+): Promise<
+  | { ok: true; index: number; items: Rec[]; nextCursor: string | null }
+  | { ok: false; unavailable: boolean; api: ApiError | null }
+> {
   let unavailable = false;
   let firstError: ApiError | null = null;
-  for (const url of PEOPLE_ENDPOINTS) {
+  for (let i = from; i < PEOPLE_ENDPOINTS.length; i += 1) {
     try {
-      const body = await fetchJSON<unknown>(url);
-      return { phase: "ready", data: itemsOf(body) };
+      const body = await fetchJSON<unknown>(pageUrl(PEOPLE_ENDPOINTS[i], keyword, cursor));
+      const page = readPage(body);
+      return { ok: true, index: i, ...page };
     } catch (err: unknown) {
-      const api = err instanceof ApiError ? err : null;
-      if (api && (api.status === 403 || api.status === 404)) unavailable = true;
-      else if (api && api.status !== 404 && !firstError) firstError = api;
+      const api = errorFrom(err);
+      const status = api?.status;
+      if (status === 403 || status === 404) unavailable = true;
+      else if (api && status !== 404 && !firstError) firstError = api;
     }
   }
-  if (unavailable) return { phase: "unavailable", message: PEOPLE_GAP_MESSAGE };
-  if (firstError) {
-    return {
-      phase: "error",
-      message:
-        firstError.status && firstError.status >= 500
-          ? API_UNREACHABLE_MESSAGE
-          : firstError.message || humanizeStatus(firstError.status),
-      requestId: firstError.requestId ?? null,
+  return { ok: false, unavailable, api: firstError };
+}
+
+/**
+ * PE-10 服务端检索链：关键词经 300ms 防抖后进 `keyword=`，由读口对**在册全量**
+ * 过滤（curl 实测见 DONE-PE-10.md），本地不再对已加载行切片——旧形制把
+ * limit=20 写死再本地过滤，第 21 名之后的人永远搜不到，是结构性缺陷。
+ * 游标链：续页只用服务端给出的 nextCursor；关键词一变即作废在途游标
+ * （generation 号），同一防抖窗至多一根检索请求，绝不双游标并发。
+ */
+function usePeopleRoster(nonce: number, enabled: boolean, keyword: string): [Roster, () => void] {
+  const [roster, setRoster] = useState<Roster>(ROSTER_LOADING);
+  const generation = useRef(0);
+  const inflight = useRef(false);
+  /** 本次挂载内记住命中端点：换关键词不再重跑探针链，检索请求恒为 1 根。 */
+  const sourceIndex = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!enabled) return;
+    const gen = (generation.current += 1);
+    inflight.current = true;
+    setRoster({ ...ROSTER_LOADING });
+    const settle = (res: Awaited<ReturnType<typeof fetchRosterPage>>) => {
+      if (gen !== generation.current) return;
+      if (res.ok) {
+        sourceIndex.current = res.index;
+        setRoster({
+          phase: res.items.length === 0 ? "empty" : "ready",
+          items: res.items,
+          nextCursor: res.nextCursor,
+          message: "",
+          requestId: null,
+          loadingMore: false,
+        });
+        return;
+      }
+      // 403/404 与旧口径一致合并为未接入腿（PE-07 互斥禁词由 ?state=denied 预览腿承载）。
+      if (res.api && !res.unavailable) {
+        setRoster((prev) => ({
+          ...prev,
+          phase: "error",
+          message: errorCopy(res.api as ApiError),
+          requestId: (res.api as ApiError).requestId ?? null,
+        }));
+        return;
+      }
+      setRoster((prev) => ({ ...prev, phase: "unavailable", message: PEOPLE_GAP_MESSAGE }));
     };
+    void fetchRosterPage(keyword, null, sourceIndex.current ?? 0)
+      .then((res) => {
+        if (gen !== generation.current) return;
+        if (!res.ok && res.api && !res.unavailable && sourceIndex.current !== null && sourceIndex.current > 0) {
+          // 记住的源出错（非 404 类）：从头重探一次再归因；404/403 链已覆盖全候选。
+          sourceIndex.current = null;
+          return fetchRosterPage(keyword, null, 0).then(settle);
+        }
+        settle(res);
+        return undefined;
+      })
+      .finally(() => {
+        if (gen === generation.current) inflight.current = false;
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled, nonce, keyword]);
+
+  const loadMore = useCallback(() => {
+    if (inflight.current || roster.loadingMore || roster.phase !== "ready" || !roster.nextCursor) return;
+    const gen = generation.current;
+    const cursor = roster.nextCursor;
+    inflight.current = true;
+    setRoster((prev) => ({ ...prev, loadingMore: true }));
+    void fetchRosterPage(keyword, cursor, sourceIndex.current ?? 0)
+      .then((res) => {
+        if (gen !== generation.current) return;
+        if (!res.ok) {
+          setRoster((prev) => ({
+            ...prev,
+            loadingMore: false,
+            message: res.api ? errorCopy(res.api) : "下一页没有取回来，已保留当前名单。",
+          }));
+          return;
+        }
+        setRoster((prev) => ({
+          ...prev,
+          phase: "ready",
+          items: dedupeById([...prev.items, ...res.items]),
+          nextCursor: res.nextCursor,
+          loadingMore: false,
+        }));
+      })
+      .finally(() => {
+        if (gen === generation.current) inflight.current = false;
+      });
+  }, [keyword, roster.nextCursor, roster.loadingMore, roster.phase]);
+
+  return [roster, loadMore];
+}
+
+/** 游标翻页按记录号去重；无 id 的行按内容去重，绝不重复计数。 */
+function dedupeById(rows: Rec[]): Rec[] {
+  const seen = new Set<string>();
+  const out: Rec[] = [];
+  for (const row of rows) {
+    const id = rawId(row) || JSON.stringify(row);
+    if (seen.has(id)) continue;
+    seen.add(id);
+    out.push(row);
   }
-  return { phase: "unavailable", message: PEOPLE_GAP_MESSAGE };
+  return out;
 }
 
 type Forced = "loading" | "empty" | "error" | "denied" | "ready";
@@ -201,31 +362,16 @@ function readForced(raw: string | null): Forced | null {
 }
 
 /** 强制预览腿：与 EmployeesModulePage 同形制（?rid= 透传，缺省 preview-request）。 */
-function previewResource(forced: Exclude<Forced, "ready">, rid: string): Resource<Rec[]> {
-  if (forced === "loading") return { phase: "loading" };
-  if (forced === "empty") return { phase: "empty" };
-  if (forced === "denied") return { phase: "denied", message: PEOPLE_DENIED_MESSAGE, requestId: rid };
+function previewRoster(forced: Exclude<Forced, "ready">, rid: string): Roster {
+  if (forced === "loading") return { ...ROSTER_LOADING };
+  if (forced === "empty") return { ...ROSTER_LOADING, phase: "empty" };
+  if (forced === "denied") return { ...ROSTER_LOADING, phase: "denied", message: PEOPLE_DENIED_MESSAGE, requestId: rid };
   return {
+    ...ROSTER_LOADING,
     phase: "error",
     message: "预览错误：这次读取没有成功，页面没有编造人员数据。",
     requestId: rid,
   };
-}
-
-function usePeople(nonce: number, enabled: boolean): Resource<Rec[]> {
-  const [resource, setResource] = useState<Resource<Rec[]>>({ phase: "loading" });
-  useEffect(() => {
-    if (!enabled) return;
-    let cancelled = false;
-    setResource({ phase: "loading" });
-    void loadPeople().then((r) => {
-      if (!cancelled) setResource(r);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [enabled, nonce]);
-  return resource;
 }
 
 function RequestId({ id }: { id: string | null }): ReactNode {
@@ -308,36 +454,49 @@ export default function PeopleModulePage() {
   const forced = readForced(sp.get("state"));
   const [reload, setReload] = useState(0);
   const [query, setQuery] = useState("");
+  // PE-10 ⑤：300ms 防抖窗内只留最后一次关键词——每个防抖窗至多一根检索请求。
+  const [debounced, setDebounced] = useState("");
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebounced(query.trim()), 300);
+    return () => window.clearTimeout(timer);
+  }, [query]);
   // Q12：行打开页内详情（零路由）。名册状态留在本组件，返回即恢复视图，
   // 不重新拉名单。
   const [openId, setOpenId] = useState<string | null>(null);
-  const live = usePeople(reload, forced === null || forced === "ready");
+  /** 数据源列形制留档：关键词命中子集不得让整列闪没（P0-4 口径）。 */
+  const sourceShape = useRef<{
+    employeeLedger: boolean;
+    account: boolean;
+    dept: boolean;
+    lastActive: boolean;
+  } | null>(null);
   const previewRid = sp.get("rid") ?? "preview-request";
-  const people = forced && forced !== "ready" ? previewResource(forced, previewRid) : live;
+  const [live, loadMore] = usePeopleRoster(reload, forced === null || forced === "ready", debounced);
+  const people = forced && forced !== "ready" ? previewRoster(forced, previewRid) : live;
 
   // buglist P0-4（#5）：数据源整列皆缺的可选列（账号/部门/最后活跃）连同表头
   // 一起裁掉，缺列信息由来源注记一行承载；个别行缺值仍渲染该列，格内 `—` +
   // title 说明（§5 口径），不再把「上游未提供×」长注记撑进单元格。
-  // 在场性按整份名单判定，不按搜索筛后的视图——列的存在与否是数据源属性，
-  // 不随关键词闪变。
-  const roster = useMemo<PersonRow[]>(
-    () => (people.phase === "ready" ? people.data.map(readPerson) : []),
-    [people],
-  );
-  const rows = useMemo<PersonRow[]>(() => {
-    const q = query.trim().toLowerCase();
-    return roster.filter(
-      (r) =>
-        q === "" ||
-        r.name.toLowerCase().includes(q) ||
-        r.code.toLowerCase().includes(q) ||
-        (r.account ?? "").toLowerCase().includes(q) ||
-        (r.dept ?? "").toLowerCase().includes(q),
-    );
-  }, [roster, query]);
-  const showAccount = roster.some((r) => r.account !== null);
-  const showDept = roster.some((r) => r.dept !== null);
-  const showLastActive = roster.some((r) => r.lastActive !== null);
+  // PE-10：列在场性是**数据源**属性——按未过滤的全量首页定型并留档，检索命中
+  // 结果只是它的子集，绝不因关键词命中了缺值行而让整列闪没。
+  const mapped = useMemo<PersonRow[]>(() => people.items.map(readPerson), [people.items]);
+  if (debounced === "" && (people.phase === "ready" || people.phase === "empty")) {
+    sourceShape.current = {
+      employeeLedger: people.items.some((row) => "employeeId" in row),
+      account: mapped.some((r) => r.account !== null),
+      dept: mapped.some((r) => r.dept !== null),
+      lastActive: mapped.some((r) => r.lastActive !== null),
+    };
+  }
+  const shape = sourceShape.current ?? {
+    employeeLedger: people.items.some((row) => "employeeId" in row),
+    account: mapped.some((r) => r.account !== null),
+    dept: mapped.some((r) => r.dept !== null),
+    lastActive: mapped.some((r) => r.lastActive !== null),
+  };
+  const showAccount = shape.account;
+  const showDept = shape.dept;
+  const showLastActive = shape.lastActive;
   const colLabels = [
     "姓名",
     ...(showAccount ? ["账号"] : []),
@@ -360,22 +519,36 @@ export default function PeopleModulePage() {
         <div className="min-w-0">
           <h1 className="font-mondwest text-xl text-white/90">人员目录</h1>
           <p className="mt-1 text-xs text-white/40">
-            {people.phase === "ready" && people.data.length > 0
+            {people.phase === "ready" && mapped.length > 0
               ? `在册人员名录 · ${colLabels.join(" / ")}`
               : "在册人员名录"}
-            {people.phase === "ready" ? ` · 共 ${people.data.length} 人` : ""}
+            {people.phase === "ready"
+              ? debounced
+                ? ` · 检索命中 ${mapped.length} 人`
+                : people.nextCursor
+                  ? ` · 已加载 ${mapped.length} 人（在册更多，可继续加载）`
+                  : ` · 共 ${mapped.length} 人`
+              : ""}
           </p>
-          {people.phase === "ready" && people.data.length > 0 ? (
+          {(people.phase === "ready" || (people.phase === "empty" && debounced !== "")) &&
+          mapped.length > 0 ? (
             <p className="mt-1 text-xs text-white/40" data-testid="ppl5-source">
-              {people.data.some((row) => "employeeId" in row)
+              {shape.employeeLedger
                 ? "来源：数字员工台账；真人用户中心接口尚未接入，这里不冒充真人名单。"
                 : "来源：用户中心人员台账。"}
+            </p>
+          ) : null}
+          {/* PE-10 ④：口径句——检索由服务端在在册全量上做，不是本地过滤已加载行。 */}
+          {people.phase === "ready" || people.phase === "empty" ? (
+            <p className="mt-1 text-xs text-white/40" data-testid="ppl5-scope-note">
+              搜索为服务端检索在册全量（关键词随请求上送，翻页走服务端游标），不是本地过滤已加载行。
             </p>
           ) : null}
         </div>
         <div className="ppl5-actions">
           <input
             data-testid="ppl5-search"
+            aria-label="搜索人员"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="搜索姓名、短码、账号或部门"
@@ -446,7 +619,22 @@ export default function PeopleModulePage() {
         </StateShell>
       ) : null}
 
-      {people.phase === "empty" ? (
+      {/* PE-10 ③ 三态之「检索空」：服务端在册全量里没命中，与「真为空」互斥。 */}
+      {people.phase === "empty" && debounced !== "" ? (
+        <StateShell
+          testid="ppl5-nomatch"
+          icon={<Inbox className="h-4 w-4 text-white/30" aria-hidden />}
+          title={`没有匹配「${debounced}」的人员`}
+          body="服务端已在在册全量里检索，没有命中这条关键词；不是只翻过已加载的 20 行。换个关键词试试，清空搜索可看全部名单。"
+        >
+          <Button size="sm" onClick={() => setQuery("")} data-testid="ppl5-nomatch-clear">
+            清空搜索
+          </Button>
+        </StateShell>
+      ) : null}
+
+      {/* PE-10 ③ 三态之「真为空」：无关键词且台账本身没有在册人员。 */}
+      {people.phase === "empty" && debounced === "" ? (
         <StateShell
           testid="ppl5-empty"
           icon={<Inbox className="h-4 w-4 text-white/30" aria-hidden />}
@@ -457,39 +645,17 @@ export default function PeopleModulePage() {
       ) : null}
 
       {people.phase === "ready" ? (
-        people.data.length === 0 ? (
-          <StateShell
-            testid="ppl5-empty"
-            icon={<Inbox className="h-4 w-4 text-white/30" aria-hidden />}
-            title="目录暂时是空的"
-            body="后台还没有登记在册人员；不显示 0 人，也不展示样例。"
-            onRetry={() => setReload((n) => n + 1)}
-          />
-        ) : rows.length === 0 ? (
-          // UI-B 空态组合：筛空腿的根因是搜索词，单一主操作=清空搜索（新锚
-          // ppl5-nomatch-clear，既有 testid 0 改名）；文案原样保留。
-          <StateShell
-            testid="ppl5-nomatch"
-            icon={<Inbox className="h-4 w-4 text-white/30" aria-hidden />}
-            title={`没有匹配「${query.trim()}」的人员`}
-            body="换个关键词试试；清空搜索可看全部名单。"
-          >
-            <Button size="sm" onClick={() => setQuery("")} data-testid="ppl5-nomatch-clear">
-              清空搜索
-            </Button>
-          </StateShell>
-        ) : (
-          <Card className="border-white/5 bg-white/[0.02]">
-            <CardContent className="p-0" data-testid="ppl5-list">
-              <div className="ppl5-grid ppl5-thead" data-cols={colLabels.length}>
-                <span data-label="姓名">姓名</span>
-                {showAccount ? <span data-label="账号">账号</span> : null}
-                {showDept ? <span data-label="部门">部门</span> : null}
-                <span data-label="状态">状态</span>
-                {showLastActive ? <span data-label="最后活跃">最后活跃</span> : null}
-              </div>
-              <ul className="divide-y divide-white/5">
-                {rows.map((r) => (
+        <Card className="border-white/5 bg-white/[0.02]">
+          <CardContent className="p-0" data-testid="ppl5-list">
+            <div className="ppl5-grid ppl5-thead" data-cols={colLabels.length}>
+              <span data-label="姓名">姓名</span>
+              {showAccount ? <span data-label="账号">账号</span> : null}
+              {showDept ? <span data-label="部门">部门</span> : null}
+              <span data-label="状态">状态</span>
+              {showLastActive ? <span data-label="最后活跃">最后活跃</span> : null}
+            </div>
+            <ul className="divide-y divide-white/5">
+              {mapped.map((r) => (
                   <li key={r.key} className="ppl5-grid ppl5-row" data-cols={colLabels.length} data-testid="ppl5-row" title={r.rawId ? `记录号 ${r.rawId}` : undefined}>
                     <span className="flex min-w-0 items-center gap-2 text-sm text-white/85">
                       <Users className="h-3.5 w-3.5 shrink-0 text-white/25" aria-hidden />
@@ -526,10 +692,30 @@ export default function PeopleModulePage() {
                     ) : null}
                   </li>
                 ))}
-              </ul>
-            </CardContent>
-          </Card>
-        )
+            </ul>
+            {/* PE-10 ①：游标链续页——只用服务端给出的 nextCursor；在途禁用不双发。 */}
+            {people.nextCursor ? (
+              <div className="flex items-center justify-between gap-3 border-t border-white/5 p-3" data-testid="ppl5-more-row">
+                <span className="text-xs text-white/40" data-testid="ppl5-more-note">
+                  {people.loadingMore
+                    ? "正在按服务端游标加载下一页…"
+                    : `已加载 ${mapped.length} 人；在册还有更多，按服务端游标继续。`}
+                </span>
+                <Button
+                  size="sm"
+                  outlined
+                  disabled={people.loadingMore}
+                  aria-disabled={people.loadingMore}
+                  onClick={loadMore}
+                  data-testid="ppl5-more"
+                  title={people.loadingMore ? "上一页还在途中，不并发第二个游标" : "用服务端返回的游标取下一页"}
+                >
+                  {people.loadingMore ? "加载中…" : "加载更多"}
+                </Button>
+              </div>
+            ) : null}
+          </CardContent>
+        </Card>
       ) : null}
     </section>
   );

@@ -191,18 +191,38 @@ describe("people directory ppl5", () => {
   });
 
   it("column presence is a property of the source, not of the search filter", async () => {
-    mockApi((url) => (url.includes("/user/list") ? Promise.resolve(ROWS) : missing(url)));
-    await render();
-    // 阿澜没有部门，但李鲤有——筛到只剩阿澜时部门列也必须在场。
-    await act(async () => {
-      const input = container.querySelector<HTMLInputElement>('[data-testid="ppl5-search"]')!;
-      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, "阿澜");
-      input.dispatchEvent(new Event("input", { bubbles: true }));
+    // PE-10: 服务端按 keyword 真过滤（模拟 BFF 形制），命中的阿澜没有部门——
+    // 部门列必须在场（形制取自未过滤的在册全量），格内给 `—` + title 原因。
+    mockApi((url) => {
+      if (!url.includes("/user/list")) return missing(url);
+      const keyword = new URL(url, "http://local.test").searchParams.get("keyword");
+      const items = keyword
+        ? ROWS.items.filter((row) => String(row.realname).includes(keyword))
+        : ROWS.items;
+      return Promise.resolve({ items });
     });
-    expect(Array.from(container.querySelectorAll(".ppl5-thead > span")).map((el) => el.textContent))
-      .toEqual(["姓名", "账号", "部门", "状态", "最后活跃"]);
-    expect(container.querySelectorAll('[data-testid="ppl5-dept"]')).toHaveLength(1);
-    expect(container.querySelector('[data-testid="ppl5-dept"]')?.textContent).toBe("—");
+    vi.useFakeTimers();
+    try {
+      await render();
+      await act(async () => {
+        const input = container.querySelector<HTMLInputElement>('[data-testid="ppl5-search"]')!;
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, "阿澜");
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+      await act(async () => {
+        vi.advanceTimersByTime(300);
+      });
+      await act(async () => {});
+      expect(Array.from(container.querySelectorAll(".ppl5-thead > span")).map((el) => el.textContent))
+        .toEqual(["姓名", "账号", "部门", "状态", "最后活跃"]);
+      expect(container.querySelectorAll('[data-testid="ppl5-dept"]')).toHaveLength(1);
+      expect(container.querySelector('[data-testid="ppl5-dept"]')?.textContent).toBe("—");
+      // 关键词是服务端参数，不是本地切片。
+      const urls = vi.mocked(fetchJSON).mock.calls.map((call) => String(call[0]));
+      expect(urls[urls.length - 1]).toContain("keyword=%E9%98%BF%E6%BE%9C");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("live view is not marked as a fixture", async () => {

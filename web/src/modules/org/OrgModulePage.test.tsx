@@ -261,3 +261,106 @@ describe("OrgModulePage — 组织与部门 (org5)", () => {
     expect(text).not.toMatch(/undefined|NaN|\[object Object\]/);
   });
 });
+
+/* ------------------------------------------------------------------ *
+ * PE-10 ② · 部门树按名搜索：命中路径自动展开 + CSS 高亮 + 三态可辨
+ * ------------------------------------------------------------------ */
+
+describe("PE-10 组织树按名搜索", () => {
+  const DEEP = {
+    items: [
+      { dept_id: 1, dept_name: "南隅堂", parent_id: 0, user_count: 30 },
+      { dept_id: 2, dept_name: "文书阁", parent_id: 1, user_count: 9 },
+      { dept_id: 3, dept_name: "归档房", parent_id: 2, user_count: 4 },
+      { dept_id: 5, dept_name: "卷宗室", parent_id: 3, user_count: 1 },
+      { dept_id: 4, dept_name: "临时部门", parent_id: 0, user_count: 2 },
+    ],
+  };
+
+  const mockDeep = () =>
+    mockApi((url) => (url.includes("/v1/departments") ? Promise.resolve(DEEP) : missing(url)));
+
+  async function typeTerm(text: string): Promise<void> {
+    await act(async () => {
+      const input = container.querySelector<HTMLInputElement>('[data-testid="org5-search"]')!;
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, text);
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    for (let i = 0; i < 3; i += 1) await act(async () => {});
+  }
+
+  it("命中节点的祖先路径自动展开，命中节点 aria-expanded=true 且可见", async () => {
+    mockDeep();
+    await renderPage();
+    // 先把「文书阁」分支收起来：搜索要能把路径自动展开回来。
+    const ancestorToggle = container.querySelector('[data-testid="org5-node"] button[aria-expanded="true"]') as HTMLButtonElement;
+    await act(async () => {
+      ancestorToggle.click();
+    });
+    expect(container.textContent).not.toContain("归档房");
+
+    await typeTerm("归档房");
+    const nodes = container.querySelectorAll('[data-testid="org5-node"]');
+    expect(container.textContent).toContain("归档房");
+    // 命中节点自身有子级时也必须是展开态（DoD：命中节点 aria-expanded=true）。
+    const hitNode = Array.from(nodes).find((node) => node.getAttribute("data-hit") === "true");
+    expect(hitNode, "命中节点带 data-hit 标记").toBeTruthy();
+    expect(hitNode?.querySelector("button[aria-expanded]")?.getAttribute("aria-expanded")).toBe("true");
+    // 祖先（文书阁）同步展开，路径可见。
+    const pathNode = Array.from(nodes).find((node) => node.textContent?.includes("文书阁"));
+    expect(pathNode?.querySelector("button[aria-expanded]")?.getAttribute("aria-expanded")).toBe("true");
+  });
+
+  it("高亮走 CSS 类与 mark 文本节点，不用 innerHTML，并给出命中计数", async () => {
+    mockDeep();
+    await renderPage();
+    await typeTerm("文书");
+    const marks = container.querySelectorAll("mark.org5-hit");
+    expect(marks).toHaveLength(1);
+    expect(marks[0]?.textContent).toBe("文书");
+    expect(container.querySelector('[data-testid="org5-search-note"]')?.textContent).toContain("命中 1 个部门");
+    // 禁 innerHTML 注入：标记只能来自 React 文本节点。
+    expect(container.innerHTML).not.toMatch(/innerHTML/);
+    expect(container.querySelector(".org5-node-hit")).toBeTruthy();
+  });
+
+  it("无命中给检索空腿与「清除搜索」单主操作，清除后树回来", async () => {
+    mockDeep();
+    await renderPage();
+    const before = vi.mocked(fetchJSON).mock.calls.length;
+    await typeTerm("没有这个部门名");
+    const nomatch = container.querySelector('[data-testid="org5-nomatch"]');
+    expect(nomatch?.textContent).toContain("没有匹配「没有这个部门名」的部门");
+    expect(nomatch?.textContent).toContain("这棵树里确实没有");
+    expect(container.querySelector('[data-testid="org5-list"]')).toBeNull();
+    expect(container.querySelector('[data-testid="org5-unwired"]')).toBeNull();
+    const clear = container.querySelector('[data-testid="org5-search-clear"]') as HTMLButtonElement;
+    expect(clear, "单主操作=清除搜索").toBeTruthy();
+    await act(async () => {
+      clear.click();
+    });
+    for (let i = 0; i < 3; i += 1) await act(async () => {});
+    expect(container.querySelector('[data-testid="org5-list"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="org5-nomatch"]')).toBeNull();
+    expect(vi.mocked(fetchJSON).mock.calls.length - before, "树搜索是本地定位，零新请求").toBe(0);
+  });
+
+  it("未接入腿不因搜索入口而改变口径：无树即无搜索框", async () => {
+    mockApi((url) => missing(url));
+    await renderPage();
+    expect(container.querySelector('[data-testid="org5-denied"]')?.textContent).toContain("未接入");
+    expect(container.querySelector('[data-testid="org5-search"]')).toBeNull();
+    expect(container.querySelector('[data-testid="org5-nomatch"]')).toBeNull();
+  });
+
+  it("搜索框有可及名称，不清掉用户手动收起的其它分支", async () => {
+    mockDeep();
+    await renderPage();
+    const input = container.querySelector('[data-testid="org5-search"]') as HTMLInputElement;
+    expect(input.getAttribute("aria-label")).toBe("按部门名搜索");
+    // 收起「临时部门」所在的顶级无关分支前先收起文书阁之外的一支：这里收 4 号（无子级）不可收，
+    // 改收 1 号后又搜 3 号——无关支不受影响。
+    await typeTerm("归档房");
+    expect(container.textContent).toContain("临时部门");
+  });
+});
