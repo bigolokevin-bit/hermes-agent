@@ -65,7 +65,7 @@ observer 第三轮（OM-03 五列网格）判定 PASS，另记 1440 五列变窄
 
 ## 测试与构建
 
-- `cd web && node_modules/.bin/vitest run src/modules/overview` → **37 passed / 37**（OverviewModulePage.test 11 + overview.window.test 6 + overview.trend.test 4 + overview.gaps.test 5 + overview.feeds.test 6 + overview.asof.test 5）
+- `cd web && node_modules/.bin/vitest run src/modules/overview` → **42 passed / 42**（OverviewModulePage.test 11 + overview.window.test 6 + overview.trend.test 4 + overview.gaps.test 5 + overview.feeds.test 6 + overview.asof.test 5 + overview.health.test 5）
   （OverviewModulePage.test 11 + overview.window.test 6 + overview.trend.test 4 + overview.gaps.test 5）
   （合同：forced 态零请求；只打两端口且 bucket=day；真 0 带来源原文；失败率同源 20%；
   summary 挂→各卡未接入+编号+重试；今日窗挂只影响运行卡；全挂整页错误声明不编造；
@@ -151,6 +151,16 @@ OM-02 可径直标 VERIFIED（腿已在）。P-OM-3 的「workbench 0 命中」�
 - 测试面 `overview.asof.test.tsx` 5 例：①系统时钟前移 24h 屏上时刻不变；②多源取最新；③全 error 仍有「—」；④ready 无 asOf → 卡内「时间未知（上游响应没有带采集时间）」；⑤loading 态 as-of 在场 + 面板不印浏览器时钟。
 - 现网抽核（步骤④，登录态 9131 脸）：curl `overview/summary` asOf=2026-11-23T14:04:54Z ↔ 屏上「数据截至 2026-11-23 22:04（北京时间）」，PARITY_OK；证据 `docs/_artifacts/OM-01-overview-kpi/raw/om11-parity.json`。
 - 说明：backlog 的 DoD grep 目标 `OverviewPage.tsx` 已被 OM-01 删除，等价口径落在 `OverviewModulePage.tsx`。
+
+## OM-10 健康卡两段式（2026-11-23 续跑，同分支）
+
+- 裁定：健康卡保留，但不再用本页取数成败冒充服务健康。现网实测 `GET /agent-api/api/hermes-summary` → 200（schema runtime.hermes.summary.v1，gateway.status=ok，gateway.updated_at 自带采集时间；原文落盘 `docs/_artifacts/OM-01-overview-kpi/raw/hermes-summary.json`）。
+- 第一段＝服务探针：值取 `gateway.status`（ok/degraded/down → 正常/降级/异常，未知状态原样透传），来源标注逐字 `GET /api/hermes-summary · runtime /v1/runtime/hermes/summary（schema runtime.hermes.summary.v1）`；时刻行取 `gateway.updated_at`（无则「服务探针响应没有带采集时间」）。探针腿失败 → 卡内「服务探针未接入：<message>」+ 请求编号 + 重试，值「未接」。
+- 第二段＝本页读数合成状态：仍在卡脚注明 `bff fan-out probe（本请求 employees/runs-stats/approvals 三路上游结果）`，两段分列不混算。
+- 旧「x/6 来源正常」话术绝迹：overview.health.test ③ 以 `/\d+\/\d+/` 反向断言钉死（DoD ④：404/503 → 未接，非 0/6）。
+- 探针腿纳入自动重试（anyError 含 probe）与原文面板（ready 时列 `GET /api/hermes-summary`）；KPI 其余卡口径不变（只允许 overview/summary + run-stats）。
+- 现网真页抽核（脸 9131，登录态 whoami=200）：健康卡 DOM = 「整体健康（服务探针）… 正常 … 本页读数合成状态：正常（bff fan-out probe…）数据截至 2026-11-23 23:14」。
+- 取证刷新：overview-1440 / overview-range7d / overview-range24h / overview-375 / overview-375-lower（OM04_SHOTS_OK + OM375_SHOTS_OK，22:1x 重拍）。
 
 ## 已知边界（如实上报，非缺陷隐瞒）
 

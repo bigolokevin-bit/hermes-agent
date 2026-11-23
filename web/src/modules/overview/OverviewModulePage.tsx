@@ -14,14 +14,16 @@ import { Link, useSearchParams } from 'react-router';
 
 import { fetchRunStats, load } from '../duty/api';
 import { DEFAULT_DUTY_RANGE, DUTY_RANGES, parseDutyRange, type DutyRangeId } from '../duty/dutyRange';
-import { beijingDayWindow, daysAgoWindow, usd } from '../duty/format';
+import { beijing, beijingDayWindow, daysAgoWindow, usd } from '../duty/format';
 import type { Loadable, RunStatsBody } from '../duty/types';
 import {
   fetchBlockedTasks,
   fetchFailedRuns,
+  fetchHermesSummary,
   fetchOverviewSummary,
   fetchRecentRuns,
   fetchWorkbenchQueue,
+  type HermesSummaryBody,
   type OverviewSummaryBody,
   type QueueBody,
   type RunsBody,
@@ -54,6 +56,8 @@ export interface OverviewState {
   fail?: Loadable<RunsBody>;
   blocked?: Loadable<TasksBody>;
   queue?: Loadable<QueueBody>;
+  /** OM-10 服务探针（hermes-summary），健康卡第一段。 */
+  probe?: Loadable<HermesSummaryBody>;
 }
 
 const INITIAL: OverviewState = {
@@ -64,6 +68,7 @@ const INITIAL: OverviewState = {
   fail: { k: 'loading' },
   blocked: { k: 'loading' },
   queue: { k: 'loading' },
+  probe: { k: 'loading' },
 };
 
 const LOADING: Loadable<never> = { k: 'loading' };
@@ -220,6 +225,26 @@ export function OverviewView({
   const todayStamp = sourceStamp(state.today);
   const trendStamp = sourceStamp(state.trend);
 
+  // OM-10 两段式：第一段=服务探针态（hermes-summary gateway），第二段=本页读数合成态（fan-out）。
+  const probe = state.probe ?? LOADING;
+  const probeGateway = probe.k === 'ready' ? probe.data.gateway : null;
+  const probeStatus =
+    probeGateway && typeof probeGateway.status === 'string' && probeGateway.status
+      ? probeGateway.status
+      : null;
+  const probeUpdatedAt =
+    probeGateway && typeof probeGateway.updated_at === 'string' && probeGateway.updated_at
+      ? probeGateway.updated_at
+      : null;
+  const probeStamp: SourceStamp =
+    probe.k === 'loading'
+      ? { shown: null, reason: '数据还在读取' }
+      : probe.k === 'error'
+        ? { shown: null, reason: '本次读取失败，取不到采集时间' }
+        : probeUpdatedAt
+          ? { shown: beijing(probeUpdatedAt), reason: null }
+          : { shown: null, reason: '服务探针响应没有带采集时间' };
+
   const asof = useMemo(() => {
     const candidates = [summaryStamp.shown, todayStamp.shown, trendStamp.shown]
       .filter((v): v is string => !!v)
@@ -238,8 +263,9 @@ export function OverviewView({
     if (fail.k === 'ready') ready.push({ name: 'GET /api/runs?status=failed', body: fail.data });
     if (blockedL.k === 'ready') ready.push({ name: 'GET /api/tasks?status=blocked', body: blockedL.data });
     if (queueL.k === 'ready') ready.push({ name: 'GET /api/workbench/queue', body: queueL.data });
+    if (probe.k === 'ready') ready.push({ name: 'GET /api/hermes-summary', body: probe.data });
     return ready;
-  }, [state.summary, state.today, act, fail, blockedL, queueL]);
+  }, [state.summary, state.today, act, fail, blockedL, queueL, probe]);
 
   return (
     <div className="ov5-page" data-testid="overview-page" data-demo-state={demo ? '1' : undefined}>
@@ -334,16 +360,26 @@ export function OverviewView({
           />
           <KpiCard
             testid="ov6-kpi-health"
-            title="整体健康"
-            value={
-              kpis.health.value === null
-                ? '未接'
-                : HEALTH_LABEL[String(kpis.health.value)] ?? String(kpis.health.value)
+            title="整体健康（服务探针）"
+            value={probeStatus ? HEALTH_LABEL[probeStatus] ?? probeStatus : '未接'}
+            datum={{
+              value: probeStatus,
+              source: probeStatus
+                ? 'GET /api/hermes-summary · runtime /v1/runtime/hermes/summary（schema runtime.hermes.summary.v1）'
+                : null,
+            }}
+            missingReason="服务探针未返回状态；置 null，不以本页读数冒充。"
+            foot={
+              <span>
+                本页读数合成状态：
+                {kpis.health.value === null
+                  ? '未接'
+                  : HEALTH_LABEL[String(kpis.health.value)] ?? String(kpis.health.value)}
+                （bff fan-out probe（本请求 employees/runs-stats/approvals 三路上游结果））
+              </span>
             }
-            datum={kpis.health}
-            foot={<span>本请求三路上游探测的合成状态</span>}
-            stamp={summaryStamp}
-            issue={{ label: '聚合总览', state: state.summary, gap: OVERVIEW_GAP.health }}
+            stamp={probeStamp}
+            issue={{ label: '服务探针', state: probe, gap: OVERVIEW_GAP.health }}
             onRetry={onRetry}
           />
         </section>
@@ -534,12 +570,13 @@ export function OverviewModulePage() {
   const loadSummaryToday = useCallback(async () => {
     summarySeq.current += 1;
     const seq = summarySeq.current;
-    const [s, t] = await Promise.all([
+    const [s, t, pm] = await Promise.all([
       load(fetchOverviewSummary),
       load(() => fetchRunStats(win.from, win.to)),
+      load(fetchHermesSummary),
     ]);
     if (seq !== summarySeq.current) return; // 迟到的旧响应不得覆盖新结果（防闪烁规则）。
-    setState((prev) => ({ ...prev, summary: s, today: t }));
+    setState((prev) => ({ ...prev, summary: s, today: t, probe: pm }));
   }, [win]);
 
   const loadTrend = useCallback(async () => {
@@ -610,7 +647,8 @@ export function OverviewModulePage() {
     state.act?.k === 'error' ||
     state.fail?.k === 'error' ||
     state.blocked?.k === 'error' ||
-    state.queue?.k === 'error';
+    state.queue?.k === 'error' ||
+    state.probe?.k === 'error';
   useEffect(() => {
     if (!anyError || forced) return;
     const timer = window.setInterval(retryAll, RETRY_MS);
@@ -635,6 +673,7 @@ export function OverviewModulePage() {
           fail: { k: 'ready', data: {} },
           blocked: { k: 'ready', data: {} },
           queue: { k: 'ready', data: {} },
+          probe: { k: 'ready', data: {} },
         }}
         todayDate={win.date}
         onRetry={retryAll}
@@ -656,6 +695,7 @@ export function OverviewModulePage() {
           fail: { k: 'error', status: 503, message: '演示错误态（未请求接口）', requestId: null },
           blocked: { k: 'error', status: 503, message: '演示错误态（未请求接口）', requestId: null },
           queue: { k: 'error', status: 503, message: '演示错误态（未请求接口）', requestId: null },
+          probe: { k: 'error', status: 503, message: '演示错误态（未请求接口）', requestId: null },
         }}
         todayDate={win.date}
         onRetry={retryAll}

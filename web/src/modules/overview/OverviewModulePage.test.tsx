@@ -155,6 +155,7 @@ describe('OverviewModulePage 合同：KPI 只走现网 BFF 两端口', () => {
         '/agent-api/api/runs',
         '/agent-api/api/tasks',
         '/agent-api/api/workbench/queue',
+        '/agent-api/api/hermes-summary',
       ]),
     );
     const runStats = urls.filter((u) => new URL(u, 'http://localhost').pathname.includes('/run-stats'));

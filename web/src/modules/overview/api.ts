@@ -45,6 +45,25 @@ export function fetchOverviewSummary(): Promise<OverviewSummaryBody> {
  * items 形状按 unknown 收，页面逐条防御取值；取不到就是未接，不造数。
  */
 
+/*
+ * OM-10 健康卡服务探针。KPI 读数口径不变（其余卡仍只允许 summary+run-stats）；
+ * GET /api/hermes-summary 现网 2026-11-23 登录态实测 200
+ * （runtime /v1/runtime/hermes/summary，schema runtime.hermes.summary.v1）。
+ * 只取 gateway.status/updated_at 作服务态，取不到就是未接，不拿本页读数冒充服务健康。
+ */
+
+export interface HermesSummaryBody {
+  schema?: string | null;
+  gateway?: { status?: unknown; updated_at?: unknown } | null;
+  sources?: unknown;
+  system?: unknown;
+  sessions_stats?: unknown;
+}
+
+export function fetchHermesSummary(): Promise<HermesSummaryBody> {
+  return fetchJSON<HermesSummaryBody>(`${BFF}/hermes-summary`);
+}
+
 export interface RunsBody {
   items?: unknown;
   nextCursor?: unknown;
