@@ -996,6 +996,12 @@
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
+/* DU-03③：轨道本身可 Tab 进入（tabIndex=0），键盘步进必须看得见落点——
+   focus 可见样式与前后箭头同源同值（--color-primary 描边 2px）。 */
+.duty-fleet-viewport:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
 
 /* Q9 样板页字号上 6 档阶梯（tokens.css --font-size-1..6）。
    全局 html 根字号是主题变量（15px 档），tailwind rem 工具类因此离阶；

@@ -683,6 +683,16 @@ function DutyDetailsSection({
             </>
           )}
         </section>
+        <section className="duty-details-block" data-testid="duty-details-fleet">
+          <h3>舰队轨明细</h3>
+          {/* DU-03①：2026-11-24 现网实测 /api/employees 键并集含 department（3 条中 2 条
+              为 null、1 条有值），能力标签列仍不在花名册；卡面第③层按工单裁定保持整层
+              省略（禁空壳、禁编造），说明句必须与真响应一致——工单原句「无数据源」对
+              department 不成立，已按实测改口径，偏差见 DONE-DU-03.md。 */}
+          <p className="duty-note" data-testid="duty-fleet-l3-note">
+            舰队轨第③层未显示：花名册无能力标签列，部门多为空值（待 /api/matrix 扩列）
+          </p>
+        </section>
       </div>
     </details>
   );
