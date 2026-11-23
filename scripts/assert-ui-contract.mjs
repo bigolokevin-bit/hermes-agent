@@ -31,7 +31,9 @@ const TOKEN_FILE = arg("token-file") || process.env.UI_GATE_TOKEN_FILE || "";
 const STAGE = arg("stage") || "duty";
 const NO_LAUNCH = argv.includes("--dry-parse");
 
-const FONT_SCALE = [10.5, 11.5, 12.5, 13.5, 15, 20, 26, 32];
+// L0 裁决 13:1x：闸口径改钉令牌六档（UI-DIRECTION §② 与 tokens.css:29-30 一致）；
+// 早期建议档曾把 24px 合法主 KPI 误判离阶（TOKENS 靶单 4bb80ebb2d 冲突上报）
+const FONT_SCALE = [12, 13, 14, 16, 20, 24];
 const SPACING = [0, 4, 8, 12, 16, 24, 32];
 const BANNED_TEXT = /emp_|ce_|ob_|http|rid|correlation|[0-9a-f]{32}|\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/i;
 const ENGLISH_ROLE = /\b(admin|operator|viewer|owner|member|engineer|agent)\b/i;
