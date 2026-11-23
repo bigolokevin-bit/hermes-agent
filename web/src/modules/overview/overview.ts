@@ -145,6 +145,15 @@ export function buildKpis(
 }
 
 /** 今日 run-stats 桶（若接口只回历史窗而缺今日桶，如实 null，不拿昨天冒充）。 */
+/** 近 24 小时窗（ISO from/to）。时刻集中在数据层，页面渲染保持纯函数。 */
+export function last24hWindow(): { from: string; to: string } {
+  const now = Date.now();
+  return {
+    from: new Date(now - 24 * 3600 * 1000).toISOString(),
+    to: new Date(now).toISOString(),
+  };
+}
+
 export function todayBucketRun(body: RunStatsBody | null, todayDate: string): number | null {
   if (!body || !Array.isArray(body.buckets)) return null;
   const hit = body.buckets.find(

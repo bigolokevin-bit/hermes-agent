@@ -65,7 +65,7 @@ observer 第三轮（OM-03 五列网格）判定 PASS，另记 1440 五列变窄
 
 ## 测试与构建
 
-- `cd web && node_modules/.bin/vitest run src/modules/overview` → **32 passed / 32**（OverviewModulePage.test 11 + overview.window.test 6 + overview.trend.test 4 + overview.gaps.test 5 + overview.feeds.test 6）
+- `cd web && node_modules/.bin/vitest run src/modules/overview` → **37 passed / 37**（OverviewModulePage.test 11 + overview.window.test 6 + overview.trend.test 4 + overview.gaps.test 5 + overview.feeds.test 6 + overview.asof.test 5）
   （OverviewModulePage.test 11 + overview.window.test 6 + overview.trend.test 4 + overview.gaps.test 5）
   （合同：forced 态零请求；只打两端口且 bucket=day；真 0 带来源原文；失败率同源 20%；
   summary 挂→各卡未接入+编号+重试；今日窗挂只影响运行卡；全挂整页错误声明不编造；
@@ -141,6 +141,16 @@ OM-02 可径直标 VERIFIED（腿已在）。P-OM-3 的「workbench 0 命中」�
 - **修出一个真 bug**：`loadSummaryToday` 旧补丁 `({summary, today, trend: prev.trend})` 不展开 prev，会把后到的 extras 四字段整体抹掉（页面上列表节永远「读取中」）——改为 `({...prev, summary, today})`；这正是「部分构造新对象丢字段」的经典雷。
 - 自动重试 20s 周期现在覆盖全部六条腿（任一 error 即静默重读）。
 - 取证：三张图重拍于新代码（含列表节），见上节截图路径。
+
+## OM-11 采集时刻纪律（2026-11-23 续跑，同分支）
+
+- 合同：as-of 行只渲染上游自带 asOf 或「—（只认上游采集时间，前端时钟不顶替）」；页内渲染期不出现浏览器时钟。
+- 落地：
+  - 页面 `new Date()` 直接调用清零（DoD grep 口径）：`since7d` 改走 `daysAgoWindow(7).from`；24h 窗时刻集中到数据层 `overview.ts:last24hWindow()`；原文面板「页面时间」行删除动态钟，改为静态句「页面时间不参与新鲜度判定」（`grep -n "new Date()" OverviewModulePage.tsx | grep -v setTimeout | wc -l` = 0）。
+  - 全腿失败/未读时 `ov6-asof` 仍在 DOM，值「—」并给原因（R31 永不缺席）；多来源取最新（R41）。
+- 测试面 `overview.asof.test.tsx` 5 例：①系统时钟前移 24h 屏上时刻不变；②多源取最新；③全 error 仍有「—」；④ready 无 asOf → 卡内「时间未知（上游响应没有带采集时间）」；⑤loading 态 as-of 在场 + 面板不印浏览器时钟。
+- 现网抽核（步骤④，登录态 9131 脸）：curl `overview/summary` asOf=2026-11-23T14:04:54Z ↔ 屏上「数据截至 2026-11-23 22:04（北京时间）」，PARITY_OK；证据 `docs/_artifacts/OM-01-overview-kpi/raw/om11-parity.json`。
+- 说明：backlog 的 DoD grep 目标 `OverviewPage.tsx` 已被 OM-01 删除，等价口径落在 `OverviewModulePage.tsx`。
 
 ## 已知边界（如实上报，非缺陷隐瞒）
 

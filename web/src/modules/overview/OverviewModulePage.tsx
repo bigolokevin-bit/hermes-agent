@@ -14,7 +14,7 @@ import { Link, useSearchParams } from 'react-router';
 
 import { fetchRunStats, load } from '../duty/api';
 import { DEFAULT_DUTY_RANGE, DUTY_RANGES, parseDutyRange, type DutyRangeId } from '../duty/dutyRange';
-import { beijing, beijingDayWindow, daysAgoWindow, usd } from '../duty/format';
+import { beijingDayWindow, daysAgoWindow, usd } from '../duty/format';
 import type { Loadable, RunStatsBody } from '../duty/types';
 import {
   fetchBlockedTasks,
@@ -33,6 +33,7 @@ import {
   blockerCounts,
   blockerRows,
   buildKpis,
+  last24hWindow,
   sourceStamp,
   todayBucketRun,
   trendPoints,
@@ -246,7 +247,7 @@ export function OverviewView({
       <header className="ov5-head">
         <h1>数字员工总览</h1>
         <p className="ov5-sub" data-testid="ov6-asof" title="取各来源响应自带的采集时间，不拿前端时间冒充">
-          {asof ? `数据截至 ${asof}（北京时间）` : '数据截至时间未知'}
+          {asof ? `数据截至 ${asof}（北京时间）` : '数据截至 —（只认上游采集时间，前端时钟不顶替）'}
           <Link to="/overview" data-testid="ov6-back-duty">返回旧总览</Link>
         </p>
         <nav className="ov5-range" aria-label="时间窗切换" data-testid="ov6-range">
@@ -497,8 +498,7 @@ export function OverviewView({
           ))
         )}
         <p className="ov5-note" title="前端到页面的时间只是本机加载时间，不代表新鲜度">
-          页面时间 <span className="ov5-obj">{beijing(new Date().toISOString())}</span> 仅作加载记录；
-          新鲜度以「数据截至」为准。
+          页面时间不参与新鲜度判定；新鲜度只认各来源响应自带的「数据截至」采集时间。
         </p>
       </section>
     </div>
@@ -521,12 +521,8 @@ export function OverviewModulePage() {
   const trendWin = useMemo(() => {
     if (rangeDef.id === '24h') {
       // 24h 档走 hour 桶（现网 run-stats bucket=hour 实测 200，空桶如实空态）。
-      const now = new Date();
-      return {
-        from: new Date(now.getTime() - 24 * 3600 * 1000).toISOString(),
-        to: now.toISOString(),
-        bucket: 'hour' as const,
-      };
+      const w = last24hWindow();
+      return { from: w.from, to: w.to, bucket: 'hour' as const };
     }
     const w = daysAgoWindow(rangeDef.days - 1);
     return { ...w, bucket: 'day' as const };
