@@ -72,7 +72,8 @@ export function useNotWiredRead(url: string, rawId: string): {
       })
       .catch((err: unknown) => {
         if (!alive) return;
-        if (errStatus(err) === 501) {
+        const status = errStatus(err);
+        if (status === 501 || (status === 503 && (codeOf(err) ?? "").endsWith("not_wired"))) {
           setState({
             k: "notWired",
             code: codeOf(err) ?? "501.not_wired",
@@ -81,7 +82,21 @@ export function useNotWiredRead(url: string, rawId: string): {
           });
           return;
         }
-        setState({ k: "error", status: errStatus(err), message: humanize(err), requestId: requestIdOf(err) });
+        if (status === 404 && codeOf(err) === "console.unknown_route") {
+          // Q41c（B 形制，L6 R378 实测正名）：现网 served BFF 该读口**未注册**——
+          // authed 404 console.unknown_route 属未知路由兜底族，非 501 not_wired 族。
+          // 前端不得把它折成错误态（用户会以为坏了），也不得冒充真数据：
+          // 与 501 同样落「诚实未接入」，文案区分两种成因：
+          // 404=服务端路由未注册（未实现），501/503=已注册但上游未接（不造数）。
+          setState({
+            k: "notWired",
+            code: "console.unknown_route",
+            message: "控制台服务端尚未注册该读口（路由未实现），未接入、不显示任何数据。",
+            requestId: requestIdOf(err),
+          });
+          return;
+        }
+        setState({ k: "error", status, message: humanize(err), requestId: requestIdOf(err) });
       });
     return () => {
       alive = false;

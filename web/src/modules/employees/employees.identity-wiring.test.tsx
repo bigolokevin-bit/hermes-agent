@@ -3,7 +3,10 @@
  * Q41a — 前端消费 identity-links/transitions 两读口接线契约。
  *
  * 板面判据：Q1 读口已在 main（GET 恒 501 族）；未接面 501 需诚实空态文案，
- * 禁造假 200。本测钉死六条：
+ * 禁造假 200。Q41c 正名（L6 R378 实测）：现网 served BFF 两读口实际 authed
+ * 404 console.unknown_route（路由未注册）——该形态同落诚实未接入态，
+ * 文案与 501/503「上游未接」区分成因；非 unknown_route 的 404 仍是错误态。
+ * 本测钉死六条：
  *  1. 真请求先行：挂载即按精确 URL 各发一条 GET（接线证明）；
  *  2. 501 → 未接入态：文案逐字含服务端信封 code（identity.not_wired /
  *     employee_transitions.not_wired），不用 role=alert，不摆空列表；
@@ -144,6 +147,26 @@ describe("Q41a identity-links 读腿", () => {
     expect(alert).toBeTruthy();
     expect(alert!.textContent).toContain("500");
   });
+
+  // ── Q41c：404 unknown_route（现网实测形态）并入诚实未接入 ──
+  it("404 console.unknown_route → 未接入态（路由未注册文案），非错误态", async () => {
+    routes({}, { "identity-links": new ApiError("404: not found", { status: 404, body: '{"code":"console.unknown_route","message":"unknown console API route"}', url: "/agent-api/api/identity-links" }) });
+    await mount(<IdentityPane rawId={EMP} enc={ENC} />);
+    const nw = container.querySelector("[data-testid='emp-detail-identity-not-wired']");
+    expect(nw).toBeTruthy();
+    expect(nw!.textContent).toContain("未接入");
+    expect(nw!.textContent).toContain("console.unknown_route");
+    expect(nw!.textContent).toContain("路由未实现");
+    expect(container.querySelector('[role="alert"]')).toBeNull();
+    expect(container.querySelector("[data-testid='emp-detail-identity-rows']")).toBeNull();
+  });
+
+  it("404 其他 code（如 employee.not_found）→ 仍错误态，不并入未接入", async () => {
+    routes({}, { "identity-links": new ApiError("404: nf", { status: 404, body: '{"code":"employee.not_found","message":"employee not found"}', url: "/agent-api" }) });
+    await mount(<IdentityPane rawId={EMP} enc={ENC} />);
+    expect(container.querySelector("[data-testid='emp-detail-identity-not-wired']")).toBeNull();
+    expect(container.querySelector('[role="alert"]')).toBeTruthy();
+  });
 });
 
 describe("Q41a employee transitions 读腿（最近流转）", () => {
@@ -160,6 +183,15 @@ describe("Q41a employee transitions 读腿（最近流转）", () => {
     const nw = container.querySelector("[data-testid='emp-detail-flux-not-wired']");
     expect(nw?.textContent).toContain("employee_transitions.not_wired");
     expect(container.textContent).toContain("小鲤");
+    expect(container.querySelector('[role="alert"]')).toBeNull();
+  });
+
+  it("Q41c：404 console.unknown_route → flux 未接入（路由未注册），非 alert", async () => {
+    routes({}, { "/transitions": new ApiError("404: not found", { status: 404, body: '{"code":"console.unknown_route","message":"unknown console API route"}', url: "/agent-api/api/employees/x/transitions" }) });
+    await mount(<OverviewPane detail={DETAIL} rawId={EMP} enc={ENC} />);
+    const nw = container.querySelector("[data-testid='emp-detail-flux-not-wired']");
+    expect(nw?.textContent).toContain("未接入");
+    expect(nw?.textContent).toContain("console.unknown_route");
     expect(container.querySelector('[role="alert"]')).toBeNull();
   });
 
