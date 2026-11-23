@@ -72,3 +72,14 @@ UiTabs 键盘语义（同一提交批次）：临时在 `Tabs.tsx` 的 `onKeyDow
 - 全量 `pnpm exec vitest run`：读数随本笔回执给出（L0 侧基线 486 files / 3583 tests；本腿预期 +1 文件/+5 例）。
 - 已知环境腿 `src/shell/e1Contract.test.ts` disk==served：在未部署 worktree 必然背离，判环境不判 diff，不复制其形制到本门（本门不启服务、不读 `hermes_cli/web_dist/**`）。
 
+
+
+---
+
+## 更正段（L0 直营追加，2026-11-23 16:0x；追加形制，不回改上方历史读数段）
+
+- **现行双口径锚（脸 `56eef7a81b` 代）**：`BASELINE_FULL=24` / `BASELINE_LITERAL=18` / `EXEMPT_MAX=6`，权威定义点＝`web/src/components/ui/inline-style-ratchet.test.ts` 现值。
+- 来源链：`179bb60110 test(web/ui-f): 棘轮豁免面删死项并按脸 f2a22e849b 重锚基线 26/18→24/18`（删 chartPxHeight(CHART_HEIGHT_PX) 死豁免＋常量柱高 toBe(0) 防反向守卫）← `5bb423fddd`（AnalyticsPage 168/181 常量柱高**真清偿**为 h-[160px]，L0 并入 `f2a22e849b`）。
+- **口径作废声明**：本文件上方各历史段的 65/61（全形制/字面量）与中间代 26/18 均为当时代快照，作历史对照保留；**引用现行负债数字一律以上述 24/18 为准**（watchdog-463/464 双口径点名更新回执即本段）。
+- 判定口径不变：全形制 `style={` 与字面量 `style={{` 双数并报（§5 条 18/19）；运行时值豁免站点＝形制迁移不算清偿，豁免集合只减不增（牙齿 179bb6011e/179bb60110 blindSpots≤covered 硬兜底）。
+- 验证命令（可复跑）：`cd web && pnpm exec vitest run src/components/ui/inline-style-ratchet.test.ts`（应全绿）；基线全量＝502 files / 3699 tests（15:0x L0 亲跑绿）。
