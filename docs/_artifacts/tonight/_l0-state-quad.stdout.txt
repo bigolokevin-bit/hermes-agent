@@ -1,1 +1,1 @@
-state-quad: sampled=20 passed=20 base=http://127.0.0.1:9122 head=29ad9220
+state-quad: sampled=20 passed=20 base=http://127.0.0.1:9122 head=8cdd19c4

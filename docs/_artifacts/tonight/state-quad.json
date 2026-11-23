@@ -1,7 +1,7 @@
 {
   "base": "http://127.0.0.1:9122",
   "method": "playwright hash-form /#/<route>?state=<s>; hook=[data-fixture]+[data-testid=shell-fixture-badge] (web/src/shell/fixtures.ts)",
-  "headHash": "29ad9220",
+  "headHash": "8cdd19c4",
   "sampled": 20,
   "passed": 20,
   "rows": [
