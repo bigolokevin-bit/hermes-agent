@@ -743,6 +743,43 @@ export function ApprovalDetailBody({
         <p className="min-w-0 break-words text-xs text-warning">这张单已被另一张替代，请到「待处理」里查看新单。</p>
       ) : null}
 
+      {/* Q13: 字段级前后差异。数据源只有本详情响应（GET /api/approval?id=）；
+        * 键没带回就是 null——屏上写「未接」+原因句，禁 fixture、禁猜（模型法则一）。 */}
+      <section className="ui-c-section" data-testid="apd10-diff" aria-label="变更差异（字段级·只读）">
+        <h3 className="ui-c-section-title">变更差异 · 字段级（只读）</h3>
+        {detail.diff === null ? (
+          <p
+            className="min-w-0 break-words text-xs text-muted-foreground"
+            data-testid="apd10-diff-unwired"
+            title="差异只从这条单据的服务端响应读取；该响应没有带回字段级前后值（版本 from→to、added/removed 之类形制均未出现），前端不自行补齐。"
+          >
+            未接——这条单据的服务端响应没有带回字段级前后值，屏上不猜差异内容。
+          </p>
+        ) : detail.diff.fields.length === 0 ? (
+          <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="apd10-diff-empty">
+            服务带回了差异结构，其中没有字段级变更。
+          </p>
+        ) : (
+          <ul className="flex min-w-0 flex-col gap-1 text-xs">
+            {detail.diff.fields.map((field, index) => (
+              <li
+                key={`${field.label}-${index}`}
+                className="grid min-w-0 grid-cols-1 gap-x-2 gap-y-0.5 sm:grid-cols-[minmax(6rem,9rem)_minmax(0,1fr)_minmax(0,1fr)]"
+                data-testid={`apd10-diff-row-${index}`}
+              >
+                <span className="min-w-0 break-words text-muted-foreground">{field.label}</span>
+                <span className="min-w-0 break-words" data-testid={`apd10-diff-before-${index}`} title={field.raw ?? undefined}>
+                  前：{field.before}
+                </span>
+                <span className="min-w-0 break-words" data-testid={`apd10-diff-after-${index}`}>
+                  后：{field.after}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
       {/* apd7: the decision replay is a titled read-only block — every entry
         * names who decided (masked handle or 未指派), the verdict, the Beijing
         * minute, and the note; an empty list says so plainly. */}
