@@ -31,3 +31,13 @@
   }
 
 }
+
+/* Q6 · trace strip and step details: never wider than the column (1440/375) */
+[data-testid="run6-trace-steps"] {
+  max-width: 100%;
+}
+[data-testid^="run6-trace-step-"],
+[data-testid^="run6-step-"] {
+  min-width: 0;
+  max-width: 100%;
+}
