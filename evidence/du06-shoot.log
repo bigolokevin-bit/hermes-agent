@@ -1,0 +1,20 @@
+[1440] whoami status=200 user=opsadmin
+[1440] 首读完成，上游累计 18 条；实态={"ariaDisabled":"false","ariaBusy":"false","nativeDisabled":false,"title":"","busy":"<absent>","cooling":"<absent>","stamp":"<absent>"}
+[1440] 连点 10 次 ⇒ 上游新增 18 条（首读整批=18 条）
+[1440] 窗口内实态={"ariaDisabled":"true","ariaBusy":"false","nativeDisabled":false,"title":"不能刷新：这一批刚读完；5 秒内再点一次读不到新数据，稍后再刷新。","busy":"<absent>","cooling":"不能刷新：这一批刚读完；5 秒内再点一次读不到新数据，稍后再刷新。","stamp":"刷新完成于 北京时间 2026-11-24 01:03（读取时刻，不是数据时刻）"}
+[1440] 主图 du06-1440.png
+[1440] 在飞实态={"ariaDisabled":"true","ariaBusy":"true","nativeDisabled":false,"title":"不能刷新：这一批还在读；这一轮读完成前重复点没有意义。","busy":"更新中…（区块先保留上一次读到的数据）","cooling":"<absent>","stamp":"<absent>"}
+[1440] 在飞图 du06-1440-inflight.png
+[1440] 切窗 14d→7d ⇒ 上游重发 2 条: workbench/timeseries?range=7d&bucket=day&metric=runs | run-activity?weeks=1&tz=Asia%2FShanghai
+[1440] 横向溢出(px)=0 根字号=15px
+[375] whoami status=200 user=opsadmin
+[375] 首读完成，上游累计 18 条；实态={"ariaDisabled":"false","ariaBusy":"false","nativeDisabled":false,"title":"","busy":"<absent>","cooling":"<absent>","stamp":"<absent>"}
+[375] 连点 10 次 ⇒ 上游新增 18 条（首读整批=18 条）
+[375] 窗口内实态={"ariaDisabled":"true","ariaBusy":"false","nativeDisabled":false,"title":"不能刷新：这一批刚读完；5 秒内再点一次读不到新数据，稍后再刷新。","busy":"<absent>","cooling":"不能刷新：这一批刚读完；5 秒内再点一次读不到新数据，稍后再刷新。","stamp":"刷新完成于 北京时间 2026-11-24 01:04（读取时刻，不是数据时刻）"}
+[375] 主图 du06-375.png
+[375] 在飞实态={"ariaDisabled":"true","ariaBusy":"true","nativeDisabled":false,"title":"不能刷新：这一批还在读；这一轮读完成前重复点没有意义。","busy":"更新中…（区块先保留上一次读到的数据）","cooling":"<absent>","stamp":"<absent>"}
+[375] 在飞图 du06-375-inflight.png
+[375] 切窗 14d→7d ⇒ 上游重发 2 条: workbench/timeseries?range=7d&bucket=day&metric=runs | run-activity?weeks=1&tz=Asia%2FShanghai
+[375] 横向溢出(px)=0 根字号=15px
+
+SUMMARY 1440={"mountCount":18,"burstAdded":18,"rangeAdded":2,"overflow":0,"stampShown":true} 375={"mountCount":18,"burstAdded":18,"rangeAdded":2,"overflow":0,"stampShown":true}
