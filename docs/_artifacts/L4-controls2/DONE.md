@@ -92,3 +92,24 @@ VERDICT=SKIPPED-NOT-DEPLOYED reason=dist-unreadable PORT=9122 DISK_ENTRY=DIST-UN
 
 1. DoD①②④ 达成；DoD③ 构建与计数如实上报，**console-topbar≥1 需 L4-shell 并入基线后验**（已随回执提决策）。
 2. 工单前提两处修正已实证：`<select` 实为 9 提及/0 渲染（非 2 处渲染）；锚点 token 不在所给基线。
+
+## 闭单补记（回应夜巡 472③ 催办，2026-11-23）
+
+L0 知会收尾判据：**`web/src` 渲染点保持 0，ratchet 台账如实**。已在已推 tip 上复核，原始输出：
+
+```
+$ git rev-parse HEAD
+005cf4de07e15c4c039abbc41571e22c64f7f4c1
+$ git status --porcelain
+(空 — 工作树干净)
+$ grep -rn "<select" web/src --include=*.tsx
+(零命中, exit=1)
+$ grep -rn "createElement([\"']select" web/src
+(零命中, exit=1 — 渲染点=0)
+$ git ls-remote origin refs/heads/lane/L4-controls2   # 定向 ref 读回
+005cf4de07e15c4c039abbc41571e22c64f7f4c1	refs/heads/lane/L4-controls2
+```
+
+处置：按 L0"不要停在等待态"口径，本车道以**不阻塞选项闭单**——`console-topbar=0` 已如实入账（本表 DoD③），
+L4-shell `5edb59c` 并入基线归总控后续单，并入后 lane-gate 复验自然触发（entry hash 预期随之变化，
+届时 `native-select-zero` 与 topbar 源码闸同跑）。本道无待批残留，闭单。
