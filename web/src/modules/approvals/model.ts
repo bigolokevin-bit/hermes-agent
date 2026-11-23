@@ -11,6 +11,7 @@
  */
 
 import { epochOf, plainMinute } from "./RelativeTime";
+import { shortRef } from "@/modules/tasks/tasksBoard";
 
 /** The tones the vendored Badge accepts (its own union is not exported). */
 export type Tone = "default" | "destructive" | "outline" | "secondary" | "success" | "warning";
@@ -502,9 +503,15 @@ export interface ApprovalPage {
   rows: ApprovalRow[];
   /** Records the answer carried but that could not be read — counted, never dressed up. */
   unreadable: number;
+  /** Server cursor for the next page; `null` = the read port handed back no cursor. */
   next: string | null;
-  /* R79: 读口顶层无 total 键（实测 keys=[items,nextCursor]）——解析 total/count
-   * 以备契约升级，缺省恒 null；UI 禁按已加载条数推算。 */
+  /* R79 + AP-01: 读口顶层无 total 键。现网实测（经 8092→8101，opsadmin 会话）：
+   *   status=all/缺省（BFF _approvals_all 逐 8 态扇出）→ keys=[items,nextCursor]，
+   *     且跨态 cursor 恒为 None、合并后按 limit 截断；
+   *   单态透传（如 status=expired/pending）→ keys=[items]（无游标即无续页）。
+   * 这里解析 total|count 只为契约升级预留；缺省恒 null。null 是「读口没说」，
+   * 不是「0」也不是「rows.length」——UI 侧唯一的分母口径见 QueueSummaryBar 的
+   * denominatorReadout()，禁在任何地方用本页已加载条数推算总量。 */
   total: number | null;
 }
 
@@ -512,10 +519,11 @@ export interface ApprovalPage {
 export function approvalsPageFrom(payload: unknown): ApprovalPage | null {
   let items: unknown[] | null = null;
   let next: string | null = null;
+  let rec: Record<string, unknown> | null = null;
   if (Array.isArray(payload)) {
     items = payload;
   } else {
-    const rec = asRecord(payload);
+    rec = asRecord(payload);
     if (!rec) return null;
     for (const key of LIST_KEYS) {
       const value = rec[key];
@@ -534,8 +542,11 @@ export function approvalsPageFrom(payload: unknown): ApprovalPage | null {
     if (row) rows.push(row);
     else unreadable += 1;
   });
-  const totalRaw = (payload as Record<string, unknown>).total ?? (payload as Record<string, unknown>).count;
+  /* AP-01：总数只认读口顶层的 total|count 键（现网两路实测都缺）。缺省＝null＝
+   * 「读口没说」：这里绝不回退成 rows.length，否则本页条数就冒充了总量。 */
+  const totalRaw = rec?.total ?? rec?.count;
   const total = typeof totalRaw === "number" && Number.isFinite(totalRaw) ? totalRaw : null;
+  // 键序＝ApprovalPage 声明序（rows, unreadable, next, total）：契约补 total 时按同序落键。
   return { rows, unreadable, next, total };
 }
 
@@ -548,6 +559,28 @@ export interface DecisionEntry {
   verdictRaw: string | null;
   at: string | null;
   note: string | null;
+}
+
+/** Q13: one field-level before/after row, every cell a human sentence. */
+export interface ApprovalDiffField {
+  label: string;
+  before: string;
+  after: string;
+  /** 原始句柄/枚举只进 title，不进正文（模型法则二）。 */
+  raw: string | null;
+}
+
+/**
+ * Q13: honest diff state read from the very detail payload the service answered.
+ *  - `real`   — before/after rows derived from keys the service actually sent.
+ *  - `absent` — a diff-shaped carrier came back but carries no changed fields.
+ * Computed from the detail response only (`GET /api/approval?id=`); when the
+ * response has no diff-shaped keys at all the value stays `null` — the UI then
+ * says 「未接」 with a reason. No fixtures, no guesses.
+ */
+export interface ApprovalDiff {
+  fields: ApprovalDiffField[];
+  source: "real" | "absent";
 }
 
 export interface ApprovalDetail {
@@ -580,6 +613,8 @@ export interface ApprovalDetail {
   /** R46 apd6: related-object ids when the ticket carries them. */
   runId: string | null;
   taskId: string | null;
+  /** Q13: 字段级前后差异；null=该单据响应未带回任何差异键（界面「未接」+原因）。 */
+  diff: ApprovalDiff | null;
   /** Raw technical lines for the 「详情」 disclosure only. */
   technical: string[];
 }
@@ -607,6 +642,105 @@ function decisionEntries(rec: Record<string, unknown>): DecisionEntry[] {
     });
   }
   return out;
+}
+
+/* ------------------------------------------------------------------ *
+ * Q13 字段级差异读取。键形制全部来自 2026-11-23 本机金标准实测
+ * （GET /agent-api/api/approval?id=ap_AEEC…，原文见 worktree evidence/）：
+ *   detail.changeDetail { fromVersionId, toVersionNo, addedGrants[],
+ *                         removedGrantIds[], effectiveFrom, source:"resource" }
+ *   resource           同一载荷的 snake_case 镜像（from_version_id…）。
+ * 探测未出现 changes/diffs/fieldChanges/proposal 之类泛型键，故不凭空支持：
+ * 只认实测形制，缺失返回 null，前端渲染「未接」并给出原因句。
+ * ------------------------------------------------------------------ */
+
+const DIFF_FROM_KEYS = ["fromVersionId", "from_version_id"] as const;
+const DIFF_TO_KEYS = ["toVersionNo", "to_version_no"] as const;
+const DIFF_ADDED_KEYS = ["addedGrants", "added_grants"] as const;
+const DIFF_REMOVED_KEYS = ["removedGrantIds", "removed_grant_ids"] as const;
+
+const GRANT_SCOPE_LABEL: Record<string, string> = {
+  business_api: "业务接口",
+  channel: "渠道",
+};
+
+/** 授权对象的一行人话：范围类型 · 允许动作 · 到期（缺段就省段，不补造）。 */
+function grantSentence(g: Record<string, unknown>): string {
+  const scopeRaw = pickText(g, ["scopeType", "scope_type"]);
+  const scope = scopeRaw ? GRANT_SCOPE_LABEL[scopeRaw.toLowerCase()] ?? scopeRaw : null;
+  const actionsList = Array.isArray(g.actions ?? g.granted_actions)
+    ? (g.actions as unknown[]).map(textOf).filter((x): x is string => Boolean(x))
+    : [];
+  const parts: string[] = [];
+  if (scope) parts.push(scope);
+  if (actionsList.length) parts.push(`允许 ${actionsList.join("、")}`);
+  const expires = beijing(pick(g, ["expiresAt", "expires_at"]));
+  if (expires) parts.push(`到期 ${expires}`);
+  return parts.join(" · ") || "授权内容未带回细节";
+}
+
+function diffCarrierRecords(rec: Record<string, unknown>): Record<string, unknown>[] {
+  const out: Record<string, unknown>[] = [];
+  const inner = asRecord(rec.detail);
+  for (const source of [inner, rec]) {
+    if (!source) continue;
+    for (const key of ["changeDetail", "change_detail"]) {
+      const one = asRecord(source[key]);
+      if (one) out.push(one);
+    }
+  }
+  const resource = asRecord(rec.resource);
+  if (resource) out.push(resource);
+  return out;
+}
+
+export function approvalDiffFrom(payload: unknown): ApprovalDiff | null {
+  const rec = asRecord(payload);
+  if (!rec) return null;
+  const fields: ApprovalDiffField[] = [];
+  let carrierFound = false;
+  for (const carrier of diffCarrierRecords(rec)) {
+    const from = pickText(carrier, DIFF_FROM_KEYS);
+    const to = pickText(carrier, DIFF_TO_KEYS);
+    const added = Array.isArray(pick(carrier, DIFF_ADDED_KEYS)) ? (pick(carrier, DIFF_ADDED_KEYS) as unknown[]) : null;
+    const removed = Array.isArray(pick(carrier, DIFF_REMOVED_KEYS)) ? (pick(carrier, DIFF_REMOVED_KEYS) as unknown[]) : null;
+    if (from === null && to === null && added === null && removed === null) continue;
+    // 同一变更在响应里可能同时有 camel（detail.changeDetail）与 snake
+    // （resource）镜像——取首个命中载体，禁把同一差异数两遍。
+    carrierFound = true;
+    if (from !== null || to !== null) {
+      fields.push({
+        label: "员工版本",
+        before: from !== null ? shortRef(from) : "—",
+        after: to !== null ? `v${to}` : "—",
+        raw: from ?? null,
+      });
+    }
+    for (const item of added ?? []) {
+      const one = asRecord(item);
+      const id = one ? pickText(one, ["id", "grantId", "grant_id"]) : null;
+      const body = one ? grantSentence(one) : "授权内容未带回细节";
+      fields.push({
+        label: `新增授权${id ? ` ${shortRef(id)}` : ""}`,
+        before: "未持有",
+        after: body,
+        raw: id,
+      });
+    }
+    for (const item of removed ?? []) {
+      // 撤销项服务只带回 id——内容不在响应里，正文就只说 id，禁补写。
+      const id = textOf(item);
+      fields.push({
+        label: `移除授权${id ? ` ${shortRef(id)}` : ""}`,
+        before: "持有中（授权内容未随本单带回）",
+        after: "已移除",
+        raw: id,
+      });
+    }
+    break;
+  }
+  if (!carrierFound) return null;
+  return { fields, source: fields.length ? "real" : "absent" };
 }
 
 export function approvalDetailFrom(payload: unknown): ApprovalDetail | null {
@@ -674,6 +808,7 @@ export function approvalDetailFrom(payload: unknown): ApprovalDetail | null {
     requestId,
     runId: pickText(body, ["runId", "run_id"]),
     taskId: pickText(body, ["taskId", "task_id"]),
+    diff: approvalDiffFrom(body),
     technical,
   };
 }

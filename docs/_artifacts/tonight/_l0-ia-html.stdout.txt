@@ -42,6 +42,6 @@
     }
   ],
   "ok": true,
-  "headHash": "5ddee38447",
+  "headHash": "4f4d1604f1",
   "exitCode": 0
 }

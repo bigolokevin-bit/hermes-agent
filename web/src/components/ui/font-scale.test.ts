@@ -97,10 +97,17 @@ describe("字阶棘轮门（字号集合 ⊆ 6 档令牌）", () => {
     for (const h of hits) byFile.set(h.file, (byFile.get(h.file) ?? 0) + 1);
     const top = [...byFile.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4);
     // 这四个文件是收敛主力，若归属突然变化说明有人绕过台账动手，先红再对。
+    // 台账随合并波 90a80aee6c 重算（FIX-Q9-2，2026-11-23 21:4x，在 task/Q9-sample-compare
+    //   merge 90a80aee6c 后的线面上现跑）：top-4 = health.css 59 / metrics.css 59 /
+    //   counts.css 23 / access.css 20（Q12/Q13 并入给 health/metrics 带来新增字面量，
+    //   排位换血但集合未变）；duty.css、employees-density.css 维持 0——Q9 批
+    //   （a6de0b4b3d）令牌化已生效（离阶归零证据 docs/_artifacts/q9-sample-compare/q9-metrics.json）。
+    //   注意：本清单按落地面 css 集合取 top-4；若落地面含线外未入面文件（如 analytics/audit 族），
+    //   以该面重算为准，属合并波同步债，逐面刷新本注记即可，勿改判定逻辑。
     expect(top.map(([f]) => f).sort()).toEqual(
       [
+        "modules/access/access.css",
         "modules/capabilities/counts.css",
-        "modules/duty/duty.css",
         "modules/health/health.css",
         "modules/metrics/metrics.css",
       ].sort(),

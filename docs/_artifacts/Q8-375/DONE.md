@@ -160,3 +160,21 @@ Q8_AUTH_STATE=<temp>/q8-auth-state.json NODE_PATH=$PWD/web/node_modules node doc
 - `docs.png`：壳层「Documentation」+ 已加载的外部文档 iframe（Hermes Agent 官网正文可见）。iframe 外框受 375 约束不溢出；**iframe 内部判据跨域不可枚举**（见 §6）。
 
 结论：判据①（横溢）经逐元素 rect + scrollWidth + 截图三重一致，五页 PASS；判据③（hover-only）经样式表焦点环 + 源码 group-hover 审计，五页 0 命中；判据②（触控）逐页命中已登记为缺陷，未修复。
+
+---
+
+## 9. FIX-Q8 补拍（2026-11-23，回应 QA R319#3 FAIL：缺 1440 全高截图）
+
+基线：本分支已并入现脸 `648233693d0e3cf04c0e9726bc8a9a0cdaf28186`（fetch 定向核过，42dcd798 为其祖先，fast-forward 无冲突）。写域仅 `docs/_artifacts/Q8-375/**`，`web/src` 零改动（本拍对产品的唯一触碰是一个未提交的临时 vite 配置副本，已删）。
+
+取图法（视口加高，非 fullPage——后者在该脸为 no-op 且属超时高危族）：goto `domcontentloaded` + settle 1.8s → 页内 whoami(`/agent-api/api/console-sessions?limit=1`)=200 紧贴断言（401 即弃拍）→ 量 `max(doc scrollHeight, 滚动壳 top+scrollHeight)` → `setViewportSize(1440, H+60)` → 复量确认 `fits=true`（内容全高入视口，无裁切）→ 视口截图。脸 = vite dev 127.0.0.1:5199 本树源码，/agent-api 代理 9122。脚本 `scripts/shot-1440.cjs`，逐条原始读数 `raw/readings-1440.json`，SHOT_EXIT=0 全 OK。
+
+| 页 | PNG 路径（docs/_artifacts/Q8-375/shots-1440/） | 尺寸 px | 字节 | whoami | fits |
+|---|---|---|---|---|---|
+| 知识库 | knowledge-base.png | 1440×1227 | 232423 | 200 | true |
+| 知识问答 | knowledge-qa.png | 1440×1322 | 224619 | 200 | true |
+| 文档 | docs.png | 1440×960 | 178528 | 200 | true |
+| 任务 | tasks.png | 1440×3096 | 317393 | 200 | true |
+| 会话 | sessions.png | 1440×960 | 72645 | 200 | true |
+
+声明（对应 FAIL 判定的"DONE 对 1440 零声明"）：五页 1440 全高图在架；任务页 3096px 高证真全高非首屏；文档页仍为跨域 iframe 结构限制（§6 口径不变）；三判据矩阵仍指 375 口径，本拍不改判。

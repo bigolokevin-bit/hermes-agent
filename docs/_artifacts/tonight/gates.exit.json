@@ -1,53 +1,52 @@
 {
   "script": "gates.exit.json",
-  "head": "5ddee38447408d2fc3374dd40b028444c7f38efd",
-  "provenance": "Q43 波次（L0 派工：五门跟代补章 + rebuild 部署 @Q5/Q6 并线波）。\n源码面章面 = 5ddee38447408d2fc3374dd40b028444c7f38efd（merge(runs) Q6 运行 trace 条带；父链含 merge(console) 刷入 Q42 章笔与 merge(duty) Q5 duty 页）。运行期 HEAD 全程恒为该值，本账随章笔落地，账内 head 指向源码面，章 commit 为其后继（章笔不落自身）。\n本波源码差为真实行为源码（非注释级）：git diff --stat a8e0db3843..5ddee38447 = 15 文件 +1058/-46，含 web/src/modules/duty/{DutyPage.tsx,aggregate.ts,api.ts,readiness.ts,useDutyData.ts + 3 测试件} 与 web/src/modules/runs/{RunsModulePage.tsx,runs.ts,runs-density.css,runs.trace.test.tsx}，另有 DONE.md 与 docs/_artifacts/duty/*.png。⇒ 按 L0 DoD② rebuild 必做。\nrebuild：node26 ~/.nvm/versions/node/v26.13.1/bin/node scripts/build/web.mjs（无参，禁传 -- 否则 argv[2] 被当 source）→ BUILD_EXIT=0，日志 _l7-build-5ddee38447.log；in-graph 自证=日志内一次性临时目录 hermes_cli/.web_dist-build-8zvMux（事后 ls -d 无此项）+ 尾部「✓ built in 5.94s」。\nentry 真翻代（上一波「同名同 sha 以 mtime+in-graph 自证」那条本波不适用）：assets/index-DZVbT_9g.js sha256 f24e272a57e17132880eeb9c346d5bae05c4fd3e903b58b4440954fdd608762a → assets/index-wuhTvuKn.js sha256 0a0e81bb18a14b3918622bee94319b2a716d2a8c93ed44d4548e8e1083d066a4（174880B 为巧合相同字节数）；index.html 1084B mtime Nov 23 19:32。\nDoD② 判据「Q5 duty + Q6 runs 源码在 line 不在 served」的执行与清除：波次指纹取自 git diff a8e0db38447 的 + 侧非 test 文件新增字面量 = run6-trace（RunsModulePage.tsx）、知识文档读口未回答 / 渠道事件列表 BFF 未代理（duty/aggregate.ts）、这条事件的载荷里没有输入摘录（runs/runs.ts）。rebuild 前：磁盘 dist 与 served 抓取（86 枚 chunk）双侧 grep 命中 0/0 ⇒ 在 line 不在 served 成立；rebuild + 9122 换代后：磁盘四枚 present，served 侧 DutyPage-CHKYC3le.js 与 RunsModulePage-DsyJXdS1.js 各命中 1 ⇒ 判据清除。自纠注：首批候选 duty-blockers-say / duty-changed-more / duty-details-blockers / run-asof-line / run-cost-caliber-note / run-filter-copy-fallback 经 git grep 实测在旧源码面 a8e0db3843 已存在且已在旧 chunk 命中，非本波指纹，已弃用。\n9122 换代两段如实记：首轮 stop 报「无本 pidfile 记录的实例」、start 报「9122 已在服 pid=2817（幂等返回，不重复起）」并把外部实例收编进 pidfile ⇒ 该轮未重启，但 v4_proxy.py 每请求读盘，served 立即反映新 dist；收编后二轮真换代 stop→「已停（pid=2817）」、start→「已起 pid=64548 root=200」、status→「pid=64534 root=200 size=1084 mtime=Nov 23 19:32:55 entry=assets/index-wuhTvuKn.js sha256=0a0e81bb18a14b3918622bee94319b2a716d2a8c93ed44d4548e8e1083d066a4 (served==磁盘) proxied=401 bff=401（401=fail-closed 正常）」。start 自报 64548 与 status 自报 64534 属既有 pid 自报差异，判据取 served==磁盘 + mtime。\n六枚腿件代次读数：assert-ia-html.json / assert-ia-react.json / crawl.json headHash=5ddee38447（脚本 --short 10 位形制）；state-quad.json headHash=5ddee384（--short=8 形制）；lint-fake.json / lint-reuse.json 脚本不产出 headHash 字段（NOKEY，如实注记，未改脚本）。\n形制注：ia×2/crawl 按 L0 口径另用 --out= 生成 leg json（A1=A2=A3=0）；cmp 实测 assert-ia-html.json 与 _l0-ia-html.stdout.txt 字节相同、assert-ia-react.json 与 _l0-ia-react.stdout.txt 字节相同；crawl.json 与 _l0-crawl.stdout.txt 差 1 字节且仅两行活流量字段不同（mainChars 64 vs 140、consoleErrors 1 vs 3，两次独立采样的正常抖动），非形制破坏，stdout 正本仍按原判据命令（不带 --out）那一跑留存。\n七腿 exit 全 0（_l0-exits.txt）：assert-ia-html=0 assert-ia-react=0 lint-fake-success=0 lint-reuse=0 vitest=0 crawl-routes=0 state-quad=0。\nvitest 计数较上波增长（502 files/3700 tests → 504 files/3724 tests），与 Q5/Q6 新增测试件一致，是源码进线的第二证据；vitest.txt 内既有部署校验行 VERDICT=VERIFIED PORT=9122 ENTRY=assets/index-wuhTvuKn.js（产物↔磁盘↔账本互认）。\ncrawl-auth.json 本波仍不 regen（凭据件豁免）：opsadmin 凭据 rot 第 78 度未换发，auth-state /Users/kevin_studio/.local/state/sekoi-ops/v4-auth-state.json mtime Nov 19 19:12（单枚 access_token_cookie，domain 127.0.0.1）；带该 cookie 前置断言 GET http://127.0.0.1:9122/auth/whoami → HTTP 401 body {\"code\":\"auth.unauthenticated\",\"rid\":\"9e8577bf\",\"message\":\"登录状态缺失或已过期，请重新登录\"}。crawl-auth.json 维持旧代 56eef7a81b ok=false，归因凭据面非本道红；换发脚本 /Users/kevin_studio/Projects/l7-ops/ops/opsadmin-evidence-login.sh 在位但未擅自执行（会轮换在用会话）。\nstate-quad 新形制（已钉，未自改脚本）：keys={base, method, headHash, sampled, passed}，无顶层 ok/entry，passed==sampled 即绿。\n他道件只报不钉（非本道写域）：crawl-anon.json headHash=105f17f0ae（旧代，归夜巡regen）；crawl-auth.json 见上条凭据件豁免。本道代次闸门只钉自己的腿件（assert-ia×2 / crawl / state-quad / lint×2 NOKEY / vitest），旧章面残留扫描对七枚本道腿件与 vitest.txt 为空。\n上一账 head=42dcd7983f56ec39fbdaf5aac92841b6b1816d38（Q42 regen 章笔）被本笔覆盖；不回改历史措辞。\n写域纪律：仅 docs/_artifacts/tonight/**；他道 untracked（default/ fixture/ owned/ target/ docs/governance/LANE-ROSTER.md）与 crawl-anon.json / crawl-auth.json 未 add；无 add -A / --no-verify / force。",
+  "head": "4f4d1604f19a95eb73c7a15a8c45d3bc99681462",
+  "provenance": "章面（源码面）=运行期 HEAD=4f4d1604f19a95eb73c7a15a8c45d3bc99681462（短 4f4d1604f1）：fixer#5 五笔源码并线波收敛件 merge(line) 刷入 lane/hermes-console 现脸 392442df（我 Q43″ 补腿笔）后复验，上游串行波=Q14(metrics)/AP-01(审批分母诚实 25171fd131)/PE-01(URL cursor 285da4a329)/PE-02(详情参数 c5c4c2e2a3)/Q8FIX(五页 1440 全高截图 8b51094fd9，纯 docs)。开工本地停 392442dffb，fetch origin lane/hermes-console（FETCH_EXIT=0）→ FETCH_HEAD 与定向 ref（ls-remote 落文件 q43t-ref.txt，LSREMOTE_EXIT=0，stderr 空）两路同值 4f4d1604f19a95eb73c7a15a8c45d3bc99681462，git merge --ff-only → FF_EXIT=0。全程运行期 HEAD 恒等未漂；本账章笔不落自身（账本自身即一笔 docs 提交，字面 headHash==HEAD 不可达）。\nQ43‴ 源码差真实（git diff --stat 392442dffb..HEAD = 43 文件 +3469/-137）：非 test 行为源码面 web/src/modules/metrics/{MetricsModulePage.tsx +260, metrics.ts +99, metrics.css +7}、web/src/modules/approvals/{ApprovalsPendingModulePage.tsx 76, ApprovalsHistoryModulePage.tsx 69, QueueSummaryBar.tsx 102, model.ts 18, useApprovalsData.ts +3}、web/src/modules/employees/EmployeesModulePage.tsx 167、web/src/pages/EmployeeDetailPage.tsx 80；test 面含 approvals.denominator.honesty.test.tsx 246+、employees.cursor-url.test.tsx 280+、employees.detail.sectionRequests.test.tsx 196+、metrics.bymodel.test.tsx 435+；另有 evidence/q14-* 取证件。⇒ 与 Q42 那波注释级并入不同，本波产物字节必变，rebuild 是硬项。\nrebuild（DoD②必做）：cd 仓根 && ~/.nvm/versions/node/v26.13.1/bin/node scripts/build/web.mjs（无参；禁传 --，否则 argv[2] 被当 source）→ BUILD_EXIT=0，日志 _l7-build-4f4d1604f1.log（14797B，mtime Nov 23 22:46）。\n换代三证之一 in-graph：日志内一次性临时目录 hermes_cli/.web_dist-build-lUSTgX，构建后 ls -d hermes_cli/.web_dist-build-* → No such file（自动清理，以日志行为准）。之二 磁盘 mtime：index.html 1084B 与 entry 同为 Nov 23 22:46（上代 22:18:17）。之三 entry 翻代逐字：assets/index-Cf9JsPw5.js（sha256 666f6d91d3992fac20e21d361f40c8bf883ae56a204304c4f8bf442e27f506ab，174885B）→ assets/index-DhHLpLyc.js（sha256 3d0e852baa2380499bd1c4a04895cfe22d00e68429e3cd2450f82915764d6d8f，174885B）⇒ 满足解除判据「新 sha≠Cf9JsPw5」，无需走同名同 sha 分支。\n9122 换代（两段都如实记）：cd /Users/kevin_studio/Projects/l7-ops && bash ops/console.sh v4-serve stop → 首轮报「无本 pidfile 记录的实例」（pidfile 记的旧 pid 与实际监听者不一致），start 报「9122 已在服 pid=98344（幂等返回）」+「外部起的实例已收编进 pidfile」⇒ 该轮未真重启，但 served 已随 v4_proxy 每请求读盘立即换代（status 当时即显新 entry）。收编后来第二轮真换代：stop →「已停（pid=98344）」；start →「9122 已在服 pid=70129（幂等返回）」+收编（70129 由外部/常驻机制先起，**不是本道起的**）；status → pid=70129 root=200 size=1084 / mtime=Nov 23 22:46:59 / entry=assets/index-DhHLpLyc.js / sha256=3d0e852b…（served==磁盘）/ proxied=401 bff=401（/agent-api→8092，401=fail-closed 正常）；lsof -nP -iTCP:9122 -sTCP:LISTEN -t = 70129 ⇒ 进程身份确实更替（98344→70129）。\n8092 伴生定性（工单要求一句）：换代前后 lsof 8092 均 pid=740，ps -o lstart= -p 740 → Mon Nov 23 21:30:30 2026，早于本波 rebuild(22:46) ⇒ **本波 8092 无 pid 翻转**；工单预告的「pid 变化=rebuild 伴生」在实脸未发生，照实记不套模板。\n补令命令与磁盘实脸偏离（承前波已存记忆条款）：工单写「9122 必 stop+start（console.sh lan …）」，但 ops/console.sh 的 lan 子命令管的是 Caddy 站点A=8181（不是 9122），且其源仓 /Users/kevin_studio/Projects/forks/bisheng-chat-panel 在本机不存在 ⇒ 上一波按 lan stop+start 曾造成 8181 停服事故（已用既有 Caddyfile validate+start 等价恢复并提请将 lan 腿改「不适用」）。本波换代真把式只做 v4-serve stop+start，未跑 lan。\n波次指纹（从 git diff 392442dffb..HEAD 的 + 侧非 test 字面量取，diff 落盘 q43t-src.diff 145568B；要求旧面 git grep 0 命中）：PRE-rebuild 磁盘 dist（Cf9JsPw5 世代）四枚全 0 ⇒ 「在 line 不在 served」成立；POST dist：apv6-summary-scope 0→1、apv-denominator-note 0→2、emp-list-cursor-restored 0→1、apv6-summary-unreadable 0→1；served 侧（清盘重抓 /Users/kevin_studio/.local/share/opencode/shell/q43t-served/，SERVED_ASSETS_FETCHED=86，SERVED_ENTRY_SHA256==DISK_ENTRY_SHA256=3d0e852b…）同读数 1/2/1/1。自纠一枚：第五枚候选 req-pe01 在 dist 与 served 均 0 命中（只活在未打进产物的源面）⇒ 弃用不冒充指纹。部署健全性双特征 console-topbar / run6-trace（磁盘侧各 2 文件、served 侧各 1 文件）属既有特征，不计入波次指纹；错串 runs-trace 恒 0。\n代次对齐自纠（本波真实踩坑）：先前一轮我以为七腿已跑，实为幻象——那批腿件 mtime 是 22:23~22:25，属上一波（章面 48c056e05b）读数，早于本波 rebuild 22:46，且那次 shell 因末行坏路径中断。硬判据＝腿件 mtime 必须晚于本波 rebuild 时刻；porcelain 无 M 不能证明已跑。本波七腿于 22:50~22:53 真跑，四枚 --out= leg json 于 22:52~22:53 重出。\n七腿 regen 命令未改判据，逐字：cwd=web 下 node scripts/assert-ia.mjs；node scripts/assert-ia.mjs --source=react；node scripts/lint-fake-success.mjs；node scripts/lint-reuse.mjs；node_modules/.bin/vitest run；node scripts/crawl-routes.mjs --base http://127.0.0.1:9122；cwd=仓根 node docs/_artifacts/tonight/state-quad.mjs http://127.0.0.1:9122。crawl-anon 沿上波入列（同脚本 --out=../docs/_artifacts/tonight/crawl-anon.json）。\n七腿 exit（_l0-exits.txt）：assert-ia-html=0 assert-ia-react=0 lint-fake-success=0 lint-reuse=0 vitest=0 crawl-routes=0 state-quad=0；crawl-anon exitCode=0。八腿读数：ia-html/ia-react counts={'routes': 51, 'tabs': 22, 'tabsAll': 23, 'chatHosts': 1, 'modules': 8}；lint-fake linesScanned=9252 violations=[]；lint-reuse scanned=594 reuseMarkers=28 violations=[] exempted=[{'surface': '对话 ChatPage', 'module': 'chat', 'pending': 'T40', 'reason': '复用已落地（web/src/modules/chat/ChatModulePage.tsx:59 lazy import @/pages/ChatPage），缺的是 reuse 声明本身；chat/ 目录没有 manifest.ts，只能靠标记声明，补声明属 web/src 写域，非 D 车道可改。落地（补上声明）后从本清单删除。', 'evidence': 'web/src/modules/chat/ChatModulePage.tsx:59；App.tsx:121 + App.tsx:245-262 renderConsoleChatHost 单宿主；T02-ENDPOINT-RECONCILIATION.md L33 记 G8=T40 chat 宿主'}]；vitest testFiles=510 tests=3770 duration=43.32s（上波 506/3735/48.97s ⇒ 计数增长是 Q14/AP/PE/Q8 新测试进线第二证据；lint-reuse scanned 590→594 是第三证据）；crawl probed=75 deadLinks=[]；crawl-anon probed=75；state-quad sampled=20 passed=20。\n代次读数：assert-ia-html.json / assert-ia-react.json / crawl.json / crawl-anon.json headHash=4f4d1604f1（脚本 --short 10 位）；state-quad.json headHash=4f4d1604（--short=8）；lint-fake.json / lint-reuse.json 与 vitest.txt 无 headHash 字段（NOKEY，脚本形制如实注记，不改脚本）；真实 exit 记在 legs.exit 与 _l0-exits.txt。cmp：assert-ia×2 与 crawl 三枚与各自 stdout 正本逐字节相同（本波无活流量抖动）。\ncrawl-auth.json 本波**不重跑**（工单明令：已跟 3a23db37a2 波）：现值 headHash=3a23db37a2 ok=True exitCode=0 probed=75（Q43″ 补腿笔 392442dffb 落地件），属他波代次，只报不钉、不改写。其绿的边界已在 Q43″ 注记：render 型内容判定 + 401 归因（ceAuthority=login-state、mode=auth-attributed、envAttribution={auth-required-401:51}），登录面本身当时仍未认证（带 cookie /auth/whoami=401），不可读作「已登录遍历」。\nstate-quad 形制注（夜巡第4拍悬件，沿用不改判定）：脚本输出 json 键集为 {base, method, headHash, sampled, passed, rows}，无顶层 ok / entry ⇒ 账本 digest 显式记 ok=None，绿判据=passed==sampled（本轮 20==20，_l0-state-quad.stdout.txt 原文 「state-quad: sampled=20 passed=20 base=http://127.0.0.1:9122 head=4f4d1604」）。脚本未改动。\nshots 腿（L6 件）本波未代跑（工单明令）；merge-q78 worktree 未删（工单明令保留至 L0 回收）。\n上一账 head=48c056e05bd77cfc45579b88a917665bd96c1b3a（Q9 波，章笔 3a23db37a2、补腿笔 392442dffb）被本笔覆盖；历史措辞不回改，legs 结构 8 条（含 crawl-anon）延续。写域纪律：本笔只含 docs/_artifacts/tonight/**；他道 untracked（default/ fixture/ owned/ target/ docs/governance/LANE-ROSTER.md）与 crawl-auth.json 一律不 add；git add 显式路径，禁 add -A / --no-verify / force。",
   "legs": [
     {
       "leg": "assert-ia-html",
       "cwd": "web",
-      "command": "node scripts/assert-ia.mjs --out=../docs/_artifacts/tonight/assert-ia-html.json",
-      "artifact": "assert-ia-html.json",
+      "command": "node scripts/assert-ia.mjs",
+      "artifact": "_l0-ia-html.stdout.txt",
       "exit": 0,
       "digest": {
-        "headHash": "5ddee38447",
         "ok": true,
+        "headHash": "4f4d1604f1",
+        "exitCode": 0,
         "counts": {
           "routes": 51,
           "tabs": 22,
           "tabsAll": 23,
           "chatHosts": 1,
           "modules": 8
-        },
-        "stdoutCapture": "_l0-ia-html.stdout.txt"
+        }
       }
     },
     {
       "leg": "assert-ia-react",
       "cwd": "web",
-      "command": "node scripts/assert-ia.mjs --source=react --out=../docs/_artifacts/tonight/assert-ia-react.json",
-      "artifact": "assert-ia-react.json",
+      "command": "node scripts/assert-ia.mjs --source=react",
+      "artifact": "_l0-ia-react.stdout.txt",
       "exit": 0,
       "digest": {
-        "headHash": "5ddee38447",
         "ok": true,
+        "headHash": "4f4d1604f1",
+        "exitCode": 0,
         "counts": {
           "routes": 51,
           "tabs": 22,
           "chatHosts": 1,
           "modules": 8
-        },
-        "stdoutCapture": "_l0-ia-react.stdout.txt"
+        }
       }
     },
     {
       "leg": "lint-fake-success",
       "cwd": "web",
       "command": "node scripts/lint-fake-success.mjs",
-      "artifact": "lint-fake.json",
+      "artifact": "_l0-lint-fake.stdout.txt",
       "exit": 0,
       "digest": {
-        "headHash": "NOKEY(脚本形制)",
         "ok": true,
         "violations": [],
         "linesScanned": 9252,
@@ -56,19 +55,18 @@
           "不会保存": 1,
           "未接入": 22
         },
-        "stdoutCapture": "_l0-lint-fake.stdout.txt"
+        "headHash": "NOKEY(脚本形制：lint-fake-success.mjs 不写 headHash)"
       }
     },
     {
       "leg": "lint-reuse",
       "cwd": "web",
       "command": "node scripts/lint-reuse.mjs",
-      "artifact": "lint-reuse.json",
+      "artifact": "_l0-lint-reuse.stdout.txt",
       "exit": 0,
       "digest": {
-        "headHash": "NOKEY(脚本形制)",
         "ok": true,
-        "scanned": 587,
+        "scanned": 594,
         "reuseMarkers": 28,
         "violations": [],
         "exempted": [
@@ -80,7 +78,7 @@
             "evidence": "web/src/modules/chat/ChatModulePage.tsx:59；App.tsx:121 + App.tsx:245-262 renderConsoleChatHost 单宿主；T02-ENDPOINT-RECONCILIATION.md L33 记 G8=T40 chat 宿主"
           }
         ],
-        "stdoutCapture": "_l0-lint-reuse.stdout.txt"
+        "headHash": "NOKEY(脚本形制：lint-reuse.mjs 不写 headHash)"
       }
     },
     {
@@ -90,18 +88,18 @@
       "artifact": "vitest.txt",
       "exit": 0,
       "digest": {
-        "testFiles": 504,
-        "tests": 3724,
-        "durationSec": 43.23,
+        "testFiles": "510",
+        "tests": "3770",
+        "durationSec": "43.32",
         "allPassed": true,
-        "deployVerification": "VERDICT=VERIFIED PORT=9122 ENTRY=assets/index-wuhTvuKn.js"
+        "deployVerification": "VERDICT=VERIFIED PORT=9122 ENTRY=assets/index-DhHLpLyc.js"
       }
     },
     {
       "leg": "crawl-routes",
       "cwd": "web",
-      "command": "node scripts/crawl-routes.mjs --base http://127.0.0.1:9122 --out=../docs/_artifacts/tonight/crawl.json",
-      "artifact": "crawl.json",
+      "command": "node scripts/crawl-routes.mjs --base http://127.0.0.1:9122",
+      "artifact": "_l0-crawl.stdout.txt",
       "exit": 0,
       "digest": {
         "ok": true,
@@ -112,25 +110,50 @@
         "notes": [
           "redirects=24 vs 门定值 23（routes.ts 并发新增形态，归因非判红；门值更新归 L0/A）"
         ],
-        "headHash": "5ddee38447",
+        "headHash": "4f4d1604f1",
         "exitCode": 0,
-        "stdoutCapture": "_l0-crawl.stdout.txt"
+        "stdoutCapture": {
+          "artifact": "_l0-crawl.stdout.txt",
+          "artifactBytes": 26808,
+          "jsonBytes": 26808,
+          "cmp": "byte-identical（cmp 无输出；本波无活流量抖动）"
+        }
+      }
+    },
+    {
+      "leg": "crawl-anon",
+      "cwd": "web",
+      "command": "node scripts/crawl-routes.mjs --base http://127.0.0.1:9122 --out=../docs/_artifacts/tonight/crawl-anon.json",
+      "artifact": "crawl-anon.json",
+      "exit": 0,
+      "digest": {
+        "ok": true,
+        "probed": 75,
+        "deadLinks": [],
+        "contentEmpty": [],
+        "parseErrors": [],
+        "notes": [
+          "redirects=24 vs 门定值 23（routes.ts 并发新增形态，归因非判红；门值更新归 L0/A）"
+        ],
+        "headHash": "4f4d1604f1",
+        "exitCode": 0
       }
     },
     {
       "leg": "state-quad",
       "cwd": ".",
       "command": "node docs/_artifacts/tonight/state-quad.mjs http://127.0.0.1:9122",
-      "artifact": "state-quad.json",
+      "artifact": "_l0-state-quad.stdout.txt",
       "exit": 0,
       "digest": {
         "base": "http://127.0.0.1:9122",
         "method": "playwright hash-form /#/<route>?state=<s>; hook=[data-fixture]+[data-testid=shell-fixture-badge] (web/src/shell/fixtures.ts)",
         "sampled": 20,
         "passed": 20,
-        "headHash": "5ddee384",
+        "headHash": "4f4d1604",
         "allPassed": true,
-        "stdoutCapture": "_l0-state-quad.stdout.txt"
+        "ok": null,
+        "note": "形制注：state-quad.json 无顶层 ok/entry 键（脚本形制如此，禁改判定逻辑）；ok=None，绿判据=passed==sampled"
       }
     }
   ]

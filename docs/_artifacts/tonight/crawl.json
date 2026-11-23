@@ -49,20 +49,20 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 319,
+      "mainChars": 328,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 2,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
-      "headSample": "待处理 历史决策 筛选条件（无） 汇总（与列表同源）： 待办 — 已批 — 已拒 — 高风险 —"
+      "headSample": "待处理 历史决策 筛选条件（无） 汇总（与列表同一请求，按已加载行计）： 待办 — 已批 — 已"
     },
     {
       "route": "#/approvals?tab=history",
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 501,
+      "mainChars": 510,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 2,
@@ -75,65 +75,65 @@
       "source": "COMPAT_TABS",
       "kind": "compat-tab",
       "verdict": "content-ok",
-      "mainChars": 319,
+      "mainChars": 328,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 2,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
-      "headSample": "待处理 历史决策 筛选条件（无） 汇总（与列表同源）： 待办 — 已批 — 已拒 — 高风险 —"
+      "headSample": "待处理 历史决策 筛选条件（无） 汇总（与列表同一请求，按已加载行计）： 待办 — 已批 — 已"
     },
     {
       "route": "#/approvals?tab=pending&view=mine",
       "source": "VIEW_DEEP_LINKS",
       "kind": "view",
       "verdict": "content-ok",
-      "mainChars": 319,
+      "mainChars": 328,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 2,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
-      "headSample": "待处理 历史决策 筛选条件（无） 汇总（与列表同源）： 待办 — 已批 — 已拒 — 高风险 —"
+      "headSample": "待处理 历史决策 筛选条件（无） 汇总（与列表同一请求，按已加载行计）： 待办 — 已批 — 已"
     },
     {
       "route": "#/approvals?tab=pending&view=release",
       "source": "VIEW_DEEP_LINKS",
       "kind": "view",
       "verdict": "content-ok",
-      "mainChars": 319,
+      "mainChars": 328,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 2,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
-      "headSample": "待处理 历史决策 筛选条件（无） 汇总（与列表同源）： 待办 — 已批 — 已拒 — 高风险 —"
+      "headSample": "待处理 历史决策 筛选条件（无） 汇总（与列表同一请求，按已加载行计）： 待办 — 已批 — 已"
     },
     {
       "route": "#/approvals?tab=policy",
       "source": "COMPAT_TABS",
       "kind": "compat-tab",
       "verdict": "content-ok",
-      "mainChars": 319,
+      "mainChars": 328,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 2,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
-      "headSample": "待处理 历史决策 筛选条件（无） 汇总（与列表同源）： 待办 — 已批 — 已拒 — 高风险 —"
+      "headSample": "待处理 历史决策 筛选条件（无） 汇总（与列表同一请求，按已加载行计）： 待办 — 已批 — 已"
     },
     {
       "route": "#/approvals?tab=release",
       "source": "COMPAT_TABS",
       "kind": "compat-tab",
       "verdict": "content-ok",
-      "mainChars": 319,
+      "mainChars": 328,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 2,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
-      "headSample": "待处理 历史决策 筛选条件（无） 汇总（与列表同源）： 待办 — 已批 — 已拒 — 高风险 —"
+      "headSample": "待处理 历史决策 筛选条件（无） 汇总（与列表同一请求，按已加载行计）： 待办 — 已批 — 已"
     },
     {
       "route": "#/audit",
@@ -231,10 +231,10 @@
       "source": "DETAIL_TAB",
       "kind": "detail-zone",
       "verdict": "content-ok",
-      "mainChars": 64,
+      "mainChars": 140,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 1,
+      "consoleErrors": 3,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
       "headSample": "工作台 配置 任务 运行 证据 员工 · EMPLOYEE — 返回 总览 任务 运行 审批 概"
@@ -762,7 +762,7 @@
   "routesWithConsoleErrors": 51,
   "parseErrors": [],
   "ok": true,
-  "headHash": "5ddee38447",
+  "headHash": "4f4d1604f1",
   "exitCode": 0,
   "counts": {
     "probed": 75,

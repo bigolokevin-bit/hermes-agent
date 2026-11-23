@@ -28,7 +28,7 @@
    选择器从元素改类名并显式补回 color/line-height，保证计算值与降格前恒等。 */
 .duty-title .duty-title-name {
   font-family: var(--font-display, inherit);
-  font-size: 1.05rem;
+  font-size: var(--font-size-4);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--color-foreground);
@@ -37,7 +37,7 @@
 
 .duty-title > span {
   color: var(--color-muted-foreground);
-  font-size: 0.78rem;
+  font-size: var(--font-size-1);
 }
 
 .duty-head-actions {
@@ -82,14 +82,14 @@
 }
 
 .duty-card-hd h2 {
-  font-size: 0.82rem;
+  font-size: var(--font-size-1);
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
 .duty-meta {
   color: var(--color-muted-foreground);
-  font-size: 0.7rem;
+  font-size: var(--font-size-1);
   text-align: right;
 }
 
@@ -98,7 +98,7 @@
   flex-wrap: wrap;
   align-items: baseline;
   gap: 8px;
-  font-size: 1.9rem;
+  font-size: var(--font-size-6);
   font-weight: 600;
   line-height: 1.1;
   font-variant-numeric: tabular-nums;
@@ -106,19 +106,19 @@
 
 .duty-num em {
   color: var(--color-muted-foreground);
-  font-size: 0.75rem;
+  font-size: var(--font-size-1);
   font-style: normal;
   font-weight: 400;
 }
 
 .duty-say {
-  font-size: 0.78rem;
+  font-size: var(--font-size-1);
   line-height: 1.45;
 }
 
 .duty-note {
   color: var(--color-muted-foreground);
-  font-size: 0.68rem;
+  font-size: var(--font-size-1);
   line-height: 1.45;
 }
 
@@ -137,7 +137,7 @@
   padding: 4px 6px;
   border-radius: 6px;
   background: color-mix(in srgb, var(--color-muted) 45%, transparent);
-  font-size: 0.7rem;
+  font-size: var(--font-size-1);
 }
 
 .duty-gate.is-narrow {
@@ -156,7 +156,7 @@
   border-radius: 4px;
   background: color-mix(in srgb, var(--color-warning) 20%, transparent);
   color: var(--color-warning);
-  font-size: 0.6rem;
+  font-size: var(--font-size-1);
   font-style: normal;
 }
 
@@ -173,7 +173,7 @@
   grid-column: 1 / -1;
   overflow: hidden;
   color: var(--color-muted-foreground);
-  font-size: 0.62rem;
+  font-size: var(--font-size-1);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -202,7 +202,7 @@
   min-width: 0;
   align-items: center;
   gap: 8px;
-  font-size: 0.74rem;
+  font-size: var(--font-size-1);
 }
 
 .duty-row-title {
@@ -216,7 +216,7 @@
   margin-left: auto;
   flex-shrink: 0;
   color: var(--color-muted-foreground);
-  font-size: 0.66rem;
+  font-size: var(--font-size-1);
   white-space: nowrap;
 }
 
@@ -229,7 +229,7 @@
   background: none;
   color: var(--color-primary);
   cursor: pointer;
-  font-size: 0.7rem;
+  font-size: var(--font-size-1);
   text-decoration: none;
 }
 
@@ -255,7 +255,7 @@
 
 .duty-axis-label {
   fill: var(--color-muted-foreground);
-  font-size: 9px;
+  font-size: var(--font-size-1);
 }
 
 .duty-heat {
@@ -282,7 +282,7 @@
   display: flex;
   justify-content: space-between;
   color: var(--color-muted-foreground);
-  font-size: 0.6rem;
+  font-size: var(--font-size-1);
 }
 
 .duty-blocker {
@@ -300,7 +300,7 @@
 .duty-blocker-meta,
 .duty-blocker-reason {
   color: var(--color-muted-foreground);
-  font-size: 0.66rem;
+  font-size: var(--font-size-1);
   line-height: 1.35;
 }
 
@@ -319,7 +319,7 @@
   padding: 8px 10px;
   border: 1px solid var(--color-border);
   border-radius: 8px;
-  font-size: 0.7rem;
+  font-size: var(--font-size-1);
 }
 
 .duty-health-item > span {
@@ -330,7 +330,7 @@
 
 .duty-health-item > em {
   color: var(--color-muted-foreground);
-  font-size: 0.64rem;
+  font-size: var(--font-size-1);
   font-style: normal;
 }
 
@@ -341,13 +341,13 @@
   align-items: flex-start;
   gap: 6px;
   padding: 6px 0;
-  font-size: 0.75rem;
+  font-size: var(--font-size-1);
 }
 
 .duty-req {
   color: var(--color-muted-foreground);
   font-family: var(--font-mono, monospace);
-  font-size: 0.64rem;
+  font-size: var(--font-size-1);
   overflow-wrap: anywhere;
 }
 
@@ -393,7 +393,7 @@
   border: 0;
   background: transparent;
   cursor: pointer;
-  font-size: 0.72rem;
+  font-size: var(--font-size-1);
   padding: 5px 10px;
 }
 
@@ -409,7 +409,7 @@
   border-radius: 7px;
   background: transparent;
   padding: 6px 8px;
-  font-size: 0.74rem;
+  font-size: var(--font-size-1);
 }
 
 .duty-check {
@@ -417,7 +417,7 @@
   align-items: center;
   gap: 5px;
   color: var(--color-muted-foreground);
-  font-size: 0.72rem;
+  font-size: var(--font-size-1);
 }
 
 .duty-matrix-body { padding: 0; }
@@ -428,13 +428,13 @@
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  font-size: 0.72rem;
+  font-size: var(--font-size-1);
 }
 
 .duty-mhead {
   border-bottom: 1px solid var(--color-border);
   color: var(--color-muted-foreground);
-  font-size: 0.64rem;
+  font-size: var(--font-size-1);
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
@@ -458,7 +458,7 @@
 .duty-mname a { font-weight: 500; }
 .duty-mname em {
   color: var(--color-muted-foreground);
-  font-size: 0.64rem;
+  font-size: var(--font-size-1);
   font-style: normal;
 }
 
@@ -473,7 +473,7 @@
   border: 1px dashed var(--color-warning);
   border-radius: 8px;
   color: var(--color-muted-foreground);
-  font-size: 0.72rem;
+  font-size: var(--font-size-1);
 }
 
 .duty-rlist { display: flex; flex-direction: column; }
@@ -486,7 +486,7 @@
   gap: 8px;
   padding: 8px 12px;
   border-bottom: 1px solid var(--color-border);
-  font-size: 0.74rem;
+  font-size: var(--font-size-1);
 }
 
 .duty-rrow:last-child { border-bottom: 0; }
@@ -495,7 +495,7 @@
   min-width: 0;
   overflow: hidden;
   color: var(--color-muted-foreground);
-  font-size: 0.66rem;
+  font-size: var(--font-size-1);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -527,7 +527,7 @@
   .duty-mrow > span[data-label]::before {
     content: attr(data-label);
     color: var(--color-muted-foreground);
-    font-size: 0.64rem;
+    font-size: var(--font-size-1);
   }
 
   .duty-mname { grid-column: 1 / -1; }
@@ -537,14 +537,14 @@
   .duty-head-actions,
   .duty-head-actions > button { width: 100%; }
   .duty-card-bd { padding: 12px; }
-  .duty-num { font-size: 1.5rem; }
+  .duty-num { font-size: var(--font-size-5); }
   .duty-blocker { grid-template-columns: auto minmax(0, 1fr); }
   .duty-blocker > .duty-link { grid-column: 2; }
   .duty-heat { gap: 1px; }
 }
 .duty-blocker-fields {
   color: var(--color-text-muted);
-  font-size: 12px;
+  font-size: var(--font-size-1);
   line-height: 1.5;
   overflow-wrap: anywhere;
 }
@@ -578,7 +578,7 @@
   padding: 8px 10px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
-  font-size: 12px;
+  font-size: var(--font-size-1);
 }
 .duty-refresh-error .duty-rid { display: inline-flex; align-items: center; gap: 4px; }
 .duty-refresh-error code { font-family: var(--font-mono, monospace); overflow-wrap: anywhere; }
@@ -601,7 +601,7 @@
   width: 100%;
   margin-top: 8px;
   border-collapse: collapse;
-  font-size: 12px;
+  font-size: var(--font-size-1);
 }
 .duty-trend-table caption {
   text-align: left;
@@ -628,7 +628,7 @@
   color: var(--color-muted-foreground);
   border-radius: 6px;
   padding: 2px 8px;
-  font-size: 12px;
+  font-size: var(--font-size-1);
   line-height: 1.6;
   cursor: pointer;
 }
@@ -643,7 +643,7 @@
 /* 跨页运行数口径对照（duty-runs-caliber） */
 .duty-runs-caliber {
   margin: 6px 0 0;
-  font-size: 11.5px;
+  font-size: var(--font-size-1);
   line-height: 1.5;
   color: var(--color-muted-foreground);
   overflow-wrap: anywhere;
@@ -664,13 +664,13 @@
   border: 0;
   background: transparent;
   color: var(--color-foreground);
-  font-size: 12.5px;
+  font-size: var(--font-size-1);
   text-align: left;
   cursor: pointer;
 }
 .duty-notes-toggle span {
   color: var(--color-muted-foreground);
-  font-size: 12px;
+  font-size: var(--font-size-1);
   white-space: nowrap;
 }
 .duty-notes-toggle:focus-visible {
@@ -685,7 +685,7 @@
 }
 .duty-note-row {
   margin: 0;
-  font-size: 11.5px;
+  font-size: var(--font-size-1);
   line-height: 1.55;
   color: var(--color-muted-foreground);
   overflow-wrap: anywhere;
@@ -696,7 +696,7 @@
 }
 .duty-notes-foot {
   margin: 4px 0 0;
-  font-size: 11.5px;
+  font-size: var(--font-size-1);
   color: var(--color-muted-foreground);
 }
 @media (max-width: 480px) {
@@ -729,11 +729,11 @@
 }
 .duty-error-title {
   color: var(--color-destructive, #f87171);
-  font-size: var(--font-size-3, 15px);
+  font-size: var(--font-size-3);
   font-weight: var(--font-weight-medium, 500);
 }
 .duty-error-details {
-  font-size: var(--font-size-1, 12px);
+  font-size: var(--font-size-1);
   color: var(--color-text-muted, rgba(255, 255, 255, 0.55));
 }
 .duty-error-details summary {
@@ -777,7 +777,7 @@
 }
 
 .duty-kpi b {
-  font-size: 1.4rem;
+  font-size: var(--font-size-5);
   font-weight: 600;
   line-height: 1.1;
   font-variant-numeric: tabular-nums;
@@ -785,7 +785,7 @@
 
 .duty-kpi i {
   color: var(--color-muted-foreground);
-  font-size: 0.7rem;
+  font-size: var(--font-size-1);
   font-style: normal;
 }
 
@@ -802,7 +802,7 @@
   align-items: center;
   min-block-size: 40px;
   color: var(--color-muted-foreground);
-  font-size: 0.74rem;
+  font-size: var(--font-size-1);
   cursor: pointer;
 }
 
@@ -816,7 +816,7 @@
 
 .duty-details-block h3 {
   margin: 0 0 8px;
-  font-size: 0.74rem;
+  font-size: var(--font-size-1);
   font-weight: 500;
 }
 
@@ -987,4 +987,18 @@
 .duty-fleet-pause:focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
+}
+
+/* Q9 样板页字号上 6 档阶梯（tokens.css --font-size-1..6）。
+   全局 html 根字号是主题变量（15px 档），tailwind rem 工具类因此离阶；
+   在模块页根内中和为令牌值，不动全局主题。 */
+.duty-page {
+  font-size: var(--font-size-3);
+}
+.duty-page :is(.text-xs, code, kbd, samp, pre),
+.duty-page .font-mono {
+  font-size: var(--font-size-1);
+}
+.duty-page .text-sm {
+  font-size: var(--font-size-2);
 }

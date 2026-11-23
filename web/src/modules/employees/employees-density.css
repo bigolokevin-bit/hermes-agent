@@ -50,3 +50,22 @@
 .emp-filter-control {
   height: var(--btn-h);
 }
+
+/* Q9 样板页字号上 6 档阶梯：页根内中和 tailwind rem 工具类与全局 15px 继承，
+   与 duty.css 同名条款保持口径一致（选择器互不重叠）。 */
+.employees-page {
+  font-size: var(--font-size-3);
+}
+.employees-page :is(.text-xs, code, kbd, samp, pre),
+.employees-page .font-mono {
+  font-size: var(--font-size-1);
+}
+.employees-page .text-sm {
+  font-size: var(--font-size-2);
+}
+.employees-page .text-base {
+  font-size: var(--font-size-3);
+}
+.employees-page .text-xl {
+  font-size: var(--font-size-5);
+}
