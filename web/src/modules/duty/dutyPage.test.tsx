@@ -3,6 +3,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { MemoryRouter, useSearchParams } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
 
 import { ApiError } from "@/lib/api-error";
 
@@ -1218,5 +1219,78 @@ describe("DutyPage runs status filter (B1 筛选控件条)", () => {
     press("duty-status-clear");
     expect(b("duty-status-all")?.getAttribute("aria-pressed")).toBe("true");
     expect(rows()).toBe(2);
+  });
+});
+
+// ── 用户直令 2026-11-23：值班台三卡固定槽位 + 同行等高 + 工程话术不上卡 ──────────
+describe("DutyPage 三卡固定槽位返工", () => {
+  const firstRow = () =>
+    Array.from(container.querySelectorAll<HTMLElement>('.duty-grid-3 > [data-card="duty"]')).slice(0, 3);
+
+  it("等高：同行三卡由网格 stretch 统一，卡片主体撑满", async () => {
+    const css = readFileSync("src/modules/duty/duty.css", "utf8");
+    // 逐块匹配：.duty-grid 与 .duty-card 在文件里各出现两次（基线块 + 返工追加块），
+    // 只要求「存在一个块含该声明」，不按 indexOf 取区间，免得锚到前一个块。
+    expect(css, "三卡所在网格必须 align-items:stretch").toMatch(
+      /\.duty-grid\s*\{[^}]*align-items:\s*stretch/,
+    );
+    expect(css, "卡片自身要成列，主体才能撑满等高").toMatch(
+      /\.duty-card\s*\{[^}]*display:\s*flex[^}]*flex-direction:\s*column/,
+    );
+    expect(css, "卡内主体 flex:1 = 高度由最高卡决定并统一").toMatch(
+      /\.duty-card > \.duty-card-bd\s*\{[^}]*flex:\s*1 1 auto/,
+    );
+    expect(css, "深链钉在卡底，空档不外溢成无序空白").toMatch(
+      /\.duty-card-foot\s*\{[^}]*margin-block-start:\s*auto/,
+    );
+  });
+
+  it("槽位：三卡只剩标题/主数字/一句状态/查看明细，明细全部在卡外折叠区", async () => {
+    fetchJSON.mockImplementation((url: string) => Promise.resolve(ok(url)));
+    await render(<DutyPage />);
+    const cards = firstRow();
+    expect(cards, "三卡在场").toHaveLength(3);
+    for (const card of cards) {
+      for (const banned of [".duty-gates", ".duty-list", ".duty-ranges", ".duty-runs-caliber"]) {
+        expect(card.querySelector(banned), "卡内不许再放明细：" + banned).toBeNull();
+      }
+      expect(card.querySelectorAll("[data-testid], [data-duty-testid]").length).toBeGreaterThan(0);
+      const foot = card.querySelector(".duty-card-foot");
+      expect(foot, "每卡一个查看明细深链").not.toBeNull();
+      expect(foot?.tagName, "深链必须是链接（走明细页/抽屉，不是删信息）").toBe("A");
+    }
+    const runs = cards[1];
+    expect(runs.querySelectorAll(".duty-kpi"), "今日运行=四格 KPI").toHaveLength(4);
+    const kpiTexts = Array.from(runs.querySelectorAll(".duty-kpi")).map((el) => el.textContent ?? "");
+    for (const label of ["运行数", "成功率", "在跑", "失败"]) {
+      expect(kpiTexts.join("|"), "四格标签：" + label).toContain(label);
+    }
+    const details = container.querySelector<HTMLElement>('[data-testid="duty-details"]');
+    expect(details, "卡外明细折叠区必须在场").not.toBeNull();
+    expect(details?.querySelector(".duty-gates"), "检查项挪到卡外").not.toBeNull();
+    expect(details?.querySelector('[data-testid="duty-runs-caliber"]'), "口径挪到卡外").not.toBeNull();
+    expect(details?.querySelector('[data-testid="duty-status-all"]'), "状态筛选挪到卡外").not.toBeNull();
+  });
+
+  it("话术：卡片可见文本零工程 token、零 blurb/hint 长文", async () => {
+    fetchJSON.mockImplementation((url: string) => Promise.resolve(ok(url)));
+    await render(<DutyPage />);
+    const BANNED = /emp_|ce_|ob_|http|rid|correlation/i;
+    for (const card of firstRow()) {
+      const text = card.textContent ?? "";
+      expect(text, "卡面不许出现内部标识/端点/审计号").not.toMatch(BANNED);
+      expect(text.length, "卡面只留槽位短句（当前=" + text.length + "）").toBeLessThan(220);
+      expect(card.getAttribute("title") ?? "", "长 blurb 不许挂在卡框上").not.toMatch(
+        /workbench\/agents|byLifecycle/,
+      );
+    }
+  });
+
+  it("手机档：≤820px 控件补到 44px 触控高", () => {
+    const css = readFileSync("src/modules/duty/duty.css", "utf8");
+    const phone = css.slice(css.lastIndexOf("@media (max-width: 820px)"));
+    expect(phone).toMatch(
+      /\.duty-kpi[^{]*\.duty-card-foot[^{]*\.duty-details-summary[^{]*\.duty-range\s*\{[^}]*min-block-size:\s*44px/,
+    );
   });
 });
