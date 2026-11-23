@@ -1,18 +1,19 @@
-import { activeCount, buildBlockers, buildCost, lifecycleTotal, runTotals } from '../duty/aggregate';
 import { beijing } from '../duty/format';
 import { isRecord, num } from '../duty/types';
-import type { ApprovalRow, BudgetBody, Loadable, MatrixBody, RunRow, RunStatsBody, TaskRow } from '../duty/types';
-import { normalizeMatrixRow } from '../duty/fixture';
+import type { Loadable, RunStatsBody } from '../duty/types';
+import type { OverviewSummaryBody, SummaryField } from './api';
 
+/**
+ * Q11 合同：总览 KPI 只来自现网 BFF 两个已存在端点——
+ * `/api/overview/summary` 与 `/api/run-stats`（bucket=day）。
+ * 取不到的读数一律 null（页面显示「未接」），禁止 fixture/假 0/假成功。
+ */
 export const OVERVIEW_GAP = {
   employees: 'GAP-OV5-EMPLOYEES',
   runs: 'GAP-OV5-RUNS',
   approvals: 'GAP-OV5-APPROVALS',
-  risk: 'GAP-OV5-RISK',
   cost: 'GAP-OV5-COST',
   trend: 'GAP-OV5-TREND',
-  activity: 'GAP-OV5-ACTIVITY',
-  blockers: 'GAP-OV5-BLOCKERS',
   health: 'GAP-OV6-HEALTH',
 } as const;
 
@@ -71,68 +72,88 @@ export function sourceStamp(state: Loadable<unknown> | null): SourceStamp {
     : { shown, reason: null };
 }
 
+/** 单张卡的一个读数：值 + 它的取数口径原文。value=null 表示「未接」。 */
+export interface KpiDatum {
+  value: number | string | null;
+  /** 接口自带的 source 口径原文；null = 接口没给（页面如实标「来源未标注」）。 */
+  source: string | null;
+}
+
 export interface KpiView {
-  total: number | null;
-  active: number | null;
-  atRisk: number | null;
-  runs: number | null;
-  failed: number | null;
-  failureRate: number | null;
-  pending: number | null;
-  costUsd: number | null;
-  costPartial: boolean;
-  costMissing: number;
+  employees: KpiDatum;
+  active: KpiDatum;
+  todayRuns: KpiDatum;
+  /** 今日失败：来自 run-stats 今日桶 totals.failed（summary 无此字段）。 */
+  failed: KpiDatum;
+  /** 今日失败率 %：failed/runs，仅两者皆为真数且 runs>0 时成立，否则「未接」。 */
+  failureRate: KpiDatum;
+  pending: KpiDatum;
+  costUsd: KpiDatum;
+  health: KpiDatum;
+  /** summary 顶层采集时间原文（如 2026-11-23T11:41:22Z）。 */
+  asOf: string | null;
+  asOfSource: string | null;
 }
 
-export function matrixRiskCount(matrix: Loadable<MatrixBody>): number | null {
-  if (matrix.k !== 'ready') return null;
-  const rows = (matrix.data.items ?? [])
-    .map((row: unknown) => normalizeMatrixRow(row))
-    .filter((row): row is NonNullable<typeof row> => row !== null);
-  if (rows.length === 0) return null;
-  return rows.filter((row) => {
-    const risk = row.risk;
-    if (!risk) return false;
-    return (risk.failedRuns ?? 0) > 0 || (risk.blockedApprovals ?? 0) > 0 || risk.budgetOver === true;
-  }).length;
+function fieldDatum(field: SummaryField | null | undefined): KpiDatum {
+  if (!isRecord(field)) return { value: null, source: null };
+  const value =
+    typeof field.value === 'number' || typeof field.value === 'string' ? field.value : null;
+  const source =
+    typeof field.source === 'string' && field.source.trim() ? field.source.trim() : null;
+  return { value, source };
 }
 
-export function buildKpis(input: {
-  stats: Record<string, unknown> | null;
-  todayStats: RunStatsBody | null;
-  approvalStats: { pending?: number; dueSoon?: number } | null;
-  budgetDay: BudgetBody | null;
-  budgetMonth: BudgetBody | null;
-  totalEmployeesFallback: number | null;
-  matrix: Loadable<MatrixBody>;
-}): KpiView {
-  const total = lifecycleTotal(input.stats) ?? input.totalEmployeesFallback;
-  const active = activeCount(input.stats);
-  const totals = runTotals(input.todayStats);
-  const runs = totals?.runs ?? null;
-  const failed = totals?.failed ?? null;
+/** 只在接口真数上算派生值：拿不到就是「未接」，绝不外推、绝不补 0。 */
+export function buildKpis(
+  summary: OverviewSummaryBody | null,
+  today: RunStatsBody | null,
+): KpiView {
+  const rec = isRecord(summary) ? summary : null;
+  const todayRunsDatum = fieldDatum(rec ? rec.todayRuns : null);
+  const todayRunsValue = num(todayRunsDatum.value);
+  const totals = today && isRecord(today.totals) ? today.totals : null;
+  const failedRaw = totals ? (totals as Record<string, unknown>).failed : null;
+  const failed = typeof failedRaw === 'number' && !Number.isNaN(failedRaw) ? failedRaw : null;
   const failureRate =
-    runs !== null && runs > 0 && failed !== null ? Math.round((failed / runs) * 1000) / 10 : null;
-  const pending = num(input.approvalStats?.pending);
-  const cost = buildCost(input.budgetDay, input.budgetMonth, total);
+    failed !== null && typeof todayRunsValue === 'number' && todayRunsValue > 0
+      ? Math.round((failed / todayRunsValue) * 1000) / 10
+      : null;
+
   return {
-    total,
-    active,
-    atRisk: matrixRiskCount(input.matrix),
-    runs,
-    failed,
-    failureRate,
-    pending,
-    costUsd: cost.dayUsd,
-    costPartial: cost.partial,
-    costMissing: cost.missing,
+    employees: fieldDatum(rec ? rec.employeeTotal : null),
+    active: fieldDatum(rec ? rec.activeTotal : null),
+    todayRuns: fieldDatum(rec ? rec.todayRuns : null),
+    failed: { value: failed, source: failed === null ? null : 'runtime GET /v1/runs/stats（from/to=北京日窗 bucket=day）totals.failed' },
+    failureRate: {
+      value: failureRate,
+      source: failureRate === null ? null : '今日失败 ÷ 今日运行（两值各自接口真数）',
+    },
+    pending: fieldDatum(rec ? rec.pendingApprovals : null),
+    costUsd: fieldDatum(rec ? rec.todayCostUsd : null),
+    health: fieldDatum(rec ? rec.healthStatus : null),
+    asOf: rec && typeof rec.asOf === 'string' && rec.asOf.trim() ? rec.asOf.trim() : null,
+    asOfSource:
+      rec && typeof rec.asOfSource === 'string' && rec.asOfSource.trim()
+        ? rec.asOfSource.trim()
+        : null,
   };
 }
 
+/** 今日 run-stats 桶（若接口只回历史窗而缺今日桶，如实 null，不拿昨天冒充）。 */
+export function todayBucketRun(body: RunStatsBody | null, todayDate: string): number | null {
+  if (!body || !Array.isArray(body.buckets)) return null;
+  const hit = body.buckets.find(
+    (bucket) => typeof bucket.bucketStart === 'string' && bucket.bucketStart.slice(0, 10) === todayDate,
+  );
+  if (!hit) return null;
+  return typeof hit.runs === 'number' && !Number.isNaN(hit.runs) ? hit.runs : null;
+}
+
 export interface TrendPoint {
+  day: string;
   label: string;
   runs: number | null;
-  failed: number | null;
 }
 
 const DAY_LABEL = new Intl.DateTimeFormat('zh-CN', {
@@ -141,23 +162,16 @@ const DAY_LABEL = new Intl.DateTimeFormat('zh-CN', {
   day: '2-digit',
 });
 
-export function trendPoints(stats: RunStatsBody | null): TrendPoint[] {
-  const buckets = stats?.buckets;
-  if (!Array.isArray(buckets)) return [];
-  return buckets.slice(-14).map((bucket) => {
-    const at = new Date(bucket.bucketStart);
+/** 趋势条：run-stats bucket=day 的 14 日窗（现网无独立 daily-trend 端点，实测 404）。 */
+export function trendPoints(body: RunStatsBody | null): TrendPoint[] {
+  if (!body || !Array.isArray(body.buckets)) return [];
+  return body.buckets.slice(-14).map((bucket) => {
+    const start = bucket.bucketStart;
+    const date = new Date(start);
     return {
-      label: Number.isNaN(at.getTime()) ? '—' : DAY_LABEL.format(at),
-      runs: num(bucket.runs),
-      failed: num(bucket.failed),
+      day: start.slice(0, 10),
+      label: Number.isNaN(date.getTime()) ? start : DAY_LABEL.format(date),
+      runs: typeof bucket.runs === 'number' && !Number.isNaN(bucket.runs) ? bucket.runs : null,
     };
   });
-}
-
-export function blockerRows(input: {
-  failedRuns: RunRow[] | null;
-  blockedTasks: TaskRow[] | null;
-  approvals: ApprovalRow[] | null;
-}) {
-  return buildBlockers(input.failedRuns, input.blockedTasks, input.approvals);
 }
