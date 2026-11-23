@@ -6,6 +6,7 @@
  * carry. A missing request id names the fallback action — it is never invented.
  */
 import { errorMessage } from "@/lib/api-error";
+import { isDenied } from "./api";
 import { humanSentence } from "./model";
 
 export interface FailureCopy {
@@ -60,3 +61,37 @@ export function writeFailure(
  * QA V4-R4 条目5: a missing id names the fallback action instead of 「未提供」. */
 export const requestIdLine = (id: string | null): string =>
   id ? `请求编号：${id}` : "本次请求未记录编号，可复制时间与操作路径反馈";
+
+/* ------------------------------------------------------------------ *
+ * AP-03 ①② — 时间线与「处理记录」的单点句。
+ * 屏上、复制文本、title 三处都引用这里的常量，禁在 views 里字面量分叉。
+ * 回填票面（already_decided 族的服务答复）不是失败：措辞里不出现
+ * 「失败/出错/没能」，只说这张票已在单上。
+ * ------------------------------------------------------------------ */
+
+/** 已结束单据的票面标注（DOM 与 apd8 链路文本同值同位）。 */
+export const TRAIL_FACE_RECORDED = "票面已记录";
+
+/** 处理记录段的首句——这一段是手动读取，不是轮询（GAP-APR-11 无状态读口）。 */
+export const RECORDS_IDLE_SENTENCE = "处理记录未读取";
+/** 读取中的过程句（不摆空列表、不摆骨架行）。 */
+export const RECORDS_LOADING_SENTENCE = "处理记录读取中。";
+/** 真读回 0 行——「没有记录」与「读不到」是两句话，不许互相冒充。 */
+export const RECORDS_EMPTY_SENTENCE = "这条单没有带回处理记录（审计读口本次答 0 行）。";
+/** 403/401/404/5xx/网络失败共用的首句。 */
+export const RECORDS_UNAVAILABLE_SENTENCE = "处理记录暂不可用";
+/** 无权限档（403/404 同体）的正文句。 */
+export const RECORDS_DENIED_SENTENCE = "审计台账对这条单没有开放，这里不显示任何猜测的记录。";
+
+/**
+ * 失败档的正文句：只说这一条读口的实情，不带审批主链路的词。
+ * 请求编号另由可复制载体给出，缺号时明说「未记录编号」。
+ */
+export function recordsFailureSentence(status: number): string {
+  if (status === 0) return "连不上审计读口，请确认服务已启动后重新读取。";
+  if (status === 401) return "登录状态没有带上这条读取，请重新登录后再读取一次。";
+  if (isDenied(status)) return RECORDS_DENIED_SENTENCE;
+  if (status === 400) return "这条读取没被审计读口接受（它要求至少一个过滤条件），请重新读取一次。";
+  if (status >= 500) return "审计服务在处理这条读取时出了错，请稍后重新读取。";
+  return "审计读口这次没有答成，处理记录保持未读取。";
+}
