@@ -11,7 +11,7 @@ import type {
   RunStatsBody,
   TaskRow,
 } from "./types";
-import { asArray, isRecord, normalizeApproval, normalizeEmployee, normalizeRun, normalizeTask, num, text } from "./types";
+import { asArray, isRecord, normalizeApproval, normalizeEmployee, normalizeRun, normalizeTask, num, text, EMPLOYEES_PAGE_LIMIT } from "./types";
 import type {
   ApprovalEvidence,
   ConfigView,
@@ -19,7 +19,7 @@ import type {
   ReadinessEvidence,
   StationBinding,
 } from "./readiness";
-import { EMPLOYEES_PAGE_LIMIT, READINESS_FANOUT_LIMIT } from "./aggregate";
+import { READINESS_FANOUT_LIMIT } from "./aggregate";
 import type { ServerRowCount } from "./dutySlots";
 import { serverRowsOf } from "./dutySlots";
 

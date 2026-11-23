@@ -7,7 +7,7 @@
  * scope sentence states 「当前已加载 N 条，不是全量」; in non-ready phases the
  * counts render 「—」 with the gates reason instead of a fake 0.
  */
-import { gateReason } from "./gates";
+import { crossPageLoadHint, gateReason } from "./gates";
 import type { ApprovalRow } from "./model";
 
 type Phase = "loading" | "empty" | "ready" | "error" | "denied";
@@ -30,11 +30,13 @@ export function ActorBuckets({
   phase,
   actor,
   onPick,
+  hasMore = false,
 }: {
   rows: readonly ApprovalRow[];
   phase: Phase;
   actor: string | null;
   onPick: (id: string | null) => void;
+  hasMore?: boolean;
 }) {
   const buckets = (() => {
     const map = new Map<string, Bucket>();
@@ -113,6 +115,11 @@ export function ActorBuckets({
         title="实测本页读口带 actor=/approver= 与不带时返回同一全量（即本页已加载的全部行），后台不做按审批人过滤；为避免假筛选，这里只做前端本地过滤，点击不产生新请求。"
       >
         按当前已加载 {rows.length} 条统计，不是全量；点击桶＝本地过滤，不发新请求。
+        {hasMore ? (
+          <span data-testid="apv-actor-crosspage" data-apv-actor-crosspage="needs-load">
+            {` ${crossPageLoadHint(true)}`}
+          </span>
+        ) : null}
       </p>
     </div>
   );

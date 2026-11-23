@@ -11,6 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ApiError } from "@/lib/api-error";
 import { CsrfMissingError, postDecision } from "@/modules/approvals/api";
+import { DECISION_GATE } from "@/modules/approvals/writeGate";
 import { rawCorrelationReturn, saveCorrelationReturn } from "@/modules/approvals/correlationReturn";
 
 const api = vi.hoisted(() => ({ fetchJSON: vi.fn() }));
@@ -397,9 +398,10 @@ describe("decision writes", () => {
     expect(approve!.getAttribute("aria-disabled")).toBe("true");
     expect(reject!.disabled).toBe(true);
     expect(reject!.getAttribute("aria-disabled")).toBe("true");
-    // 三属性同源：title 与人话说明段是同一句话的两个出口。
+    // AP-07②：可见说明段与三属性 title 同源同句——都直接渲染 DECISION_GATE.title，
+    // 不再是「同一句话的两个出口」（那要求两段措辞一致），而是同一个字符串的单点。
     const note = document.querySelector("[data-testid='apr5-actions-readonly-note']") as HTMLElement | null;
-    expect(note?.textContent).toContain("控制台是只读的");
+    expect(note?.textContent?.trim()).toBe(DECISION_GATE.title);
     expect(note?.textContent).toContain("请走它原本产生决定的渠道");
     for (const el of [approve!, reject!, comment!]) {
       const title = el.getAttribute("title") ?? "";

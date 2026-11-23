@@ -6,7 +6,7 @@
  */
 import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 
-import { actionGates } from "./gates";
+import { actionGates, crossPageLoadHint } from "./gates";
 import type { ApprovalSortDir, ApprovalSortKey } from "./model";
 
 type Phase = "loading" | "empty" | "ready" | "error" | "denied";
@@ -18,7 +18,15 @@ type Phase = "loading" | "empty" | "ready" | "error" | "denied";
  * 只是挂载位置可变；scope-note 的 blocked 门与排序钮共用同一
  * actionGates(phase, loadedCount) 派生，语义与原实现同源。
  */
-export function QueueMetaNotes({ phase, loadedCount }: { phase: Phase; loadedCount: number }) {
+export function QueueMetaNotes({
+  phase,
+  loadedCount,
+  hasMore = false,
+}: {
+  phase: Phase;
+  loadedCount: number;
+  hasMore?: boolean;
+}) {
   const blocked = !actionGates(phase, loadedCount).sort.enabled;
   return (
     <>
@@ -44,6 +52,11 @@ export function QueueMetaNotes({ phase, loadedCount }: { phase: Phase; loadedCou
           title="实测：本页读口带 sort/order 或 orderBy/dir 任一组合都与不带时返回同一合同一顺序（即本页已加载行的原序）；后台不做服务端排序，所以这里只重排已加载行。"
         >
           仅在当前已加载 {loadedCount} 条内排序；不是服务端排序（读口忽略排序参数，实测同序同集合），缺值的行恒排末。
+          {hasMore ? (
+            <span data-testid="apv-sort-crosspage" data-apv-sort-crosspage="needs-load">
+              {` ${crossPageLoadHint(true)}`}
+            </span>
+          ) : null}
         </p>
       )}
     </>
@@ -64,6 +77,7 @@ export function QueueSortBar({
   loadedCount,
   onCycle,
   hideNotes = false,
+  hasMore = false,
 }: {
   phase: Phase;
   sort: ApprovalSortKey | null;
@@ -72,6 +86,8 @@ export function QueueSortBar({
   onCycle: (key: ApprovalSortKey) => void;
   // P1-A1: 待处理页把三行元说明让位给筛选折叠面板；默认 false=历史页零变化。
   hideNotes?: boolean;
+  // AP-07①: 服务端还有下一页时，本地排序作用域句追加「需先加载」提示。
+  hasMore?: boolean;
 }) {
   // R72: 与导出/汇总同一 gates 派生；真实空集下排序保持可用。
   const gate = actionGates(phase, loadedCount).sort;
@@ -95,9 +111,11 @@ export function QueueSortBar({
               title={
                 blocked
                   ? gate.title
-                  : active
-                    ? `${col.tip}。当前：${dir === "asc" ? "升序" : "降序"}，再点切换${dir === "asc" ? "降序" : "清除"}。仅在当前已加载 ${loadedCount} 条内排序。`
-                    : `${col.tip}。点击升序，再点降序，第三下清除。仅在当前已加载 ${loadedCount} 条内排序。`
+                  : `${
+                      active
+                        ? `${col.tip}。当前：${dir === "asc" ? "升序" : "降序"}，再点切换${dir === "asc" ? "降序" : "清除"}。`
+                        : `${col.tip}。点击升序，再点降序，第三下清除。`
+                    }仅在当前已加载 ${loadedCount} 条内排序。${crossPageLoadHint(hasMore)}`
               }
               className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${
                 active
@@ -120,7 +138,7 @@ export function QueueSortBar({
         })}
       </div>
       {/* P1-A1: notes 拆成 QueueMetaNotes；hideNotes 时由调用方在别处挂载。 */}
-      {hideNotes ? null : <QueueMetaNotes phase={phase} loadedCount={loadedCount} />}
+      {hideNotes ? null : <QueueMetaNotes phase={phase} loadedCount={loadedCount} hasMore={hasMore} />}
     </div>
   );
 }

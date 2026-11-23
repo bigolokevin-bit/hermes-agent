@@ -62,6 +62,14 @@ export interface DutyData {
 /** 页面上每一条可独立重试的卡腿。retryLeg 与 health chip 都按这个名单点名。 */
 export type DutyLegKey = keyof DutyData;
 
+/**
+ * OM-04④：本页读取的消费者开关。activity 只在有活动热力可渲染的消费面上
+ * 才请求；默认（不传）为请求，DutyPage 因此保持原行为逐字不变。
+ */
+export interface DutyReadOpts {
+  activity?: boolean;
+}
+
 const LEG_KEYS: readonly DutyLegKey[] = [
   "employees",
   "stats",
@@ -168,9 +176,12 @@ interface LegDeps {
 /**
  * 单腿「原请求」的唯一出处：collect 首读与 retryLegs 重试都从这张表取闭包，
  * 保证重试重发的就是原请求（同 URL、同参数、同窗口推导），不存在第二套拼法。
+ * OM-04④：activity 的消费者开关也挂在这张表上，于是首读与单卡重试走的是
+ * 同一条受开关约束的路，不会出现「首读不发、重试却发」的第二套口径。
  */
-function legRequests(rangeId: DutyRangeId, deps: LegDeps) {
+function legRequests(rangeId: DutyRangeId, deps: LegDeps, opts: DutyReadOpts = {}) {
   const range = dutyRange(rangeId);
+  const wantActivity = opts.activity !== false;
   const day = beijingDayWindow();
   const month = day.date.slice(0, 7);
   const w7 = daysAgoWindow(7);
@@ -184,7 +195,11 @@ function legRequests(rangeId: DutyRangeId, deps: LegDeps) {
       load(async () =>
         timeseriesStats(trimTimeseries(await fetchWorkbenchTimeseries({ range: range.tsRange, bucket: "day" }), range.days)),
       ),
-    activity: () => load(() => fetchActivity(range.weeks)),
+    // OM-04④：关掉时不发请求，停在「loading」这个未发起的中性占位上。
+    activity: () =>
+      wantActivity
+        ? load(() => fetchActivity(range.weeks))
+        : Promise.resolve({ k: "loading" } as Loadable<ActivityBody>),
     budgetDay: () => load(() => fetchBudget(deps.employeeIds, "day", day.date)),
     budgetMonth: () => load(() => fetchBudget(deps.employeeIds, "month", month)),
     readiness: () => load(() => fetchReadinessEvidence(deps.denominatorIds)),
@@ -268,9 +283,14 @@ function forcedBatch(state: ForcedState): DutyData {
 /**
  * One read of every card, started together and returned as one batch.
  * Cards are independent: a failed endpoint yields an error for that card only.
+ * OM-04④：activity 腿加消费者开关——总览没有活动热力可渲染，默认不请求；
+ * 关掉时 data.activity 停在「loading」这个未发起请求的中性占位上（总览的
+ * 空态/错误态/截至行只数 coreStates 与 stats14，从不消费它），DutyPage 走
+ * 默认档行为逐字不变。开关经 legRequests 同一张表生效，重试与首读同路。
+ * DU-02：返回 { batch, counts }，counts 为三卡服务端真数（N 只从这里来）。
  */
-async function collect(rangeId: DutyRangeId): Promise<{ batch: DutyData; counts: DutyCounts }> {
-  const reqs = legRequests(rangeId, NO_DEPS);
+async function collect(rangeId: DutyRangeId, opts: DutyReadOpts = {}): Promise<{ batch: DutyData; counts: DutyCounts }> {
+  const reqs = legRequests(rangeId, NO_DEPS, opts);
 
   const employeesPageP = reqs.employees();
   const statsP = reqs.stats();
@@ -309,7 +329,7 @@ async function collect(rangeId: DutyRangeId): Promise<{ batch: DutyData; counts:
     const denomIds = employees.data
       .filter((e) => DENOMINATOR_STATES.has(e.lifecycleState ?? "active"))
       .map((e) => e.employeeId);
-    const withIds = legRequests(rangeId, { employeeIds: ids, denominatorIds: denomIds });
+    const withIds = legRequests(rangeId, { employeeIds: ids, denominatorIds: denomIds }, opts);
     [budgetDay, budgetMonth, readiness] = await Promise.all([
       withIds.budgetDay(),
       withIds.budgetMonth(),
@@ -371,6 +391,7 @@ async function collect(rangeId: DutyRangeId): Promise<{ batch: DutyData; counts:
  */
 export function useDutyData(
   rangeId: DutyRangeId = DEFAULT_DUTY_RANGE,
+  opts: DutyReadOpts = {},
   forced: ForcedState | null = null,
 ): {
   data: DutyData;
@@ -405,8 +426,10 @@ export function useDutyData(
   // DU-05②：正在单腿重试的卡名。同一腿的重试不叠加，批次刷新在飞时也不另发。
   const retryingRef = useRef<Set<DutyLegKey>>(new Set());
   const forcedRef = useRef(forced);
+  const wantActivityRef = useRef(opts.activity !== false);
   rangeRef.current = rangeId;
   forcedRef.current = forced;
+  wantActivityRef.current = opts.activity !== false;
 
   useEffect(() => {
     dataRef.current = data;
@@ -464,7 +487,8 @@ export function useDutyData(
     // 首读还在飞时点刷新会再起一批 ⇒ mount 期间并发两遍全量读。
     const seq = ++batchSeqRef.current;
     busyRef.current = true;
-    void collect(rangeRef.current).then(({ batch, counts: next }) => {
+    // OM-04④：首读同样经带消费者开关的新签名，与手动刷新/重试同一条路。
+    void collect(rangeRef.current, { activity: wantActivityRef.current }).then(({ batch, counts: next }) => {
       // 被更新的一批取代：既不写屏，也不替那一批解锁（锁归最新一批）。
       if (seq !== batchSeqRef.current) return;
       busyRef.current = false;
@@ -501,16 +525,18 @@ export function useDutyData(
     setRefreshDelta(null);
     setRefreshAt(null);
     setRefreshDelta(null);
-    setData((prev) => ({ ...prev, stats14: loading(), activity: loading() }));
+    const wantActivity = wantActivityRef.current;
+    setData((prev) => ({ ...prev, stats14: loading(), ...(wantActivity ? { activity: loading() as DutyData["activity"] } : {}) }));
     void Promise.all([
       load(async () => {
         const range = dutyRange(rangeId);
         return timeseriesStats(trimTimeseries(await fetchWorkbenchTimeseries({ range: range.tsRange, bucket: "day" }), range.days));
       }),
-      load(() => fetchActivity(dutyRange(rangeId).weeks)),
+      wantActivity ? load(() => fetchActivity(dutyRange(rangeId).weeks)) : null,
     ]).then(([stats14, activity]) => {
       if (version !== rangeVersionRef.current) return;
-      setData((prev) => ({ ...prev, stats14, activity }));
+      // 关掉的腿不重画：上一次的值（或占位）原样留在原处。
+      setData((prev) => ({ ...prev, stats14, ...(activity ? { activity } : {}) }));
     });
   }, [rangeId, forced]);
 
@@ -526,7 +552,7 @@ export function useDutyData(
     const startedAt = Date.now();
     const before = dataRef.current;
     const version = versionRef.current;
-    void collect(rangeRef.current).then(({ batch, counts: next }) => {
+    void collect(rangeRef.current, { activity: wantActivityRef.current }).then(({ batch, counts: next }) => {
       // A cancelled batch must not write a stale screen or a read stamp.
       if (version !== versionRef.current) return;
       setData((prev) => ({ ...prev, ...batch }));
@@ -601,7 +627,10 @@ export function useDutyData(
               .filter((e) => DENOMINATOR_STATES.has(e.lifecycleState ?? "active"))
               .map((e) => e.employeeId)
           : [];
-      const reqs = legRequests(rangeRef.current, { employeeIds: ids, denominatorIds: denomIds });
+      // OM-04④：重试与首读共用同一张受开关约束的表，关掉的腿不会被重试点亮。
+      const reqs = legRequests(rangeRef.current, { employeeIds: ids, denominatorIds: denomIds }, {
+        activity: wantActivityRef.current,
+      });
       const done = () => {
         for (const k of targets) retryingRef.current.delete(k);
       };

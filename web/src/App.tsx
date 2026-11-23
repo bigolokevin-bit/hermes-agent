@@ -92,7 +92,13 @@ const EmployeeDetailPage = lazy(() => import("@/pages/EmployeeDetailPage"));
 const ApprovalsPage = lazy(() => import("@/pages/ApprovalsPage"));
 // Wave-1 module pages (lanes T10/T13/T14/T15) — integration wiring into the
 // console live maps below; manifests' reuse loaders stay metadata-only.
-const DutyConsolePage = lazy(() => import("@/modules/duty/DutyPage"));
+/* OM-01 (总览挂载裁定, deep/01-overview.md D-1): #/overview 的 duty 标签页
+ * 渲染运营总览本体 modules/overview/OverviewPage（ov6-*），不再复用
+ * duty/DutyPage。DutyPage 保留文件——/duty 深链经 DutyRedirect 归一到
+ * /overview（routes.ts EXPLICIT_ALIASES），其成本/健康元素由 duty 测试面
+ * 继续锚定；是否退役另案（backlog OM-03+）。UsageConsolePage
+ * （用量与成本 tab）不变。 */
+const OverviewConsolePage = lazy(() => import("@/modules/overview/OverviewPage"));
 const MatrixConsolePage = lazy(() =>
   import("@/modules/matrix/MatrixModulePage").then((m) => ({
     default: m.MatrixModulePage,
@@ -1183,7 +1189,7 @@ export default function App() {
                           element={
                             <ConsoleModulePage
                               module="overview"
-                              live={{ duty: <DutyConsolePage />, usage: <UsageConsolePage /> }}
+                              live={{ duty: <OverviewConsolePage />, usage: <UsageConsolePage /> }}
                             />
                           }
                         />

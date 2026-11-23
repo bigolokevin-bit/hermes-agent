@@ -1,0 +1,119 @@
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - `__dirname` (vitest.config.ts:17:25). Use `import.meta.dirname` instead
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+ RUN  v4.1.12 /Users/kevin_studio/Projects/tasks/Q10-duty-filter-parity/web
+
+ ❯ src/modules/duty/duty.q10-parity.test.tsx (8 tests | 7 failed) 102ms
+     × 最窄限制门置顶：gates[0] 是 fail 最多的已知门，其余保持原序 6ms
+     × 交集句：人话说明四门叠加后的净效果，点名最窄门，且不编造净人数 1ms
+     × 分母护栏：单页 limit 触顶时口径句点名「上限 100 · 非全量」 0ms
+     × 条目3：三卡「查看全部 (N)」带总数，且披露被截条数 15ms
+     × 条目4：检查项区最窄门置顶 + 交集句上屏 16ms
+     × 条目5：分母口径句上屏（本页人数 + 上限/全量语义） 13ms
+     × 条目6：页头刷新可点；导出日报无后端 → aria-disabled 且可辨 12ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 7 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/modules/duty/duty.q10-parity.test.tsx > Q10 条目4+5 · buildReadiness 纯函数 > 最窄限制门置顶：gates[0] 是 fail 最多的已知门，其余保持原序
+AssertionError: expected 'V1' to be 'V2' // Object.is equality
+
+Expected: "V2"
+Received: "V1"
+
+ ❯ src/modules/duty/duty.q10-parity.test.tsx:54:31
+     52|     // V2 拦 3 人、V6 拦 3 人、V1 通过、V3 未知 → 最窄必是 V2/V6，且不在原序首位（原序 V1 在前）
+     53|     expect(view.narrowest).not.toBeNull();
+     54|     expect(view.gates[0].key).toBe(view.narrowest!.key);
+       |                               ^
+     55|     expect(["V2", "V6"]).toContain(view.gates[0].key);
+     56|     expect(view.gates.map((g) => g.key)).not.toEqual(["V1", "V2", "V3"…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/7]⎯
+
+ FAIL  src/modules/duty/duty.q10-parity.test.tsx > Q10 条目4+5 · buildReadiness 纯函数 > 交集句：人话说明四门叠加后的净效果，点名最窄门，且不编造净人数
+AssertionError: the given combination of arguments (undefined and string) is invalid for this assertion. You can use an array, a map, an object, a set, a string, or a weakset instead of a string
+ ❯ src/modules/duty/duty.q10-parity.test.tsx:72:26
+     70|     expect(view.unknownGates).toBe(1);
+     71|     expect(view.confirmed).toBeNull();
+     72|     expect(view.netNote).toContain("最窄");
+       |                          ^
+     73|     expect(view.netNote).toContain(view.narrowest!.name);
+     74|     expect(view.netNote).toMatch(/暂不|未接|没有接入|不能判定/);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/7]⎯
+
+ FAIL  src/modules/duty/duty.q10-parity.test.tsx > Q10 条目4+5 · buildReadiness 纯函数 > 分母护栏：单页 limit 触顶时口径句点名「上限 100 · 非全量」
+AssertionError: the given combination of arguments (undefined and string) is invalid for this assertion. You can use an array, a map, an object, a set, a string, or a weakset instead of a string
+ ❯ src/modules/duty/duty.q10-parity.test.tsx:80:28
+     78|     const capped = Array.from({ length: 100 }, (_, i) => emp(`e${i}`));
+     79|     const view = buildReadiness(capped, { byLifecycle: { active: 100 }…
+     80|     expect(view.denomNote).toContain("100");
+       |                            ^
+     81|     expect(view.denomNote).toMatch(/非全量|上限/);
+     82|     // 未触顶：如实说未触上限，不冒充「全量总数」以外的口径
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/7]⎯
+
+ FAIL  src/modules/duty/duty.q10-parity.test.tsx > Q10 条目1/3/4/5/6 · DutyPage 屏上形制 > 条目3：三卡「查看全部 (N)」带总数，且披露被截条数
+AssertionError: 审批卡按钮须带服务端总数: expected '查看全部' to contain '查看全部 (7)'
+
+Expected: "查看全部 (7)"
+Received: "查看全部"
+
+ ❯ src/modules/duty/duty.q10-parity.test.tsx:186:50
+    184|     await mountDuty();
+    185|     const pending = container.querySelector('[data-testid="duty-route-…
+    186|     expect(pending?.textContent, "审批卡按钮须带服务端总数").toContain("查看全部 (7)");
+       |                                                  ^
+    187|     const blockers = container.querySelector('[data-testid="duty-route…
+    188|     // 1 组失败运行 + 3 任务 + 3 审批 = 7 项读到
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/7]⎯
+
+ FAIL  src/modules/duty/duty.q10-parity.test.tsx > Q10 条目1/3/4/5/6 · DutyPage 屏上形制 > 条目4：检查项区最窄门置顶 + 交集句上屏
+AssertionError: expected 'ov6-gate-V1' to be 'ov6-gate-V2' // Object.is equality
+
+Expected: "ov6-gate-V2"
+Received: "ov6-gate-V1"
+
+ ❯ src/modules/duty/duty.q10-parity.test.tsx:206:48
+    204|     const first = container.querySelector(".duty-gates .duty-gate");
+    205|     // 1 员工：V2 fail 1 / V6 fail 1 / V1 pass / V3 unknown → 最窄=V2，原序首位 …
+    206|     expect(first?.getAttribute("data-testid")).toBe("ov6-gate-V2");
+       |                                                ^
+    207|     const net = container.querySelector('[data-testid="duty-gates-net"…
+    208|     expect(net, "交集句必须有名有姓上屏").not.toBeNull();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/7]⎯
+
+ FAIL  src/modules/duty/duty.q10-parity.test.tsx > Q10 条目1/3/4/5/6 · DutyPage 屏上形制 > 条目5：分母口径句上屏（本页人数 + 上限/全量语义）
+AssertionError: 分母口径句必须存在: expected null not to be null
+ ❯ src/modules/duty/duty.q10-parity.test.tsx:216:34
+    214|     await mountDuty();
+    215|     const cal = container.querySelector('[data-testid="duty-denominato…
+    216|     expect(cal, "分母口径句必须存在").not.toBeNull();
+       |                                  ^
+    217|     expect(cal?.textContent).toContain("本页 1 人");
+    218|     expect(cal?.textContent).toContain("未触单页上限");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/7]⎯
+
+ FAIL  src/modules/duty/duty.q10-parity.test.tsx > Q10 条目1/3/4/5/6 · DutyPage 屏上形制 > 条目6：页头刷新可点；导出日报无后端 → aria-disabled 且可辨
+AssertionError: 页头必须有导出日报动作位: expected null not to be null
+ ❯ src/modules/duty/duty.q10-parity.test.tsx:225:36
+    223|     expect(container.querySelector('[data-testid="duty-refresh"]')).no…
+    224|     const ex = container.querySelector('[data-testid="duty-export-dail…
+    225|     expect(ex, "页头必须有导出日报动作位").not.toBeNull();
+       |                                    ^
+    226|     expect(ex!.getAttribute("aria-disabled")).toBe("true");
+    227|     expect(ex!.disabled, "aria-disabled 不是原生 disabled：钮必须可聚焦可辨").toBe(…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/7]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  7 failed | 1 passed (8)
+   Start at  19:39:34
+   Duration  1.07s (transform 499ms, setup 0ms, import 675ms, tests 102ms, environment 230ms)
+
