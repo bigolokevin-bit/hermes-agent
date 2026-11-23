@@ -82,6 +82,26 @@ describe("IdentityMenu (L4-nav §e)", () => {
     expect(masked.k === "ok" && masked.tenant).toBe("—");
   });
 
+  it("maps known English roles to Chinese; unknown roles fall through verbatim", () => {
+    const mapped = identityFromWhoami(200, true, { display: "x", granted: "AGENT", tenant_id: "SEAKOI 试点租户" });
+    expect(mapped.k === "ok" && mapped.role).toBe("智能体");
+    const admin = identityFromWhoami(200, true, { display: "x", granted: "admin", tenant_id: "t" });
+    expect(admin.k === "ok" && admin.role).toBe("管理员");
+    const unknown = identityFromWhoami(200, true, { display: "x", granted: "CHIEF_NOTARY", tenant_id: "t" });
+    expect(unknown.k === "ok" && unknown.role).toBe("CHIEF_NOTARY"); // 未知回退原文，上报补表
+  });
+
+  it("role renders Chinese on screen and the gate finds an identity anchor", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => whoamiOk({ granted: "AGENT" })));
+    await mount();
+    expect(container.querySelector('[data-testid="idn5-role"]')?.textContent).toBe("智能体");
+    // 验收闸选择器 [class*="identity"] 必须命中，且身份区文本零英文角色名。
+    const anchor = container.querySelector('[class*="identity"]');
+    expect(anchor).not.toBeNull();
+    expect(anchor?.textContent).toMatch(/张三丰/);
+    expect(anchor?.textContent).not.toMatch(/\b(admin|operator|viewer|owner|member|engineer|agent)\b/i);
+  });
+
   it("anonymous whoami offers exactly one 去登录 exit and no identity text", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => jsonResponse(401, { detail: "no session" })));
     await mount();

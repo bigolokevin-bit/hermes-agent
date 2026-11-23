@@ -4,6 +4,9 @@
  * 同源（/auth/whoami，2xx 为唯一已登录证据），并广播/监听既有
  * `auth5:verified` / `auth5:session` 事件，接线前与老 widget 状态一致。
  * 禁裸 ID：tenant_id 命中 `/^[a-z]+_[0-9A-Za-z]+$/` 形态即按「—」显示。
+ * 角色上屏走中文映射（闸条款 10 零英文角色名；映射表 L0 令我定，未知角色
+ * 回退原文并在回执上报）。文本容器挂 `.identity-text`（§e 命名），也是
+ * 验收闸 `[class*="identity"]` 的身份区存在性锚点。
  */
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router";
@@ -11,11 +14,28 @@ import { ThemeToggle } from "./ThemeToggle";
 
 type Identity = { k: "loading" } | { k: "anon" } | { k: "ok"; display: string; role: string; tenant: string };
 
+/** 角色中文映射（闸 ENGLISH_ROLE 判据 \b(admin|operator|viewer|owner|member|engineer|agent)\b 全词不区分大小写）。 */
+export const ROLE_ZH: Record<string, string> = {
+  ADMIN: "管理员",
+  OPERATOR: "操作员",
+  VIEWER: "只读访客",
+  OWNER: "所有者",
+  MEMBER: "成员",
+  ENGINEER: "工程师",
+  AGENT: "智能体",
+};
+
+/** 未知角色回退原文（回执里上报 L0 补表）；已是中文的原样上屏。 */
+export function roleZh(raw: string): string {
+  const key = raw.trim().toUpperCase();
+  return ROLE_ZH[key] ?? raw.trim();
+}
+
 /** 与 Auth5Session 同口径：2xx 才有身份；随机串形态的租户 ID 上屏一律「—」。 */
 export function identityFromWhoami(status: number, ok: boolean, body: Record<string, unknown> | null): Identity {
   if (status === 401 || !ok || !body) return { k: "anon" };
   const disp = typeof body.display === "string" && body.display.trim() ? body.display.trim() : "未命名账号";
-  const role = typeof body.granted === "string" && body.granted.trim() ? body.granted.trim() : "—";
+  const role = typeof body.granted === "string" && body.granted.trim() ? roleZh(body.granted) : "—";
   const tid = typeof body.tenant_id === "string" ? body.tenant_id.trim() : "";
   const tenant = tid && !/^[a-z]+_[0-9A-Za-z]+$/.test(tid) ? tid : "—";
   return { k: "ok", display: disp, role, tenant };
@@ -140,11 +160,11 @@ export function IdentityMenu({ collapsed = false }: { collapsed?: boolean }): Re
               {initial}
             </span>
             {!collapsed && (
-              <span className="flex min-w-0 flex-1 flex-col">
+              <span className="identity-text flex min-w-0 flex-1 flex-col">
                 <span className="truncate text-xs font-medium " data-testid="idn5-display">
                   {who.display}
                 </span>
-                {/* 角色上屏一律原词，租户不进主行（禁裸 ID，租户只在弹层）。 */}
+                {/* 角色经中文映射上屏（未知回退原文）；租户不进主行（禁裸 ID，租户只在弹层）。 */}
                 <span className="truncate text-[10px] text-muted-foreground" data-testid="idn5-role">
                   {who.role}
                 </span>
