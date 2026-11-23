@@ -402,3 +402,28 @@
   border-bottom: 1px dashed var(--color-border);
   cursor: help;
 }
+
+/* OM-13: 摘要复制——按钮态与失败兜底文本域（可选中手动复制，不假装成功） */
+.ov5-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.ov5-copy [data-testid="ov6-summary-copy-ok"],
+.ov5-copy [data-testid="ov6-summary-copy-fail"] {
+  font-size: var(--font-size-1); /* 12px，令牌化以守字阶棘轮（font-scale 丁） */
+  color: var(--color-muted-foreground);
+}
+section.ov5-page > textarea[data-testid="ov6-summary-fallback"] {
+  width: 100%;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: var(--font-size-1); /* 同上：不新增离阶字面量 */
+  line-height: 1.5;
+  white-space: pre;
+  resize: vertical;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 8px;
+  background: var(--color-background, #fff);
+  color: var(--color-foreground);
+}

@@ -165,3 +165,33 @@ export function blockerRows(input: {
 }) {
   return buildBlockers(input.failedRuns, input.blockedTasks, input.approvals);
 }
+
+export interface OverviewSummaryRow {
+  label: string;
+  value: string;
+  source: string | null;
+  stamp: string | null;
+}
+
+/**
+ * OM-13（重放）：运营总览摘要纯文本。
+ * 纯函数：不发请求、不做金额反推；缺值一律「—」，与卡面同源同词。
+ * 成本口径句必须逐字引用 metrics/costCaliberNote 的单源常量，禁止再造第二套词汇。
+ */
+export function overviewSummaryText(input: {
+  asOf: string | null;
+  rows: OverviewSummaryRow[];
+  costCaliber?: string;
+}): string {
+  const lines = [
+    '运营总览摘要',
+    input.asOf
+      ? `数据截至 ${input.asOf}（北京时间）`
+      : '数据截至 —（只认上游采集时间，前端时钟不顶替）',
+  ];
+  for (const row of input.rows) {
+    lines.push(`- ${row.label}：${row.value}｜来源 ${row.source ?? '—'}｜采集时刻 ${row.stamp ?? '—'}`);
+  }
+  if (input.costCaliber) lines.push(`成本口径：${input.costCaliber}`);
+  return lines.join('\n');
+}

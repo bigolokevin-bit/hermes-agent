@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router';
-import { AlertTriangle, ArrowRight, Gauge, RefreshCw, ShieldAlert, Users } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Copy, Gauge, RefreshCw, ShieldAlert, Users } from 'lucide-react';
 import { Badge } from '@nous-research/ui/ui/components/badge';
 import { Button } from '@nous-research/ui/ui/components/button';
 import { Card, CardContent } from '@nous-research/ui/ui/components/card';
@@ -10,11 +10,16 @@ import { beijing, dashed, employeeLabel, shortId, usd } from '../duty/format';
 import { useDutyData, type DutyData } from '../duty/useDutyData';
 import { DUTY_RANGES, DEFAULT_DUTY_RANGE, dutyRange, parseDutyRange, type DutyRangeId } from '../duty/dutyRange';
 import type { Loadable, MatrixBody, RunStatsBody } from '../duty/types';
-import { buildKpis, blockerRows, sourceStamp, trendPoints, OVERVIEW_GAP } from './overview';
+import { buildKpis, blockerRows, overviewSummaryText, sourceStamp, trendPoints, OVERVIEW_GAP, type OverviewSummaryRow } from './overview';
+import { fetchHermesSummary, type HermesSummaryBody } from './api';
+import { COST_CALIBER_TEXT } from '../metrics/costCaliberNote';
 import './overview.css';
 
 type Forced = 'loading' | 'empty' | 'error';
 type StampSource = { source: string; state: Loadable<unknown> };
+
+// OM-15：服务探针状态词表——只翻译 hermes-summary 真读数，没有读数就是未接。
+const HEALTH_LABEL: Record<string, string> = { ok: '正常', degraded: '降级', down: '异常' };
 
 function RequestId({ id }: { id: string | null }) {
   const [copied, setCopied] = useState(false);
@@ -312,6 +317,7 @@ function Blockers({ data, onRetry }: { data: DutyData; onRetry: () => void }) {
 export function OverviewView({
   data,
   matrix,
+  probe,
   loading,
   onRetry,
   rangeId = DEFAULT_DUTY_RANGE,
@@ -320,6 +326,8 @@ export function OverviewView({
 }: {
   data: DutyData;
   matrix: Loadable<MatrixBody>;
+  /** OM-15：服务探针读数（hermes-summary）；缺席按读取中，不猜测。 */
+  probe?: Loadable<HermesSummaryBody>;
   loading: boolean;
   onRetry: () => void;
   /** OM-04：?range= 四档窗口；onRange 缺席时（夹具直渲染）不画分段控件。 */
@@ -355,6 +363,87 @@ export function OverviewView({
   const allError = coreStates.every((state) => state.k === 'error');
   const anyLoading = coreStates.some((state) => state.k === 'loading');
   const firstError = coreStates.find((state) => state.k === 'error');
+
+  // OM-15：健康卡两段式——服务探针真读数（gateway.status/updated_at），本页读数只做合成脚注。
+  const probeState: Loadable<HermesSummaryBody> = probe ?? { k: 'loading' };
+  const probeGateway = probeState.k === 'ready' ? probeState.data.gateway : null;
+  const probeUpdatedAt =
+    probeGateway && typeof probeGateway.updated_at === 'string' && probeGateway.updated_at
+      ? probeGateway.updated_at
+      : null;
+  const probeStatus =
+    probeGateway && typeof probeGateway.status === 'string' && probeGateway.status
+      ? probeGateway.status
+      : null;
+  const probeForStamp: Loadable<unknown> =
+    probeState.k === 'ready' ? { k: 'ready', data: { asOf: probeUpdatedAt } } : (probeState as Loadable<unknown>);
+  const probeText = probeStatus
+    ? HEALTH_LABEL[probeStatus] ?? probeStatus
+    : probeState.k === 'error'
+      ? '未接'
+      : '—';
+
+  // OM-13：摘要复制——纯函数拼文本，不新增请求、不做金额反推，缺值一律「—」。
+  const asOfShown = (state: { k: string } | null | undefined): string | null =>
+    state && state.k === 'ready' ? sourceStamp(state as Loadable<unknown>).shown : null;
+  const summaryRows: OverviewSummaryRow[] = [
+    {
+      label: '员工',
+      value: `在编 ${dashed(kpis.total)} · 在岗 ${dashed(kpis.active)} · 有风险 ${dashed(kpis.atRisk)}`,
+      source: '员工统计 / 风险矩阵',
+      stamp: [sourceStamp(data.stats).shown, sourceStamp(matrix).shown].filter(Boolean).sort().pop() ?? null,
+    },
+    {
+      label: '今日运行',
+      value: `今日 ${dashed(kpis.runs)} · 失败 ${dashed(kpis.failed)} · 失败率 ${kpis.failureRate === null ? '—' : `${kpis.failureRate}%`}`,
+      source: '运行统计（今日）',
+      stamp: sourceStamp(data.todayStats).shown,
+    },
+    { label: '待审批', value: dashed(kpis.pending), source: '审批统计', stamp: sourceStamp(data.approvalStats).shown },
+    {
+      label: '今日成本',
+      value: kpis.costUsd === null ? '—' : usd(kpis.costUsd),
+      source: '成本账本（日）',
+      stamp: sourceStamp(data.budgetDay).shown,
+    },
+    { label: '健康检查（服务探针）', value: probeText, source: 'GET /api/hermes-summary', stamp: sourceStamp(probeForStamp).shown },
+  ];
+  const summaryAsOf =
+    [
+      asOfShown(data.stats), asOfShown(data.todayStats), asOfShown(data.approvalStats),
+      asOfShown(data.budgetDay), asOfShown(probeForStamp),
+    ]
+      .filter((s): s is string => Boolean(s))
+      .sort()
+      .pop() ?? null;
+  const summaryRowsKey = summaryRows.map((r) => `${r.label}|${r.value}|${r.source}|${r.stamp}`).join(';');
+  const summaryText = useMemo(
+    () => overviewSummaryText({ asOf: summaryAsOf, rows: summaryRows, costCaliber: COST_CALIBER_TEXT }),
+    // rows 每次渲染重建，以序列化键比较避免无谓重算；不读浏览器时钟。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [summaryAsOf, summaryRowsKey],
+  );
+  const [copyState, setCopyState] = useState<'idle' | 'ok' | 'fail'>('idle');
+  const fallbackRef = useRef<HTMLTextAreaElement | null>(null);
+  const copySummary = useCallback(() => {
+    const fail = () => {
+      setCopyState('fail');
+      try {
+        fallbackRef.current?.focus();
+        fallbackRef.current?.select();
+      } catch {
+        // jsdom 没有实现 select，忽略。
+      }
+    };
+    if (typeof navigator.clipboard?.writeText === 'function') {
+      navigator.clipboard.writeText(summaryText).then(
+        () => setCopyState('ok'),
+        fail,
+      );
+    } else {
+      fail();
+    }
+  }, [summaryText]);
 
   const allReady = coreStates.every((state) => state.k === 'ready');
   if (allReady && kpis.total === 0 && kpis.runs === 0 && kpis.pending === 0) {
@@ -423,11 +512,27 @@ export function OverviewView({
               窗口参数无效，按{range.label}读取
             </span>
           ) : null}
+          <span className="ov5-copy" data-testid="ov6-summary-copy-wrap">
+            <Button size="sm" outlined prefix={<Copy className="h-3.5 w-3.5" aria-hidden />} data-testid="ov6-summary-copy" onClick={copySummary}>复制摘要</Button>
+            {copyState === 'ok' ? <span role="status" data-testid="ov6-summary-copy-ok">已复制到剪贴板</span> : null}
+            {copyState === 'fail' ? <span role="status" data-testid="ov6-summary-copy-fail">复制失败：已选中摘要文本，可手动复制。</span> : null}
+          </span>
         </div>
         <Button size="sm" outlined onClick={onRetry} disabled={loading || anyLoading} aria-busy={loading || anyLoading} data-testid="ov6-refresh" prefix={<RefreshCw className={`h-3.5 w-3.5 ${loading || anyLoading ? 'ov5-spin' : ''}`} />}>
           刷新
         </Button>
       </header>
+
+      {copyState === 'fail' ? (
+        <textarea
+          ref={fallbackRef}
+          readOnly
+          rows={6}
+          aria-label="总览摘要文本"
+          data-testid="ov6-summary-fallback"
+          value={summaryText}
+        />
+      ) : null}
 
       <AsofLine states={[data.stats, data.todayStats, data.employees, data.approvalStats, data.budgetDay]} />
 
@@ -444,7 +549,7 @@ export function OverviewView({
           <ShieldAlert className="ov5-watermark" aria-hidden />
         </KpiCard>
         <KpiCard title="今日成本" value={kpis.costUsd === null ? '—' : usd(kpis.costUsd)} foot={kpis.costPartial ? <>账本未覆盖全部员工{kpis.costMissing > 0 ? `（${kpis.costMissing} 人缺账本）` : ''}</> : <>美元 · 账本实扣</>} source="成本账本（日）" stamps={[{ source: '成本账本', state: data.budgetDay }]} testid="ov6-kpi-cost" issues={[{ label: '成本账本', state: data.budgetDay, gap: OVERVIEW_GAP.cost }]} onRetry={onRetry} note={kpis.costUsd === null ? '成本口径未齐' : null} noteTitle={kpis.costUsd === null ? OVERVIEW_GAP.cost : undefined} />
-        <KpiCard title="健康检查" value={`${healthSources.filter((s) => s.state.k === 'ready').length}/${healthSources.length} 来源正常`} foot={<span>{healthSources.every((s) => s.state.k === 'ready') ? '全部来源已读到' : healthSources.filter((s) => s.state.k !== 'ready').map((s) => `${s.label}未就绪`).join(' · ')}</span>} source="本页数据源实时聚合" stamps={[{ source: '运行统计', state: data.todayStats }]} testid="ov6-kpi-health" issues={[]} onRetry={onRetry} note="独立健康探针未接入" noteTitle={OVERVIEW_GAP.health} />
+        <KpiCard title="健康检查（服务探针）" value={probeText} foot={<span>{healthSources.every((s) => s.state.k === 'ready') ? '本页六路读数全部就绪' : healthSources.filter((s) => s.state.k !== 'ready').map((s) => `${s.label}未就绪`).join(' · ')}（本页读数合成状态，不等于服务健康）</span>} source="GET /api/hermes-summary" stamps={[{ source: '服务探针', state: probeForStamp }]} testid="ov6-kpi-health" issues={probeState.k === 'error' ? [{ label: '服务探针', state: probeState as Loadable<unknown>, gap: OVERVIEW_GAP.health }] : []} onRetry={onRetry} note={probeState.k === 'ready' && !probeStatus ? '服务探针未返回状态；不以本页读数冒充。' : null} noteTitle={OVERVIEW_GAP.health} />
       </div>
 
       <div className="ov5-grid">
@@ -460,23 +565,32 @@ function LiveOverview({ rangeId, onRange, rangeInvalid }: { rangeId: DutyRangeId
   // OM-04④：总览不渲染活动热力，活动腿关掉（不请求），DutyPage 默认档不受影响。
   const { data, reload, loading } = useDutyData(rangeId, { activity: false });
   const [matrix, setMatrix] = useState<Loadable<MatrixBody>>({ k: 'loading' });
+  // OM-15：服务探针独立腿；取不到就显示未接，不拿本页读数冒充服务健康。
+  const [probe, setProbe] = useState<Loadable<HermesSummaryBody>>({ k: 'loading' });
 
   const loadMatrix = useCallback(() => {
     setMatrix({ k: 'loading' });
     void load(fetchMatrix).then(setMatrix);
   }, []);
 
+  const loadProbe = useCallback(() => {
+    setProbe({ k: 'loading' });
+    void load(fetchHermesSummary).then(setProbe);
+  }, []);
+
   useEffect(() => {
     loadMatrix();
-  }, [loadMatrix]);
+    loadProbe();
+  }, [loadMatrix, loadProbe]);
 
   const retry = useCallback(() => {
     loadMatrix();
+    loadProbe();
     reload();
-  }, [loadMatrix, reload]);
+  }, [loadMatrix, loadProbe, reload]);
 
   const hasError =
-    matrix.k === 'error' || Object.values(data).some((state) => state.k === 'error');
+    matrix.k === 'error' || probe.k === 'error' || Object.values(data).some((state) => state.k === 'error');
 
   // The domain service can restart underneath us. Keep one quiet retry in
   // flight while any source is down so a recovered service fills in without
@@ -487,7 +601,7 @@ function LiveOverview({ rangeId, onRange, rangeInvalid }: { rangeId: DutyRangeId
     return () => window.clearTimeout(timer);
   }, [hasError, retry]);
 
-  return <OverviewView data={data} matrix={matrix} loading={loading} onRetry={retry} rangeId={rangeId} onRange={onRange} rangeInvalid={rangeInvalid} />;
+  return <OverviewView data={data} matrix={matrix} probe={probe} loading={loading} onRetry={retry} rangeId={rangeId} onRange={onRange} rangeInvalid={rangeInvalid} />;
 }
 
 export function OverviewPage() {
