@@ -30,14 +30,15 @@ import { Input } from "@nous-research/ui/ui/components/input";
 import { Spinner } from "@nous-research/ui/ui/components/spinner";
 
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { failureInfo, isWriteUnavailable, postDecision, type Verdict } from "./api";
+import { failureInfo, postDecision, readBackDecisionTicket, type Verdict } from "./api";
 import { writeFailure, type FailureCopy } from "./copy";
+import { submitDecisionWithRecovery } from "./decisionOutcome";
 import type { ApprovalRow } from "./model";
 import { approvalSortKeyOf, approvalsRowSearchText, sortApprovalRows, type ApprovalSortDir, type ApprovalSortKey } from "./model";
 import { DeniedPanel, EmptyPanel, ErrorPanel, InlineFailure, LoadingPanel } from "./states";
 import { useApprovalDetail, useApprovalsList, type ForcedState } from "./useApprovalsData";
 import { actionGates, announcement, crossPageLoadHint } from "./gates";
-import { DECISION_GATE } from "./writeGate";
+import { DECISION_GATE, missingHashReasonFor } from "./writeGate";
 import { QueueSummaryBar, denominatorReadout } from "./QueueSummaryBar";
 import { clearFilterParams, hasActiveFilters, resetTitle } from "./FilterReset";
 import { FilterSummary } from "./FilterSummary";
@@ -143,7 +144,10 @@ export function ApprovalsPendingModulePage(): ReactNode {
   const [comment, setComment] = useState("");
   const [confirming, setConfirming] = useState<Verdict | null>(null);
   const [inFlight, setInFlight] = useState(false);
-  const [refused, setRefused] = useState<FailureCopy | null>(null);
+  // AP-05: 「知道没成」与「结果未知」分两个 action 前缀——未知腿绝不写成失败。
+  const [refused, setRefused] = useState<{ copy: FailureCopy; action: string } | null>(null);
+  // AP-05 ②③: 成功侧回填票面（重放/读回落定），role=status，不是弹窗不是错误。
+  const [decisionFace, setDecisionFace] = useState<FailureCopy | null>(null);
 
   const list = useApprovalsList("pending", forced);
   const detail = useApprovalDetail(selected, forced);
@@ -393,6 +397,7 @@ export function ApprovalsPendingModulePage(): ReactNode {
       // R60: 打开详情与行内预览互斥，收起所有预览。
       setPreviewKey(null);
       setRefused(null);
+      setDecisionFace(null);
       setComment("");
       setConfirming(null);
       // R55: stash the list scroll so 返回列表 restores it.
@@ -449,29 +454,48 @@ export function ApprovalsPendingModulePage(): ReactNode {
     setActiveRowKey(null);
   }, [firstRowKey]);
 
+  /**
+   * AP-05：提交的分支判定收进 submitDecisionWithRecovery 单点（②重放回填票面、
+   * ③未知结果先 GET 读回、绝不盲发第二次 POST）；这里只做结局→状态的映射。
+   * 409/404 语义不变：单据动过了就重读它，而不是把服务已不认同的票面留在屏上。
+   */
   const send = useCallback(
     async (verdict: Verdict) => {
       if (!selected) return;
       setInFlight(true);
       setRefused(null);
-      try {
-        await postDecision(selected, verdict, comment);
-        setConfirming(null);
-        setComment("");
-        list.reload();
-        detail.reload();
-      } catch (err) {
-        const info = failureInfo(err);
-        setConfirming(null);
-        setRefused(writeFailure(err, verdict, info));
-        // 409/404 mean the ticket moved without us: re-read it rather than keep
-        // a body on screen that the service no longer agrees with.
-        if (info.status === 409 || info.status === 404 || isWriteUnavailable(info.status)) {
+      setDecisionFace(null);
+      const outcome = await submitDecisionWithRecovery(selected, verdict, comment, {
+        post: postDecision,
+        readBack: readBackDecisionTicket,
+      });
+      setConfirming(null);
+      switch (outcome.kind) {
+        case "recorded":
+          setComment("");
+          list.reload();
           detail.reload();
-        }
-      } finally {
-        setInFlight(false);
+          break;
+        case "replay":
+        case "readback-settled":
+          // 成功侧：回填票面渲染，不进错误弹窗、不当失败；照旧重读，屏上永远是服务说的。
+          setComment("");
+          setDecisionFace(outcome.face);
+          list.reload();
+          detail.reload();
+          break;
+        case "failure":
+          setRefused({ copy: outcome.copy, action: "决定没有提交" });
+          if (outcome.reloadTicket) detail.reload();
+          break;
+        case "readback-pending":
+        case "readback-unreadable":
+          // 结果未知：如实说未知，不写「决定没有提交」，也不自动补发——
+          // 出口只剩人工重读（InlineFailure 的「重新读取这张单」按钮走 detail.reload）。
+          setRefused({ copy: outcome.copy, action: "提交结果未知" });
+          break;
       }
+      setInFlight(false);
     },
     [comment, detail, list, selected],
   );
@@ -531,10 +555,22 @@ export function ApprovalsPendingModulePage(): ReactNode {
     }
     const actions = detail.detail.status.pending ? (
       <div className="flex min-w-0 flex-col gap-2 border-t border-border pt-3" data-testid="apr5-actions">
-        {refused ? (
+        {decisionFace ? (
+          // AP-05 ②③: 重放/读回落定走成功侧票面回填——role=status、无 alert、
+          // 无「重新提交」钮；措辞单点在 copy.ts（复用 DecisionTrail 票面词）。
+          <div
+            className="flex min-w-0 flex-col items-start gap-1 rounded-md border border-border bg-card px-3 py-2"
+            role="status"
+            data-testid="apr5-decision-face"
+          >
+            <p className="max-w-prose min-w-0 break-words text-xs" data-testid="apr5-decision-face-sentence">
+              {decisionFace.sentence}
+            </p>
+          </div>
+        ) : refused ? (
           <InlineFailure
-            failure={refused}
-            action="决定没有提交"
+            failure={refused.copy}
+            action={refused.action}
             onRetry={detail.reload}
             retryLabel="重新读取这张单"
           />
@@ -588,6 +624,19 @@ export function ApprovalsPendingModulePage(): ReactNode {
         <p className="max-w-prose min-w-0 break-words text-xs text-muted-foreground" data-testid="apr5-actions-readonly-note">
           {DECISION_GATE.title}
         </p>
+        {/* AP-05 ①（总控裁定偏差见 DONE-AP-05）：本轮未开闸，「指纹缺失」不接按钮
+            合取，落为禁用原因段的第二条数据侧原因，与上一句同屏并存；判据只认
+            详情读回的 actionHash（actionHash/action_hash/argsDigest 一族），缺即说、
+            有即不说——不推断、不补造。钮的 title 仍单源 DECISION_GATE（AP-07② 契约）。 */}
+        {missingHashReasonFor(detail.detail.actionHash) ? (
+          <p
+            className="max-w-prose min-w-0 break-words text-xs text-muted-foreground"
+            data-testid="apr5-actions-hash-missing-note"
+            title="判据源：详情响应的 actionHash/action_hash/argsDigest 一族键；缺值即缺失，不从其它字段推断。"
+          >
+            {missingHashReasonFor(detail.detail.actionHash)}
+          </p>
+        ) : null}
       </div>
     ) : (
       <p className="min-w-0 break-words border-t border-border pt-3 text-xs text-muted-foreground">

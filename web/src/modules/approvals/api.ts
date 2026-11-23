@@ -193,3 +193,24 @@ export function isDenied(status: number): boolean {
 export function isWriteUnavailable(status: number): boolean {
   return status === 405 || status === 501;
 }
+
+/**
+ * AP-05 ③ 判据：这条失败是否属于「结果未知」——请求已出网、答复没拿到
+ * （0=连不上/超时，-1=传输层异常）。`CsrfMissingError` 是唯一例外：它拦在
+ * 网络之前，决定确定没有送出，不算未知。服务答了话的失败（4xx/5xx）都是
+ * 已知结果，走既有 writeFailure 逐码句，不进读回腿。
+ */
+export function isUnknownOutcome(err: unknown, info: FailureInfo): boolean {
+  if (err instanceof CsrfMissingError) return false;
+  return info.status === 0 || info.status === -1;
+}
+
+/**
+ * AP-05 ③：结果未知后的唯一后继——恰好一次 GET 读回票面（同一个详情读口
+ * `/api/approval?id=`，看 status/decisions 再决定；deep/03 §3.4 口径）。
+ * 本函数只读不写；submitDecisionWithRecovery 的每个未知分支只调它一次、
+ * 绝不重发 POST（approvals.idempotency.test.tsx 以请求计数钉死第二 POST 不发生）。
+ */
+export async function readBackDecisionTicket(id: string): Promise<ApprovalDetail | null> {
+  return fetchDetail(id);
+}

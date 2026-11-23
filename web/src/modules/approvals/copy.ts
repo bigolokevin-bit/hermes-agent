@@ -7,7 +7,7 @@
  */
 import { errorMessage } from "@/lib/api-error";
 import { isDenied } from "./api";
-import { humanSentence } from "./model";
+import { humanSentence, type ApprovalDetail } from "./model";
 
 export interface FailureCopy {
   /** What the panel says. */
@@ -94,4 +94,66 @@ export function recordsFailureSentence(status: number): string {
   if (status === 400) return "这条读取没被审计读口接受（它要求至少一个过滤条件），请重新读取一次。";
   if (status >= 500) return "审计服务在处理这条读取时出了错，请稍后重新读取。";
   return "审计读口这次没有答成，处理记录保持未读取。";
+}
+
+/* ------------------------------------------------------------------ *
+ * AP-05 ②③ — 提交结果的「回填票面」与「结果未知」句（单点措辞）。
+ *
+ * 域口径（services/domain/approvals.py decide_approval，盘读 2026-11-24）：
+ * 幂等键＝(approval_id, user_id)；同键重放（含双击）答 200 并带回整张票面，
+ * 这些分支是成功侧——措辞不出现「失败/出错/没能」，票面节点沿用 DecisionTrail
+ * 的「who · 结论 · 时间 · 意见」形制与 TRAIL_FACE_RECORDED 标注。
+ * 200+票面已落定 ⇒ 该键的票必在单上（fresh 记票、重放认票、并发认票三条 200
+ * 路径都以「本票已在 decisions[]」为前提），「你已经投过票」为真话；
+ * 超时读回落定 ⇒ 不认领是谁投的，只报读回票面。
+ * ------------------------------------------------------------------ */
+
+/** 票面节点取法：优先与本次 verdict 同向的最后一张票，取不到落票面末张。 */
+function faceEntry(detail: ApprovalDetail, verdict: "approve" | "reject") {
+  const mine = detail.decisions.filter((e) => e.verdictRaw?.trim().toLowerCase() === verdict);
+  return mine.length > 0 ? mine[mine.length - 1] : detail.decisions[detail.decisions.length - 1] ?? null;
+}
+
+const faceNode = (entry: { verdict: string; at: string | null; note: string | null } | null): string =>
+  entry === null
+    ? "票面节点未随响应带回，读回后以决策链路为准"
+    : `${entry.verdict} · ${entry.at ?? "该字段未返回"} · 意见：${entry.note ?? "未填"}`;
+
+/**
+ * ②同键重放/双击的票面回填句（成功侧）。requestId 恒 null：这条答复
+ * 本身是 200，没有失败请求号可报，不编一个。
+ */
+export function replayFaceCopy(detail: ApprovalDetail, verdict: "approve" | "reject"): FailureCopy {
+  return {
+    sentence: `你已经投过票：${faceNode(faceEntry(detail, verdict))} · ${TRAIL_FACE_RECORDED}。再次提交只会回到这同一张票面，不会产生第二票。`,
+    requestId: null,
+    technical: detail.status.raw ? `票面状态原值：${detail.status.raw}` : null,
+  };
+}
+
+/** ③读回后票面已落定：以读回为准，不认领投票人，不重发。 */
+export function settledReadbackCopy(detail: ApprovalDetail, verdict: "approve" | "reject"): FailureCopy {
+  return {
+    sentence: `这次提交没等到回执，读回的票面显示这张单已落定为「${detail.status.label}」：票面 ${faceNode(faceEntry(detail, verdict))}。以服务读回的票面为准，这里不自动重发决定。`,
+    requestId: null,
+    technical: detail.status.raw ? `票面状态原值：${detail.status.raw}` : null,
+  };
+}
+
+/** ③读回后票面没有落定结论：这条票记没记上确认不了，交人工，不自动重发。 */
+export function pendingReadbackCopy(detail: ApprovalDetail): FailureCopy {
+  return {
+    sentence: `这次提交没等到回执；读回的票面没有显示这张单已落定（状态读数「${detail.status.label}」）。你的决定是否记上无法从票面确认——这里不会自动重发，请人工核对这张单后再决定是否再投。`,
+    requestId: null,
+    technical: detail.status.raw ? `票面状态原值：${detail.status.raw}` : null,
+  };
+}
+
+/** ③连读回也没答成：结果未知，给手动重读出口，不自动重发。 */
+export function unreadableReadbackCopy(): FailureCopy {
+  return {
+    sentence: "这次提交没等到回执，票面也没能读回：结果未知。这里不会自动重发决定；请稍后用「重新读取这张单」确认它的真实状态。",
+    requestId: null,
+    technical: null,
+  };
 }
