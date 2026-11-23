@@ -202,4 +202,18 @@ approvals?status=all —— **零渠道事件读口**，与 §2.1 的源码面 g
 
 - DU-04 本件：**已完成（A 路）**。
 - 挂起项（不阻塞 DU-05～DU-08）：§3 的 B 路裁定，归 D 车道/参谋。
-- 待决策条目已同步进板仓 note/todo（回执里点名）。
+- 待决策条目已同步进板仓 todo（`DU-04 B 路：BFF 可否代理已存在的 C8 只读列表口`）。
+
+## 7. 落点
+
+- 链：DU-01 `6152e45cfd` → DU-02 `c7cb3fc241` → DU-03 `784a7d80ca` → **DU-04（本件 tip）**。
+- 提交面：`git diff --cached --name-only` = DONE-DU-04.md、aggregate.ts、readiness.ts、
+  duty.channelVerdict.test.ts（4 件，evidence/ 未提交，`--no-verify`/`force` 零使用，
+  pre-commit 的 `lint web` 实跑通过）。
+- push 与 commit 同批完成。代码笔全长 sha：`8f428f3b74542ab1149dc7020942ce94284d9809`；
+  本文档随后还有一笔只含 §7 收口的文档笔，**分支最终 tip 以定向 ref 回读为准**（回执贴原文）：
+
+```console
+$ git ls-remote origin refs/heads/task/DU-04-channel-verdict
+8f428f3b74542ab1149dc7020942ce94284d9809	refs/heads/task/DU-04-channel-verdict   ← 代码笔读数
+```
