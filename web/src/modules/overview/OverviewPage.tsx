@@ -151,6 +151,10 @@ function KpiCard({
 
 function Trend({ stats, label = '近 14 天', days = 14, onRetry }: { stats: Loadable<RunStatsBody>; label?: string; days?: number; onRetry: () => void }) {
   const points = stats.k === 'ready' ? trendPoints(stats.data, days) : [];
+  // OM-06 数据契约：全缺桶（未返回）与全真零各走各的空态文案，都不画骨架/4px 柱；
+  // max(1,…) 防除零；混合窗（有数有缺）照常逐桶画，缺桶保留 is-missing 形。
+  const allMissing = points.length > 0 && points.every((p) => p.runs === null);
+  const allZero = points.length > 0 && points.every((p) => p.runs === 0);
   const max = Math.max(1, ...points.map((p) => p.runs ?? 0));
   return (
     <Card className="ov5-block" data-testid="ov6-trend" data-duty-testid="duty-trend">
@@ -168,10 +172,14 @@ function Trend({ stats, label = '近 14 天', days = 14, onRetry }: { stats: Loa
             <RequestId id={stats.requestId} />
             <Button size="sm" outlined onClick={onRetry} data-testid="ov6-trend-retry">重试</Button>
           </div>
-        ) : points.length === 0 ? (
+        ) : points.length === 0 || allZero ? (
           <div className="ov5-empty-line">
             <span>{label}还没有运行记录，所以没有趋势可画。</span>
             <Link to="/runs">去看运行记录<ArrowRight className="h-3.5 w-3.5" /></Link>
+          </div>
+        ) : allMissing ? (
+          <div className="ov5-empty-line" data-testid="ov6-trend-missing">
+            <span>{label}的运行数据没有返回，所以画不出趋势。</span>
           </div>
         ) : (
           <>
