@@ -1022,7 +1022,12 @@ describe('MetricsModulePage — met8 cost share by employee', () => {
     expect(document.querySelector('[data-testid="met8-cost-aaaabbbb"]')?.textContent).toBe('$0.00');
     expect(document.querySelector('[data-testid="met8-cost-ddddeeee"]')?.textContent).toBe('—');
     expect(document.querySelector('[data-testid="met8-share-aaaabbbb"]')?.textContent).toBe('—');
-    expect(text()).not.toContain('0.0%');
+    // The byModel block may legitimately show 100.0% for a single-row ledger; the
+    // zero-vs-missing contract here is pinned by the met8-* rows above, so the
+    // whole-page scan excludes the byModel subtree.
+    const pageClone = document.body.cloneNode(true) as HTMLElement;
+    pageClone.querySelector('[data-testid="metBM-by-model"]')?.remove();
+    expect(pageClone.textContent ?? '').not.toContain('0.0%');
   });
 });
 

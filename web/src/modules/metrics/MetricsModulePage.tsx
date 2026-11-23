@@ -771,9 +771,38 @@ export function MetricsModulePage() {
     });
   }, [weeks]);
 
+  // Q14-FIX — the byModel block does not own a request: the page already reads
+  // /api/hermes-usage wherever a model axis is shown, so the block parses the
+  // SAME body instead of asking the source a second time. Ownership follows the
+  // reader of that axis: share table (groupBy=model) > detail body (view=model)
+  // > the standalone fallback loader below (neither axis reads usage then).
+  const applyByModelBody = useCallback(
+    (signal: { live: boolean }, body: unknown, windowId: UsageWindowId) => {
+      const days = Math.max(1, Math.round(usageWindowOf(windowId).hours / 24));
+      const parsed = readModelBreakdown(body);
+      if (!signal.live) return;
+      if (parsed.kind === 'invalid') {
+        setByModel({ kind: 'unavailable', reason: parsed.reason, gap: USAGE_GAP, requestId: null });
+        return;
+      }
+      setByModel({
+        kind: 'ready',
+        value: { rows: sortModelBreakdown(parsed.rows), asOf: parsed.asOf, days, costSource: parsed.costSource },
+      });
+    },
+    [],
+  );
+
   const loadBreakdown = useCallback(
-    async (signal: { live: boolean }, windowId: UsageWindowId, view: 'employee' | 'model') => {
+    async (
+      signal: { live: boolean },
+      windowId: UsageWindowId,
+      view: 'employee' | 'model',
+      groupByNow: 'employee' | 'model',
+    ) => {
       setBreakdown({ kind: 'loading' });
+      // Owner mirror: this read carries the block when the share axis is not model.
+      if (view === 'model' && groupByNow !== 'model') setByModel({ kind: 'loading' });
       const preset = usageWindowOf(windowId);
       const days = Math.max(1, Math.round(preset.hours / 24));
       const now = new Date();
@@ -787,7 +816,11 @@ export function MetricsModulePage() {
       }
       try {
         if (view === 'model') {
-          const parsed = readModelUsage(await loadJson(`/agent-api/api/hermes-usage?days=${days}`));
+          // byModel ownership: when the share table is not the model axis, the
+          // detail body's read is the one usage read on the page — ride it too.
+          const usageBody = await loadJson(`/agent-api/api/hermes-usage?days=${days}`);
+          if (groupByNow !== 'model') applyByModelBody(signal, usageBody, windowId);
+          const parsed = readModelUsage(usageBody);
           if (parsed.kind === 'invalid') {
             setBreakdown({ kind: 'unavailable', reason: parsed.reason, gap: null, requestId: null });
             return;
@@ -869,19 +902,22 @@ export function MetricsModulePage() {
       } catch (error) {
         if (!signal.live) return;
         setBreakdown({ kind: 'unavailable', ...blockFailure(error) });
+        // When this read is the block's owner (model detail without a model share
+        // table), the failure belongs to the byModel block as well.
+        if (view === 'model' && groupByNow !== 'model') setByModel({ kind: 'unavailable', ...blockFailure(error) });
       }
     },
-    [loadJson],
+    [loadJson, applyByModelBody],
   );
 
   useEffect(() => {
     if (forced) return;
     const signal = { live: true };
-    void loadBreakdown(signal, usageWindow.id, viewMode);
+    void loadBreakdown(signal, usageWindow.id, viewMode, groupBy);
     return () => {
       signal.live = false;
     };
-  }, [attempt, forced, loadBreakdown, usageWindow.id, viewMode]);
+  }, [attempt, forced, loadBreakdown, usageWindow.id, viewMode]); // eslint-disable-line react-hooks/exhaustive-deps -- groupBy is an argument, not a driver: switching it re-lands byModel through the loadShare / loadByModel effects, so this loader must not refetch the whole ledger on a grouping toggle.
 
   const loadHeat = useCallback(async (signal: { live: boolean }) => {
     setHeat({ kind: 'loading' });
@@ -1076,11 +1112,16 @@ export function MetricsModulePage() {
 
   const loadShare = useCallback(async (signal: { live: boolean }, windowId: UsageWindowId, view: 'model' | 'employee') => {
     setShare({ kind: 'loading' });
+    // Owner mirror: the model share read carries the byModel block.
+    if (view === 'model') setByModel({ kind: 'loading' });
     const preset = usageWindowOf(windowId);
     const days = Math.max(1, Math.round(preset.hours / 24));
     try {
       if (view === 'model') {
-        const parsed = readModelCost(await loadJson(`/agent-api/api/hermes-usage?days=${days}`));
+        // byModel rides this read (ownership: the share table is the model axis).
+        const usageBody = await loadJson(`/agent-api/api/hermes-usage?days=${days}`);
+        applyByModelBody(signal, usageBody, windowId);
+        const parsed = readModelCost(usageBody);
         if (!signal.live) return;
         if (parsed.kind === 'invalid') {
           setShare({ kind: 'unavailable', reason: parsed.reason, gap: USAGE_GAP, requestId: null });
@@ -1123,8 +1164,9 @@ export function MetricsModulePage() {
     } catch (error) {
       if (!signal.live) return;
       setShare({ kind: 'unavailable', ...blockFailure(error) });
+      if (view === 'model') setByModel({ kind: 'unavailable', ...blockFailure(error) });
     }
-  }, [loadJson]);
+  }, [loadJson, applyByModelBody]);
 
   useEffect(() => {
     if (forced) return;
@@ -1135,37 +1177,50 @@ export function MetricsModulePage() {
     };
   }, [attempt, forced, groupBy, loadShare, usageWindow.id]);
 
-  // Q14 — the model axis in one read: /api/hermes-usage?days=N is the only
-  // BFF endpoint that already carries per-model data, so the block never
-  // invents a second source. A failed read lands on this block only.
-  const loadByModel = useCallback(async (signal: { live: boolean }, windowId: UsageWindowId) => {
-    setByModel({ kind: 'loading' });
-    const preset = usageWindowOf(windowId);
-    const days = Math.max(1, Math.round(preset.hours / 24));
-    try {
-      const parsed = readModelBreakdown(await loadJson(`/agent-api/api/hermes-usage?days=${days}`));
-      if (!signal.live) return;
-      if (parsed.kind === 'invalid') {
-        setByModel({ kind: 'unavailable', reason: parsed.reason, gap: USAGE_GAP, requestId: null });
-        return;
+  // Q14 — the byModel block reads /api/hermes-usage?days=N, the one BFF endpoint
+  // carrying per-model data; it never invents a second source.
+  // Q14-FIX — fallback only. Ownership follows the readers of that source: the
+  // share table when groupBy=model, the detail body when view=model (both toggles
+  // are pinned to NOT refetch usage, so the axes arrive as arguments). This leg
+  // reads the source only when no model axis does — one mount, one read.
+  const loadByModel = useCallback(
+    async (
+      signal: { live: boolean },
+      windowId: UsageWindowId,
+      groupByNow: 'employee' | 'model',
+      viewNow: 'employee' | 'model',
+    ) => {
+      if (groupByNow === 'model' || viewNow === 'model') return;
+      setByModel({ kind: 'loading' });
+      const preset = usageWindowOf(windowId);
+      const days = Math.max(1, Math.round(preset.hours / 24));
+      try {
+        const parsed = readModelBreakdown(await loadJson(`/agent-api/api/hermes-usage?days=${days}`));
+        if (!signal.live) return;
+        if (parsed.kind === 'invalid') {
+          setByModel({ kind: 'unavailable', reason: parsed.reason, gap: USAGE_GAP, requestId: null });
+          return;
+        }
+        setByModel({
+          kind: 'ready',
+          value: { rows: sortModelBreakdown(parsed.rows), asOf: parsed.asOf, days, costSource: parsed.costSource },
+        });
+      } catch (error) {
+        if (!signal.live) return;
+        setByModel({ kind: 'unavailable', ...blockFailure(error) });
       }
-      setByModel({
-        kind: 'ready',
-        value: { rows: sortModelBreakdown(parsed.rows), asOf: parsed.asOf, days, costSource: parsed.costSource },
-      });
-    } catch (error) {
-      if (!signal.live) return;
-      setByModel({ kind: 'unavailable', ...blockFailure(error) });
-    }
-  }, [loadJson]);
+    },
+    [loadJson],
+  );
 
   useEffect(() => {
     if (forced) return;
     const signal = { live: true };
-    void loadByModel(signal, usageWindow.id);
+    void loadByModel(signal, usageWindow.id, groupBy, viewMode);
     return () => {
       signal.live = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the axes are arguments, not drivers: a grouping or detail toggle must not refetch usage (metS); attempt / window / remount refreshes re-decide ownership with the current values.
   }, [attempt, forced, loadByModel, usageWindow.id]);
 
 
@@ -1196,12 +1251,12 @@ export function MetricsModulePage() {
     await Promise.allSettled([
       load(signal),
       loadUsage(signal, usageWindow.id),
-      loadBreakdown(signal, usageWindow.id, viewMode),
+      loadBreakdown(signal, usageWindow.id, viewMode, groupBy),
       loadHeat(signal),
       loadBudget(signal, usageWindow.id),
       loadCmp(signal),
       loadShare(signal, usageWindow.id, groupBy),
-      loadByModel(signal, usageWindow.id),
+      loadByModel(signal, usageWindow.id, groupBy, viewMode),
     ]);
 
     if (!signal.live) return;
