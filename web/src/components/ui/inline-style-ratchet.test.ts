@@ -19,10 +19,14 @@ import { describe, expect, it } from "vitest";
 
 /** web/src 目录（本文件位于 web/src/components/ui/） */
 const SRC = fileURLToPath(new URL("../../", import.meta.url));
-/** 冻结基线（全形制）：脸 451621e760 现算 65，只允许下调 */
-const BASELINE_FULL = 65;
-/** 参考口径（字面量）：同一脸上现算 61，只输出不放宽 */
-const BASELINE_LITERAL = 61;
+/**
+ * 冻结基线（全形制）：只允许下调。
+ * 65（脸 451621e760）→ 26（脸 a835e9c408，mega 两支内联→`-ls`/具名 helper 迁移已并窗）。
+ * 同次现算：非测试 .tsx 13 个文件命中，其中盲区（只在换行/变量形制里出现的站点）8 处。
+ */
+const BASELINE_FULL = 26;
+/** 参考口径（字面量）：61（旧脸）→ 18（脸 a835e9c408 现算），只输出不放宽 */
+const BASELINE_LITERAL = 18;
 /** 已被清空的外壳面，恒为 0 */
 const ZERO_FILES = ["shell/console.tsx"];
 /**
@@ -57,17 +61,25 @@ const EXEMPT_SITES: readonly ExemptSite[] = [
   },
   {
     file: "pages/AnalyticsPage.tsx",
-    mark: /height: Math\.max\(inputH/,
-    why: "逐柱运行时像素高＝Math.max 归一 + CHART_HEIGHT_PX 与相邻比例计算耦合，数据驱动不可令牌化；内联仍在，不算清偿（L0 裁决＝豁免登记，SVG 重写已否决：改版面）",
+    mark: /Math\.max\(inputH/,
+    why: "逐柱运行时像素高＝Math.max 归一 + CHART_HEIGHT_PX 与相邻比例计算耦合，数据驱动不可令牌化；现形制已收进具名 helper chartPxHeight()，但内联仍在，不算清偿（L0 裁决＝豁免登记，SVG 重写已否决：改版面）",
+  },
+  {
+    // 168/181 两处常量柱高：mega 迁移把它们从 style={{ height: CHART_HEIGHT_PX }}
+    // 改成 style={chartPxHeight(CHART_HEIGHT_PX)}＝形制迁移（DOM/计算值恒等），
+    // 但内联声明仍在，按 §5 第 19 条不算清偿，必须留在豁免面上。
+    file: "pages/AnalyticsPage.tsx",
+    mark: /chartPxHeight\(CHART_HEIGHT_PX\)/,
+    why: "常量柱高走具名 helper（值仍是 CHART_HEIGHT_PX=160），属形制迁移；内联仍在，不算清偿（真要清偿应改 h-[160px] 类名并配测）",
   },
   {
     file: "pages/AnalyticsPage.tsx",
-    mark: /height: Math\.max\(outputH/,
+    mark: /Math\.max\(outputH/,
     why: "同上（输出柱，同一数据驱动函数）；内联仍在，不算清偿",
   },
 ];
 /** 豁免面上限：只准减不准增（涨了就红，先清偿再登记） */
-const EXEMPT_MAX = 6;
+const EXEMPT_MAX = 7;
 const EXEMPT_FILES = [...new Set(EXEMPT_SITES.map((site) => site.file))];
 const ANY = /style=\{/;
 const LITERAL = /style=\{\{/;
@@ -128,8 +140,19 @@ describe("内联 style 棘轮（双口径，只减不增）", () => {
   it("换行/变量形制的站点只能出现在登记过的运行时值豁免面上", () => {
     const offenders = blindSpots.filter((site) => !EXEMPT_FILES.some((f) => site.startsWith(`${f}:`)));
     expect(offenders, `未登记的换行/变量形制站点：${offenders.join(", ")}`).toEqual([]);
-    // 防空转：豁免面上确实存在这类站点（当前实测 4 处），否则说明口径又写窄了。
+    // 防空转：豁免面上确实存在这类站点（脸 a835e9c408 现算 8 处），否则说明口径又写窄了。
     expect(blindSpots.length).toBeGreaterThan(0);
+    // 硬兜底：按「登记标记在源码里的实际命中次数」算覆盖量（一条登记可盖同形制的多处站点，
+    // 如 chartPxHeight(CHART_HEIGHT_PX) 有两处）；盲区比覆盖量多＝有未登记的新内联形制混进来。
+    const covered = EXEMPT_SITES.reduce((total, site) => {
+      const txt = readFileSync(join(SRC, site.file), "utf8");
+      const each = txt.match(new RegExp(site.mark.source, "g")) ?? [];
+      return total + each.length;
+    }, 0);
+    expect(
+      blindSpots.length,
+      `盲区 ${blindSpots.length} 处 > 豁免标记实际覆盖 ${covered} 处：${blindSpots.join(", ")}`,
+    ).toBeLessThanOrEqual(covered);
   });
 
   it("豁免面逐条必须命中、总数只准减不准增、每条必须自认未清偿", () => {
@@ -145,9 +168,13 @@ describe("内联 style 棘轮（双口径，只减不增）", () => {
       ).toBe(true);
       expect(site.why, `豁免项必须明写残余状态：${site.file}`).toContain("不算清偿");
     }
-    // AnalyticsPage 的数据驱动柱高必须恰好这两根；多出第三根说明有新债务未登记
-    const bars = readFileSync(join(SRC, "pages/AnalyticsPage.tsx"), "utf8").match(/height: Math\.max\(/g) ?? [];
+    // AnalyticsPage 的数据驱动柱高必须恰好这两根；多出第三根说明有新债务未登记。
+    // 计数用 Math.max(inputH|outputH，两种形制（height: / chartPxHeight(）都算一处。
+    const page = readFileSync(join(SRC, "pages/AnalyticsPage.tsx"), "utf8");
+    const bars = page.match(/Math\.max\((inputH|outputH)/g) ?? [];
     expect(bars.length, "AnalyticsPage 运行时柱高站点数变了，请同步豁免面").toBe(2);
+    const consts = page.match(/chartPxHeight\(CHART_HEIGHT_PX\)/g) ?? [];
+    expect(consts.length, "AnalyticsPage 常量柱高站点数变了，请同步豁免面").toBe(2);
   });
 
   for (const f of ZERO_FILES) {
