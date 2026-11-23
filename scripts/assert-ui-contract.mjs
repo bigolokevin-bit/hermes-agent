@@ -23,7 +23,8 @@ const arg = (name) => {
   const hit = argv.find((a) => a.startsWith(`--${name}=`));
   return hit ? hit.slice(name.length + 3) : null;
 };
-const BASE = (arg("url") || "http://127.0.0.1:9148").replace(/\/$/, "");
+// L0 修复 2026-11-23：默认落 9122 验收脸（唯一常驻服务面；9148 是车道临时静态服务并非常态）。
+const BASE = (arg("url") || "http://127.0.0.1:9122/agent-v2").replace(/\/$/, "");
 const AUTH = arg("auth");
 const STAGE = arg("stage") || "duty";
 const NO_LAUNCH = argv.includes("--dry-parse");
@@ -227,6 +228,8 @@ async function main() {
     ...(AUTH ? { storageState: AUTH } : {}),
   });
   const page = await ctx.newPage();
+  // L0 修复 2026-11-23①：先落正常 origin 再发相对 fetch（原顺序在 about:blank 上 fetch，whoami 恒 -1）。
+  await page.goto(`${BASE}/`, { waitUntil: "domcontentloaded", timeout: 30000 }).catch(() => {});
   const whoami = await page.evaluate(async () => {
     try {
       const r = await fetch("/auth/whoami", { credentials: "same-origin" });
@@ -235,13 +238,18 @@ async function main() {
       return -1;
     }
   }).catch(() => -1);
-  await page.goto(`${BASE}/`, { waitUntil: "domcontentloaded", timeout: 30000 }).catch(() => {});
-  await page.goto(`${BASE}/#/overview`, { waitUntil: "networkidle", timeout: 45000 }).catch(() => {});
+  // L0 修复②（AGENTS.md《车道测量腿三坑》条1）：networkidle 在验收脸永不收敛（活轮询+重试风暴），
+  // 超时被 catch 吞掉后页停 about:blank，PROBE 的 localStorage 即抛 SecurityError（GATE_EXIT=2 根因）。
+  await page.goto(`${BASE}/#/overview`, { waitUntil: "domcontentloaded", timeout: 30000 }).catch(() => {});
   await page.waitForFunction(
     () => !document.querySelector(".animate-pulse") && document.body.innerText.trim().length > 40,
     null,
     { timeout: 30000 },
   ).catch(() => {});
+  // L0 修复③：显式闸 guard——目标页不可达时报可读环境错，拒绝 about:blank 伪读数。
+  if (!page.url().startsWith("http")) {
+    throw new Error(`目标页不可达：page.url=${page.url()} BASE=${BASE}（检查 9122 是否在听或传 --url）`);
+  }
   const probe = await page.evaluate(PROBE, {
     fontScale: FONT_SCALE,
     spacing: SPACING,
