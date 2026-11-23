@@ -65,7 +65,7 @@ observer 第三轮（OM-03 五列网格）判定 PASS，另记 1440 五列变窄
 
 ## 测试与构建
 
-- `cd web && node_modules/.bin/vitest run src/modules/overview` → **42 passed / 42**（OverviewModulePage.test 11 + overview.window.test 6 + overview.trend.test 4 + overview.gaps.test 5 + overview.feeds.test 6 + overview.asof.test 5 + overview.health.test 5）
+- `cd web && node_modules/.bin/vitest run src/modules/overview` → **48 passed / 48**（OverviewModulePage.test 11 + overview.window.test 6 + overview.trend.test 4 + overview.gaps.test 5 + overview.feeds.test 6 + overview.asof.test 5 + overview.health.test 5 + overview.cost.test 6）
   （OverviewModulePage.test 11 + overview.window.test 6 + overview.trend.test 4 + overview.gaps.test 5）
   （合同：forced 态零请求；只打两端口且 bucket=day；真 0 带来源原文；失败率同源 20%；
   summary 挂→各卡未接入+编号+重试；今日窗挂只影响运行卡；全挂整页错误声明不编造；
@@ -161,6 +161,22 @@ OM-02 可径直标 VERIFIED（腿已在）。P-OM-3 的「workbench 0 命中」�
 - 探针腿纳入自动重试（anyError 含 probe）与原文面板（ready 时列 `GET /api/hermes-summary`）；KPI 其余卡口径不变（只允许 overview/summary + run-stats）。
 - 现网真页抽核（脸 9131，登录态 whoami=200）：健康卡 DOM = 「整体健康（服务探针）… 正常 … 本页读数合成状态：正常（bff fan-out probe…）数据截至 2026-11-23 23:14」。
 - 取证刷新：overview-1440 / overview-range7d / overview-range24h / overview-375 / overview-375-lower（OM04_SHOTS_OK + OM375_SHOTS_OK，22:1x 重拍）。
+
+## OM-09 成本口径卡（2026-11-23 续跑，同分支）
+
+- 裁定：今日成本只认 `summary.todayCostUsd` 单字段（OM-01 合同：KPI 卡只走 overview/summary + run-stats 两端口）。backlog 草稿里的 budget-usage partial 覆盖腿属旧 duty 架构，不引入；其「partial→null」矩阵在本卡落地为 **字段缺失或 value=null → 「未接」**，绝不以 0 冒充。
+- 真 0 契约：`0` 上屏 `$0.00`（usd 两位小数）并带「0 来自接口真实返回：<source 口径原文>」说明；缺值不显示「—」金额混淆形。
+- 故障口径：总览腿 error → 成本卡「聚合总览未接入：<message>」+ 请求编号 + 重试钮，卡内不出现任何金额数字。
+- 话术闸门：钱袋节点无「≈/估算」、无 pricing/unitPrice 外漏（overview.cost.test ⑥ DOM 断言）；源码闸门 `grep -En 'pricing|unitPrice' 非测试文件` = 0 已核。
+- 测试：新增 `overview.cost.test.tsx` 6 例（①有值带来源 ②真0带说明 ③字段缺未接 ④value=null 未接 ⑤故障未接入+重试 ⑥无估算话术）；全模块 **48 passed / 48（8 文件）**，`vite build` EXIT=0。
+
+## OM-12 撤除 ?state= 强制态（2026-11-23 续跑，同分支）
+
+- **撤除内容**：`params.get('state')` 读取、loading/empty/error 三个演示分支（data-fixture=1、ov6-watermark、data-demo-state、demo prop 全删）；挂载效果与重试定时器不再跳过任何态——生产路径只走真实聚合。
+- **DoD 达成**：非测试 grep `data-fixture`（overview 模块）= 0；页面唯一 `state=` 命中是 OverviewView 的组件 prop，不是 URL 参数；`?state=error` 深链被忽略，页面照常发真实读数腿（新测试钉住：无水印、无 fixture 标记、无「演示错误态」文本、fetch 有发出）。
+- **状态矩阵去处**：由 OM-05 测试面（gaps/trend/health/cost）在 OverviewView 层承接，覆盖面不减。
+- **范围外债（另立卡，不动他人写域）**：`web/src/modules/duty/UsagePage.tsx` L105 仍有 `?state=` 演示参数（backlog 原文「同批或另立卡」）——duty 模块不在本车道写域，建议 L0 派给 duty 车道。
+- 验证：vitest **48 passed / 48**（撤除+改写后全量重跑）；`vite build` 通过。
 
 ## 已知边界（如实上报，非缺陷隐瞒）
 

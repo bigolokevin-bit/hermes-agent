@@ -109,19 +109,23 @@ function viewState(over: Partial<{
 }
 
 describe('OverviewModulePage 合同：KPI 只走现网 BFF 两端口', () => {
-  it('forced ?state= 分支零请求', async () => {
-    const fetchMock = vi.fn();
-    vi.stubGlobal('fetch', fetchMock);
-    for (const [state, testid] of [
-      ['loading', 'ov6-loading'],
-      ['empty', 'ov6-kpi-employees'],
-      ['error', 'ov6-error'],
-    ] as const) {
-      await render(<OverviewModulePage />, `/overview?state=${state}`);
-      expect(container.querySelector(`[data-testid="${testid}"]`)).toBeTruthy();
-    }
-    expect(fetchMock).not.toHaveBeenCalled();
-    expect(container.textContent).toContain('未接');
+  it('OM-12：?state= 旧强制态参数被忽略——页面照常真实聚合，无演示水印/fixture 标记', async () => {
+    const urls: string[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        urls.push(String(input));
+        return new Response(JSON.stringify({ items: [] }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }),
+    );
+    await render(<OverviewModulePage />, '/overview?state=error');
+    expect(urls.length).toBeGreaterThan(0);
+    expect(container.querySelector('[data-testid="ov6-watermark"]')).toBeNull();
+    expect(container.querySelector('[data-fixture="1"]')).toBeNull();
+    expect(container.textContent).not.toContain('演示错误态');
   });
 
   it('LiveOverview 读数腿集合＝合同端点（KPI 三腿 + OM-07/08 列表腿），run-stats 恰两次', async () => {

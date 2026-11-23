@@ -174,10 +174,8 @@ interface OverviewViewProps {
   rangeId?: DutyRangeId;
   /** 非法 ?range= 原值：如实回显并说明已回落默认档。 */
   rangeFallback?: string | null;
-  /** 切换档位（写 ?range=）；演示分支不传即只读。 */
+  /** 切换档位（写 ?range=）；不传即只读。 */
   onRange?: (id: DutyRangeId) => void;
-  /** 演示状态（?state=）标记：本次未请求接口，一切读数显示未接。 */
-  demo?: boolean;
 }
 
 export function OverviewView({
@@ -187,7 +185,6 @@ export function OverviewView({
   rangeId = DEFAULT_DUTY_RANGE,
   rangeFallback = null,
   onRange,
-  demo = false,
 }: OverviewViewProps) {
   const rangeDef = DUTY_RANGES.find((r) => r.id === rangeId) ?? DUTY_RANGES[2];
   const hourBucket = rangeDef.id === '24h';
@@ -268,8 +265,7 @@ export function OverviewView({
   }, [state.summary, state.today, act, fail, blockedL, queueL, probe]);
 
   return (
-    <div className="ov5-page" data-testid="overview-page" data-demo-state={demo ? '1' : undefined}>
-      {demo ? <div className="ov5-watermark" data-testid="ov6-watermark">演示状态：本次未请求接口，所有读数如实显示未接</div> : null}
+    <div className="ov5-page" data-testid="overview-page">
       <header className="ov5-head">
         <h1>数字员工总览</h1>
         <p className="ov5-sub" data-testid="ov6-asof" title="取各来源响应自带的采集时间，不拿前端时间冒充">
@@ -543,7 +539,6 @@ export function OverviewView({
 
 export function OverviewModulePage() {
   const [params, setParams] = useSearchParams();
-  const forced = params.get('state');
   const [state, setState] = useState<OverviewState>(INITIAL);
   const summarySeq = useRef(0);
   const trendSeq = useRef(0);
@@ -623,21 +618,18 @@ export function OverviewModulePage() {
   );
 
   useEffect(() => {
-    if (forced === 'loading' || forced === 'empty' || forced === 'error') return;
     void loadSummaryToday();
-  }, [loadSummaryToday, forced]);
+  }, [loadSummaryToday]);
 
   // 换档只重发趋势腿：loadTrend 依赖 trendWin，档位变化即且仅即触发一次新请求。
   useEffect(() => {
-    if (forced === 'loading' || forced === 'empty' || forced === 'error') return;
     void loadTrend();
-  }, [loadTrend, forced]);
+  }, [loadTrend]);
 
   // OM-07/08：列表腿挂载一次 + 手动/定时重试；换档不重发（与趋势无关）。
   useEffect(() => {
-    if (forced === 'loading' || forced === 'empty' || forced === 'error') return;
     void loadExtras();
-  }, [loadExtras, forced]);
+  }, [loadExtras]);
 
   // 自动重试：任一路失败时静默周期重读；成功即停表。
   const anyError =
@@ -650,62 +642,11 @@ export function OverviewModulePage() {
     state.queue?.k === 'error' ||
     state.probe?.k === 'error';
   useEffect(() => {
-    if (!anyError || forced) return;
+    if (!anyError) return;
     const timer = window.setInterval(retryAll, RETRY_MS);
     return () => window.clearInterval(timer);
-  }, [anyError, retryAll, forced]);
+  }, [anyError, retryAll]);
 
-  if (forced === 'loading') {
-    return (
-      <div className="ov5-page" data-testid="overview-page" data-fixture="1">
-        <div className="ov5-skeleton" data-testid="ov6-loading" />
-      </div>
-    );
-  }
-  if (forced === 'empty') {
-    return (
-      <OverviewView
-        state={{
-          summary: { k: 'ready', data: {} },
-          today: { k: 'ready', data: {} },
-          trend: { k: 'ready', data: {} },
-          act: { k: 'ready', data: {} },
-          fail: { k: 'ready', data: {} },
-          blocked: { k: 'ready', data: {} },
-          queue: { k: 'ready', data: {} },
-          probe: { k: 'ready', data: {} },
-        }}
-        todayDate={win.date}
-        onRetry={retryAll}
-        rangeId={rangeId}
-        rangeFallback={rangeFallback}
-        onRange={selectRange}
-        demo
-      />
-    );
-  }
-  if (forced === 'error') {
-    return (
-      <OverviewView
-        state={{
-          summary: { k: 'error', status: 503, message: '演示错误态（未请求接口）', requestId: null },
-          today: { k: 'error', status: 503, message: '演示错误态（未请求接口）', requestId: null },
-          trend: { k: 'error', status: 503, message: '演示错误态（未请求接口）', requestId: null },
-          act: { k: 'error', status: 503, message: '演示错误态（未请求接口）', requestId: null },
-          fail: { k: 'error', status: 503, message: '演示错误态（未请求接口）', requestId: null },
-          blocked: { k: 'error', status: 503, message: '演示错误态（未请求接口）', requestId: null },
-          queue: { k: 'error', status: 503, message: '演示错误态（未请求接口）', requestId: null },
-          probe: { k: 'error', status: 503, message: '演示错误态（未请求接口）', requestId: null },
-        }}
-        todayDate={win.date}
-        onRetry={retryAll}
-        rangeId={rangeId}
-        rangeFallback={rangeFallback}
-        onRange={selectRange}
-        demo
-      />
-    );
-  }
   return (
     <OverviewView
       state={state}
