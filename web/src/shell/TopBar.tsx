@@ -37,6 +37,7 @@ import { Button } from "@nous-research/ui/ui/components/button";
 import { useI18n } from "@/i18n/context";
 import { resolvePageTitle } from "@/lib/resolve-page-title";
 import { CONSOLE_MODULES, findRoute } from "./routes";
+import "./console-chrome.css";
 
 /** Mount point rendered by App.tsx in the main column, outside <main>. */
 export const SHELL_TOPBAR_SLOT_ID = "shell-topbar-slot";
@@ -83,7 +84,7 @@ export function ConsoleTopBar({ collapsed, onToggleCollapse }: ConsoleTopBarProp
   return createPortal(
     <header
       data-testid="shell-topbar"
-      className="z-1 flex h-[56px] shrink-0 items-center gap-3 border-b border-current/20 bg-background-base px-6"
+      className="console-topbar z-1 flex h-[56px] shrink-0 items-center gap-3 border-b bg-background-base px-6"
     >
       <Button
         ghost
