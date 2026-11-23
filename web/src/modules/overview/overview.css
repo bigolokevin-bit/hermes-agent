@@ -34,9 +34,13 @@
   font-size: 13px;
 }
 
+/* OM-03 裁定：KPI 行保持 5 卡（在岗员工/今日运行/待审批/今日成本/健康检查；
+   健康卡去留归 OM-10 探针裁定，本轮不撤卡），网格改 auto-fit：桌面 1440 五列均分，
+   不再有 repeat(4)+第5卡 的孤列；平板 2~3 列、手机单列由 minmax(208px) 自适应，
+   故删除旧 ≤1100px repeat(2) 与 ≤560px 1fr 两处 .ov5-kpis 覆盖。 */
 .ov5-kpis {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(208px, 1fr));
   gap: 12px;
 }
 
@@ -344,18 +348,12 @@
 }
 
 @media (max-width: 1100px) {
-  .ov5-kpis {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
   .ov5-grid {
     grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 560px) {
-  .ov5-kpis {
-    grid-template-columns: 1fr;
-  }
   .ov5-head {
     align-items: stretch;
   }
