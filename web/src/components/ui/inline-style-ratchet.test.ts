@@ -25,8 +25,50 @@ const BASELINE_FULL = 65;
 const BASELINE_LITERAL = 61;
 /** 已被清空的外壳面，恒为 0 */
 const ZERO_FILES = ["shell/console.tsx"];
-/** 运行时值豁免面（形制已迁、内联仍在，不计入已清偿） */
-const EXEMPT_FILES = ["components/ThemeSwitcher.tsx", "components/LanguageSwitcher.tsx"];
+/**
+ * 运行时值豁免面：逐条具名 = 文件 + 稳定标记（正则）+ 为什么不可令牌化。
+ * 纪律：豁免登记＝承认为残余债务，**不是清偿**，每条 why 必须写明「内联仍在／不算清偿」
+ * （下面有条断言机械地钉这句话）。登记用标记而非行号：行号会随别的车道的笔漂移，
+ * 而「豁免项在源码里命不中」本身就该红（防失效豁免继续挂账）。
+ * 出处口径：~/.config/opencode/AGENTS.md「车道迁移判据两坑」第 2 条 +
+ * docs/governance/CONSOLE-ACCEPTANCE.md §5 第 18/19 条（正典归 L0）。
+ */
+type ExemptSite = { file: string; mark: RegExp; why: string };
+const EXEMPT_SITES: readonly ExemptSite[] = [
+  {
+    file: "components/ThemeSwitcher.tsx",
+    mark: /bottom: window\.innerHeight - rect\.top \+ 4/,
+    why: "弹层定位取运行时测量值（窗口高度与按钮 rect），枚举成令牌即写死坐标；内联仍在，不算清偿",
+  },
+  {
+    file: "components/ThemeSwitcher.tsx",
+    mark: /style=\{fontPreviewStyle\(f\)\}/,
+    why: "字体预览取任意 CSS 字体栈串；改动态类名会被 Tailwind 扫描器漏掉并 purge；内联仍在，不算清偿",
+  },
+  {
+    file: "components/ThemeSwitcher.tsx",
+    mark: /style=\{swatchCellStyle\(color\)\}/,
+    why: "色块取每主题调色板（含用户 ~/.hermes/dashboard-themes/*.yaml），无法预枚举；内联仍在，不算清偿",
+  },
+  {
+    file: "components/LanguageSwitcher.tsx",
+    mark: /bottom: window\.innerHeight - rect\.top \+ 4/,
+    why: "同 ThemeSwitcher 的弹层定位形制（值来自 getBoundingClientRect）；内联仍在，不算清偿",
+  },
+  {
+    file: "pages/AnalyticsPage.tsx",
+    mark: /height: Math\.max\(inputH/,
+    why: "逐柱运行时像素高＝Math.max 归一 + CHART_HEIGHT_PX 与相邻比例计算耦合，数据驱动不可令牌化；内联仍在，不算清偿（L0 裁决＝豁免登记，SVG 重写已否决：改版面）",
+  },
+  {
+    file: "pages/AnalyticsPage.tsx",
+    mark: /height: Math\.max\(outputH/,
+    why: "同上（输出柱，同一数据驱动函数）；内联仍在，不算清偿",
+  },
+];
+/** 豁免面上限：只准减不准增（涨了就红，先清偿再登记） */
+const EXEMPT_MAX = 6;
+const EXEMPT_FILES = [...new Set(EXEMPT_SITES.map((site) => site.file))];
 const ANY = /style=\{/;
 const LITERAL = /style=\{\{/;
 
@@ -88,6 +130,24 @@ describe("内联 style 棘轮（双口径，只减不增）", () => {
     expect(offenders, `未登记的换行/变量形制站点：${offenders.join(", ")}`).toEqual([]);
     // 防空转：豁免面上确实存在这类站点（当前实测 4 处），否则说明口径又写窄了。
     expect(blindSpots.length).toBeGreaterThan(0);
+  });
+
+  it("豁免面逐条必须命中、总数只准减不准增、每条必须自认未清偿", () => {
+    expect(
+      EXEMPT_SITES.length,
+      `豁免面从上限 ${EXEMPT_MAX} 涨到 ${EXEMPT_SITES.length}：新增运行时内联要先真清偿，不许直接登记`,
+    ).toBeLessThanOrEqual(EXEMPT_MAX);
+    for (const site of EXEMPT_SITES) {
+      const txt = readFileSync(join(SRC, site.file), "utf8");
+      expect(
+        site.mark.test(txt),
+        `豁免登记已落空（源码里找不到这条运行时站点，请把它从豁免面删掉）：${site.file} ${site.mark}`,
+      ).toBe(true);
+      expect(site.why, `豁免项必须明写残余状态：${site.file}`).toContain("不算清偿");
+    }
+    // AnalyticsPage 的数据驱动柱高必须恰好这两根；多出第三根说明有新债务未登记
+    const bars = readFileSync(join(SRC, "pages/AnalyticsPage.tsx"), "utf8").match(/height: Math\.max\(/g) ?? [];
+    expect(bars.length, "AnalyticsPage 运行时柱高站点数变了，请同步豁免面").toBe(2);
   });
 
   for (const f of ZERO_FILES) {
