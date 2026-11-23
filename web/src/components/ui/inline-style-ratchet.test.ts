@@ -21,11 +21,13 @@ import { describe, expect, it } from "vitest";
 const SRC = fileURLToPath(new URL("../../", import.meta.url));
 /**
  * 冻结基线（全形制）：只允许下调。
- * 65（脸 451621e760）→ 26（脸 a835e9c408，mega 两支内联→`-ls`/具名 helper 迁移已并窗）。
- * 同次现算：非测试 .tsx 13 个文件命中，其中盲区（只在换行/变量形制里出现的站点）8 处。
+ * 65（脸 451621e760）→ 26（脸 a835e9c408，mega 两支迁移并窗）→ 24（脸 f2a22e849b，
+ * ui-b 清偿笔 5bb423fddd 把 AnalyticsPage 168/181 常量柱高真迁 h-[160px]）。
+ * 同次现算：非测试 .tsx 160 个文件中 12 处命中，盲区（只在换行/变量形制里出现的站点）6 处
+ * ＝LanguageSwitcher:117、ThemeSwitcher:128/294/323、AnalyticsPage:200/205，全部在豁免面上。
  */
-const BASELINE_FULL = 26;
-/** 参考口径（字面量）：61（旧脸）→ 18（脸 a835e9c408 现算），只输出不放宽 */
+const BASELINE_FULL = 24;
+/** 参考口径（字面量）：61（旧脸）→ 18（脸 f2a22e849b 复算仍 18），只输出不放宽 */
 const BASELINE_LITERAL = 18;
 /** 已被清空的外壳面，恒为 0 */
 const ZERO_FILES = ["shell/console.tsx"];
@@ -65,21 +67,13 @@ const EXEMPT_SITES: readonly ExemptSite[] = [
     why: "逐柱运行时像素高＝Math.max 归一 + CHART_HEIGHT_PX 与相邻比例计算耦合，数据驱动不可令牌化；现形制已收进具名 helper chartPxHeight()，但内联仍在，不算清偿（L0 裁决＝豁免登记，SVG 重写已否决：改版面）",
   },
   {
-    // 168/181 两处常量柱高：mega 迁移把它们从 style={{ height: CHART_HEIGHT_PX }}
-    // 改成 style={chartPxHeight(CHART_HEIGHT_PX)}＝形制迁移（DOM/计算值恒等），
-    // 但内联声明仍在，按 §5 第 19 条不算清偿，必须留在豁免面上。
-    file: "pages/AnalyticsPage.tsx",
-    mark: /chartPxHeight\(CHART_HEIGHT_PX\)/,
-    why: "常量柱高走具名 helper（值仍是 CHART_HEIGHT_PX=160），属形制迁移；内联仍在，不算清偿（真要清偿应改 h-[160px] 类名并配测）",
-  },
-  {
     file: "pages/AnalyticsPage.tsx",
     mark: /Math\.max\(outputH/,
     why: "同上（输出柱，同一数据驱动函数）；内联仍在，不算清偿",
   },
 ];
 /** 豁免面上限：只准减不准增（涨了就红，先清偿再登记） */
-const EXEMPT_MAX = 7;
+const EXEMPT_MAX = 6;
 const EXEMPT_FILES = [...new Set(EXEMPT_SITES.map((site) => site.file))];
 const ANY = /style=\{/;
 const LITERAL = /style=\{\{/;
@@ -173,8 +167,11 @@ describe("内联 style 棘轮（双口径，只减不增）", () => {
     const page = readFileSync(join(SRC, "pages/AnalyticsPage.tsx"), "utf8");
     const bars = page.match(/Math\.max\((inputH|outputH)/g) ?? [];
     expect(bars.length, "AnalyticsPage 运行时柱高站点数变了，请同步豁免面").toBe(2);
+    // 常量柱高已被 ui-b 真清偿成 h-[160px] 类（5bb423fddd）⇒ 豁免登记同步删行，
+    // 这里反过来钉「不得回潮」：谁再把常量高度塞回内联，本条先红。
     const consts = page.match(/chartPxHeight\(CHART_HEIGHT_PX\)/g) ?? [];
-    expect(consts.length, "AnalyticsPage 常量柱高站点数变了，请同步豁免面").toBe(2);
+    expect(consts.length, "常量柱高已真清偿为 h-[160px]，不得回到内联 helper 形制").toBe(0);
+    expect(page, "常量柱高必须以 h-[160px] 类存在（真清偿的凭据）").toContain("h-[160px]");
   });
 
   for (const f of ZERO_FILES) {
