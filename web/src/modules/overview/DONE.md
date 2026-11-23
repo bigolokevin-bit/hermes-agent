@@ -42,3 +42,10 @@
 - 404 一条：`/agent-api/api/knowledge/citations`（duty 侧知识腿，非本件写域，记录不处置）。
 - 后续：OM-13 摘要复制已在本分支续笔重放（见上）；SE-06 属会话 ses_e2336b084ffeb8，不接单。
 - 现网脸取证（harness 9131 → 共享 BFF 8092，令牌注入域 127.0.0.1，whoami==200 前置）：健康卡 DOM 逐字 `健康检查（服务探针）GET /api/hermes-summary正常本页六路读数全部就绪（本页读数合成状态，不等于服务健康）数据截至 2026-11-24 05:21 · 来源 服务探针`；复制摘要按钮真实点击 → `COPY=已复制到剪贴板`；端点日志除 duty 侧 `404 /agent-api/api/knowledge/citations`（越界，另报）外全 200 含 `/agent-api/api/hermes-summary`。图：`om15-overview-1440.png`、`om15-overview-375-v2.png`、`om15-overview-375-lower-v2.png`（docs/_artifacts/OM-15-replay/shots/）。
+
+## 交付收口（换基与远端验证）
+
+- c1 代码 426962a446a960cef1677ae02ab86addf346098d；c2 取证 4c44f35f59f4f250ee677805e471cdbb724cc560；推后现读 B=9>5（脸 158dd5de8a7e3831da7d9d871b2777d22fe90ff6）。
+- 换基：git merge FETCH_HEAD（DU-08/SE-05 与 modules/overview 零交集，diff 实据为空，零冲突）→ 终 tip 2d23a79e8d3303e5cb25a991af50de6626112310，ls-remote 输出行核验 B=0。
+- 换基后门禁：全量 vitest 541 文件 / 4162 过 | 1 跳 exit 0；模块 52/52；e1Contract 本树判读 SKIPPED-NOT-DEPLOYED（dist 残留已 rm）。
+- task-lane：OM-15 与 OM-13 均 DELIVERED tip 2d23a79e8d…，写后复读核验（OM-13 行 branch/worktree 字段仍指旧死栈，报 L0 清理）。
