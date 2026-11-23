@@ -11,7 +11,7 @@ import type {
   RunStatsBody,
   TaskRow,
 } from "./types";
-import { asArray, isRecord, normalizeApproval, normalizeEmployee, normalizeRun, normalizeTask, text } from "./types";
+import { asArray, isRecord, normalizeApproval, normalizeEmployee, normalizeRun, normalizeTask, text, EMPLOYEES_PAGE_LIMIT } from "./types";
 import type {
   ApprovalEvidence,
   ConfigView,
@@ -57,7 +57,7 @@ export function humanError(err: unknown): string {
 }
 
 export async function fetchEmployees(): Promise<EmployeeRow[]> {
-  const body = await get("/employees", { limit: 100 });
+  const body = await get("/employees", { limit: EMPLOYEES_PAGE_LIMIT });
   return asArray(body).map(normalizeEmployee).filter((x): x is EmployeeRow => x !== null);
 }
 

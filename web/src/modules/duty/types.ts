@@ -5,6 +5,9 @@
  * a missing key renders "—" and never 0. Unknown enum values stay unknown.
  */
 
+/** 员工目录单页读取上限；分母口径句在触顶时明写「非全量」（Q10 条目5）。 */
+export const EMPLOYEES_PAGE_LIMIT = 100;
+
 export type Loadable<T> =
   | { k: "loading" }
   | { k: "ready"; data: T }
@@ -218,7 +221,12 @@ export interface ReadinessView {
   unknownGates: number;
   narrowest: GateView | null;
   deltaToNext: number | null;
+  /** Q10 条目4：最窄限制门置顶，其余保持原序。 */
   gates: GateView[];
+  /** Q10 条目4：四门叠加净效果的人话句（交集句）。 */
+  netNote: string;
+  /** Q10 条目5：比率分母的来源口径句——单页触顶时明写「非全量」。 */
+  denomNote: string;
 }
 
 export interface BlockerItem {
