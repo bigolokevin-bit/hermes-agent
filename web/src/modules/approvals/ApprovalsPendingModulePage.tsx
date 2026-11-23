@@ -38,7 +38,7 @@ import { DeniedPanel, EmptyPanel, ErrorPanel, InlineFailure, LoadingPanel } from
 import { useApprovalDetail, useApprovalsList, type ForcedState } from "./useApprovalsData";
 import { actionGates, announcement } from "./gates";
 import { DECISION_GATE } from "./writeGate";
-import { QueueSummaryBar } from "./QueueSummaryBar";
+import { QueueSummaryBar, denominatorReadout } from "./QueueSummaryBar";
 import { clearFilterParams, hasActiveFilters, resetTitle } from "./FilterReset";
 import { FilterSummary } from "./FilterSummary";
 import { PermalinkCopy } from "./PermalinkCopy";
@@ -149,6 +149,21 @@ export function ApprovalsPendingModulePage(): ReactNode {
   const detail = useApprovalDetail(selected, forced);
 
   const pendingCount = useMemo(() => list.rows.filter((row) => row.status.pending).length, [list.rows]);
+
+  // AP-01 分母事实（单点）。本 tab 恒发 `status=pending`＝BFF 的单态透传腿
+  // （_approvals_alias_map 只补行别名，不补 total），实测顶层 keys=[items,nextCursor]
+  // ⇒ list.total 恒 null；屏上任何总数口径都必须引用这一份事实，禁按 rows.length 推算。
+  // 「全部」扇出腿（history 的 status=all/缺省）走同一个 denominatorReadout，两路同形。
+  const denominator = useMemo(
+    () => ({
+      loaded: list.rows.length,
+      total: list.total,
+      hasMore: list.next !== null,
+      aggregated: false,
+    }),
+    [list.rows.length, list.total, list.next],
+  );
+  const readout = denominatorReadout(denominator);
 
   // R59: keyword search is a local filter over the loaded rows (the read
   // port ignores q/keyword/title — measured), so typing never fetches.
@@ -352,20 +367,23 @@ export function ApprovalsPendingModulePage(): ReactNode {
   );
 
   // P0-③: 汇总只此一处——这行读数过去单列在筛选墙里，与 QueueSummaryBar 各说
-  // 各话；现在作为汇总条的 detail 上屏，文案逐字不动（含「下面还有更多」与
-  // 「关键字过滤中」两个提示）。它不是播报位：apv-live 仍是唯一 live region（R86）。
+  // 各话；现在作为汇总条的 detail 上屏（「下面还有更多」与「关键字过滤中」两个
+  // 提示原样保留）。AP-01 ① 起，ready 腿不再用「已显示 N 条」这种可读成总量的
+  // 句式：条数由汇总条的分母句（denominatorReadout 单点）报「已加载 N 条（非全量）」，
+  // 这里只补「其中多少条待处理」；empty 腿照旧说清是读取结果而非缺数，且不写「共」。
+  // 它不是播报位：apv-live 仍是唯一 live region（R86）。
   const summaryLine =
     list.phase === "loading"
       ? "正在读取待处理审批…"
       : list.phase === "empty"
-        ? "共 0 条待处理审批"
+        ? "本次读取没有返回待处理审批（读口不给总数）"
         : list.phase === "denied"
           ? "审批申请暂不可用"
           : list.phase === "error"
             ? "审批申请读取失败"
             : q
-              ? `已显示 ${visibleRows.length} / ${list.rows.length} 条申请，其中 ${visibleRows.filter((row) => row.status.pending).length} 条待处理（关键字过滤中）`
-              : `已显示 ${list.rows.length} 条申请，其中 ${pendingCount} 条待处理${list.next ? "，下面还有更多" : ""}`;
+              ? `关键字过滤中：命中 ${visibleRows.length} / 已加载 ${list.rows.length} 条，其中 ${visibleRows.filter((row) => row.status.pending).length} 条待处理`
+              : `已加载行中 ${pendingCount} 条待处理${list.next ? "，下面还有更多" : ""}`;
 
   const openRow = useCallback(
     (row: ApprovalRow) => {
@@ -599,7 +617,14 @@ export function ApprovalsPendingModulePage(): ReactNode {
           （内部结构与 testid 原样，只是外面并带；窄档 flex 自动换行不溢出）。
           元说明三行移入下方折叠面板（QueueSortBar hideNotes，History 零变化）。 */}
       <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1" data-testid="apv-summary-row">
-        <QueueSummaryBar phase={list.phase} rows={visibleRows} scope="queue" detail={summaryLine} />
+        <QueueSummaryBar
+          phase={list.phase}
+          rows={visibleRows}
+          scope="queue"
+          detail={summaryLine}
+          denominator={denominator}
+          unreadable={list.unreadable}
+        />
         <div className="flex min-w-0 flex-wrap items-center gap-2" data-testid="apv-reset-row">
           <button
             type="button"
@@ -891,8 +916,10 @@ export function ApprovalsPendingModulePage(): ReactNode {
 
               {/* P1-A2 ③ 分页 footer 状态机：只有「有可见行」才出分页条。
                   过滤 miss / 空态时由各自的空卡说话，页尾不留一枚永远点动的「加载更多」。
-                  ② 「总数不可用」与「已到末页」互斥：total 未知且已到末页时，
-                  计数句本身就报「已到末页 · 已显示 N 条」，不再叠第三块牌子。 */}
+                  ② AP-01：计数句改由 denominatorReadout 单点派生——读口无 total 时只说
+                  「已加载 n 条（非全量）」，不再出现「已到末页 · 已显示 n 条」这种能被读成
+                  总量的句式（游标缺失既可能是末页，也可能是扇出/limit 截断，不可反推）。
+                  「已到末页」角标只在 total 已知时出现（未知腿 P1-A2 ② 已退出）。 */}
               {visibleRows.length > 0 ? (
                 <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs" data-testid="apv-page">
                   <Button
@@ -905,27 +932,14 @@ export function ApprovalsPendingModulePage(): ReactNode {
                     title={
                       list.next
                         ? "带服务端游标续取下一页（追加时按单号去重，重复行不上屏）。"
-                        : "服务端没有给出下一页游标：已到末页。"
+                        : "服务端没有给出下一页游标：已到末页。读口不给总数，这不等于服务端承诺屏上就是全量。"
                     }
                     prefix={list.loadingMore ? <Spinner className="h-3.5 w-3.5" /> : <RefreshCw className="h-3.5 w-3.5" />}
                   >
                     {list.loadingMore ? "加载中…" : "加载更多"}
                   </Button>
-                  <span
-                    data-testid="apv-page-count"
-                    title={
-                      list.total !== null
-                        ? "总数来自读口 total 键；已显示=当前已加载行数"
-                        : list.next
-                          ? "读口响应顶层只有 items/nextCursor（无 total 键，实测本页响应）；按已加载条数推算会撒谎，故不推算。"
-                          : "读口没有回传 total 键；服务端已无下一页游标，屏上这些就是全部取到的记录。"
-                    }
-                  >
-                    {list.total !== null
-                      ? `共 ${list.total} 条 / 已显示 ${list.rows.length} 条`
-                      : list.next
-                        ? `总数不可用 · 已显示 ${list.rows.length} 条`
-                        : `已到末页 · 已显示 ${list.rows.length} 条`}
+                  <span data-testid="apv-page-count" title={readout.reason}>
+                    {readout.text}
                   </span>
                   {!list.next && list.total !== null ? (
                     <span className="text-muted-foreground" data-testid="apv-page-end">
@@ -933,6 +947,18 @@ export function ApprovalsPendingModulePage(): ReactNode {
                     </span>
                   ) : null}
                 </div>
+              ) : null}
+
+              {/* AP-01②：到底/截断态一句诚实说明。只在读口给不出总数时上屏，
+                  并且只报服务端事实（有没有游标、是不是扇出腿），不报推算。 */}
+              {list.phase === "ready" && list.total === null && readout.note ? (
+                <p
+                  className="min-w-0 break-words text-xs text-muted-foreground"
+                  data-testid="apv-denominator-note"
+                  title={readout.reason}
+                >
+                  {readout.note}
+                </p>
               ) : null}
 
               {pendingCount === 0 ? (

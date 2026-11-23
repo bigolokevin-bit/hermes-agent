@@ -131,7 +131,7 @@ describe("P1-A2 ① time formatting has a single source", () => {
 });
 
 describe("P1-A2 ② total known at end still shows the end chip", () => {
-  it("known total + no cursor keeps 「已到末页」角标 while count stays 「共 N 条 / 已显示 M 条」", async () => {
+  it("known total + no cursor keeps 「已到末页」角标 while count stays 「共 N 条 / 已加载 M 条」", async () => {
     mock.mockImplementation(async (url: string) => {
       const u = String(url);
       if (u.includes("/api/approval?id=")) return {};
@@ -139,7 +139,10 @@ describe("P1-A2 ② total known at end still shows the end chip", () => {
     });
     await render("/approvals?tab=history");
     await waitFor(() => rowCount() === 2, "rows");
-    expect(q("apv-page-count")?.textContent).toBe("共 9 条 / 已显示 2 条");
+    // AP-01：已知总数腿仍报真总数（这是唯一允许出现「共 N 条」的腿），
+    // 「已显示」措辞统一成「已加载」，与 denominatorReadout 单点同形。
+    expect(q("apv-page-count")?.textContent).toBe("共 9 条 / 已加载 2 条");
+    expect(q("apv-denominator-note"), "总数已知：截断说明退场").toBeNull();
     expect(q("apv-page-end")?.textContent, "已知总数到末页：end chip 不误伤").toBe("已到末页");
     expect((q("apv-page-more") as HTMLButtonElement).disabled).toBe(true);
   });
@@ -150,7 +153,8 @@ describe("P1-A2 ③ filter miss hides the whole pagination footer", () => {
     mock.mockImplementation(async (url: string) => {
       const u = String(url);
       if (u.includes("/api/approval?id=")) return {};
-      // 带 nextCursor：复位腿才有「总数不可用」（有 next）与 miss 腿的可见行=0 语义。
+      // 带 nextCursor：复位腿才有「已加载 n 条（非全量）」的有游标原因句，
+      // 且 miss 腿的可见行=0 语义不变。
       return { items: [P1, P2, P3], nextCursor: "cal-2" };
     });
     // 深链 q=不存在：3 行 loaded、0 行可见。
@@ -162,7 +166,7 @@ describe("P1-A2 ③ filter miss hides the whole pagination footer", () => {
     await render("/approvals?tab=history");
     await waitFor(() => rowCount() === 3, "rows restored");
     expect(q("apv-page"), "footer back with visible rows").not.toBeNull();
-    expect(q("apv-page-count")?.textContent).toBe("总数不可用 · 已显示 3 条");
+    expect(q("apv-page-count")?.textContent).toBe("已加载 3 条（非全量）");
     expect(q("apv-page-end"), "有 next 时不挂末页角标（并存只在未知+末页曾发生）").toBeNull();
   });
 });
