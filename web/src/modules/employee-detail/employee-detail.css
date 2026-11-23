@@ -1,0 +1,36 @@
+/* UI-A：employee-detail 的 11 处内联 style 迁到类（L0 点单，迁移指南 §6.2）。
+   只写主题令牌，不写十六进制；类名前缀 edw/edz 只在本模块出现。 */
+
+.edw-panel {
+  background: var(--panel);
+  border-color: var(--line);
+  color: var(--fg-2);
+}
+
+.edw-title {
+  color: var(--fg);
+}
+
+.edw-muted {
+  color: var(--fg-3);
+}
+
+.edw-toggle {
+  color: var(--fg);
+  background: transparent;
+}
+
+.edz-active {
+  background: var(--panel-2);
+  color: var(--fg);
+}
+
+.edz-idle {
+  background: transparent;
+  color: var(--fg-3);
+}
+
+.edz-tablist {
+  border-color: var(--line-2);
+}
+
