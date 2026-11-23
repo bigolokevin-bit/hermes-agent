@@ -26,6 +26,7 @@ import { ClipboardCheck, Gauge, Inbox, RefreshCw, ShieldAlert, TriangleAlert, Wa
 import { Badge, Button, Card, CardContent } from "@nous-research/ui";
 
 import { RequestIdCopy } from "@/components/RequestIdCopy";
+import SessionDrawer from "@/modules/employee-detail/SessionDrawer";
 import { priorityLabel, short8, statusLabel } from "@/modules/tasks/tasksBoard";
 import { riskView, statusView } from "@/modules/approvals/model";
 import { RelativeTime } from "@/modules/approvals/RelativeTime";
@@ -676,6 +677,8 @@ function ChatZone({ resource, empId, onRetry }: { resource: Resource<ChatRow[]>;
 }
 
 function SessionsZone({ resource, empId, onRetry }: { resource: Resource<ChatRow[]>; empId: string; onRetry: () => void }) {
+  // SE-03: 行内「详情」打开消息流抽屉；抽屉自己拉详情读口，列表数据零复制。
+  const [drawerId, setDrawerId] = useState<string | null>(null);
   if (!empId) {
     return (
       <ZoneEmpty
@@ -712,6 +715,7 @@ function SessionsZone({ resource, empId, onRetry }: { resource: Resource<ChatRow
     );
   }
   return (
+    <>
     <Card data-testid="ed9-sessions">
       <CardContent className="p-0">
         <div className="hidden grid-cols-[minmax(0,1.3fr)_minmax(0,0.8fr)_minmax(0,0.6fr)_minmax(0,0.9fr)] gap-2 border-b border-white/10 px-4 py-2 text-xs text-white/45 md:grid">
@@ -729,14 +733,27 @@ function SessionsZone({ resource, empId, onRetry }: { resource: Resource<ChatRow
                 data-testid={`ed9-sessions-row-${i}`}
                 className="grid grid-cols-1 gap-1 px-4 py-3 md:grid-cols-[minmax(0,1.3fr)_minmax(0,0.8fr)_minmax(0,0.6fr)_minmax(0,0.9fr)] md:items-center md:gap-2"
               >
-                <Link
-                  to="/chat"
-                  data-testid={`ed9-sessions-link-${i}`}
-                  title={row.ref ?? undefined}
-                  className="min-w-0 truncate text-sm no-underline hover:underline focus-visible:underline"
-                >
-                  {row.title ?? `会话 · ${row.ref ? shortCode(row.ref) : "待核实"}`}
-                </Link>
+                <div className="flex min-w-0 items-center gap-2">
+                  <Link
+                    to="/chat"
+                    data-testid={`ed9-sessions-link-${i}`}
+                    title={row.ref ?? undefined}
+                    className="min-w-0 flex-1 truncate text-sm no-underline hover:underline focus-visible:underline"
+                  >
+                    {row.title ?? `会话 · ${row.ref ? shortCode(row.ref) : "待核实"}`}
+                  </Link>
+                  {row.ref ? (
+                    <button
+                      type="button"
+                      data-testid={`ed9-sessions-detail-${i}`}
+                      onClick={() => setDrawerId(row.ref)}
+                      title={`读取会话 ${row.ref} 的全量消息`}
+                      className="shrink-0 rounded-sm border border-white/15 px-1.5 py-1 text-[11px] text-white/70 transition-colors hover:text-white focus-visible:outline focus-visible:outline-1 focus-visible:outline-white/40"
+                    >
+                      详情
+                    </button>
+                  ) : null}
+                </div>
                 <span className="text-xs text-white/55" data-testid={`ed9-sessions-channel-${i}`} title={ch.title}>
                   {ch.text}
                 </span>
@@ -756,9 +773,12 @@ function SessionsZone({ resource, empId, onRetry }: { resource: Resource<ChatRow
         </ul>
         <p className="px-4 py-2 text-xs text-white/45">
           只读列表 · 本页不提供会话创建或消息写入；要继续聊天请前往“对话”页（全站唯一承载）。
+          点行内「详情」读取该会话的全量消息流与引用（SE-03，只读）。
         </p>
       </CardContent>
     </Card>
+    {drawerId ? <SessionDrawer sessionId={drawerId} onClose={() => setDrawerId(null)} /> : null}
+    </>
   );
 }
 
