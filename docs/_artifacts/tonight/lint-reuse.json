@@ -1,7 +1,7 @@
 {
   "script": "lint-reuse",
   "root": "web/src/modules",
-  "scanned": 584,
+  "scanned": 587,
   "reuseMarkers": 28,
   "chatHostFiles": [
     {
@@ -54,7 +54,7 @@
       "owner": "work",
       "declaredWhere": "web/src/modules/work/manifest.ts（row 6 runs tab）",
       "declared": true,
-      "codeMentions": 21,
+      "codeMentions": 22,
       "via": "marker web/src/modules/work/manifest.ts:32"
     },
     {

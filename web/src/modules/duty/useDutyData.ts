@@ -5,6 +5,7 @@ import {
   fetchBudget,
   fetchEmployeeStats,
   fetchEmployees,
+  fetchReadinessEvidence,
   fetchRuns,
   load,
 } from "./api";
@@ -32,6 +33,7 @@ import type {
   RunStatsBody,
   TaskRow,
 } from "./types";
+import { DENOMINATOR_STATES, type ReadinessEvidence } from "./readiness";
 
 export interface DutyData {
   employees: Loadable<EmployeeRow[]>;
@@ -47,6 +49,9 @@ export interface DutyData {
   recentRuns: Loadable<RunRow[]>;
   failedRuns: Loadable<RunRow[]>;
   blockedTasks: Loadable<TaskRow[]>;
+  /** 四门证据（工位/有效配置/审批/知识），员工目录就绪后第二相扇出。
+   * 可选：overview 的复用夹具没有这一腿，缺省按「未就绪」处理。 */
+  readiness?: Loadable<ReadinessEvidence>;
 }
 
 export interface DutyRefresh {
@@ -77,6 +82,7 @@ function initial(): DutyData {
     recentRuns: loading(),
     failedRuns: loading(),
     blockedTasks: loading(),
+    readiness: loading(),
   };
 }
 
@@ -115,9 +121,20 @@ async function collect(rangeId: DutyRangeId): Promise<DutyData> {
   const employees = await employeesP;
   let budgetDay: Loadable<BudgetBody>;
   let budgetMonth: Loadable<BudgetBody>;
+  let readiness: Loadable<ReadinessEvidence>;
+  const emptyEvidence = (knowledgeWired: boolean): ReadinessEvidence => ({
+    stations: {},
+    configs: {},
+    approvals: { k: "ready", data: [] },
+    knowledge: {
+      k: "ready",
+      data: knowledgeWired ? { wired: true, count: 0, asOf: null } : { wired: false, count: null, asOf: null },
+    },
+  });
   if (employees.k === "error") {
     budgetDay = asError<BudgetBody>(employees);
     budgetMonth = asError<BudgetBody>(employees);
+    readiness = asError<ReadinessEvidence>(employees);
   } else if (employees.k !== "ready" || employees.data.length === 0) {
     const empty: Loadable<BudgetBody> = {
       k: "ready",
@@ -125,11 +142,17 @@ async function collect(rangeId: DutyRangeId): Promise<DutyData> {
     };
     budgetDay = empty;
     budgetMonth = empty;
+    // 目录为空：没有分母行可判，证据面留空（不编造知识读口状态）。
+    readiness = { k: "ready", data: emptyEvidence(false) };
   } else {
     const ids = employees.data.map((e) => e.employeeId);
-    [budgetDay, budgetMonth] = await Promise.all([
+    const denomIds = employees.data
+      .filter((e) => DENOMINATOR_STATES.has(e.lifecycleState ?? "active"))
+      .map((e) => e.employeeId);
+    [budgetDay, budgetMonth, readiness] = await Promise.all([
       load(() => fetchBudget(ids, "day", day.date)),
       load(() => fetchBudget(ids, "month", month)),
+      load(() => fetchReadinessEvidence(denomIds)),
     ]);
   }
 
@@ -171,6 +194,7 @@ async function collect(rangeId: DutyRangeId): Promise<DutyData> {
     recentRuns,
     failedRuns,
     blockedTasks,
+    readiness,
   };
 }
 

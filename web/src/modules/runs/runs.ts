@@ -1150,3 +1150,82 @@ export function sortRunRows(rows: RunRow[], key: RunSortKey, dir: RunSortDir): R
     })
     .map((entry) => entry.row);
 }
+
+/* ── trace strip for the run detail (Q6: steps + statuses) ─────────── */
+
+export type TraceTone = "success" | "warning" | "destructive" | "secondary" | "outline";
+
+const TRACE_ACTIVE = new Set(["in_progress", "running", "tool_call", "started"]);
+const TRACE_DONE = new Set(["completed", "message", "token", "tool_result", "tool_intent"]);
+
+/** Tone of one chip on the trace strip; a failure event wins over everything. */
+export function traceTone(ev: RunEvent): TraceTone {
+  if (isFailureEvent(ev)) return "destructive";
+  const type = (ev.eventType ?? "").toLowerCase();
+  if (TRACE_ACTIVE.has(type)) return "warning";
+  if (TRACE_DONE.has(type)) return "success";
+  return "secondary";
+}
+
+export type TraceCounts = {
+  total: number;
+  done: number;
+  active: number;
+  failed: number;
+  other: number;
+};
+
+/** Counts derived only from the events already on screen. */
+export function traceCounts(events: RunEvent[]): TraceCounts {
+  const counts: TraceCounts = { total: events.length, done: 0, active: 0, failed: 0, other: 0 };
+  for (const ev of events) {
+    const tone = traceTone(ev);
+    if (tone === "destructive") counts.failed += 1;
+    else if (tone === "warning") counts.active += 1;
+    else if (tone === "success") counts.done += 1;
+    else counts.other += 1;
+  }
+  return counts;
+}
+
+const EXCERPT_CHARS = 160;
+const INPUT_KEYS = ["input", "arguments", "args", "toolInput"] as const;
+const OUTPUT_KEYS = ["output", "result", "toolOutput", "response"] as const;
+
+function excerptText(value: unknown): string | null {
+  if (value === null || value === undefined) return null;
+  let text: string;
+  if (typeof value === "string") {
+    text = value;
+  } else {
+    try {
+      text = JSON.stringify(value);
+    } catch {
+      return null;
+    }
+    if (!text) return null;
+  }
+  return text.length > EXCERPT_CHARS ? `${text.slice(0, EXCERPT_CHARS)}…` : text;
+}
+
+/**
+ * Input or output excerpt of one step, read only from the event payload.
+ * When the payload carries nothing, the caller shows "未采集" with the reason
+ * instead of inventing a value.
+ */
+export function stepExcerpt(
+  ev: RunEvent,
+  kind: "input" | "output",
+): { text: string | null; reason: string } {
+  const payload = ev.payload ?? {};
+  const keys = kind === "input" ? INPUT_KEYS : OUTPUT_KEYS;
+  for (const key of keys) {
+    if (!(key in payload)) continue;
+    const text = excerptText(payload[key]);
+    if (text) return { text, reason: "" };
+  }
+  return {
+    text: null,
+    reason: kind === "input" ? "这条事件的载荷里没有输入摘录" : "这条事件的载荷里没有输出摘录",
+  };
+}

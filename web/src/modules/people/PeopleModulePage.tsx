@@ -9,6 +9,10 @@
  * carries no values for are dropped entirely (buglist P0-4); an individual
  * missing value is `—` with the reason in `title`, status words never expose
  * codes, and raw ids stay in `title`.
+ *
+ * Q12: each roster row carries a `ppl5d-open-<id>` control that swaps in the
+ * in-page five-tab detail view (`EmployeeDetailPanel`, zero routing); 返回名册
+ * restores this list without refetching it.
  */
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router";
@@ -18,6 +22,7 @@ import { Badge, Button, Card, CardContent } from "@nous-research/ui";
 import { fetchJSON } from "@/lib/api";
 import "./people.css";
 import { API_UNREACHABLE_MESSAGE, ApiError, humanizeStatus } from "@/lib/api-error";
+import EmployeeDetailPanel from "./EmployeeDetailPanel";
 
 type Rec = Record<string, unknown>;
 
@@ -281,6 +286,9 @@ export default function PeopleModulePage() {
   const forced = readForced(sp.get("state"));
   const [reload, setReload] = useState(0);
   const [query, setQuery] = useState("");
+  // Q12：行打开页内详情（零路由）。名册状态留在本组件，返回即恢复视图，
+  // 不重新拉名单。
+  const [openId, setOpenId] = useState<string | null>(null);
   const live = usePeople(reload, forced === null || forced === "ready");
   const people = forced && forced !== "ready" ? previewResource(forced) : live;
 
@@ -314,6 +322,14 @@ export default function PeopleModulePage() {
     "状态",
     ...(showLastActive ? ["最后活跃"] : []),
   ];
+
+  if (openId !== null) {
+    return (
+      <section className="ppl5-page flex min-w-0 flex-col gap-4" data-testid="ppl5-page">
+        <EmployeeDetailPanel key={openId} employeeId={openId} onBack={() => setOpenId(null)} />
+      </section>
+    );
+  }
 
   return (
     <section className="ppl5-page flex min-w-0 flex-col gap-4" data-testid="ppl5-page">
@@ -439,6 +455,17 @@ export default function PeopleModulePage() {
                       <span className="min-w-0 break-words" data-label="姓名" data-testid="ppl5-name">
                         {r.name}{r.code !== "未指派" ? ` · ${r.code}` : ""}
                       </span>
+                      {r.rawId ? (
+                        <button
+                          type="button"
+                          className="ppl5d-open"
+                          data-testid={`ppl5d-open-${r.rawId}`}
+                          onClick={() => setOpenId(r.rawId)}
+                          title={`查看 ${r.name} 的档案、任职、权限、任务与审计`}
+                        >
+                          详情
+                        </button>
+                      ) : null}
                     </span>
                     {showAccount ? (
                       <span className="min-w-0 break-all text-xs text-white/55 md:text-sm md:text-white/60" data-label="账号" data-testid="ppl5-account" title={r.account ? undefined : "上游未提供账号"}>
