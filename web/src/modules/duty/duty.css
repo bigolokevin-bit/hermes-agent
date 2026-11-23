@@ -789,6 +789,14 @@
   font-style: normal;
 }
 
+/* DU-02②：今日运行卡的三格搬到卡外折叠区后一行排开（窄屏仍按上面两列），
+   卡片本体只留一个主数字，高度与明细行数无关。 */
+@media (min-width: 821px) {
+  .duty-details-kpis {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 /* 卡外明细折叠区 */
 .duty-details {
   margin-block-start: 8px;

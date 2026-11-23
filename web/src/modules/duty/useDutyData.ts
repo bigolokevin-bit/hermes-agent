@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  DUTY_RUNS_PAGE_LIMIT,
   fetchActivity,
   fetchBlockedTasks,
   fetchBudget,
@@ -20,6 +21,8 @@ import {
   trimTimeseries,
 } from "./workbench";
 import { beijingDayWindow, daysAgoWindow } from "./format";
+import { NO_COUNT, type ServerRowCount } from "./dutySlots";
+import type { RowPage } from "./api";
 import { diffDuty, type DutyDelta } from "./dutyDelta";
 import { DEFAULT_DUTY_RANGE, dutyRange, type DutyRangeId } from "./dutyRange";
 import type {
@@ -53,6 +56,21 @@ export interface DutyData {
    * 可选：overview 的复用夹具没有这一腿，缺省按「未就绪」处理。 */
   readiness?: Loadable<ReadinessEvidence>;
 }
+
+/**
+ * DU-02①：三卡「查看全部 (N)」的 N 只来自这里——服务端响应真带回的行数。
+ * 走 hook 的旁路返回值而不是 DutyData：overview 等消费面对 DutyData 做
+ * `Object.values(...).k` 扫描，塞一个非卡腿进去会污染它们的失败/加载判定。
+ */
+export interface DutyCounts {
+  employees: ServerRowCount;
+  todayRuns: ServerRowCount;
+}
+
+const EMPTY_DUTY_COUNTS: DutyCounts = {
+  employees: NO_COUNT,
+  todayRuns: NO_COUNT,
+};
 
 export interface DutyRefresh {
   refreshing: boolean;
@@ -90,6 +108,16 @@ function asError<T>(leg: Extract<Loadable<unknown>, { k: "error" }>): Loadable<T
   return { k: "error", status: leg.status, message: leg.message, requestId: leg.requestId };
 }
 
+/** 行页 → 卡用的行数组（消费面形状不变）；错误腿原样透传，不降级成空数组。 */
+function rowsLeg<T>(leg: Loadable<RowPage<T>>): Loadable<T[]> {
+  return leg.k === "ready" ? { k: "ready", data: leg.data.rows } : leg;
+}
+
+/** 行页 → 服务端真给行数；这一腿没回答就是 NO_COUNT（N=null → 屏上「数量未提供」）。 */
+function countOf<T>(leg: Loadable<RowPage<T>>): ServerRowCount {
+  return leg.k === "ready" ? leg.data.count : NO_COUNT;
+}
+
 /**
  * One read of every card, started together and returned as one batch.
  * Cards are independent: a failed endpoint yields an error for that card only.
@@ -99,8 +127,9 @@ function asError<T>(leg: Extract<Loadable<unknown>, { k: "error" }>): Loadable<T
  * 活动热力可渲染，默认不请求；关掉时 data.activity 停在「loading」这个
  * 未发起请求的中性占位上（总览的空态/错误态/截至行只数 coreStates 与
  * stats14，从不消费它），DutyPage 走默认档行为逐字不变。
+ * DU-02：返回 { batch, counts }，counts 为三卡服务端真数（N 只从这里来）。
  */
-async function collect(rangeId: DutyRangeId, opts: { activity?: boolean } = {}): Promise<DutyData> {
+async function collect(rangeId: DutyRangeId, opts: { activity?: boolean } = {}): Promise<{ batch: DutyData; counts: DutyCounts }> {
   const range = dutyRange(rangeId);
   const wantActivity = opts.activity !== false;
   const day = beijingDayWindow();
@@ -108,7 +137,7 @@ async function collect(rangeId: DutyRangeId, opts: { activity?: boolean } = {}):
   const w7 = daysAgoWindow(7);
   const w1 = daysAgoWindow(1);
 
-  const employeesP = load(fetchEmployees);
+  const employeesPageP = load(fetchEmployees);
   const statsP = load(fetchEmployeeStats);
   // 统计与趋势改吃 workbench 读模型：KPI 与时间序列由 BFF 聚合。
   const todayStatsP = load(async () => summaryStats(await fetchWorkbenchSummary("1d")));
@@ -122,12 +151,13 @@ async function collect(rangeId: DutyRangeId, opts: { activity?: boolean } = {}):
   const queue = fetchWorkbenchQueue();
   const approvalStatsP = load(() => queue.then(queueStats));
   const approvalsP = load(() => queue.then(queueApprovals));
-  const todayRunsP = load(() => fetchRuns(3, day.from));
-  const recentRunsP = load(() => fetchRuns(3, w7.from));
-  const failedRunsP = load(() => fetchRuns(3, w1.from, "failed"));
+  const todayRunsPageP = load(() => fetchRuns(DUTY_RUNS_PAGE_LIMIT, day.from));
+  const recentRunsPageP = load(() => fetchRuns(DUTY_RUNS_PAGE_LIMIT, w7.from));
+  const failedRunsPageP = load(() => fetchRuns(DUTY_RUNS_PAGE_LIMIT, w1.from, "failed"));
   const blockedTasksP = load(() => fetchBlockedTasks(3));
 
-  const employees = await employeesP;
+  const employeesPage = await employeesPageP;
+  const employees = rowsLeg(employeesPage);
   let budgetDay: Loadable<BudgetBody>;
   let budgetMonth: Loadable<BudgetBody>;
   let readiness: Loadable<ReadinessEvidence>;
@@ -173,9 +203,9 @@ async function collect(rangeId: DutyRangeId, opts: { activity?: boolean } = {}):
     activity,
     approvalStats,
     approvals,
-    todayRuns,
-    recentRuns,
-    failedRuns,
+    todayRunsPage,
+    recentRunsPage,
+    failedRunsPage,
     blockedTasks,
   ] = await Promise.all([
     statsP,
@@ -184,27 +214,33 @@ async function collect(rangeId: DutyRangeId, opts: { activity?: boolean } = {}):
     activityP,
     approvalStatsP,
     approvalsP,
-    todayRunsP,
-    recentRunsP,
-    failedRunsP,
+    todayRunsPageP,
+    recentRunsPageP,
+    failedRunsPageP,
     blockedTasksP,
   ]);
 
   return {
-    employees,
-    stats,
-    todayStats,
-    stats14,
-    activity,
-    budgetDay,
-    budgetMonth,
-    approvalStats,
-    approvals,
-    todayRuns,
-    recentRuns,
-    failedRuns,
-    blockedTasks,
-    readiness,
+    batch: {
+      employees,
+      stats,
+      todayStats,
+      stats14,
+      activity,
+      budgetDay,
+      budgetMonth,
+      approvalStats,
+      approvals,
+      todayRuns: rowsLeg(todayRunsPage),
+      recentRuns: rowsLeg(recentRunsPage),
+      failedRuns: rowsLeg(failedRunsPage),
+      blockedTasks,
+      readiness,
+    },
+    counts: {
+      employees: countOf(employeesPage),
+      todayRuns: countOf(todayRunsPage),
+    },
   };
 }
 
@@ -217,12 +253,14 @@ export function useDutyData(
   opts: { activity?: boolean } = {},
 ): {
   data: DutyData;
+  counts: DutyCounts;
   reload: () => void;
   loading: boolean;
   refreshState: DutyRefresh;
 } {
   const [nonce, setNonce] = useState(0);
   const [data, setData] = useState<DutyData>(initial);
+  const [counts, setCounts] = useState<DutyCounts>(EMPTY_DUTY_COUNTS);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshAt, setRefreshAt] = useState<string | null>(null);
   const [refreshError, setRefreshError] = useState<DutyRefresh["refreshError"]>(null);
@@ -246,9 +284,13 @@ export function useDutyData(
   useEffect(() => {
     let alive = true;
     setData(initial());
+    setCounts(EMPTY_DUTY_COUNTS);
     setRefreshDelta(null);
-    void collect(rangeRef.current, { activity: wantActivityRef.current }).then((batch) => {
-      if (alive) setData(batch);
+    void collect(rangeRef.current, { activity: wantActivityRef.current }).then(({ batch, counts: next }) => {
+      if (alive) {
+        setData(batch);
+        setCounts(next);
+      }
     });
     return () => {
       alive = false;
@@ -295,10 +337,11 @@ export function useDutyData(
     setRefreshDelta(null);
     const before = dataRef.current;
     const version = versionRef.current;
-    void collect(rangeRef.current, { activity: wantActivityRef.current }).then((batch) => {
+    void collect(rangeRef.current, { activity: wantActivityRef.current }).then(({ batch, counts: next }) => {
       // A cancelled batch must not write a stale screen or a read stamp.
       if (version !== versionRef.current) return;
       setData((prev) => ({ ...prev, ...batch }));
+      setCounts(next);
       // A failed card drops out of the comparison (it reads as missing, not 0),
       // the cards that did answer still report their change.
       setRefreshDelta(diffDuty(before, batch));
@@ -331,6 +374,7 @@ export function useDutyData(
   const loadingAny = Object.values(data).some((v) => v.k === "loading");
   return {
     data,
+    counts,
     reload,
     loading: loadingAny,
     refreshState: { refreshing, refreshAt, refreshError, refreshDelta, refresh, cancelRefresh },

@@ -53,6 +53,14 @@ import {
   parseDutyRange,
 } from "./dutyRange";
 import { DUTY_GATES_OPEN, dutyGates, type DutyGates } from "./dutyGates";
+import {
+  DUTY_LIST_CAP,
+  NO_COUNT,
+  detailsListNote,
+  truncationClause,
+  viewAllText,
+  type ServerRowCount,
+} from "./dutySlots";
 import "./duty.css";
 
 type Tone = "default" | "destructive" | "outline" | "secondary" | "success" | "warning";
@@ -331,7 +339,20 @@ function readinessView(
   return { readiness, rawStamp, state };
 }
 
-function ReadinessCard({ employees, stats, evidence, onRetry }: { employees: Loadable<EmployeeRow[]>; stats: Loadable<Record<string, unknown>>; evidence?: Loadable<ReadinessEvidence>; onRetry: () => void }) {
+function ReadinessCard({
+  employees,
+  stats,
+  evidence,
+  count = NO_COUNT,
+  onRetry,
+}: {
+  employees: Loadable<EmployeeRow[]>;
+  stats: Loadable<Record<string, unknown>>;
+  evidence?: Loadable<ReadinessEvidence>;
+  /** 员工目录响应真带回的行数（DU-02①）；拿不到就写「数量未提供」。 */
+  count?: ServerRowCount;
+  onRetry: () => void;
+}) {
   const { readiness, rawStamp, state } = readinessView(employees, stats, evidence);
   return (
     <HCard
@@ -339,8 +360,13 @@ function ReadinessCard({ employees, stats, evidence, onRetry }: { employees: Loa
       testid="duty-ready"
       stamp={stampOf(rawStamp, "员工目录与运行统计", [employees, stats])}
       action={
-        <Link className="duty-link duty-card-foot" to="/employees" data-testid="duty-route-readiness">
-          查看明细
+        <Link
+          className="duty-link duty-card-foot"
+          to="/employees"
+          data-testid="duty-route-readiness"
+          title={truncationClause(count)}
+        >
+          {viewAllText(count.serverRows)}
           <ArrowRight className="h-3.5 w-3.5" />
         </Link>
       }
@@ -380,6 +406,8 @@ function DutyDetailsSection({
   employees,
   stats,
   evidence,
+  employeesCount = NO_COUNT,
+  runsCount = NO_COUNT,
   todayStats,
   todayRuns,
   day,
@@ -396,6 +424,9 @@ function DutyDetailsSection({
   employees: Loadable<EmployeeRow[]>;
   stats: Loadable<Record<string, unknown>>;
   evidence?: Loadable<ReadinessEvidence>;
+  /** 三卡深链的 N 与折叠区必须同源：这两个计数由页面透传，本区不另算。 */
+  employeesCount?: ServerRowCount;
+  runsCount?: ServerRowCount;
   todayStats: Loadable<RunStatsBody>;
   todayRuns: Loadable<RunRow[]>;
   day: Loadable<BudgetBody>;
@@ -411,6 +442,11 @@ function DutyDetailsSection({
 }) {
   const { readiness } = readinessView(employees, stats, evidence);
   const totals = todayStats.k === "ready" ? runTotals(todayStats.data) : null;
+  // 三格从今日运行卡里搬来（DU-02②：主数字每卡一个），算法与卡上原形一致。
+  const rate =
+    totals && totals.runs && totals.runs > 0 && totals.succeeded !== null
+      ? Math.round((totals.succeeded / totals.runs) * 100)
+      : null;
   const caliberAsOf = todayStats.k === "ready" ? asOfOf(todayStats.data) : null;
   const caliber = runsCaliber({
     duty: totals ? totals.runs : null,
@@ -419,6 +455,9 @@ function DutyDetailsSection({
   });
   const shownRuns =
     todayRuns.k === "ready" ? filterDutyRuns(todayRuns.data, statusFilterId) : [];
+  const listedRuns = Math.min(shownRuns.length, DUTY_LIST_CAP);
+  const statusFilterLabel =
+    DUTY_STATUS_FILTERS.find((f) => f.id === statusFilterId)?.label ?? "";
   const cost = buildCost(
     day.k === "ready" ? day.data : null,
     month.k === "ready" ? month.data : null,
@@ -459,6 +498,15 @@ function DutyDetailsSection({
           <p className="duty-say" data-testid="duty-gates-net" data-duty-testid="duty-gates-net">
             {readiness.netNote}
           </p>
+          <p className="duty-note" data-testid="duty-details-readiness-count">
+            {employeesCount.serverRows === null
+              ? "员工目录返回条数未提供"
+              : `员工目录${truncationClause(employeesCount)}`}{" "}
+            · 检查项 {readiness.gates.length} 项
+            {employeesCount.unreadable && employeesCount.unreadable > 0
+              ? ` · ${employeesCount.unreadable} 条读不成行形，不计入分母`
+              : ""}
+          </p>
           <div className="duty-gates">
             {readiness.gates.map((g) => (
               <GateRow key={g.key} gate={g} narrowest={readiness.narrowest?.key === g.key} />
@@ -471,6 +519,25 @@ function DutyDetailsSection({
         </section>
         <section className="duty-details-block" data-testid="duty-details-runs">
           <h3>今日运行明细</h3>
+          {/* DU-02②：这三格原来占着今日运行卡的 KPI 位，卡上只留运行数一个主数字。 */}
+          <div className="duty-kpis duty-details-kpis" data-testid="duty-today-runs-kpis">
+            <span className="duty-kpi">
+              <b data-testid="duty-kpi-success-rate">{rate === null ? "—" : `${rate}%`}</b>
+              <i>成功率</i>
+            </span>
+            <span className="duty-kpi">
+              <b data-testid="duty-kpi-running">{totals ? dashed(totals.running) : "—"}</b>
+              <i>在跑</i>
+            </span>
+            <span className="duty-kpi">
+              <b data-testid="duty-kpi-failed">{totals ? dashed(totals.failed) : "—"}</b>
+              <i>失败</i>
+            </span>
+          </div>
+          <p className="duty-note" data-testid="duty-details-runs-count">
+            {`运行明细${detailsListNote(runsCount, listedRuns)}`}
+            {statusFilterId === "all" ? "" : ` · 当前按「${statusFilterLabel}」筛选`}
+          </p>
           <div className="duty-ranges duty-status-filters" role="group" aria-label="运行状态筛选">
             {DUTY_STATUS_FILTERS.map((f) => (
               <button
@@ -488,7 +555,7 @@ function DutyDetailsSection({
           {todayRuns.k === "ready" && todayRuns.data.length > 0 ? (
             shownRuns.length > 0 ? (
               <ul className="duty-list" data-testid="duty-details-run-list">
-                {shownRuns.slice(0, 8).map((run) => (
+                {shownRuns.slice(0, DUTY_LIST_CAP).map((run) => (
                   <li key={run.runId}>
                     <RunStatusBadge status={run.status} />
                     <Link className="duty-row-title" to={`/runs/?run=${encodeURIComponent(run.runId)}`}>
@@ -525,6 +592,12 @@ function DutyDetailsSection({
         </section>
         <section className="duty-details-block" data-testid="duty-details-cost">
           <h3>成本覆盖明细</h3>
+          <p className="duty-note" data-testid="duty-details-cost-count">
+            {cost.covered === null
+              ? "当日账本返回行数未提供"
+              : `当日账本本轮返回 ${cost.covered} 行`}
+            {cost.missing > 0 ? ` · 服务端报缺 ${cost.missing} 人金额` : ""}
+          </p>
           <ul className="duty-list">
             <li>
               <span className="duty-row-title">已覆盖</span>
@@ -592,7 +665,7 @@ function DutyDetailsSection({
           ) : (
             <>
               <ul className="duty-list">
-                {recentRows.slice(0, LIST_CAP).map((run) => (
+                {recentRows.slice(0, DUTY_LIST_CAP).map((run) => (
                   <li key={run.runId}>
                     <Link className="duty-row-title font-mono" to={`/runs/?run=${encodeURIComponent(run.runId)}`}>
                       {shortId(run.runId)}
@@ -602,9 +675,9 @@ function DutyDetailsSection({
                   </li>
                 ))}
               </ul>
-              {recentRows.length >= LIST_CAP ? (
+              {recentRows.length >= DUTY_LIST_CAP ? (
                 <p className="duty-note" data-testid="duty-recent-more">
-                  本页最多读取 {LIST_CAP} 条已触顶，可能还有更多未列出；「查看全部」的计数为本次读到的条数，非全量。
+                  本页最多读取 {DUTY_LIST_CAP} 条已触顶，可能还有更多未列出；「查看全部」的计数为本次读到的条数，非全量。
                 </p>
               ) : null}
             </>
@@ -629,13 +702,20 @@ function RunStatusBadge({ status }: { status?: string }) {
   return <Badge tone={hit?.tone ?? "outline"}>{hit?.text ?? "—"}</Badge>;
 }
 
+/**
+ * 今日运行卡（DU-02 固定槽位）：标题 / 一个主数字（运行数）/ 一句状态 / 一个「查看全部 (N)」深链。
+ * 成功率·在跑·失败三格属明细，挪进卡外「今日运行明细」（信息一条不删），
+ * 卡高因此与数据行数无关。N 只取运行明细响应真带回的行数。
+ */
 function TodayRunsCard({
   stats,
   runs,
+  count = NO_COUNT,
   onRetry,
 }: {
   stats: Loadable<RunStatsBody>;
   runs: Loadable<RunRow[]>;
+  count?: ServerRowCount;
   onRetry: () => void;
   statusFilterId: DutyStatusFilterId;
   onChooseStatus: (next: DutyStatusFilterId) => void;
@@ -645,37 +725,40 @@ function TodayRunsCard({
     totals && totals.runs && totals.runs > 0 && totals.succeeded !== null
       ? Math.round((totals.succeeded / totals.runs) * 100)
       : null;
+  const say =
+    totals === null
+      ? "运行窗口统计没有返回合计，先不报数（缺数不当 0）"
+      : `成功率 ${rate === null ? "—" : `${rate}%`} · 在跑 ${dashed(totals.running)} · 失败 ${dashed(
+          totals.failed,
+        )}，逐条见卡外「今日运行明细」`;
+  const truncated = truncationClause(count);
   return (
     <HCard
       title="今日运行"
       testid="duty-today-runs"
       stamp={stampOf(stats.k === "ready" ? asOfOf(stats.data) : null, "运行窗口统计", [stats, runs])}
       action={
-        <Link className="duty-link duty-card-foot" to="/runs" data-testid="duty-route-today-runs">
-          查看明细
+        <Link
+          className="duty-link duty-card-foot"
+          to="/runs"
+          data-testid="duty-route-today-runs"
+          title={truncated}
+        >
+          {viewAllText(count.serverRows)}
           <ArrowRight className="h-3.5 w-3.5" />
         </Link>
       }
     >
       <StateLine state={stats} onRetry={onRetry}>
-        <div className="duty-kpis" data-testid="duty-today-runs-kpis">
-          <span className="duty-kpi">
-            <b data-testid="ov6-kpi-runs" data-duty-testid="duty-kpi-runs">{totals ? dashed(totals.runs) : "—"}</b>
-            <i>运行数</i>
+        <p className="duty-num" data-testid="ov6-today-runs-num" data-duty-testid="duty-today-runs-num">
+          <span data-testid="ov6-kpi-runs" data-duty-testid="duty-kpi-runs">
+            {totals ? dashed(totals.runs) : "—"}
           </span>
-          <span className="duty-kpi">
-            <b data-testid="duty-kpi-success-rate">{rate === null ? "—" : `${rate}%`}</b>
-            <i>成功率</i>
-          </span>
-          <span className="duty-kpi">
-            <b data-testid="duty-kpi-running">{totals ? dashed(totals.running) : "—"}</b>
-            <i>在跑</i>
-          </span>
-          <span className="duty-kpi">
-            <b data-testid="duty-kpi-failed">{totals ? dashed(totals.failed) : "—"}</b>
-            <i>失败</i>
-          </span>
-        </div>
+          <em>次 · 今日</em>
+        </p>
+        <p className="duty-say" data-testid="duty-today-runs-say">
+          {say}｜{truncated}
+        </p>
       </StateLine>
     </HCard>
   );
@@ -698,6 +781,11 @@ function CostCard({
     month.k === "ready" ? month.data : null,
     null,
   );
+  // 账本腿的行数直接取响应自带的 items（未归一化、未相加），缺形状就是 null。
+  const ledgerNote =
+    cost.covered === null
+      ? "当日账本返回行数未提供"
+      : `当日账本本轮返回 ${cost.covered} 行`;
   const state = day.k === "error" ? day : month.k === "error" ? month : day;
   return (
     <HCard
@@ -705,8 +793,13 @@ function CostCard({
       testid="duty-today-cost"
       stamp={stampOf(day.k === "ready" ? asOfOf(day.data) : null, "当日成本账本", [day, month])}
       action={
-        <Link className="duty-link duty-card-foot" to="/metrics" data-testid="duty-route-cost">
-          查看明细
+        <Link
+          className="duty-link duty-card-foot"
+          to="/metrics"
+          data-testid="duty-route-cost"
+          title={ledgerNote}
+        >
+          {viewAllText(cost.covered)}
           <ArrowRight className="h-3.5 w-3.5" />
         </Link>
       }
@@ -716,10 +809,11 @@ function CostCard({
           {usd(cost.dayUsd)}
           <em>今日</em>
         </p>
-        <p className="duty-say">
+        <p className="duty-say" data-testid="duty-today-cost-say">
           {cost.partial
             ? `账本还缺 ${cost.missing || "若干"} 人的金额，先不报合计`
             : `本月已花 ${usd(cost.monthUsd)}`}
+          ｜{ledgerNote}
         </p>
       </StateLine>
     </HCard>
@@ -1197,7 +1291,7 @@ export default function DutyPage() {
   const rangeId = parseDutyRange(params.get(DUTY_RANGE_PARAM));
   const statusFilterId = parseDutyStatusFilter(params.get(DUTY_STATUS_PARAM));
   const range = dutyRange(rangeId);
-  const { data, reload, loading, refreshState } = useDutyData(rangeId);
+  const { data, counts, reload, loading, refreshState } = useDutyData(rangeId);
   const chooseRange = (next: string) => {
     const query = new URLSearchParams(params);
     if (next === DEFAULT_DUTY_RANGE) query.delete(DUTY_RANGE_PARAM);
@@ -1406,10 +1500,17 @@ export default function DutyPage() {
       </div>
 
       <div className="duty-grid duty-grid-3">
-        <ReadinessCard employees={data.employees} stats={data.stats} evidence={data.readiness} onRetry={reload} />
+        <ReadinessCard
+          employees={data.employees}
+          stats={data.stats}
+          evidence={data.readiness}
+          count={counts.employees}
+          onRetry={reload}
+        />
         <TodayRunsCard
           stats={data.todayStats}
           runs={data.todayRuns}
+          count={counts.todayRuns}
           onRetry={reload}
           statusFilterId={statusFilterId}
           onChooseStatus={chooseStatus}
@@ -1431,6 +1532,8 @@ export default function DutyPage() {
         employees={data.employees}
         stats={data.stats}
         evidence={data.readiness}
+        employeesCount={counts.employees}
+        runsCount={counts.todayRuns}
         todayStats={data.todayStats}
         todayRuns={data.todayRuns}
         day={data.budgetDay}
