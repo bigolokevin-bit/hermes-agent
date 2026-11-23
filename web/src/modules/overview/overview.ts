@@ -141,10 +141,14 @@ const DAY_LABEL = new Intl.DateTimeFormat('zh-CN', {
   day: '2-digit',
 });
 
-export function trendPoints(stats: RunStatsBody | null): TrendPoint[] {
+/**
+ * 趋势点位随窗取尾部 N 桶（OM-04：14d 之外的档位读 30d 后由
+ * duty 层裁桶，这里再按档位天数收口，缺省 14 保持既有口径）。
+ */
+export function trendPoints(stats: RunStatsBody | null, days = 14): TrendPoint[] {
   const buckets = stats?.buckets;
   if (!Array.isArray(buckets)) return [];
-  return buckets.slice(-14).map((bucket) => {
+  return buckets.slice(-days).map((bucket) => {
     const at = new Date(bucket.bucketStart);
     return {
       label: Number.isNaN(at.getTime()) ? '—' : DAY_LABEL.format(at),

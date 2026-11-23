@@ -94,8 +94,15 @@ function asError<T>(leg: Extract<Loadable<unknown>, { k: "error" }>): Loadable<T
  * One read of every card, started together and returned as one batch.
  * Cards are independent: a failed endpoint yields an error for that card only.
  */
-async function collect(rangeId: DutyRangeId): Promise<DutyData> {
+/**
+ * 一次性读取本页所有卡片。OM-04④：activity 腿加消费者开关——总览没有
+ * 活动热力可渲染，默认不请求；关掉时 data.activity 停在「loading」这个
+ * 未发起请求的中性占位上（总览的空态/错误态/截至行只数 coreStates 与
+ * stats14，从不消费它），DutyPage 走默认档行为逐字不变。
+ */
+async function collect(rangeId: DutyRangeId, opts: { activity?: boolean } = {}): Promise<DutyData> {
   const range = dutyRange(rangeId);
+  const wantActivity = opts.activity !== false;
   const day = beijingDayWindow();
   const month = day.date.slice(0, 7);
   const w7 = daysAgoWindow(7);
@@ -108,7 +115,9 @@ async function collect(rangeId: DutyRangeId): Promise<DutyData> {
   const stats14P = load(async () =>
     timeseriesStats(trimTimeseries(await fetchWorkbenchTimeseries({ range: range.tsRange, bucket: "day" }), range.days)),
   );
-  const activityP = load(() => fetchActivity(range.weeks));
+  const activityP = wantActivity
+    ? load(() => fetchActivity(range.weeks))
+    : Promise.resolve({ k: "loading" } as Loadable<ActivityBody>);
   // 待审队列一次取数给两张卡：计数与前三行同源。
   const queue = fetchWorkbenchQueue();
   const approvalStatsP = load(() => queue.then(queueStats));
@@ -202,7 +211,10 @@ async function collect(rangeId: DutyRangeId): Promise<DutyData> {
  * One refresh retries every card. Cards are independent: one failed endpoint
  * never blanks another card, and no card invents a zero for missing data.
  */
-export function useDutyData(rangeId: DutyRangeId = DEFAULT_DUTY_RANGE): {
+export function useDutyData(
+  rangeId: DutyRangeId = DEFAULT_DUTY_RANGE,
+  opts: { activity?: boolean } = {},
+): {
   data: DutyData;
   reload: () => void;
   loading: boolean;
@@ -223,6 +235,8 @@ export function useDutyData(rangeId: DutyRangeId = DEFAULT_DUTY_RANGE): {
   const rangeVersionRef = useRef(0);
   const mountedRef = useRef(false);
   rangeRef.current = rangeId;
+  const wantActivityRef = useRef(opts.activity !== false);
+  wantActivityRef.current = opts.activity !== false;
 
   useEffect(() => {
     dataRef.current = data;
@@ -232,7 +246,7 @@ export function useDutyData(rangeId: DutyRangeId = DEFAULT_DUTY_RANGE): {
     let alive = true;
     setData(initial());
     setRefreshDelta(null);
-    void collect(rangeRef.current).then((batch) => {
+    void collect(rangeRef.current, { activity: wantActivityRef.current }).then((batch) => {
       if (alive) setData(batch);
     });
     return () => {
@@ -257,16 +271,18 @@ export function useDutyData(rangeId: DutyRangeId = DEFAULT_DUTY_RANGE): {
     setRefreshDelta(null);
     setRefreshAt(null);
     setRefreshDelta(null);
-    setData((prev) => ({ ...prev, stats14: loading(), activity: loading() }));
+    const wantActivity = wantActivityRef.current;
+    setData((prev) => ({ ...prev, stats14: loading(), ...(wantActivity ? { activity: loading() as DutyData["activity"] } : {}) }));
     void Promise.all([
       load(async () => {
         const range = dutyRange(rangeId);
         return timeseriesStats(trimTimeseries(await fetchWorkbenchTimeseries({ range: range.tsRange, bucket: "day" }), range.days));
       }),
-      load(() => fetchActivity(dutyRange(rangeId).weeks)),
+      wantActivity ? load(() => fetchActivity(dutyRange(rangeId).weeks)) : null,
     ]).then(([stats14, activity]) => {
       if (version !== rangeVersionRef.current) return;
-      setData((prev) => ({ ...prev, stats14, activity }));
+      // 关掉的腿不重画：上一次的值（或占位）原样留在原处。
+      setData((prev) => ({ ...prev, stats14, ...(activity ? { activity } : {}) }));
     });
   }, [rangeId]);
 
@@ -278,7 +294,7 @@ export function useDutyData(rangeId: DutyRangeId = DEFAULT_DUTY_RANGE): {
     setRefreshDelta(null);
     const before = dataRef.current;
     const version = versionRef.current;
-    void collect(rangeRef.current).then((batch) => {
+    void collect(rangeRef.current, { activity: wantActivityRef.current }).then((batch) => {
       // A cancelled batch must not write a stale screen or a read stamp.
       if (version !== versionRef.current) return;
       setData((prev) => ({ ...prev, ...batch }));

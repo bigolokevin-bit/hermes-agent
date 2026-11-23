@@ -8,6 +8,7 @@ import { Card, CardContent } from '@nous-research/ui/ui/components/card';
 import { fetchMatrix, load } from '../duty/api';
 import { beijing, dashed, employeeLabel, shortId, usd } from '../duty/format';
 import { useDutyData, type DutyData } from '../duty/useDutyData';
+import { DUTY_RANGES, DEFAULT_DUTY_RANGE, dutyRange, parseDutyRange, type DutyRangeId } from '../duty/dutyRange';
 import type { Loadable, MatrixBody, RunStatsBody } from '../duty/types';
 import { buildKpis, blockerRows, sourceStamp, trendPoints, OVERVIEW_GAP } from './overview';
 import './overview.css';
@@ -148,14 +149,14 @@ function KpiCard({
   );
 }
 
-function Trend({ stats, onRetry }: { stats: Loadable<RunStatsBody>; onRetry: () => void }) {
-  const points = stats.k === 'ready' ? trendPoints(stats.data) : [];
+function Trend({ stats, label = '近 14 天', days = 14, onRetry }: { stats: Loadable<RunStatsBody>; label?: string; days?: number; onRetry: () => void }) {
+  const points = stats.k === 'ready' ? trendPoints(stats.data, days) : [];
   const max = Math.max(1, ...points.map((p) => p.runs ?? 0));
   return (
     <Card className="ov5-block" data-testid="ov6-trend" data-duty-testid="duty-trend">
       <CardContent className="ov5-block-bd">
         <div className="ov5-block-hd">
-          <h2>近 14 天运行趋势</h2>
+          <h2>{label}运行趋势</h2>
           <Source>运行统计</Source>
         </div>
         <Freshness items={[{ source: '运行统计', state: stats }]} testid="ov6-trend-stamp" />
@@ -169,12 +170,12 @@ function Trend({ stats, onRetry }: { stats: Loadable<RunStatsBody>; onRetry: () 
           </div>
         ) : points.length === 0 ? (
           <div className="ov5-empty-line">
-            <span>这 14 天还没有运行记录，所以没有趋势可画。</span>
+            <span>{label}还没有运行记录，所以没有趋势可画。</span>
             <Link to="/runs">去看运行记录<ArrowRight className="h-3.5 w-3.5" /></Link>
           </div>
         ) : (
           <>
-            <div className="ov5-bars" role="img" aria-label="近 14 天运行趋势">
+            <div className="ov5-bars" role="img" aria-label={`${label}运行趋势`}>
               {points.map((point) => (
                 <div
                   className={point.runs === null ? 'ov5-bar is-missing' : 'ov5-bar'}
@@ -299,12 +300,20 @@ export function OverviewView({
   matrix,
   loading,
   onRetry,
+  rangeId = DEFAULT_DUTY_RANGE,
+  onRange,
+  rangeInvalid = null,
 }: {
   data: DutyData;
   matrix: Loadable<MatrixBody>;
   loading: boolean;
   onRetry: () => void;
+  /** OM-04：?range= 四档窗口；onRange 缺席时（夹具直渲染）不画分段控件。 */
+  rangeId?: DutyRangeId;
+  onRange?: (id: DutyRangeId) => void;
+  rangeInvalid?: string | null;
 }) {
+  const range = dutyRange(rangeId);
   const stats = data.stats.k === 'ready' ? data.stats.data : null;
   const today = data.todayStats.k === 'ready' ? data.todayStats.data : null;
   const budgetDay = data.budgetDay.k === 'ready' ? data.budgetDay.data : null;
@@ -374,6 +383,33 @@ export function OverviewView({
           <h1>运营总览</h1>
           <p className="ov5-sub">员工、运行、审批与成本各读各的；缺失值显示「—」，不补零。</p>
         </div>
+        <div className="ov5-head-actions">
+          {onRange ? (
+            <div className="ov5-seg" role="group" aria-label="时间窗" data-testid="ov6-range-seg">
+              {DUTY_RANGES.map((r) => (
+                <button
+                  key={r.id}
+                  type="button"
+                  data-testid={`ov6-range-${r.id}`}
+                  aria-pressed={r.id === rangeId}
+                  className={r.id === rangeId ? 'ov5-seg-btn is-active' : 'ov5-seg-btn'}
+                  onClick={() => onRange(r.id)}
+                >
+                  {r.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
+          {rangeInvalid ? (
+            <span
+              className="ov5-range-fallback"
+              data-testid="ov6-range-fallback"
+              title={`时间窗参数「${rangeInvalid}」不是可用档位，已按「${range.label}」读取`}
+            >
+              窗口参数无效，按{range.label}读取
+            </span>
+          ) : null}
+        </div>
         <Button size="sm" outlined onClick={onRetry} disabled={loading || anyLoading} aria-busy={loading || anyLoading} data-testid="ov6-refresh" prefix={<RefreshCw className={`h-3.5 w-3.5 ${loading || anyLoading ? 'ov5-spin' : ''}`} />}>
           刷新
         </Button>
@@ -398,7 +434,7 @@ export function OverviewView({
       </div>
 
       <div className="ov5-grid">
-        <Trend stats={data.stats14} onRetry={onRetry} />
+        <Trend stats={data.stats14} label={range.label} days={range.days} onRetry={onRetry} />
         <RecentActivity data={data} onRetry={onRetry} />
         <Blockers data={data} onRetry={onRetry} />
       </div>
@@ -406,8 +442,9 @@ export function OverviewView({
   );
 }
 
-function LiveOverview() {
-  const { data, reload, loading } = useDutyData();
+function LiveOverview({ rangeId, onRange, rangeInvalid }: { rangeId: DutyRangeId; onRange: (id: DutyRangeId) => void; rangeInvalid: string | null }) {
+  // OM-04④：总览不渲染活动热力，活动腿关掉（不请求），DutyPage 默认档不受影响。
+  const { data, reload, loading } = useDutyData(rangeId, { activity: false });
   const [matrix, setMatrix] = useState<Loadable<MatrixBody>>({ k: 'loading' });
 
   const loadMatrix = useCallback(() => {
@@ -436,7 +473,7 @@ function LiveOverview() {
     return () => window.clearTimeout(timer);
   }, [hasError, retry]);
 
-  return <OverviewView data={data} matrix={matrix} loading={loading} onRetry={retry} />;
+  return <OverviewView data={data} matrix={matrix} loading={loading} onRetry={retry} rangeId={rangeId} onRange={onRange} rangeInvalid={rangeInvalid} />;
 }
 
 export function OverviewPage() {
@@ -446,6 +483,17 @@ export function OverviewPage() {
     forcedRaw === 'loading' || forcedRaw === 'empty' || forcedRaw === 'error'
       ? (forcedRaw as Forced)
       : null;
+
+  // OM-04：?range= 深链四档（24h/7d/14d/30d，复用 duty 的 DUTY_RANGES 表，
+  // 勿新建常量）。非法值回落默认档，并在页面顶部以 title 说明。
+  const rangeRaw = params.get('range');
+  const rangeId = parseDutyRange(rangeRaw);
+  const rangeInvalid = rangeRaw !== null && rangeRaw !== rangeId ? rangeRaw : null;
+  const setRange = (id: DutyRangeId) => {
+    const next = new URLSearchParams(params);
+    next.set('range', id);
+    setParams(next, { replace: true });
+  };
 
   const clearForced = () => {
     const next = new URLSearchParams(params);
@@ -485,7 +533,7 @@ export function OverviewPage() {
       </section>
     );
   }
-  return <LiveOverview />;
+  return <LiveOverview rangeId={rangeId} onRange={setRange} rangeInvalid={rangeInvalid} />;
 }
 
 export default OverviewPage;
