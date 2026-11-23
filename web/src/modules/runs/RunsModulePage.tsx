@@ -111,6 +111,7 @@ import {
   eventStatus,
   eventElapsed,
 } from "./runs";
+import { stepExcerpt, traceCounts, traceTone, type RunEvent } from "./runs";
 import { asOfCell } from "../metrics/asof";
 import { forcedStateOf, useRunsData } from "./useRunsData";
 import { useRunDetail, type DetailOutcome } from "./useRunDetail";
@@ -766,6 +767,49 @@ function ListRows({
   );
 }
 
+function TraceRibbon({ events, hasMore }: { events: RunEvent[]; hasMore: boolean }): ReactNode {
+  const counts = traceCounts(events);
+  const countLine =
+    `共 ${counts.total} 步 · 已完成 ${counts.done} · 进行中 ${counts.active} · 失败 ${counts.failed}` +
+    (counts.other > 0 ? ` · 其他 ${counts.other}` : "");
+  return (
+    <div className="min-w-0 space-y-1" data-testid="run6-trace">
+      <div className="flex min-w-0 flex-wrap items-baseline justify-between gap-2">
+        <span className="ui-c-num text-xs text-muted-foreground" data-testid="run6-trace-counts">
+          {countLine}
+        </span>
+        {hasMore ? (
+          <span className="min-w-0 break-words text-xs text-muted-foreground" data-testid="run6-trace-more">
+            后续还有更多步骤，这次没有读到。
+          </span>
+        ) : null}
+      </div>
+      <ol className="flex min-w-0 flex-wrap items-stretch gap-1" data-testid="run6-trace-steps">
+        {events.map((ev, index) => {
+          const st = eventStatus(ev);
+          const label = `#${ev.seq} ${eventLabel(ev.eventType)}`;
+          return (
+            <li key={ev.seq} className="flex min-w-0 items-center gap-1">
+              {index > 0 ? (
+                <span aria-hidden className="text-xs text-muted-foreground">
+                  ›
+                </span>
+              ) : null}
+              <Badge
+                tone={traceTone(ev)}
+                data-testid={`run6-trace-step-${ev.seq}`}
+                title={`${label} · ${st.text}`}
+              >
+                {label}
+              </Badge>
+            </li>
+          );
+        })}
+      </ol>
+    </div>
+  );
+}
+
 function Timeline({
   outcome,
   onRetryEvents,
@@ -777,6 +821,7 @@ function Timeline({
   return (
     <div className="ui-c-section">
       <h3 className="ui-c-section-title">事件时间线</h3>
+      {events.length > 0 ? <TraceRibbon events={events} hasMore={hasMore} /> : null}
       {eventsFailure ? (
         <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs">
           <span className="min-w-0 break-words text-muted-foreground">
@@ -800,6 +845,8 @@ function Timeline({
             const sum = eventSummary(ev);
             const fail = eventReason(ev);
             const href = resultRefHref(ref);
+            const inputExcerpt = stepExcerpt(ev, "input");
+            const outputExcerpt = stepExcerpt(ev, "output");
             return (
               <li
                 key={ev.seq}
@@ -829,6 +876,31 @@ function Timeline({
                     {`失败原因：${fail.text}`}
                   </span>
                 ) : null}
+                <details className="min-w-0 basis-full" data-testid={`run6-step-${ev.seq}`}>
+                  <summary className="cursor-pointer text-xs text-muted-foreground">步骤详情</summary>
+                  <dl className="mt-1 min-w-0 space-y-1 text-xs">
+                    <div className="min-w-0">
+                      <dt className="text-muted-foreground">输入摘录</dt>
+                      <dd
+                        className="min-w-0 break-words"
+                        data-testid={`run6-step-input-${ev.seq}`}
+                        title={inputExcerpt.reason || undefined}
+                      >
+                        {inputExcerpt.text ?? `未采集：${inputExcerpt.reason}`}
+                      </dd>
+                    </div>
+                    <div className="min-w-0">
+                      <dt className="text-muted-foreground">输出摘录</dt>
+                      <dd
+                        className="min-w-0 break-words"
+                        data-testid={`run6-step-output-${ev.seq}`}
+                        title={outputExcerpt.reason || undefined}
+                      >
+                        {outputExcerpt.text ?? `未采集：${outputExcerpt.reason}`}
+                      </dd>
+                    </div>
+                  </dl>
+                </details>
                 {isToolEvent(ev.eventType) ? (
                   ref && href ? (
                     /* the raw handle stays in the title; the line shows a short code */
