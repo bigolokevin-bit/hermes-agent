@@ -1601,10 +1601,12 @@ export function RunsModulePage() {
         />
       ) : null}
       {phase === "ready" ? (
-        <div className="flex min-w-0 flex-wrap items-center gap-2" data-testid="run-more-bar">
+        /* 375：加载更多与末页提示各自独立成行，按钮整行触控。 */
+        <div className="flex min-w-0 flex-wrap items-center gap-2 max-md:flex-col max-md:items-stretch" data-testid="run-more-bar">
           <Button
             size="sm"
             outlined
+            className="max-md:min-h-[44px] max-md:w-full"
             type="button"
             data-testid="run-more"
             aria-busy={paging.busy}
