@@ -111,7 +111,7 @@ export default function MatrixView() {
       <header className="duty-head">
         <div className="duty-title">
           <ShieldQuestion className="h-5 w-5" aria-hidden />
-          <h1>能力与权限</h1>
+          <span className="duty-title-name">能力与权限</span>
           <span>{activeCount} 在岗 · 按员工或按资源看覆盖</span>
         </div>
         <div className="duty-head-actions">
