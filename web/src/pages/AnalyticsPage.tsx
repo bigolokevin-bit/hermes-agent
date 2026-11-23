@@ -34,9 +34,10 @@ const PERIODS = [
 
 const CHART_HEIGHT_PX = 160;
 
-/** 逐柱高度是运行时数据，Tailwind 编译期扫不到，几何只能走 style——这是本图
- *  仅存的 inline 通道（UI-Quality §6.2 点名的 10 处内联 style 对象已归零；颜色
- *  全部进了类，这里只剩纯像素高度）。 */
+/** 逐柱高度是运行时数据，Tailwind 编译期扫不到，几何只能走 style——本图仅存的
+ *  inline 通道只剩逐柱两处运行时像素高度（容器与列骨架的常量 160px 已迁
+ *  h-[160px] 类；UI-Quality §6.2 点名的 10 处内联 style 对象已归零；颜色全部
+ *  进了类。运行时柱高不可令牌化：内联仍在，待棘轮豁免面裁决或 SVG 重写。 */
 function chartPxHeight(px: number): CSSProperties {
   return { height: px };
 }
@@ -165,7 +166,7 @@ function TokenBarChart({ daily }: { daily: AnalyticsDailyEntry[] }) {
         </div>
       </CardHeader>
       <CardContent>
-        <div className="flex items-end gap-[2px]" style={chartPxHeight(CHART_HEIGHT_PX)}>
+        <div className="flex items-end gap-[2px] h-[160px]">
           {daily.map((d) => {
             const total = d.input_tokens + d.output_tokens;
             const inputH = Math.round(
@@ -177,8 +178,7 @@ function TokenBarChart({ daily }: { daily: AnalyticsDailyEntry[] }) {
             return (
               <div
                 key={d.day}
-                className="flex-1 min-w-0 group relative flex flex-col justify-end"
-                style={chartPxHeight(CHART_HEIGHT_PX)}
+                className="flex-1 min-w-0 group relative flex flex-col justify-end h-[160px]"
               >
                 <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-10 pointer-events-none">
                   <div className="font-mondwest normal-case bg-card border border-border px-2.5 py-1.5 text-xs text-foreground shadow-lg whitespace-nowrap">
