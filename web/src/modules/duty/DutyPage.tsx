@@ -364,6 +364,11 @@ function DutyDetailsSection({
   totalEmployees,
   statusFilterId,
   onChooseStatus,
+  failedRuns,
+  blockedTasks,
+  approvals,
+  approvalStats,
+  recentRuns,
 }: {
   employees: Loadable<EmployeeRow[]>;
   stats: Loadable<Record<string, unknown>>;
@@ -374,6 +379,11 @@ function DutyDetailsSection({
   totalEmployees: number | null;
   statusFilterId: DutyStatusFilterId;
   onChooseStatus: (next: DutyStatusFilterId) => void;
+  failedRuns: Loadable<RunRow[]>;
+  blockedTasks: Loadable<TaskRow[]>;
+  approvals: Loadable<ApprovalRow[]>;
+  approvalStats: Loadable<ApprovalStatsBody>;
+  recentRuns: Loadable<RunRow[]>;
 }) {
   const { readiness } = readinessView(employees, stats);
   const totals = todayStats.k === "ready" ? runTotals(todayStats.data) : null;
@@ -390,6 +400,18 @@ function DutyDetailsSection({
     month.k === "ready" ? month.data : null,
     totalEmployees,
   );
+  // w192 条款5：卡内明细出卡后由本折叠区承接（信息不删；buildBlockers/pendingView 是纯函数，
+  // 卡上同参复算与卡外一致）。
+  const blockerItems = buildBlockers(
+    failedRuns.k === "ready" ? failedRuns.data : null,
+    blockedTasks.k === "ready" ? blockedTasks.data : null,
+    approvals.k === "ready" ? approvals.data : null,
+  );
+  const pendingRows = pendingView(
+    approvalStats.k === "ready" ? approvalStats.data : null,
+    approvals.k === "ready" ? approvals.data : null,
+  ).rows;
+  const recentRows = recentRuns.k === "ready" ? recentRuns.data : [];
   return (
     <details className="duty-details" data-testid="duty-details" data-duty-testid="duty-details">
       <summary className="duty-details-summary" data-testid="duty-details-toggle">
@@ -480,6 +502,51 @@ function DutyDetailsSection({
             </li>
           </ul>
           <p className="duty-note">金额 USD · 缺行不按 0 计入 · 日账与月账分开相加</p>
+        </section>
+        <section className="duty-details-block" data-testid="duty-details-blockers">
+          <h3>阻塞明细</h3>
+          {blockerItems.length === 0 ? (
+            <p className="duty-say">当前没有读到的阻塞项</p>
+          ) : (
+            <ul className="duty-list duty-list-block">
+              {blockerItems.map((item, i) => (
+                <BlockerRow key={`${item.object}-${i}`} item={item} />
+              ))}
+            </ul>
+          )}
+        </section>
+        <section className="duty-details-block" data-testid="duty-details-pending">
+          <h3>审批明细</h3>
+          {pendingRows.length === 0 ? (
+            <p className="duty-say">今天没有待你审批的事</p>
+          ) : (
+            <ul className="duty-list">
+              {pendingRows.map((a) => (
+                <li key={a.approvalId}>
+                  <span className="duty-row-title">{a.title ?? "未命名审批"}</span>
+                  <span className="duty-row-time">{beijing(a.createdAt)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+        <section className="duty-details-block" data-testid="duty-details-recent">
+          <h3>最近运行明细</h3>
+          {recentRows.length === 0 ? (
+            <p className="duty-say">最近没有运行记录</p>
+          ) : (
+            <ul className="duty-list">
+              {recentRows.slice(0, 8).map((run) => (
+                <li key={run.runId}>
+                  <Link className="duty-row-title font-mono" to={`/runs/?run=${encodeURIComponent(run.runId)}`}>
+                    {shortId(run.runId)}
+                  </Link>
+                  <RunStatusBadge status={run.status} />
+                  <span className="duty-row-time">{duration(run.startedAt, run.endedAt)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
       </div>
     </details>
@@ -769,7 +836,12 @@ function ActivityCard({ activity, onRetry, label }: { activity: Loadable<Activit
     beijingHour(),
   );
   return (
-    <HCard title={`${label}活跃`} meta="每格 1 小时" testid="duty-activity" stamp={stampOf(activity.k === "ready" ? asOfOf(activity.data) : null, `${label}活跃统计`, [activity])}>
+    <HCard title={`${label}活跃`} meta="每格 1 小时" testid="duty-activity" stamp={stampOf(activity.k === "ready" ? asOfOf(activity.data) : null, `${label}活跃统计`, [activity])} action={
+      <Link className="duty-link duty-card-foot" to="/runs" data-testid="duty-route-activity">
+        查看明细
+        <ArrowRight className="h-3.5 w-3.5" />
+      </Link>
+    }>
       <StateLine state={activity} onRetry={onRetry}>
         <p className="duty-num">
           {view.peakHour === null ? "—" : `${String(view.peakHour).padStart(2, "0")}:00`}
@@ -877,11 +949,7 @@ function BlockersCard({
           </Link>
         </div>
       ) : (
-        <ul className="duty-list duty-list-block">
-          {items.map((item, i) => (
-            <BlockerRow key={`${item.object}-${i}`} item={item} />
-          ))}
-        </ul>
+        <p className="duty-say" data-testid="duty-blockers-say">{`${items.length} 项阻塞 · 逐条见下方「阻塞明细」`}</p>
       )}
       <p className="duty-note">阻塞卡五字段：阻塞对象 · 卡在哪一步 · 等谁 · 已等时长 · 下一步动作</p>
     </HCard>
@@ -923,14 +991,7 @@ function PendingCard({
         ) : view.rows.length === 0 ? (
           <p className="duty-say">今天没有待你审批的事</p>
         ) : (
-          <ul className="duty-list">
-            {view.rows.slice(0, 3).map((a) => (
-              <li key={a.approvalId}>
-                <span className="duty-row-title">{a.title ?? "未命名审批"}</span>
-                <span className="duty-row-time">{beijing(a.createdAt)}</span>
-              </li>
-            ))}
-          </ul>
+          <p className="duty-say" data-testid="duty-pending-say">{`${view.rows.length} 条待你审批 · 逐条见下方「审批明细」`}</p>
         )}
         <p className="duty-note">只统计待你处理的审批 · 到期窗口 24 小时</p>
       </StateLine>
@@ -944,7 +1005,7 @@ function RecentCard({ runs, onRetry }: { runs: Loadable<RunRow[]>; onRetry: () =
       title="最近运行"
       testid="duty-recent" stamp={stampOf(null, "运行明细", [runs])}
       action={
-        <Link className="duty-link" to="/runs">
+        <Link className="duty-link duty-card-foot" to="/runs" data-testid="duty-route-recent">
           查看全部
           <ArrowRight className="h-3.5 w-3.5" />
         </Link>
@@ -960,17 +1021,7 @@ function RecentCard({ runs, onRetry }: { runs: Loadable<RunRow[]>; onRetry: () =
             </Link>
           </div>
         ) : (
-          <ul className="duty-list">
-            {(runs.k === "ready" ? runs.data : []).slice(0, 3).map((run) => (
-              <li key={run.runId}>
-                <Link className="duty-row-title font-mono" to={`/runs/?run=${encodeURIComponent(run.runId)}`}>
-                  {shortId(run.runId)}
-                </Link>
-                <RunStatusBadge status={run.status} />
-                <span className="duty-row-time">{duration(run.startedAt, run.endedAt)}</span>
-              </li>
-            ))}
-          </ul>
+          <p className="duty-say" data-testid="duty-recent-say">{`${runs.k === "ready" ? runs.data.length : 0} 条最近运行 · 明细见下方「最近运行明细」`}</p>
         )}
         <p className="duty-note">最近 3 次 · 时间北京时间 · 详情在运行记录</p>
       </StateLine>
@@ -1279,6 +1330,11 @@ export default function DutyPage() {
         totalEmployees={totalEmployees}
         statusFilterId={statusFilterId}
         onChooseStatus={chooseStatus}
+        failedRuns={data.failedRuns}
+        blockedTasks={data.blockedTasks}
+        approvals={data.approvals}
+        approvalStats={data.approvalStats}
+        recentRuns={data.recentRuns}
       />
 
 
