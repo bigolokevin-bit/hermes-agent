@@ -16,13 +16,39 @@ vi.mock("@/lib/api", () => ({ fetchJSON: api.fetchJSON }));
 // P0-1r 写门控单点的替身：默认与现网一致（disabled=true，本部署实测写 405），
 // 批量流程用例把 disabled 翻开模拟「写通道开闸的后代」，关着的用例直接
 // 验收 writeOff 禁用态。DECISION_GATE 对象本身是稳定引用，页面与 batch.ts
-// 读到的都是它。
-const writeGateStub = vi.hoisted(() => ({
-  DECISION_GATE: {
-    disabled: true,
-    title: "这个环境的控制台只读：实测决定提交一律被拒（服务端当前只允许读请求，写请求没有入口）。所以批准、驳回在这里以禁用态出现，点它不会发起任何请求；要处理这张单，请走它原本产生决定的渠道。",
-  },
-}));
+// 读到的都是它。AP-04① 起真身是合取活视图（getter），替身保留可翻写的 plain
+// object 形制；页头 chip 消费的新导出（快照/订阅/探测）一并给最小替身，
+// chip 文案由 writeGateChipReadout 单点驱动，本道不验它。
+const writeGateStub = vi.hoisted(() => {
+  const snap = {
+    state: "closed",
+    status: 405,
+    observedAt: 1764000000000,
+    source: "OPTIONS /agent-api/api/approval/decision",
+    serverOpen: false,
+  };
+  const readout = {
+    gate: "关",
+    server: "写路由未开",
+    flag: "关",
+    sourceLabel: "对决定提交路由的 OPTIONS 只读探测",
+    asOfMs: snap.observedAt,
+    missingReason: "",
+  };
+  return {
+    DECISION_GATE: {
+      disabled: true,
+      title: "这个环境的控制台只读：实测决定提交一律被拒（服务端当前只允许读请求，写请求没有入口）。所以批准、驳回在这里以禁用态出现，点它不会发起任何请求；要处理这张单，请走它原本产生决定的渠道。",
+    },
+    FRONTEND_WRITE_FLAG: false,
+    NEGATIVE_PROOFS_ACCEPTED: false,
+    // useSyncExternalStore 要求快照引用稳定——同一对象整体返回。
+    getWriteGateSnapshot: () => snap,
+    subscribeWriteGate: () => () => {},
+    runWriteProbe: () => Promise.resolve(),
+    writeGateChipReadout: () => readout,
+  };
+});
 vi.mock("@/modules/approvals/writeGate", () => writeGateStub);
 
 import ApprovalsPendingModulePage from "@/modules/approvals/ApprovalsPendingModulePage";
