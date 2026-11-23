@@ -1,4 +1,6 @@
 // Module: metrics — 7×24 run activity heatmap.
+import { ApiError } from '@/lib/api-error';
+
 import { ASOF_KEYS, readAsOf } from './asof';
 //
 // The activity endpoint aggregates runs by (weekday, hour) over a rolling
@@ -551,6 +553,40 @@ export function formatUnitPrice(value: number | null, currency: string | null): 
   const symbol = currency === null || currency.toUpperCase() === 'USD' ? '$' : '';
   const digits = usdDigits(value) ?? '—';
   return digits === '—' ? digits : `${symbol}${groupThousands(digits)} / 百万 token`;
+}
+
+/**
+ * The pricing read口 has one honest sentence of its own: a 403/404/501/503
+ * here means the price source is not wired upstream, so the card says 标价未接
+ * instead of the generic «cannot read». A code the console actually returns
+ * (models.pricing_not_wired, or the unwired-route shape) is named in it;
+ * anything else in that status set keeps the sentence without the name.
+ * Other statuses — and other blocks — are not this function's business:
+ * it returns null and the caller falls back to the shared wording.
+ */
+export function pricingFailure(
+  error: unknown,
+): { reason: string; gap: string | null; requestId: string | null } | null {
+  if (!(error instanceof ApiError)) return null;
+  if (error.status !== 403 && error.status !== 404 && error.status !== 501 && error.status !== 503) {
+    return null;
+  }
+  const requestId = error.requestId ?? null;
+  let code: unknown = null;
+  try {
+    const body: unknown = JSON.parse(error.body);
+    code = isRecord(body) ? body.code : null;
+  } catch {
+    code = null;
+  }
+  if (code === 'models.pricing_not_wired' || code === 'console.unknown_route') {
+    return {
+      reason: '标价未接：上游价目数据源还没有接入（models.pricing_not_wired）。',
+      gap: USAGE_GAP,
+      requestId,
+    };
+  }
+  return { reason: '标价未接：上游价目数据源还没有接入。', gap: USAGE_GAP, requestId };
 }
 
 // ---- MET6: breakdown views (by employee / by model) -------------------------

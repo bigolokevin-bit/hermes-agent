@@ -52,6 +52,7 @@ import {
   heatGridSummary,
   isoOrNull,
   metricsSummaryText,
+  pricingFailure,
   sourceStaleness,
   sourceSummaryText,
   SOURCE_STALE_MS,
@@ -192,6 +193,9 @@ interface BreakdownLine {
   key: string;
   label: string;
   sub: string | null;
+  /** Model id in the model view; the employee view has none, and the unit
+   *  price column only ever reads this in the model view. */
+  modelId: string | null;
   costUsd: number | null;
   count: number | null;
   countNote: string | null;
@@ -584,6 +588,7 @@ export function MetricsModulePage() {
     async <T,>(
       run: () => Promise<unknown>,
       parse: (body: unknown) => { ok: true; value: T } | { ok: false; reason: string },
+      onError: (error: unknown) => { reason: string; gap: string | null; requestId: string | null } = blockFailure,
     ): Promise<UsageBlock<T>> => {
       try {
         const body = await run();
@@ -591,7 +596,7 @@ export function MetricsModulePage() {
         if (!parsed.ok) return { kind: 'unavailable', reason: parsed.reason, gap: null, requestId: null };
         return { kind: 'ready', value: parsed.value };
       } catch (error) {
-        return { kind: 'unavailable', ...blockFailure(error) };
+        return { kind: 'unavailable', ...onError(error) };
       }
     },
     [],
@@ -696,6 +701,8 @@ export function MetricsModulePage() {
                 ? { ok: true, value: { rows: parsed.rows, asOf: parsed.asOf } }
                 : { ok: false, reason: parsed.reason };
             },
+            // 价目读口有自己的诚实句（标价未接）；其余状态回落通用句。
+            (error) => pricingFailure(error) ?? blockFailure(error),
           );
       }
     },
@@ -843,6 +850,7 @@ export function MetricsModulePage() {
           const lines: BreakdownLine[] = parsed.lines.map((line) => ({
             key: `model-${line.model}`,
             label: line.model,
+            modelId: line.model,
             sub:
               [line.inputTokens === null ? null : `输入 ${line.inputTokens}`, line.outputTokens === null ? null : `输出 ${line.outputTokens}`]
                 .filter((part): part is string => part !== null)
@@ -896,6 +904,7 @@ export function MetricsModulePage() {
         const lines: BreakdownLine[] = aggregateByEmployee(rows, directory.names).map((row, index) => ({
           key: `emp-${row.employeeId ?? index}`,
           label: employeeLabel(row.name, row.employeeId),
+          modelId: null,
           sub: null,
           costUsd: row.costUsd,
           count: null,
@@ -1676,6 +1685,18 @@ export function MetricsModulePage() {
   };
 
   const detailRows = sortDetailLines(detailLines, detailSort, detailDir);
+  // 标价列：只在「按模型」视图且价目表就绪有行时出现。它是只读展示列——
+  // 支出、占比、合计、行复制与导出都不读它，页面不拿标价乘用量。
+  const priceRows =
+    usageReady !== null && usageReady.pricing.kind === 'ready' && usageReady.pricing.value.rows.length > 0
+      ? usageReady.pricing.value.rows
+      : null;
+  const showPriceCol = viewMode === 'model' && priceRows !== null;
+  const unitPriceOf = (line: BreakdownLine): string => {
+    if (priceRows === null || line.modelId === null) return '—';
+    const row = priceRows.find((p) => p.modelId === line.modelId || p.label === line.modelId);
+    return row ? formatUnitPrice(row.inputPerMillion, row.currency) : '—';
+  };
   // metT — the totals row is summed from the very rows the body renders, so a
   // reader can add them up and land on the same numbers. Sorting never moves it
   // or changes it, and a column nobody could read totals to «—», not 0.
@@ -2709,6 +2730,16 @@ export function MetricsModulePage() {
                             占比（%）
                           </button>
                         </th>
+                        {showPriceCol ? (
+                          <th
+                            scope="col"
+                            className="met6-num metAF-nowrap"
+                            data-testid="metO-fmt-th-price"
+                            title="价目表里的输入标价，单位：美元/百万 token；是标价不是扣费，缺价的行显示「—」。"
+                          >
+                            标价（美元/百万token）
+                          </th>
+                        ) : null}
                         <th scope="col">账本截至</th>
                         <th scope="col">复制</th>
                       </tr>
@@ -2726,6 +2757,7 @@ export function MetricsModulePage() {
                             {line.countNote ? <span className="met6-rowsub">{line.countNote}</span> : null}
                           </td>
                           <td className="met6-num">{formatSharePct(line.share)}</td>
+                          {showPriceCol ? <td className="met6-num">{unitPriceOf(line)}</td> : null}
                           <td className="met6-num">{line.asOf ? formatBeijing(line.asOf) : '—'}</td>
                           <td className="met6-num">
                             <button
@@ -2754,6 +2786,10 @@ export function MetricsModulePage() {
                         <td className="met6-num" data-testid="metT-detail-total-share" title="按未舍入的原值合计，逐行进位不影响这里">
                           {detailTotals.share}
                         </td>
+                        {showPriceCol ? (
+                          // 标价没有合计：单价格子相加不是任何人的钱。
+                          <td className="met6-num" data-testid="metT-detail-total-price">—</td>
+                        ) : null}
                         <td className="met6-num">—</td>
                         <td className="met6-num">—</td>
                       </tr>
