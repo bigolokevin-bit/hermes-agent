@@ -429,6 +429,26 @@ export function chunkIds(ids: string[], size = LEDGER_CHUNK): string[][] {
   return chunks;
 }
 
+/** 员工份额扇出的请求预算（一次读 = 一天 × 一个 id 分片）。30 天 × 200 人
+ *  会发 120 次读，一次切窗就是一场取数风暴；封顶 12 次。 */
+export const FANOUT_REQUEST_BUDGET = 12;
+
+/**
+ * 闸门落在「按最近日优先截断」而不是「读不到」：份额表读的是天账，少几天只是
+ * 覆盖变窄（屏上必须明示），比整块空掉更接近读者的问题。预算内整窗照读；超限时
+ * 每个分片至少保 1 天（floor(预算/分片数)，最少 1）。
+ */
+export function fanoutCoveredDays(days: number, chunks: number): number {
+  if (chunks <= 0 || days * chunks <= FANOUT_REQUEST_BUDGET) return days;
+  return Math.max(1, Math.floor(FANOUT_REQUEST_BUDGET / chunks));
+}
+
+/** 只在真发生截断时说一句话。口径是「非全窗」：没读到的天数不补 0，合计照旧只
+ *  加可读到的行，所以这里不换算、不改格式，只把覆盖范围写在屏上。 */
+export function shareCoverageNote(days: number, coveredDays: number): string | null {
+  return coveredDays < days ? `仅覆盖近 ${coveredDays} 天，非全窗` : null;
+}
+
 export interface SparkSlot {
   hour: number;
   runs: number | null;

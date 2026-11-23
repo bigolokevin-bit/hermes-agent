@@ -36,7 +36,7 @@ vi.mock("@/modules/models/fetchJson", () => ({ fetchJsonStrict: api.fetchJsonStr
 vi.mock("@/lib/clipboard", () => ({ copyTextToClipboard: clip.copyTextToClipboard }));
 
 import { MetricsModulePage } from "./MetricsModulePage";
-import { WINDOW_PRESETS, windowRange } from "./metrics";
+import { beijingDayKey, WINDOW_PRESETS, windowRange } from "./metrics";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -53,6 +53,24 @@ const EMPLOYEES = {
   ],
   nextCursor: null,
 };
+
+/**
+ * MT-05 的目录夹具：200 个 id ⇒ `chunkIds` 切 4 片（LEDGER_CHUNK=50）。
+ * 30 天 × 4 片 = 120 次读，正是那张卡要封顶的形状。
+ */
+const BIG_EMPLOYEES = {
+  items: [
+    ...EMPLOYEES.items,
+    ...Array.from({ length: 197 }, (_unused, index) => ({
+      employeeId: `emp_r195big${String(index).padStart(4, "0")}`,
+      name: `员工${index + 4}`,
+    })),
+  ],
+  nextCursor: null,
+};
+
+/** Which directory the `/api/employees` leg answers with; reset by the hooks below. */
+let employeeDirectory: unknown = EMPLOYEES;
 
 /** The employee ledger: only the current day carries rows, so the 24h body is known. */
 const LEDGER_TODAY = {
@@ -132,7 +150,7 @@ async function handler(url: string): Promise<unknown> {
     };
   }
   if (path.endsWith("/api/run-stats")) return statsBody(at);
-  if (path.endsWith("/api/employees")) return EMPLOYEES;
+  if (path.endsWith("/api/employees")) return employeeDirectory;
   if (path.endsWith("/api/models/pricing")) {
     throw new ApiError("not wired", { status: 404, body: "", url });
   }
@@ -303,6 +321,7 @@ function face(id: string): string | null {
 beforeEach(() => {
   failAll = false;
   usageFails = false;
+  employeeDirectory = EMPLOYEES;
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date(FROZEN));
   window.history.replaceState({}, "", "/");
@@ -316,6 +335,7 @@ afterEach(async () => {
   document.body.replaceChildren();
   failAll = false;
   usageFails = false;
+  employeeDirectory = EMPLOYEES;
   vi.useRealTimers();
 });
 
@@ -604,5 +624,59 @@ describe("R195 ④ a failed read is said, retried, and cleared", () => {
     expect(countFamily("/api/hermes-usage")).toBe(usageBeforeClear + 2);
     expect(q("met6-cat-unavailable")).toBeNull();
     expect(bodyLabels()).toEqual(["beta", "gamma"]);
+  });
+});
+
+/*
+ * MT-05 — the employee-share fan-out is capped by a request budget.
+ *
+ * Why the count is taken as a DELTA across the group press: every day-keyed
+ * budget-usage read on this page has the same URL shape (the budget card, the
+ * detail fan-out and the share table all ask `employeeId=…&periodKind=day&
+ * period=…`), so no URL fingerprint can name the share leg. But only the share
+ * loader consumes `groupBy` — the budget, comparison and detail effects key on
+ * the window and the view, never on the group — so the reads a group press
+ * ADDS are exactly the share leg's own. Mounting with `view=model` keeps the
+ * baseline cheap for the same reason.
+ */
+describe("MT-05 员工份额扇出的请求预算", () => {
+  /** The Beijing ledger day `back` whole days before the frozen clock. */
+  const dayKey = (back: number): string => beijingDayKey(new Date(FROZEN_MS - back * 86_400_000));
+
+  it("caps a 30-day, 200-employee fan-out at the budget and says 非全窗", async () => {
+    employeeDirectory = BIG_EMPLOYEES;
+    await mount("/metrics?view=model&window=30d");
+    const before = urls().length;
+
+    await press("met8-view-employee");
+
+    const shareReads = urls().slice(before).filter((url) => url.includes("/api/budget-usage"));
+    // 预算 = 12 次；30 天 × 4 片被截到最近 3 天 × 4 片。
+    expect(shareReads.length).toBeGreaterThan(0);
+    expect(shareReads.length).toBeLessThanOrEqual(12);
+    // 截断保的是最近日：被问到的 period 只有窗口尾部那 3 天。
+    const periods = new Set(
+      shareReads.map((url) => new URL(url, "http://localhost").searchParams.get("period")),
+    );
+    expect([...periods].sort()).toEqual([dayKey(2), dayKey(1), dayKey(0)].sort());
+    // 屏上有那句话，逐字；窗口口径没改，footer 仍写整窗天数。
+    expect(face("met8-coverage-note")).toContain("仅覆盖近 3 天，非全窗");
+    expect(text("met8-source")).toContain("窗口 30 天");
+    // 合计数值本身不换算、不补 0，只在截断态标出它覆盖几天。
+    expect(q("met8-total-spent")?.getAttribute("title")).toBe("账本只覆盖近 3 天，未补 0");
+  });
+
+  it("leaves a fan-out that fits the budget whole and says nothing", async () => {
+    await mount("/metrics?view=model&window=7d");
+    const before = urls().length;
+
+    await press("met8-view-employee");
+
+    // 3 员工 ⇒ 1 片，7 天 × 1 = 7 次 ≤ 12 ⇒ 整窗照读，一次不多一次不少。
+    const shareReads = urls().slice(before).filter((url) => url.includes("/api/budget-usage"));
+    expect(shareReads.length).toBe(7);
+    expect(q("met8-coverage-note")).toBeNull();
+    expect(q("met8-total-spent")?.getAttribute("title")).toBeNull();
+    expect(text("met8-source")).toContain("窗口 7 天");
   });
 });
