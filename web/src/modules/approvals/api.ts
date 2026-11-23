@@ -283,3 +283,95 @@ export function isUnknownOutcome(err: unknown, info: FailureInfo): boolean {
 export async function readBackDecisionTicket(id: string): Promise<ApprovalDetail | null> {
   return fetchDetail(id);
 }
+
+/* ------------------------------------------------------------------ *
+ * AP-04 ② — 服务端写能力探测腿（读侧方法，永不发写）。
+ *
+ * 判据只准来自写路由自己的确定性答复，禁「猜测成功」：
+ *   405 + console.read_only（Allow: GET, HEAD）⇒ closed：写路由在本部署没注册
+ *     （AP-06 实测 2026-11-24 01:08，raw-decision-route-options 存证）；
+ *   401 ⇒ unauthenticated：会话没建立，能力面读不到，按关处理；
+ *   403 + `approval.*` 专码 ⇒ open-denied：只有注册过的写路由才会答出授权层码；
+ *   其余一律 unknown——含 2xx OPTIONS（浏览器侧代理层可能替源站应答 CORS 探测，
+ *   那种 200 是别人的答复，不是写路由在场，绝不据此判开）、超时、断连、502、
+ *   非 approval.* 的 403（CSRF 闸拦截说明不了名单）。
+ * unknown/unauthenticated/closed 在门控里全部按「关」处理（工单②：探测失败/超时
+ * =按关处理，保守）。探测只用 OPTIONS：GET 带 id 会落到详情语义、POST 是写真尝试，
+ * 都不许出现在这条腿上。
+ *
+ * 形制注记：本腿走原始 fetch（要的是状态码+Allow+顶层码这三件确定事实，
+ * fetchJSON 在 4xx 上抛结构化错、丢 Allow 头，判据就没了）。凭据口径与读口一致：
+ * 只随 cookie（credentials include）＋ 网关注入的会话 token 头，内部服务凭据
+ * 不出浏览器、不手写 Authorization。反代前缀部署（__HERMES_BASE_PATH__ 非空）下
+ * 相对路径会打到前缀外的口 ⇒ 答复非确定 ⇒ unknown ⇒ 按关，保守且诚实。
+ * ------------------------------------------------------------------ */
+
+export const PROBE_METHOD = "OPTIONS";
+export const PROBE_TIMEOUT_MS = 8000;
+/** 探测来源句——页头 chip 与 DONE 里写「这个判断来自哪里」的唯一点。 */
+export const PROBE_SOURCE = `${PROBE_METHOD} ${DECISION_PATH}`;
+
+export type ProbeVerdict = "closed" | "unauthenticated" | "open-denied" | "unknown";
+
+export interface WriteProbeEvidence {
+  verdict: ProbeVerdict;
+  /** 真答复的状态码；null = 没拿到答复（超时/断连/探测腿不可达）。 */
+  status: number | null;
+  /** 响应体顶层 code（判据用，永不上屏）。 */
+  code: string | null;
+  /** 采集时刻（毫秒）。只有真拿到答复才算采集；null = 未采集，屏上「—」。 */
+  observedAt: number | null;
+  /** 探测来源（method + path），失败腿也带上——说清试过的是哪张嘴。 */
+  source: string;
+}
+
+/** 纯分类器：确定性答复 → verdict。除下表三行外全部 unknown（保守，不猜开）。 */
+export function classifyProbeResponse(status: number, code: string | null): ProbeVerdict {
+  if (status === 405 && code === "console.read_only") return "closed";
+  if (status === 401) return "unauthenticated";
+  if (status === 403 && code !== null && code.startsWith("approval.")) return "open-denied";
+  return "unknown";
+}
+
+export async function probeWriteDecisionRoute(): Promise<WriteProbeEvidence> {
+  const startedAt = Date.now();
+  const failed = (): WriteProbeEvidence => ({
+    verdict: "unknown",
+    status: null,
+    code: null,
+    observedAt: null,
+    source: PROBE_SOURCE,
+  });
+  if (typeof fetch !== "function") return failed();
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), PROBE_TIMEOUT_MS);
+  try {
+    const headers = new Headers();
+    const token = typeof window === "undefined" ? undefined : window.__HERMES_SESSION_TOKEN__;
+    if (token) headers.set("X-Hermes-Session-Token", token);
+    const res = await fetch(DECISION_PATH, {
+      method: PROBE_METHOD,
+      headers,
+      credentials: "include",
+      mode: "same-origin",
+      signal: controller.signal,
+    });
+    const body = await res.text().catch(() => null);
+    const code = errorEnvelopeOf(body).code;
+    const verdict = classifyProbeResponse(res.status, code);
+    return {
+      verdict,
+      status: res.status,
+      code,
+      // 采集时刻只随可依赖的答复落笔：502/替答等 unknown 腿虽有时间，但那个时刻
+      // 没有采到开关事实——记成时刻会误导「这秒读数可信」，屏上仍「—」＋原因。
+      observedAt: verdict === "unknown" ? null : startedAt,
+      source: PROBE_SOURCE,
+    };
+  } catch {
+    // 超时/断连/jsdom 相对 URL 腿都收敛在这：unknown、无时刻——不拿尝试时间冒充采集。
+    return failed();
+  } finally {
+    clearTimeout(timer);
+  }
+}
