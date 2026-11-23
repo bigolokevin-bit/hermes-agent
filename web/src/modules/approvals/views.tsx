@@ -7,20 +7,30 @@
  * the text of the page — they live in `title` attributes and the 「详情」
  * disclosure, which is collapsed by default.
  */
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ChevronRight } from "lucide-react";
 import { Link, useLocation } from "react-router";
 
 import { PermalinkCopy } from "./PermalinkCopy";
 import { RowCopy } from "./RowCopy";
 import { saveCorrelationReturn } from "./correlationReturn";
+import { fetchVersionChain } from "./api";
 
 import { Badge } from "@nous-research/ui/ui/components/badge";
 import { Button } from "@nous-research/ui/ui/components/button";
 import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 
 import { themedBody } from "@/lib/utils";
-import { humanizeHandles, money, type ApprovalDetail, type ApprovalRow } from "./model";
+import {
+  consumptionStateFrom,
+  diffBranchFor,
+  humanizeHandles,
+  money,
+  versionChainNote,
+  type ApprovalDetail,
+  type ApprovalRow,
+  type VersionChainNote,
+} from "./model";
 import { DetailsDisclosure, RequestIdCopyField } from "./states";
 import { APPROVAL_RID_MISSING, FIELD_MISSING_SENTENCE } from "./stateCopy";
 import { RelativeTime } from "./RelativeTime";
@@ -573,6 +583,230 @@ export function DecisionTrail({ detail }: { detail: ApprovalDetail }): ReactNode
   );
 }
 
+/* ------------------------------------------------------------------ *
+ * AP-02 差异分区——Q13「变更差异 · 字段级（只读）」段的 changeKind 分支版。
+ *
+ * 分支口径（backlog §AP-02 步骤①，四类各有确定形态）：
+ *  ① employee_version_create + 响应带差异键 → 字段级前/后行（与 Q13 同形同键）
+ *     ＋ 相邻版本核对腿（GET /api/employee-versions?id=，BFF 既有端点，
+ *     不新增端点）：把 fromVersionId 对进版本链，能说 v几→v几 才说；
+ *     读不到就写「未读回」，不猜。
+ *  ② employee_version_create + 响应无差异键 → 「未接」+原因句（沿用 Q13 载体，
+ *     屏上不猜差异内容）。
+ *  ③ 其它已知类型（message_send / grant_escalation / …）→
+ *     「差异明细未提供（该变更类型无差异数据源）」，同样不画任何行。
+ *  ④ 没写明变更类型 → 「差异明细未提供（该单据没写明变更类型）」——
+ *     不能把「类型未知」猜成「有数据源」，也不能猜成「无数据源」。
+ *
+ * 风险差异四项无字段 ⇒ 整块不在此出现（不画 0）。argsDigest 走「不可逆摘要，
+ * 非差异」标注。禁 fixture、禁假成功。
+ * ------------------------------------------------------------------ */
+
+type ChainPhase =
+  | { state: "pending" }
+  | { state: "no-anchor" }
+  | { state: "failed" }
+  | { state: "note"; note: VersionChainNote };
+
+/**
+ * 相邻版本核对腿。只在差异有数据源（employee_version_create 出了字段行）时
+ * 才读 GET /api/employee-versions?id=（BFF 既有读口，limit 透传）；
+ * 读回形制不合法＝unreadable，网络/无权＝failed——两样都只说「不判定」，
+ * 不补 v 号、不画 0。
+ */
+function VersionChainLine({ detail }: { detail: ApprovalDetail }): ReactNode {
+  const [phase, setPhase] = useState<ChainPhase>({ state: "pending" });
+  useEffect(() => {
+    const anchor = detail.versionAnchor;
+    if (!anchor) {
+      setPhase({ state: "no-anchor" });
+      return;
+    }
+    if (!anchor.employeeId) {
+      // 没有员工号就没有可读的版本链——这是没有输入，不是读到了空。
+      setPhase({ state: "no-anchor" });
+      return;
+    }
+    let alive = true;
+    setPhase({ state: "pending" });
+    void fetchVersionChain(anchor.employeeId)
+      .then((refs) => {
+        if (!alive) return;
+        setPhase({
+          state: "note",
+          note: versionChainNote(refs, anchor) ?? { readable: false, fromLabel: null, target: "unknown", chainSize: null },
+        });
+      })
+      .catch(() => {
+        if (alive) setPhase({ state: "failed" });
+      });
+    return () => {
+      alive = false;
+    };
+  }, [detail]);
+
+  if (phase.state === "pending") return null;
+  if (phase.state === "no-anchor") {
+    return (
+      <p
+        className="min-w-0 break-words text-xs text-muted-foreground"
+        data-testid="apd10-chain-no-anchor"
+        title="相邻版本核对需要单据带回的员工号（binding.subjectId / resource.employee_id 一族）；这条单没有带回，读口没有输入，故链上位置不判定。"
+      >
+        版本链未判定——这条单没有带回可读的员工号。
+      </p>
+    );
+  }
+  if (phase.state === "failed") {
+    return (
+      <p
+        className="min-w-0 break-words text-xs text-muted-foreground"
+        data-testid="apd10-chain-failed"
+        title="相邻版本核对走 BFF 既有读口 GET /api/employee-versions?id=；这一次没有读回（网络失败、无权，或响应不是版本列表）。字段级差异仍只以这条单据自己的响应为准。"
+      >
+        版本链未读回——相邻版本读口这一次没答成，链上位置不判定。
+      </p>
+    );
+  }
+  const { note } = phase;
+  const anchor = detail.versionAnchor;
+  if (!note.readable) {
+    return (
+      <p
+        className="min-w-0 break-words text-xs text-muted-foreground"
+        data-testid="apd10-chain-unreadable"
+        title="相邻版本读口（GET /api/employee-versions?id=）这一条答回来的不是版本列表——无权、降级或形制不符都算这一档。链上位置不判定，字段级差异仍只以这条单据自己的响应为准。"
+      >
+        版本链未读回——相邻版本读口这一条没答成版本列表，链上位置不判定。
+      </p>
+    );
+  }
+  const from = note.fromLabel ? `前版 ${note.fromLabel}` : "前版未对上进链";
+  const target =
+    note.target === "present"
+      ? `后版 v${anchor?.toVersionNo ?? "?"} 已在链上`
+      : note.target === "absent"
+        ? `后版 v${anchor?.toVersionNo ?? "?"} 尚未出现在链上`
+        : "后版号未带回";
+  return (
+    <p
+      className="min-w-0 break-words text-xs text-muted-foreground"
+      data-testid="apd10-chain-note"
+      title={`相邻版本核对只读 GET /api/employee-versions?id=（BFF 既有端点，不新增）。前值原码=${anchor?.fromVersionId ?? "未带回"}；后版号=${anchor?.toVersionNo ?? "未带回"}；链上读回 ${note.chainSize ?? "—"} 版（真读数）。读不出的段落写「未对上/未带回」，不补造。`}
+    >
+      版本链核对：{from} → {target}；链上读回 {note.chainSize ?? "—"} 版。
+    </p>
+  );
+}
+
+export function ChangeDiffSection({ detail }: { detail: ApprovalDetail }): ReactNode {
+  const branch = diffBranchFor(detail);
+  return (
+    <section className="ui-c-section" data-testid="apd10-diff" aria-label="变更差异（字段级·只读）">
+      <h3 className="ui-c-section-title">变更差异 · 字段级（只读）</h3>
+      {branch.kind === "version" && branch.state === "rows" ? (
+        <ul className="flex min-w-0 flex-col gap-1 text-xs">
+          {detail.diff?.fields.map((field, index) => (
+            <li
+              key={`${field.label}-${index}`}
+              className="grid min-w-0 grid-cols-1 gap-x-2 gap-y-0.5 sm:grid-cols-[minmax(6rem,9rem)_minmax(0,1fr)_minmax(0,1fr)]"
+              data-testid={`apd10-diff-row-${index}`}
+            >
+              <span className="min-w-0 break-words text-muted-foreground">{field.label}</span>
+              <span className="min-w-0 break-words" data-testid={`apd10-diff-before-${index}`} title={field.raw ?? undefined}>
+                前：{field.before}
+              </span>
+              <span className="min-w-0 break-words" data-testid={`apd10-diff-after-${index}`}>
+                后：{field.after}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : branch.kind === "version" && branch.state === "carrier-empty" ? (
+        <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="apd10-diff-empty">
+          服务带回了差异结构，其中没有字段级变更。
+        </p>
+      ) : (
+        <p
+          className="min-w-0 break-words text-xs text-muted-foreground"
+          data-testid="apd10-diff-unwired"
+          title={
+            branch.kind === "version"
+              ? "差异只从这条单据的服务端响应读取；该响应没有带回字段级前后值（版本 from→to、added/removed 之类形制均未出现），前端不自行补齐。"
+              : branch.kind === "no-source"
+                ? `差异只从这条单据的服务端响应读取；「${branch.label}」这类变更（原值 ${branch.raw}）在服务端没有差异数据源，这条响应没有带回字段级前后值，前端不自行补齐。`
+                : "差异只从这条单据的服务端响应读取；这条单据没有写明变更类型，无法判定它有没有差异数据源，这条响应没有带回字段级前后值，前端不自行补齐。"
+          }
+        >
+          {branch.kind === "version"
+            ? "未接——差异明细未提供（这条单据的响应没有带回字段级前后值，也无法定位相邻版本），屏上不猜差异内容。"
+            : branch.kind === "no-source"
+              ? "未接——差异明细未提供（该变更类型无差异数据源），屏上不猜差异内容。"
+              : "未接——差异明细未提供（该单据没写明变更类型），屏上不猜差异内容。"}
+        </p>
+      )}
+      {branch.kind === "version" && branch.state === "rows" ? <VersionChainLine detail={detail} /> : null}
+      {/* AP-02 ④: 摘要值就在「详情」里，但它在差异段先说清楚自己不是什么。 */}
+      {detail.digest ? (
+        <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="apd10-digest-note">
+          参数摘要为不可逆摘要，非差异——原文见「详情」段。
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
+/**
+ * AP-02 ②: consumedAt 两态（E52/E53）。approved 且 consumedAt 空 ⇒「已批准，
+ * 等待运行时使用」；非空 ⇒「已被运行时使用」，run 回链仅当响应真带回 run 标识
+ * （顶层 runId 或 binding.runId），没有就只给文案。其它状态不宣称消费。
+ */
+export function ConsumptionStateLine({ detail }: { detail: ApprovalDetail }): ReactNode {
+  const view = consumptionStateFrom(detail.status.raw, detail.consumedAt);
+  if (!view) return null;
+  if (view.state === "waiting") {
+    return (
+      <p
+        className="min-w-0 break-words text-xs text-muted-foreground"
+        data-testid="apd10-consumed-waiting"
+        title="这条单已批准，但服务端响应没有带回 consumedAt——运行时还没有使用它。使用时间由服务端写入，前端不猜。"
+      >
+        已批准，等待运行时使用。
+      </p>
+    );
+  }
+  return (
+    <p
+      className="ui-c-inline min-w-0 break-words text-xs"
+      data-testid="apd10-consumed-used"
+      title={view.atRaw ?? undefined}
+    >
+      <span data-testid="apd10-consumed-used-sentence">
+        {view.timeMissing
+          ? "已被运行时使用（使用时间未随本单回传）。"
+          : `已被运行时使用：${view.at ?? "—"}。`}
+      </span>
+      {detail.consumptionRunId ? (
+        <>
+          {" "}
+          <Link
+            className="underline underline-offset-2"
+            to={`/runs?run=${encodeURIComponent(detail.consumptionRunId)}`}
+            title={detail.consumptionRunId}
+            data-testid="apd10-consumed-run-link"
+          >
+            查看该次运行
+          </Link>
+        </>
+      ) : (
+        <span className="text-muted-foreground" data-testid="apd10-consumed-run-none">
+          （该单没带回运行编号，故不给回链。）
+        </span>
+      )}
+    </p>
+  );
+}
+
 export function ApprovalDetailBody({
   detail,
   actions,
@@ -743,42 +977,15 @@ export function ApprovalDetailBody({
         <p className="min-w-0 break-words text-xs text-warning">这张单已被另一张替代，请到「待处理」里查看新单。</p>
       ) : null}
 
-      {/* Q13: 字段级前后差异。数据源只有本详情响应（GET /api/approval?id=）；
-        * 键没带回就是 null——屏上写「未接」+原因句，禁 fixture、禁猜（模型法则一）。 */}
-      <section className="ui-c-section" data-testid="apd10-diff" aria-label="变更差异（字段级·只读）">
-        <h3 className="ui-c-section-title">变更差异 · 字段级（只读）</h3>
-        {detail.diff === null ? (
-          <p
-            className="min-w-0 break-words text-xs text-muted-foreground"
-            data-testid="apd10-diff-unwired"
-            title="差异只从这条单据的服务端响应读取；该响应没有带回字段级前后值（版本 from→to、added/removed 之类形制均未出现），前端不自行补齐。"
-          >
-            未接——这条单据的服务端响应没有带回字段级前后值，屏上不猜差异内容。
-          </p>
-        ) : detail.diff.fields.length === 0 ? (
-          <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="apd10-diff-empty">
-            服务带回了差异结构，其中没有字段级变更。
-          </p>
-        ) : (
-          <ul className="flex min-w-0 flex-col gap-1 text-xs">
-            {detail.diff.fields.map((field, index) => (
-              <li
-                key={`${field.label}-${index}`}
-                className="grid min-w-0 grid-cols-1 gap-x-2 gap-y-0.5 sm:grid-cols-[minmax(6rem,9rem)_minmax(0,1fr)_minmax(0,1fr)]"
-                data-testid={`apd10-diff-row-${index}`}
-              >
-                <span className="min-w-0 break-words text-muted-foreground">{field.label}</span>
-                <span className="min-w-0 break-words" data-testid={`apd10-diff-before-${index}`} title={field.raw ?? undefined}>
-                  前：{field.before}
-                </span>
-                <span className="min-w-0 break-words" data-testid={`apd10-diff-after-${index}`}>
-                  后：{field.after}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      {/* Q13→AP-02: 字段级前后差异 + changeKind 分支。数据源仍是本详情响应
+        * （GET /api/approval?id=）；只有 employee_version_create 带差异载体，
+        * 其余类型显式「差异明细未提供」。风险差异四项（可触达/新增写入/
+        * 未脱敏/同类申请）在响应里没有任何字段形制（evidence/raw-detail-*.json
+        * 逐单清点）⇒ 整块不渲染，不画 0、不摆骨架（AP-02 ③）。 */}
+      <ChangeDiffSection detail={detail} />
+
+      {/* AP-02 ②: consumedAt 两态——只在该单真的走到「批准/执行」时出现。 */}
+      <ConsumptionStateLine detail={detail} />
 
       {/* apd7: the decision replay is a titled read-only block — every entry
         * names who decided (masked handle or 未指派), the verdict, the Beijing

@@ -17,11 +17,23 @@ import { fetchJSON } from "@/lib/api";
 import { ApiError } from "@/lib/api-error";
 import { csrfFailureCopy, csrfWriteHeaders } from "@/lib/csrf";
 
-import { approvalDetailFrom, approvalsPageFrom, type ApprovalDetail, type ApprovalPage } from "./model";
+import {
+  approvalDetailFrom,
+  approvalsPageFrom,
+  employeeVersionRefsFrom,
+  type ApprovalDetail,
+  type ApprovalPage,
+  type EmployeeVersionRef,
+} from "./model";
 
 export const LIST_PATH = "/agent-api/api/approvals";
 export const DETAIL_PATH = "/agent-api/api/approval";
 export const DECISION_PATH = "/agent-api/api/approval/decision";
+/**
+ * AP-02 ① 相邻版本核对腿——BFF 既有端点（apps/console/server.py:59 路由表，
+ * 2026-11-23 实测 `?id=emp_…` → 200 items[5]），经 /agent-api 反代，零新增。
+ */
+export const EMPLOYEE_VERSIONS_PATH = "/agent-api/api/employee-versions";
 
 /** The BFF's own cursor page size; kept explicit so both panes ask the same thing. */
 export const PAGE_LIMIT = 50;
@@ -55,6 +67,13 @@ export function decisionUrl(id: string): string {
   return appendQuery(DECISION_PATH, "id", id);
 }
 
+/** 相邻版本读口的请求形制：`?id=<员工号>&limit=50`（limit 透传，BFF 实测接受）。 */
+export function employeeVersionsUrl(employeeId: string, limit = PAGE_LIMIT): string {
+  let url = appendQuery(EMPLOYEE_VERSIONS_PATH, "id", employeeId);
+  url = appendQuery(url, "limit", String(limit));
+  return url;
+}
+
 /** One page of the queue. `null` page = the answer is not a list at all (a failure). */
 export async function fetchList(status: string | null, cursor: string | null): Promise<ApprovalPage | null> {
   const payload = await fetchJSON<unknown>(listUrl(status, cursor));
@@ -64,6 +83,16 @@ export async function fetchList(status: string | null, cursor: string | null): P
 export async function fetchDetail(id: string): Promise<ApprovalDetail | null> {
   const payload = await fetchJSON<unknown>(detailUrl(id));
   return approvalDetailFrom(payload);
+}
+
+/**
+ * AP-02 ① 版本链读取：只读、只在 employee_version_create 详情里被调用。
+ * 返回 null = 读口没答成列表（失败/无权），屏上写「版本链未接」；
+ * 空数组 = 真读了但没有可比版本。两者都不画 0、都不补造。
+ */
+export async function fetchVersionChain(employeeId: string): Promise<EmployeeVersionRef[] | null> {
+  const payload = await fetchJSON<unknown>(employeeVersionsUrl(employeeId));
+  return employeeVersionRefsFrom(payload);
 }
 
 /**
