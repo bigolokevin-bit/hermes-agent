@@ -125,4 +125,15 @@ describe("n17 top bar: one h1 outside main, no inline style, no minted tokens", 
     expect(count(topbarCode, 'data-testid="shell-sidebar-collapse"')).toBe(1);
     expect(count(appCode, 'data-testid="shell-sidebar-collapse"')).toBe(0);
   });
+
+  it("a console route's h1 title comes from the shell module table, not a derived string", () => {
+    expect(topbarCode).toContain("consoleSurface(pathname)");
+    expect(topbarCode).toContain(
+      "surface !== null ? surface.label : resolvePageTitle(pathname, t, [])",
+    );
+    // Regression guard: the resolver alone rendered a pathname-derived English
+    // word on /overview, which is the defect this clause pins shut.
+    expect(topbarCode).not.toMatch(/^\s*const title = resolvePageTitle/m);
+    expect(topbarCode).toContain("${surface.group} · 控制台");
+  });
 });

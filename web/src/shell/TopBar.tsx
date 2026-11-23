@@ -47,12 +47,18 @@ interface ConsoleTopBarProps {
   onToggleCollapse: () => void;
 }
 
-function consoleCrumb(pathname: string): string | null {
+/* Console routes own their title vocabulary. The shell's route table names every
+ * module with a Chinese label, and that label is what the single <h1> must show.
+ * The upstream resolver used to be the only source here rendered an English word
+ * on the dev face: for /overview it misses the nav registry and falls through to
+ * a pathname-derived string, so the shell table wins first and the resolver is
+ * only consulted off-shell. */
+function consoleSurface(pathname: string): { group: string; label: string } | null {
   const hit = findRoute(pathname);
   if (hit === null) return null;
   const meta = CONSOLE_MODULES.find((m) => m.module === hit.entry.module);
   if (meta === undefined) return null;
-  return `${meta.group} · 控制台`;
+  return { group: meta.group, label: meta.label };
 }
 
 export function ConsoleTopBar({ collapsed, onToggleCollapse }: ConsoleTopBarProps) {
@@ -66,13 +72,13 @@ export function ConsoleTopBar({ collapsed, onToggleCollapse }: ConsoleTopBarProp
 
   if (slot === null) return null;
 
-  const crumb = consoleCrumb(pathname);
-  // Non-console routes fall back to the shared resolver, which owns builtin nav
+  const surface = consoleSurface(pathname);
+  // Off-shell routes fall back to the shared resolver, which owns builtin nav
   // labels and residual zh titles. Plugin tabs are not passed down here: an
   // empty list means a plugin route shows the resolver's pathname-derived title
   // rather than a guessed one, and the upstream header still shows its own title
   // on those routes.
-  const title = resolvePageTitle(pathname, t, []);
+  const title = surface !== null ? surface.label : resolvePageTitle(pathname, t, []);
 
   return createPortal(
     <header
@@ -99,7 +105,7 @@ export function ConsoleTopBar({ collapsed, onToggleCollapse }: ConsoleTopBarProp
           data-testid="shell-topbar-crumb"
           className="console-note truncate text-[length:var(--font-size-ls-1)] leading-[var(--line-height-ls-2)]"
         >
-          {crumb ?? "数字员工控制台"}
+          {surface === null ? "数字员工控制台" : `${surface.group} · 控制台`}
         </span>
         <h1
           data-testid="shell-topbar-title"
