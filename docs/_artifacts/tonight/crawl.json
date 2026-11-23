@@ -49,13 +49,13 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 328,
+      "mainChars": 365,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 2,
+      "consoleErrors": 3,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
-      "headSample": "待处理 历史决策 筛选条件（无） 汇总（与列表同一请求，按已加载行计）： 待办 — 已批 — 已"
+      "headSample": "待处理 历史决策 筛选条件（无） 写开关：关 ｜ 服务端：未知（按关） ｜ 前端旗标：关 ｜ 采"
     },
     {
       "route": "#/approvals?tab=history",
@@ -75,65 +75,65 @@
       "source": "COMPAT_TABS",
       "kind": "compat-tab",
       "verdict": "content-ok",
-      "mainChars": 328,
+      "mainChars": 365,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 2,
+      "consoleErrors": 3,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
-      "headSample": "待处理 历史决策 筛选条件（无） 汇总（与列表同一请求，按已加载行计）： 待办 — 已批 — 已"
+      "headSample": "待处理 历史决策 筛选条件（无） 写开关：关 ｜ 服务端：未知（按关） ｜ 前端旗标：关 ｜ 采"
     },
     {
       "route": "#/approvals?tab=pending&view=mine",
       "source": "VIEW_DEEP_LINKS",
       "kind": "view",
       "verdict": "content-ok",
-      "mainChars": 328,
+      "mainChars": 365,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 2,
+      "consoleErrors": 3,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
-      "headSample": "待处理 历史决策 筛选条件（无） 汇总（与列表同一请求，按已加载行计）： 待办 — 已批 — 已"
+      "headSample": "待处理 历史决策 筛选条件（无） 写开关：关 ｜ 服务端：未知（按关） ｜ 前端旗标：关 ｜ 采"
     },
     {
       "route": "#/approvals?tab=pending&view=release",
       "source": "VIEW_DEEP_LINKS",
       "kind": "view",
       "verdict": "content-ok",
-      "mainChars": 328,
+      "mainChars": 365,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 2,
+      "consoleErrors": 3,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
-      "headSample": "待处理 历史决策 筛选条件（无） 汇总（与列表同一请求，按已加载行计）： 待办 — 已批 — 已"
+      "headSample": "待处理 历史决策 筛选条件（无） 写开关：关 ｜ 服务端：未知（按关） ｜ 前端旗标：关 ｜ 采"
     },
     {
       "route": "#/approvals?tab=policy",
       "source": "COMPAT_TABS",
       "kind": "compat-tab",
       "verdict": "content-ok",
-      "mainChars": 328,
+      "mainChars": 365,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 2,
+      "consoleErrors": 3,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
-      "headSample": "待处理 历史决策 筛选条件（无） 汇总（与列表同一请求，按已加载行计）： 待办 — 已批 — 已"
+      "headSample": "待处理 历史决策 筛选条件（无） 写开关：关 ｜ 服务端：未知（按关） ｜ 前端旗标：关 ｜ 采"
     },
     {
       "route": "#/approvals?tab=release",
       "source": "COMPAT_TABS",
       "kind": "compat-tab",
       "verdict": "content-ok",
-      "mainChars": 328,
+      "mainChars": 365,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 2,
+      "consoleErrors": 3,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
-      "headSample": "待处理 历史决策 筛选条件（无） 汇总（与列表同一请求，按已加载行计）： 待办 — 已批 — 已"
+      "headSample": "待处理 历史决策 筛选条件（无） 写开关：关 ｜ 服务端：未知（按关） ｜ 前端旗标：关 ｜ 采"
     },
     {
       "route": "#/audit",
@@ -205,13 +205,13 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 271,
+      "mainChars": 276,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 2,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
-      "headSample": "列表 能力与权限 数字员工 — 复制列表 导出 CSV 共 0 行 刷新 在岗 0 受限 0 暂"
+      "headSample": "列表 能力与权限 数字员工 — 复制列表 导出 CSV 共 0 行 新建员工 刷新 在岗 0 受"
     },
     {
       "route": "#/employees?tab=matrix",
@@ -231,10 +231,10 @@
       "source": "DETAIL_TAB",
       "kind": "detail-zone",
       "verdict": "content-ok",
-      "mainChars": 64,
+      "mainChars": 140,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 2,
+      "consoleErrors": 3,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
       "headSample": "工作台 配置 任务 运行 证据 员工 · EMPLOYEE — 返回 总览 任务 运行 审批 概"
@@ -244,10 +244,10 @@
       "source": "DETAIL_ZONES_EXTRA",
       "kind": "detail-zone",
       "verdict": "content-ok",
-      "mainChars": 64,
+      "mainChars": 140,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 2,
+      "consoleErrors": 3,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
       "headSample": "工作台 配置 任务 运行 证据 员工 · EMPLOYEE — 返回 总览 任务 运行 审批 概"
@@ -543,13 +543,13 @@
       "source": "COMPAT_MODULES",
       "kind": "compat-module",
       "verdict": "content-ok",
-      "mainChars": 104,
+      "mainChars": 28,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 3,
+      "consoleErrors": 1,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
-      "headSample": "Chats Automation All Any chat source Import sess"
+      "headSample": "会话列表读取失败 缺少员工编号，无法确定会话归属。 重试"
     },
     {
       "route": "#/system",
@@ -695,7 +695,7 @@
       "headSample": "任务 运行 刷新 控制台 · 运行 运行 按时间看运行记录。这一面只读：不取消运行；重试的含义是"
     }
   ],
-  "distinctMainHeads": 35,
+  "distinctMainHeads": 36,
   "medianMainChars": 259,
   "contentEmpty": [],
   "contentEmptyCount": 0,
@@ -732,7 +732,6 @@
     "401 /agent-api/api/models",
     "401 /agent-api/api/models/pricing",
     "401 /agent-api/api/runs",
-    "401 /agent-api/api/sessions",
     "401 /agent-api/api/skills",
     "401 /agent-api/api/tasks",
     "401 /agent-api/api/tools",
@@ -761,7 +760,7 @@
   "routesWithConsoleErrors": 51,
   "parseErrors": [],
   "ok": true,
-  "headHash": "b0503d7926",
+  "headHash": "e8f7dcd232",
   "exitCode": 0,
   "counts": {
     "probed": 75,
