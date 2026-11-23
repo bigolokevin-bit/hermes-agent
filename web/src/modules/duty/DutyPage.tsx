@@ -28,6 +28,7 @@ import {
   type DutyStatusFilterId,
 } from "./dutyStatusFilter";
 import { DUTY_NOTES } from "./dutyNotes";
+import { AgentFleetRail } from "./AgentFleetRail";
 import type {
   ActivityBody,
   ApprovalRow,
@@ -1265,6 +1266,8 @@ export default function DutyPage() {
       </div>
 
       <HealthStrip cost={data.budgetDay} runs={data.todayStats} />
+
+      <AgentFleetRail employees={data.employees} />
 
       <DutyDetailsSection
         employees={data.employees}

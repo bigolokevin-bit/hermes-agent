@@ -825,3 +825,156 @@
     min-block-size: 44px;
   }
 }
+
+/* ── w189 样板 A — AgentFleetRail 舰队轨（UI-DIRECTION v2 §4/§7 H1）──────────
+   几何三档：≥1281px 卡 320×176；376–1280px 卡 288×168；≤375px 卡 260×160，
+   滑轨可视宽 324px（首张全显 + 第二张可见 56px ≈ 1.22 张，落在 H1 的 1.1–1.3）。
+   固定高度 ⇒ 同列高差 0 ≤ 1px。字号只走六档令牌；大数字 24 计算字号 + 26/24
+   字形缩放（v2 §4 三层②），数字 tabular-nums。 */
+.duty-fleet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.duty-fleet-stage {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.duty-fleet-viewport {
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  min-width: 0;
+  padding-block: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .duty-fleet-viewport {
+    scroll-behavior: auto;
+  }
+}
+.duty-fleet-card {
+  flex: 0 0 320px;
+  width: 320px;
+  height: 176px;
+  box-sizing: border-box;
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-2);
+  background: var(--color-surface);
+  scroll-snap-align: start;
+  min-width: 0;
+}
+@media (max-width: 1280px) {
+  .duty-fleet-card {
+    flex-basis: 288px;
+    width: 288px;
+    height: 168px;
+  }
+}
+@media (max-width: 375px) {
+  .duty-fleet-card {
+    flex-basis: 260px;
+    width: 260px;
+    height: 160px;
+  }
+  .duty-fleet-viewport {
+    width: 324px;
+  }
+}
+.duty-fleet-l1 {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.duty-fleet-avatar {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  font-size: var(--font-size-2);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-1);
+  color: var(--color-muted-foreground);
+  background: transparent;
+}
+.duty-fleet-name {
+  font-size: var(--font-size-3);
+  line-height: 21px;
+  color: var(--color-foreground);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.duty-fleet-role,
+.duty-fleet-state,
+.duty-fleet-metric-label,
+.duty-fleet-metric-unit {
+  font-size: var(--font-size-1);
+  line-height: 17px;
+  color: var(--color-muted-foreground);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.duty-fleet-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--color-muted-foreground);
+}
+.duty-fleet-dot.is-on {
+  background: var(--color-success);
+}
+.duty-fleet-dot.is-paused {
+  background: var(--color-warning);
+}
+.duty-fleet-l2 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
+  min-width: 0;
+}
+.duty-fleet-metric {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+}
+.duty-fleet-metric [data-metric-value] {
+  font-size: var(--font-size-6);
+  line-height: 25px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-foreground);
+  transform: scale(calc(26 / 24));
+  transform-origin: left center;
+}
+.duty-fleet-arrow,
+.duty-fleet-pause {
+  height: 32px;
+  min-width: 32px;
+  padding-inline: var(--space-2);
+  font-size: var(--font-size-2);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-1);
+  background: transparent;
+  color: var(--color-muted-foreground);
+  cursor: pointer;
+}
+.duty-fleet-arrow:focus-visible,
+.duty-fleet-pause:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
