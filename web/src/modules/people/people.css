@@ -382,17 +382,10 @@
   .ppl5d-scrollhint {
     display: block;
   }
-  .ppl5d-scroll::-webkit-scrollbar {
-    height: 8px;
-  }
-  .ppl5d-scroll::-webkit-scrollbar-track {
-    background: color-mix(in srgb, var(--color-text) 6%, transparent);
-    border-radius: 999px;
-  }
-  .ppl5d-scroll::-webkit-scrollbar-thumb {
-    background: color-mix(in srgb, var(--color-text) 30%, transparent);
-    border-radius: 999px;
-  }
+  /* 滚动条外观不自定义：滚动条棘轮门（components/ui/scrollbar-utility.test.ts）
+   * 规定三属性定义点恒 1 且只在 index.css 的 .scrollbar-none 块，任何模块 css
+   * 再写滚动条伪元素裸声明就是第二真值源。可滑性由上方提示文案 + 下方
+   * 首列粘性钉左承担，滚动条本体回落系统默认。 */
   .ppl5d-scroll--x .ppl5d-table th:first-child,
   .ppl5d-scroll--x .ppl5d-table td:first-child {
     position: sticky;
