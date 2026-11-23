@@ -17,7 +17,7 @@
  *    未附绿色输出原文进部署记录前恒 false——「开关开但未过 AP-05/AP-06 仍为关」
  *    的语义由它钉住。
  *
- * 这里取 runs 页 run5-retry-new 的同源口径：一个对象同时驱动 disabled / aria-disabled /
+ * 这里取 runs 页 run5-retry-new 的同源形制：一个对象同时驱动 disabled / aria-disabled /
  * 人话原因，首帧即禁用，不拿用户的点击去撞 405（原因句不裸显服务端 code）。
  * send()、确认弹窗与 405 兜底路径原样保留，供写通道开闸的后代直接复用。
  *

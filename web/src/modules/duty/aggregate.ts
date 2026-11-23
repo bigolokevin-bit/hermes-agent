@@ -196,7 +196,7 @@ export function buildReadiness(
           },
           { confirmed: 0, pending: 0, failing: 0 },
         );
-  // 分母口径的可见披露（DU-01④）：单页加载 + 逐员工扇出覆盖 n/N。
+  // 分母范围的可见披露（DU-01④）：单页加载 + 逐员工扇出覆盖 n/N。
   const cov = evidence?.coverage ?? null;
   const denominatorNote =
     employees === null
@@ -232,15 +232,17 @@ export function buildReadiness(
       : "四门检查全部通过才可上岗；当前没有单独卡人的检查。";
 
   // Q10 条目5（分母护栏）：员工目录是单页读取（上限 100）。触顶或目录条数低于
-  // 在册统计时，比率分母只是「本页口径」，句子里必须点名，不得假造全量分母。
+  // 在册统计时，比率分母只是「本页算出来的」，句子里必须点名，不得假造全量分母。
+  // DU-08①·D9：句子留内联（动态真数），「比率分母」这一标签词面已收进
+  // glossary duty.denominator 单源，屏上不再出现第二套措辞。
   const pageCapped = employees !== null && employees.length >= EMPLOYEES_PAGE_LIMIT;
   const denomNote = employees === null
     ? "比率分母未读到：员工目录没有回答。"
     : pageCapped
-      ? `比率分母口径：本页 ${employees.length} 人＝数据源单页上限 ${EMPLOYEES_PAGE_LIMIT}，非全量。`
+      ? `比率分母：本页 ${employees.length} 人＝数据源单页上限 ${EMPLOYEES_PAGE_LIMIT}，非全量。`
       : !complete && total !== null
-        ? `比率分母口径：本页 ${employees.length} 人 · 在册统计 ${total} 人，目录未拉满，非全量。`
-        : `比率分母口径：本页 ${employees.length} 人，未触单页上限 ${EMPLOYEES_PAGE_LIMIT}，与在册统计一致。`;
+        ? `比率分母：本页 ${employees.length} 人 · 在册统计 ${total} 人，目录未拉满，非全量。`
+        : `比率分母：本页 ${employees.length} 人，未触单页上限 ${EMPLOYEES_PAGE_LIMIT}，与在册统计一致。`;
 
   return { total, active, confirmed, buckets, denominatorNote, unknownGates, narrowest, deltaToNext, gates: orderedGates, netNote, denomNote };
 }
@@ -480,9 +482,9 @@ export function buildBlockers(
 }
 
 /**
- * Q10 条目3：buildBlockers 恒截前 3 条（既有口径）；「读到多少」要数截断前
+ * Q10 条目3：buildBlockers 恒截前 3 条（既有上限）；「读到多少」要数截断前
  * 的源头，否则「查看全部 (N)」会把 shown 冒充 total。失败运行按 1 组计，
- * 与逐条的卡面口径一致。
+ * 与逐条的卡面读数一致。
  */
 export function blockersTotal(
   failedRuns: RunRow[] | null,

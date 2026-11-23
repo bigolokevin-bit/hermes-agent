@@ -686,7 +686,7 @@
 .duty-range:focus-visible { outline: 2px solid var(--color-ring); outline-offset: 1px; }
 @media (max-width: 480px) { .duty-ranges { width: 100%; } .duty-range { flex: 1 1 auto; } }
 
-/* 跨页运行数口径对照（duty-runs-caliber） */
+/* 跨页运行数对照（duty-runs-caliber；术语解释走 ui/InfoHint＋glossary duty.runsCaliber） */
 .duty-runs-caliber {
   margin: 6px 0 0;
   font-size: var(--font-size-1);
@@ -695,10 +695,20 @@
   overflow-wrap: anywhere;
 }
 
-/* 口径说明折叠块（duty-notes） */
+/* 读口清单折叠块（duty-notes；DU-08①·D7 钮名里的解释句已收进 InfoHint） */
 .duty-notes {
   border-top: 1px solid var(--color-border);
   padding-top: 10px;
+}
+/* DU-08④：钮与提示同行——提示钮是独立 button，不能嵌进折叠钮里。 */
+.duty-notes-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.duty-notes-head .duty-notes-toggle {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 .duty-notes-toggle {
   display: flex;
@@ -875,7 +885,7 @@
 }
 
 /* 手机档：单列、触控高不低于 44px（rubric 触达底线，暂无对应令牌，用字面值并注明） */
-/* DU-07②：刷新钮/折叠钮（口径说明・以表格查看・以文字查看）/舰队控件/卡头与行内
+/* DU-07②：刷新钮/折叠钮（读口清单・以表格查看・以文字查看）/舰队控件/卡头与行内
    深链/检查项行同档补 44px。选择器插在原四者的相对次序之间，保持钉形断言
    （dutyPage.test「手机档」取本文件最后一个 820px 块、要求 .duty-range 紧贴 {）不破。 */
 @media (max-width: 820px) {

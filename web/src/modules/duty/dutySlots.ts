@@ -1,5 +1,5 @@
 /**
- * DU-02 固定槽位的计数口径（三卡「查看全部 (N)」的唯一来源）。
+ * DU-02 固定槽位的计数定义（三卡「查看全部 (N)」的唯一来源）。
  *
  * N 只认**服务端响应真给回来的行数**：数的是这一份响应里实际带的集合，
  * 不是请求上限、不是页码乘以条数、也不是卡上已经画了几行。三种拿不到的
@@ -23,7 +23,7 @@ export const NO_COUNT: ServerRowCount = {
   requestLimit: null,
 };
 
-/** 折叠区列表的显示封顶（沿用 duty-details-run-list 既有 8 条口径，单一定源）。 */
+/** 折叠区列表的显示封顶（沿用 duty-details-run-list 既有 8 条上限，单一定源）。 */
 export const DUTY_LIST_CAP = 8;
 
 /**

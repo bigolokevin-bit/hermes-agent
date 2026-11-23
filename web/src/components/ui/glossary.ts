@@ -21,6 +21,18 @@ export const GLOSSARY = {
     text: "各区块读哪个口、算哪一段、缺值怎么显示，全部列在这里。",
     source: "值班台只读口径",
   },
+  "duty.denominator": {
+    text: "比率与总数只按本轮真正读到的在册员工算；触到单页上限时不是全量。",
+    source: "员工目录单页读取",
+  },
+  "duty.runsCaliber": {
+    text: "值班台与指标页各读各的运行统计口；两侧对得上才写一致，本页不替对方取数。",
+    source: "运行窗口统计／指标页读口",
+  },
+  "duty.blockerFields": {
+    text: "阻塞项按五个字段呈现：对象、卡在哪一步、等谁、已等时长、下一步动作。",
+    source: "运行·任务·审批明细",
+  },
   "metrics.cost": {
     text: "成本按账本实际金额统计，缺行不按 0 计入。",
     source: "指标页成本读口",

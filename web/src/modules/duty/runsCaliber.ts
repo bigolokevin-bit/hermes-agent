@@ -1,5 +1,5 @@
 /**
- * 跨页「今日运行」口径对照。
+ * 跨页「今日运行」读口对照。
  *
  * 两页各读自己的口：值班台今日运行 = workbench/summary?range=1d 的 runs KPI；
  * 指标页运行数 = /api/run-stats 当前时间窗的 totals.runs。
@@ -16,7 +16,7 @@ export type RunsCaliberView = {
   verdict: RunsVerdict;
   /** 屏上对照句（不含本卡值与路径，那两段由页面另行渲染）。 */
   compare: string;
-  /** title：两条路径 + 相遇条件 + 采集时刻口径。 */
+  /** title：两条路径 + 相遇条件 + 采集时刻来源。 */
   title: string;
 };
 
@@ -29,7 +29,7 @@ export function runsCaliber(input: {
   const title =
     `本卡读 ${RUNS_DUTY_PATH}，采集时刻 ${dutyAsOfText}；` +
     `/metrics 读 ${RUNS_METRICS_PATH}。两页各读自己的口，本页不另发请求去取对方的数：` +
-    `只有当两侧读数出自同一读模型时才写「同源一致」，否则按口径不同处理，不为了对上而改任何一侧的取数。` +
+    `只有当两侧读数出自同一读模型时才写「同源一致」，否则按两条读口不同处理，不为了对上而改任何一侧的取数。` +
     (duty === null ? "本次没有读到本卡的运行数，不当作 0。" : "");
 
   if (duty === null) {

@@ -63,7 +63,7 @@ export function rawCorrelationReturn(): string | null {
  * AP-03 — 「离开前记快照」的单点把手。
  *
  * 抽屉里所有把人带离 /approvals 的关联链都走它：apd6 的运行/任务链（R94 首制）
- * 与新增的处理记录事件链（→ /audit?event=）。把手只有一处，快照口径就只有一份；
+ * 与新增的处理记录事件链（→ /audit?event=）。把手只有一处，快照词表就只有一份；
  * 每条链各自拼 search/scrollY 早晚分叉成两套返回行为。
  */
 export function useLeaveWithSnapshot(): () => void {

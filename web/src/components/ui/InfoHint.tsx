@@ -1,8 +1,13 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { HelpCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { GLOSSARY, type GlossaryTerm } from "./glossary";
+// DU-08 取证腿实撞的坑：ui.css 原来只由 Table/State/Select 与 ui/index.ts 带进图，
+// 页面若只 import InfoHint（例：approvals 队列汇总条），`.ui-hint-pop{display:none}`
+// 与 240–320px 弹层规则就不在脸css 里，定义文字会以 inline 文本平铺上屏——
+// 正是新规要禁止的形态。组件自带样式表，谁引谁得（与 ui/index.ts 同一份，无副作用）。
+import "./ui.css";
 
 /**
  * 全站唯一的「解释性文字」载体：问号图标（14px）紧跟被解释标签右侧 4px，
@@ -25,7 +30,11 @@ export interface InfoHintProps {
 
 export function InfoHint({ term, children, source, className, testid }: InfoHintProps) {
   const entry = GLOSSARY[term];
-  const id = useId();
+  // DU-08④：弹层 id 由 term 决定而不是 useId()——同一页两次渲染必须逐字节同体
+  // （approvals 的 403/404 同体契约按 innerHTML 相等判定，useId 的自增 id 会让
+  // 两次渲染的 DOM 只差一个 id，把存在性折叠的判据打成假红）。
+  // 代价：同一页不得重复挂同一 term，由 duty/approvals 的 InfoHint 接线件各钉一例。
+  const id = `ui-hint-${term.replace(/\./g, "-")}`;
   const [open, setOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement | null>(null);
 

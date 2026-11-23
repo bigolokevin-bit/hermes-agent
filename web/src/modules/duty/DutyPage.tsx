@@ -7,6 +7,7 @@ import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 
 import { cn } from "@/lib/utils";
 import { copyTextToClipboard } from "@/lib/clipboard";
+import { InfoHint } from "@/components/ui/InfoHint";
 import {
   activity24,
   blockersTotal,
@@ -262,7 +263,7 @@ function asOfOf(x: unknown): string | null {
 
 function legReason(legs: readonly Loadable<unknown>[]): string {
   if (legs.some((l) => l.k === "loading")) return "数据还在读取";
-  // DU-05① 口径不混用：not_wired 形制的腿缺采集时间是因为「未接入」，不是「失败」。
+  // DU-05① 三态不混用：not_wired 形制的腿缺采集时间是因为「未接入」，不是「失败」。
   if (legs.some((l) => l.k === "error" && !l.notWired)) return "本次读取失败，取不到采集时间";
   if (legs.some((l) => l.k === "error")) return "数据来源未接入，取不到采集时间";
   return "上游响应没有带采集时间";
@@ -403,7 +404,7 @@ function ReadinessCard({
             : readiness.confirmed === readiness.total
               ? "各项检查全部通过，在册员工均可上岗"
               : `最容易卡住的一项：${readiness.narrowest ? readiness.narrowest.name : "待核实"}`}
-          {readiness.denominatorNote ? `（分母口径：${readiness.denominatorNote}）` : ""}
+          {readiness.denominatorNote ? `（分母：${readiness.denominatorNote}）` : ""}
         </p>
       </StateLine>
     </HCard>
@@ -412,7 +413,7 @@ function ReadinessCard({
 
 /**
  * 卡外明细折叠区（用户直令 ③④）：原来挤在三卡里的检查项、状态筛选、
- * 最近运行、口径与成本覆盖，全部收进这里；信息一条不删，但不再撑高卡片。
+ * 最近运行、读口范围与成本覆盖，全部收进这里；信息一条不删，但不再撑高卡片。
  */
 function DutyDetailsSection({
   employees,
@@ -506,7 +507,10 @@ function DutyDetailsSection({
             "workbench/agents 缺 byLifecycle 聚合计数（active/paused/offboarding）、缺分页之外的完整名单（翻页时 total 为 null），逐行 today* 也恒为 null；本卡仍取员工目录 + 员工统计，换成该读口会丢掉总分母，故不换。"
           }
         >
-          <h3>可上岗检查项</h3>
+          <h3>
+            可上岗检查项
+            <InfoHint term="duty.ready" />
+          </h3>
           <p className="duty-say" data-testid="duty-gates-net" data-duty-testid="duty-gates-net">
             {readiness.netNote}
           </p>
@@ -524,9 +528,12 @@ function DutyDetailsSection({
               <GateRow key={g.key} gate={g} narrowest={readiness.narrowest?.key === g.key} />
             ))}
           </div>
-          <p className="duty-note">各项检查独立判定，标「待核实」的项既不算通过也不算不通过。</p>
+          {/* DU-08①·D3：原句「各项检查独立判定，标『待核实』的项既不算通过也不算不通过」
+              与 `glossary.ts` duty.ready 同义，按新规单源化——定义只留一份，
+              由上方 h3 的 InfoHint 承载（信息不删，只是不再出现第二套措辞）。 */}
           <p className="duty-note" data-testid="duty-denominator-caliber" data-duty-testid="duty-denominator-caliber">
-            {readiness.denomNote}
+            <InfoHint term="duty.denominator">分母与覆盖</InfoHint>
+            {`：${readiness.denomNote}`}
           </p>
         </section>
         <section className="duty-details-block" data-testid="duty-details-runs">
@@ -595,7 +602,8 @@ function DutyDetailsSection({
           )}
           <p className="duty-note">今日 00:00 起 · 北京时间 · 合计来自服务端窗口统计</p>
           <p className="duty-runs-caliber" data-testid="duty-runs-caliber" title={caliber.title}>
-            运行数口径：本卡{" "}
+            <InfoHint term="duty.runsCaliber">运行数对照</InfoHint>
+            {`：本卡 `}
             <span data-testid="duty-runs-value">{totals ? totals.runs : "—"}</span> 次 · 读口
             workbench/summary?range=1d · /metrics 读 /api/run-stats 当前窗 · 采集时刻{" "}
             <span data-testid="duty-runs-asof">{beijing(caliberAsOf)}</span>｜
@@ -618,7 +626,9 @@ function DutyDetailsSection({
               </span>
             </li>
             <li>
-              <span className="duty-row-title">账本口径</span>
+              <span className="duty-row-title">
+                <InfoHint term="duty.cost">账本</InfoHint>
+              </span>
               <span className="duty-row-time">只认账本实际金额</span>
             </li>
           </ul>
@@ -700,7 +710,7 @@ function DutyDetailsSection({
           {/* DU-03①：2026-11-24 现网实测 /api/employees 键并集含 department（3 条中 2 条
               为 null、1 条有值），能力标签列仍不在花名册；卡面第③层按工单裁定保持整层
               省略（禁空壳、禁编造），说明句必须与真响应一致——工单原句「无数据源」对
-              department 不成立，已按实测改口径，偏差见 DONE-DU-03.md。 */}
+              department 不成立，已按实测改措辞，偏差见 DONE-DU-03.md。 */}
           <p className="duty-note" data-testid="duty-fleet-l3-note">
             舰队轨第③层未显示：花名册无能力标签列，部门多为空值（待 /api/matrix 扩列）
           </p>
@@ -1169,7 +1179,7 @@ function BlockersCard({
   const firstError = [runs, tasks, approvals].find((x) => x.k === "error");
   const allReady = runs.k === "ready" && tasks.k === "ready" && approvals.k === "ready";
   // DU-07③×L0 裁定（merge 3113707983）：title 原文上屏的判据不变，但句子必须
-  // 采纳线侧 DU-02 诚实口径——各读口上限 3、共读到 total、列前 LIST_CAP、其余标
+  // 采纳线侧 DU-02 诚实判据——各读口上限 3、共读到 total、列前 LIST_CAP、其余标
   // 「另有 N 条」，禁写「已在本卡逐条列出」（该话术已被 duty.q10-parity 条目3 判失真）。
   // 链接文案恢复「查看全部 (N)」，N=blockersTotal 真数。title 与屏上句共用这一份串。
   const blockersLinkNote = `任务页不接受 status 筛选参数，这里去任务板。本次各读口上限 3 条，共读到 ${total} 项阻塞；卡面列前 ${LIST_CAP} 条，其余如实标注「另有 N 条」，不说「已逐条列出」。`;
@@ -1204,7 +1214,11 @@ function BlockersCard({
       ) : (
         <p className="duty-say" data-testid="duty-blockers-say">{`${items.length} 项阻塞 · 逐条见下方「阻塞明细」`}</p>
       )}
-      <p className="duty-note">阻塞卡五字段：阻塞对象 · 卡在哪一步 · 等谁 · 已等时长 · 下一步动作</p>
+      {/* DU-08①·D6：字段图例收进 InfoHint——五个字段名在每条阻塞项里逐条上屏
+          （见 BlockerRow），图例句本身是解释性文字，按新规走 glossary 单源。 */}
+      <p className="duty-note">
+        <InfoHint term="duty.blockerFields">阻塞卡字段</InfoHint>
+      </p>
       <p className="duty-note" data-testid="duty-blockers-link-note">{blockersLinkNote}</p>
     </HCard>
   );
@@ -1340,17 +1354,22 @@ function DutyNotes() {
   const [open, setOpen] = useState(false);
   return (
     <section className="duty-notes" data-testid="duty-notes">
-      <button
-        type="button"
-        className="duty-notes-toggle"
-        data-testid="duty-notes-toggle"
-        aria-expanded={open}
-        aria-controls="duty-notes-body"
-        onClick={() => setOpen((value) => !value)}
-      >
-        口径说明：每个区块读哪个口、算哪一段、缺值怎么显示
-        <span aria-hidden="true">{open ? "收起" : "展开"}</span>
-      </button>
+      <div className="duty-notes-head">
+        <button
+          type="button"
+          className="duty-notes-toggle"
+          data-testid="duty-notes-toggle"
+          aria-expanded={open}
+          aria-controls="duty-notes-body"
+          onClick={() => setOpen((value) => !value)}
+        >
+          各区块读口 · 计算范围 · 缺值呈现
+          <span aria-hidden="true">{open ? "收起" : "展开"}</span>
+        </button>
+        {/* DU-08①·D7：钮名只留清单本体（读口·范围·缺值），解释句收进 InfoHint，
+            定义走 glossary duty.notes 单源；aria-expanded 形制一字不动（DU-07④ 判据）。 */}
+        <InfoHint term="duty.notes">这份清单怎么读</InfoHint>
+      </div>
       {open ? (
         <div className="duty-notes-body" id="duty-notes-body" data-testid="duty-notes-body">
           {DUTY_NOTES.map((note) => (

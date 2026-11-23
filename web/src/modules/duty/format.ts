@@ -53,7 +53,7 @@ export function dashed(value: unknown): string {
 
 /**
  * 外部标识：oc_ 会话号、ou_ 发信人号。这类值一律不裸上屏——不论长度都收成
- * 「后6位」短码形（w182 点单口径；中段截断形不算数）。原值不丢：它留在链接
+ * 「后6位」短码形（w182 点单形制；中段截断形不算数）。原值不丢：它留在链接
  * 与 title 里，完整 id 照样取得回。
  */
 const EXTERNAL_ID = /^(?:oc|ou)_[0-9A-Za-z]+$/;

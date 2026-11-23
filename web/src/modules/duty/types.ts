@@ -5,7 +5,7 @@
  * a missing key renders "—" and never 0. Unknown enum values stay unknown.
  */
 
-/** 员工目录单页读取上限；分母口径句在触顶时明写「非全量」（Q10 条目5）。 */
+/** 员工目录单页读取上限；分母范围句在触顶时明写「非全量」（Q10 条目5）。 */
 export const EMPLOYEES_PAGE_LIMIT = 100;
 
 export type Loadable<T> =
@@ -18,7 +18,7 @@ export type Loadable<T> =
       requestId: string | null;
       /**
        * DU-05①：404/503 + `not_wired` 信封是正当的「未接入」，不是取数失败
-       * （fetchKnowledgeProbe 同口径，api.ts `isNotWiredError` 判定）。缺省 false。
+       * （fetchKnowledgeProbe 同判据，api.ts `isNotWiredError` 判定）。缺省 false。
        */
       notWired?: boolean;
     };
@@ -242,7 +242,7 @@ export interface ReadinessView {
   confirmed: number | null;
   /** 三分态；目录未到位时 null（此时不给任何计数，连 0 也不给）。 */
   buckets: ReadinessBuckets | null;
-  /** 分母口径的可见披露：单页加载与逐员工扇出覆盖 n/N。 */
+  /** 分母范围的可见披露：单页加载与逐员工扇出覆盖 n/N。 */
   denominatorNote: string | null;
   unknownGates: number;
   narrowest: GateView | null;
@@ -251,7 +251,7 @@ export interface ReadinessView {
   gates: GateView[];
   /** Q10 条目4：四门叠加净效果的人话句（交集句）。 */
   netNote: string;
-  /** Q10 条目5：比率分母的来源口径句——单页触顶时明写「非全量」。 */
+  /** Q10 条目5：比率分母的来源范围句——单页触顶时明写「非全量」。 */
   denomNote: string;
 }
 

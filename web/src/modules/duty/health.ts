@@ -1,7 +1,7 @@
 /**
  * DU-05①：页头 health chip 的纯推导。
  *
- * 口径以主仓 `apps/console/server.py` `_overview_summary` 真形制为准（只读核对，
+ * 词表以主仓 `apps/console/server.py` `_overview_summary` 真形制为准（只读核对，
  * 零改动）：healthStatus 不是独立健康端点，而是「本请求 fan-out 取数结果的汇总」
  * （全 ok=ok / 一路败=degraded），三路全败时根本没有 healthStatus——502
  * `console.upstream_unavailable`。duty 页同样没有独立健康读口（不臆造第二真源），
@@ -10,7 +10,7 @@
  * 三态词表严格不混用（工单①红线）：
  * - 「读取失败」＝连接通了但取数失败（5xx/网络/形状）；
  * - 「未接入」＝来源没接这个口（404/503 + not_wired 信封，fetchKnowledgeProbe
- *   同口径；knowledge 腿 wired:false 也算）——未接入不是失败，降级不数它；
+ *   同一判定；knowledge 腿 wired:false 也算）——未接入不是失败，降级不数它；
  * - 「无权限」＝401/403（登录/授权层，归入降级清单但用「无权限」措辞）。
  * 缺读数画「—」＋原因，禁假 0。
  */
@@ -96,7 +96,7 @@ export function deriveDutyHealth(data: DutyData): DutyHealthView {
     }
   }
   // 就绪证据腿里的知识门：wired:false 是「未接入」的具名腿（fetchKnowledgeProbe
-  // 把它归未接非失败，这里同一口径列名），不改变就绪证据族自身的态。
+  // 把它归未接非失败，这里同一词表列名），不改变就绪证据族自身的态。
   if (
     data.readiness?.k === "ready" &&
     data.readiness.data.knowledge.k === "ready" &&

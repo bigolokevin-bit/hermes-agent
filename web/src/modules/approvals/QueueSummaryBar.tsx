@@ -21,6 +21,7 @@
  */
 import { Link } from "react-router";
 
+import { InfoHint } from "@/components/ui/InfoHint";
 import { gateReason } from "./gates";
 import type { ApprovalRow } from "./model";
 
@@ -129,7 +130,7 @@ export function QueueSummaryBar({
 }) {
   const down = unavailable(phase);
   // AP-01：桶计数数的是「这一份读口结果里的行」，读口没有 total ⇒ 任何桶数都不是
-  // 全集的数量。范围句单点出自 denominatorReadout，分页条与本页其他读数同一口径。
+  // 全集的数量。范围句单点出自 denominatorReadout，分页条与本页其他读数同一来源。
   const countScope = denominator === null ? "" : `；${denominatorReadout(denominator).text}`;
   const read = denominator === null || phase !== "ready" ? null : denominatorReadout(denominator);
   return (
@@ -139,7 +140,13 @@ export function QueueSummaryBar({
       aria-label="队列汇总（按同一请求已加载的行计，读口不给总数）"
       data-testid="apv6-summary"
     >
-      <span className="text-muted-foreground">汇总（与列表同一请求，按已加载行计）：</span>
+      <span className="text-muted-foreground">
+        汇总
+        {/* DU-08②·A1：「待处理」的定义只在 glossary 一处（queue 视图才挂提示，
+            历史页汇总条零变化）；括号里的同源承诺留内联，不动任何计数判定。 */}
+        {scope === "queue" ? <InfoHint term="approvals.pending" /> : null}
+        （与列表同一请求，按已加载行计）：
+      </span>
       {STATUS_BUCKETS.map((bucket) => {
         let count: number | null = null;
         let missingReason: string | null = down;

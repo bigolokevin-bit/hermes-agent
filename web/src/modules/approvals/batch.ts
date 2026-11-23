@@ -3,7 +3,7 @@
  *
  * 三个纯函数只消费 model.ts 已解析的行字段（status / risk / binding.changeKind /
  * 剩余秒 / 审批人名单 / 本人票），不新增任何线上契约：字段缺了就是缺了，
- * 门控按「判不了就保守禁用」处置（2026-11-16 批量保守启用验收口径），绝不推断。
+ * 门控按「判不了就保守禁用」处置（2026-11-16 批量保守启用验收判据），绝不推断。
  * 每个非 ok 键固定配一条诚实文案，组件不得再自算原因句；writeOff 态整句复用
  * DECISION_GATE——逐单抽屉与批量条说的是同一个环境事实，同一句话的两个出口。
  * AP-04① 起 DECISION_GATE 不再是常量而是「服务端探测 ∧ 构建期旗标 ∧ AP-05/06
@@ -40,7 +40,7 @@ export function isOutboundHighRisk(row: ApprovalRow): boolean {
   return OUTBOUND_KINDS.includes(lower(row.changeKind.raw)) || HIGH_RISKS.includes(lower(row.risk.raw));
 }
 
-/** 剩余秒判得了且 ≤0 才算到时；服务没给任何时间口径时不自行判死。 */
+/** 剩余秒判得了且 ≤0 才算到时；服务没给任何时间依据时不自行判死。 */
 function isEnded(row: ApprovalRow): boolean {
   return !row.status.pending || (row.remainingSeconds !== null && row.remainingSeconds <= 0);
 }
@@ -48,7 +48,7 @@ function isEnded(row: ApprovalRow): boolean {
 /**
  * 该行勾选框为什么禁用（null = 可勾选）。拦三类：没有单据标识（无法提交决定）、
  * 已终态（不能再改结论，词汇同抽屉「这张单已经是…」句）、高风险/对外发送类
- * （参考件口径：这类不可批量）。缺类型/已到时/非审批人/已投过不改勾选——
+ * （参考件形制：这类不可批量）。缺类型/已到时/非审批人/已投过不改勾选——
  * 它们由批量钮的门控句表达，保住「勾了也能看到为什么不行」的出口。
  */
 export function batchCheckboxReason(row: ApprovalRow): string | null {
@@ -62,7 +62,7 @@ export function batchCheckboxReason(row: ApprovalRow): string | null {
 
 /**
  * 该行是否是「让批量区出现」的积极候选：可勾选之外还须类型明确、判得可决、
- * 与当前 actor（?actor= 既有口径）不冲突。队列里一条都没有时批量区整个不出现，
+ * 与当前 actor（?actor= 既有判定）不冲突。队列里一条都没有时批量区整个不出现，
  * 不放一排永远点不动的死按钮。
  */
 export function batchCandidate(row: ApprovalRow, actor: string | null): boolean {
