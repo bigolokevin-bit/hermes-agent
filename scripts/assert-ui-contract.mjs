@@ -12,6 +12,8 @@
  *   退出码：GATING 出现 FAIL ⇒ 1；全 GATING 通过 ⇒ 0。
  */
 import { createRequire } from "node:module";
+import { globSync } from "node:fs";
+import os from "node:os";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 
@@ -139,6 +141,61 @@ const push = (name, clause, verdict, detail) => {
   console.log(`${mark} ${verdict.padEnd(9)} ${name}（条款 ${clause}） — ${detail}`);
 };
 
+
+/**
+ * 「闸需要浏览器」这件事在盘上是真的：playwright 只存在于 pnpm 商店里
+ * （web/package.json 现已钉版 1.64.0，但要一次 pnpm install 才会链接进 node_modules）。
+ * 解析链按可靠性排序，全部落空时如实报 RUNTIME-CLAUSE-SKIPPED（不伪装 PASS、也不崩）。
+ */
+async function loadChromium() {
+  const tried = [];
+  try {
+    const mod = await import("playwright");
+    if (mod && mod.chromium) return mod.chromium;
+    tried.push("import(playwright)");
+  } catch (error) {
+    tried.push("import(playwright): " + error.code);
+  }
+  try {
+    const req = createRequire(path.join(REPO, "web/package.json"));
+    const mod = req("playwright");
+    if (mod && mod.chromium) return mod.chromium;
+    tried.push("require(web/package.json)");
+  } catch (error) {
+    tried.push("require(web/package.json): " + error.code);
+  }
+  const hints = [process.env.UI_GATE_PLAYWRIGHT, ...globSync(path.join(REPO, "..", "hermes-agent", "node_modules", ".pnpm", "playwright@1.64.0*", "node_modules", "playwright"))];
+  for (const hint of hints) {
+    if (!hint) continue;
+    try {
+      const mod = createRequire(path.join(REPO, "package.json"))(hint);
+      if (mod && mod.chromium) return mod.chromium;
+      tried.push("path:" + hint);
+    } catch (error) {
+      tried.push("path:" + hint + " -> " + error.code);
+    }
+  }
+  console.log("RUNTIME-CLAUSE-SKIPPED playwright 解析失败；需 `pnpm install`（已钉 1.64.0）或设 UI_GATE_PLAYWRIGHT=<playwright 目录>。试过：" + tried.join(" | "));
+  return null;
+}
+
+
+/** 已装浏览器优先：pnpm 商店里的 playwright 版本与缓存的 chromium 未必配对，直接指定可执行文件最稳。 */
+function chromiumExecutable() {
+  if (process.env.UI_GATE_CHROMIUM) return process.env.UI_GATE_CHROMIUM;
+  const root = path.join(os.homedir(), "Library", "Caches", "ms-playwright");
+  const patterns = [
+    "chromium-*/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing",
+    "chromium-*/chrome-mac/Chromium.app/Contents/MacOS/Chromium",
+    "chromium_headless_shell-*/chrome-headless-shell-mac-arm64/chrome-headless-shell",
+  ];
+  for (const pattern of patterns) {
+    const hits = globSync(path.join(root, pattern)).sort();
+    if (hits.length) return hits[hits.length - 1];
+  }
+  return null;
+}
+
 async function main() {
   // 源码层先判两条不需要浏览器的
   const shellTokens = existsSync(path.join(REPO, "web/src/shell/tokens.css"))
@@ -155,9 +212,16 @@ async function main() {
     return finish();
   }
 
-  const require = createRequire(path.join(REPO, "web/package.json"));
-  const { chromium } = require("playwright");
-  const browser = await chromium.launch();
+  const chromium = await loadChromium();
+  if (!chromium) return finish();
+  const exec = chromiumExecutable();
+  let browser;
+  try {
+    browser = await chromium.launch(exec ? { executablePath: exec } : {});
+  } catch (error) {
+    console.log("RUNTIME-CLAUSE-SKIPPED 浏览器启动失败（" + String(error.message).split("\n")[0] + "）；需 `npx playwright install chromium` 或设 UI_GATE_CHROMIUM=<可执行文件>");
+    return finish();
+  }
   const ctx = await browser.newContext({
     viewport: { width: 1440, height: 900 },
     ...(AUTH ? { storageState: AUTH } : {}),
