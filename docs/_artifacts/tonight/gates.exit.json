@@ -1,7 +1,7 @@
 {
   "script": "gates.exit.json",
-  "head": "f529efa9a871d1ecd5dbf0cd3fa3589a1ba8161f",
-  "provenance": "章面（源码面/线现脸）=f529efa9a871d1ecd5dbf0cd3fa3589a1ba8161f（短10=f529efa9a8），运行期 HEAD 恒等；面双证：git ls-remote 定向 ref 落文件 与 git rev-parse FETCH_HEAD 同值；git merge --ff-only 后本地逐字相等。章笔不落自身：本账 head 指源码面 f529efa9a8，盖章 commit 为其后继。\n本波四笔链：c7cb3fc241 feat(duty) 三卡固定槽位与查看全部(N) 真数深链（DU-02）/ 84778635b5 feat(approvals) 服务端边界作用域句+批量文案 DECISION_GATE 单源（AP-07）/ 0ddd6f504c merge(approvals) AP-07 / f529efa9a8 merge(duty) DU-02（DU-03 共头一笔吸）。源码差 git diff --stat a82d0320a9..HEAD -- web/src web/scripts web/public = 16 files changed, 1114 insertions(+), 97 deletions(-) 全在 web/src（非 test：approvals ActorBuckets/ApprovalsHistoryModulePage/ApprovalsPendingModulePage/QueueSortBar/RiskQuickFilter/SinceQuickFilter/gates.ts + duty DutyPage/api/useDutyData/dutySlots.ts/duty.css）。\n49 建债坐实：上波账 headHash=8cdd19c458 ≠ 代码 HEAD，且上代产物 index-wlj9M-sZ.js 建于 23:58:09 早于 DU-02/AP-07 入干 00:18:57 / 00:22:17 ⇒ rebuild 必做（L0 免除磁盘自证条款）。\nrebuild：仓根 ~/.nvm/versions/node/v26.13.1/bin/node scripts/build/web.mjs（无参）BUILD_EXIT=0，日志 _l7-build-f529efa9a8.log；in-graph 一次性临时目录 .web_dist-build-TLUMtT（事后 ls -d 已无）；entry 真翻代 index-wlj9M-sZ.js/7a93d4e2aedb04d05067525e61a57027e275ff8f33eae69b80926661792e3c2a/174971B/mt 23:58:09 → index-DcbOa7Cb.js/174971B/sha256 292afb863d2d4c9882b383e4dc9100d6e8a14d4f792aedd399b800c741b6f48a/mt 00:26:03（判据 sha≠上代直接满足）。\n9122 换代两轮：首轮 stop 报无 pidfile 记录、start 幂等收编 pid=46649（未真重启，读盘即换代）；次轮真 stop(46649) 后 start 报「已在服 pid=27582」并收编 ⇒ 27582 由外部/常驻先起，非本道所起；status root=200 size=1084 mtime=Nov 24 00:26:03 entry=assets/index-DcbOa7Cb.js sha256=292afb86…(served==磁盘) proxied=401 bff=401（fail-closed 正常）。8092 pid=740 lstart Mon Nov 23 21:30:30 无翻转 ⇒ 不构成 rebuild 伴生。本波未跑 console.sh lan（lan=Caddy 8181 非 9122，且源仓 bisheng-chat-panel 缺失，前波据此停服）。\n波次指纹六枚（git diff a82d0320a9..HEAD + 侧非 test 字面量，旧面 git grep -l -F 0 命中且 HEAD ≥1）三向闭合：apv-actor-crosspage / apv8-search-crosspage / apv-h-status-note / apv-sort-crosspage / apv-risk-crosspage / apv-since-crosspage = PRE（上拍留存 served 快照 q46-served，87 文件且内含 Q46 自有指纹 apd12-records=1/apd12-rid=1 以自证目录真实，防「目录不存在＝假 0」）0 → dist 1~2 → served(q47-served，87 文件) 1~2。duty 面 testid 不作产物指纹（DutyPage 已不挂载：overview/manifest.ts:22 + shell/routes.ts /duty→/overview 别名 + dist 无 Duty chunk），DU-02 内容由 vitest 面自证（duty.slotCounts.test.tsx 363 行）。\n腿件代次读数：assert-ia-html/react headHash=f529efa9a8 ok=True；crawl/crawl-anon headHash=f529efa9a8 ok=True probed=75；state-quad headHash=f529efa9 sampled=20 passed=20（ok=None 以 passed==sampled 判绿，形制注沿用未改脚本）；lint×2 headHash=NOKEY 属脚本形制未改判据（lint-fake linesScanned=9252、lint-reuse scanned=607，Q46 基线 604 ⇒ 新增 3 枚源文件被扫到）；vitest 522 files / 3903 tests / 45.46s + VERDICT=VERIFIED PORT=9122 ENTRY=assets/index-DcbOa7Cb.js（Q46 基线 520/3789/42.79s）。\n形制注：ia×2/crawl/crawl-anon 用 --out= 生成腿件（脚本传 --out 时不打印 stdout），stdout 正本另跑无 --out 一次取得；crawl 的 --out 件与 stdout 正本仅活流量字段有 1~2 字节抖动（两次独立采样），非形制破坏。\n代次自纠（本波两次踩坑如实记）：① 一次长 shell 末段坏路径导致腿段未生效，其「腿件已跟代」断言作废，改以 stat mtime 与 rebuild 时刻逐一对齐作硬判据；② 首轮盖章只带进 build log —— 因我道腿件在未提交状态下被共享检出的他道并窗操作回退（工作区一度显 8cdd19c458），本轮按「写腿件→出账本→add→commit→push 同一条命令」重做，杜绝再次被吞。\ncrawl-auth.json 未重跑（工单明令：已跟波次）：现值 headHash=3a23db37a2 ok=True 属 Q43″ 凭据代，账本内只报不钉。shots 主腿 L6 R328 已闭（ok=True headHash=29ad92208d）未代跑未双跑，shots-anon L6 R333 未碰；L6 生成键 shots-index.md/shots-summary.json 随本道章笔钉入并注归属「L6 R328+L0 章波代提交」，102 枚 shots/*.png 零入。\nlanes.yaml qa/L6 路由现查：l0-board 检出 docs/governance/lanes.yaml 的 owner_session 现值已 = ses_e1e33791fffeP5YjZVjOVyjWuH ⇒ 无需修复、无需板笔（Q45 单第 4 条销）。\n上一账 head=8cdd19c45816e36b0715775336c79fe5cecd6ae6 被本笔覆盖并停用最末引用；已闭环台账不回改历史措辞，本注为追加。写域纪律：仅 docs/_artifacts/tonight/**；junk（default/ fixture/ owned/ target/ docs/governance/LANE-ROSTER.md）零入；无 add -A/--no-verify/force；merge-q78 未删。\n追加自纠（本轮）：首轮盖章笔曾只含 build log（我道腿件在未提交态被共享检出他道并窗回退，工作区一度显 8cdd19c458），且该笔在运行腿件时把 headHash 钉成了它自己（章笔落自身，违「一波一盖章笔不落自身」）。该笔从未 push（远端定向 ref 仍 f529efa9a8），已 git reset --soft f529efa9a871d1ecd5dbf0cd3fa3589a1ba8161f 撤销其本地存在并重跑腿件，故本账 head 与八腿 headHash 恒等源码面 f529efa9a8；本轮改为「reset→腿件→账本→add→commit→push」同批完成。",
+  "head": "b0503d792699c50022df249e45771fe3f04a20c5",
+  "provenance": "章面（源码面/线现脸）=b0503d792699c50022df249e45771fe3f04a20c5（短10=b0503d7926）；face 双证：定向 ref 落文件 git ls-remote refs/heads/lane/hermes-console 与 git rev-parse HEAD 同值；运行期 HEAD 全程恒等，章笔不落自身（本账 head 指源码面，盖章 commit 为其后继；字面 headHash==HEAD 不可达属既有口径）。\n第九章单（L0 参谋令）建债判据：gates 现账 head=f529efa9a8（Q47 章，章笔 cd087f0942∈b0503d7926 血统）≠ face，且 served 仍 49 建 index-DcbOa7Cb.js mt 00:26:03 ⇒ 本波必 rebuild 销债（参谋原话：face 现含 DU-03/DU-04/AP-08+OM 栈源码而 served 仍是旧建）。\n本波笔链 git log --oneline cd087f0942..HEAD（9 笔，三笔并线波）：35c61116f5 merge(duty) DU-03-fleet-rail 舰队轨道真数收口 / 970a7b5344 merge(duty) DU-04-channel-verdict 渠道事件流 A 路收口 / 6d16ec7246 merge(approvals) AP-08-audit-trail 审计留痕 resourceId 作用域句+零成功钉测 / b0503d7926 merge(line) 三笔波复验；其余为 feat/docs 面 784a7d80ca ef9c3f3a47 8f428f3b74 a6d17a7edb 5d94dbea15。\n源码差 git diff --stat cd087f0942..HEAD -- web/src web/scripts web/public = 9 files changed, 483 insertions(+), 7 deletions(-)；非 test 改动件 6 枚：approvals/views.tsx、duty/AgentFleetRail.tsx、duty/DutyPage.tsx、duty/aggregate.ts、duty/duty.css、duty/readiness.ts（+ test 面 duty.fleetRail.test.tsx 106 行等）。\n波次指纹提取器 q48f_fp.py（旧面基线 cd087f09427b42bc28d8e95c5f1f8d0970540944，取 + 侧非 test 字面量，要求旧面 git grep -l -F 命中 0 且 HEAD ≥1）：候选入账数=34 且全部现 dist 0 命中 ⇒ PRE「在 line 不在 served」成立；入账一枚产物指纹 apd9-audit-scope-note（AP-08，approvals/views.tsx），三向闭合 PRE(q47-served 快照)=0 → POST dist=1 → served=1。\n自纠（退役面不可冒充产物指纹）：duty-details-fleet 与 duty-fleet-l3-note（duty/AgentFleetRail.tsx）POST dist 与 served 均 0 命中 ⇒ 该面未入产物，弃用不入账；DU-03 波次内容由 vitest 面自证（duty.fleetRail.test.tsx 106 行进线，Test Files 522→523 旁证）。同族前例：duty/DutyPage 退役（manifest.ts:22 + routes.ts /duty→/overview + dist 无 Duty chunk）、req-pe01、apd11-* 预猜。\nPRE 证据形制自证（防目录缺失假 0）：上一波留存 served 快照 $S/q47-served 存在且 87 文件，内含 Q47 自有指纹 apv-actor-crosspage=1 与 apd12-records=1 ⇒ 快照真实非空；本波指纹在其中 0 命中才是有效 PRE 读数。\n自纠（假 0 读数不入账）：served 全量重抓首轮 curl -o 目标含 assets/ 子目录而未 mkdir，致 entry/chunk 全缺、grep 计数全 0（N=0 TOTAL=0）；改正形制 mkdir -p $S/q48-served/assets 后重跑，读数 SERVED_ENTRY=assets/index-C4jqbwEw.js / SERVED_SHA==磁盘 / N=86 chunk / TOTAL=87 / apd9-audit-scope-note=1 / console-topbar=1 / run6-trace=1 / duty 两枚=0。首轮 0 读数一律作废。\nrebuild（仓根、node26、无参、禁传 --）：~/.nvm/versions/node/v26.13.1/bin/node scripts/build/web.mjs → BUILD_EXIT=0，日志 _l7-build-b0503d7926.log；in-graph 一次性临时目录 hermes_cli/.web_dist-build-aUIOOS（事后 ls -d → 无）；index.html 1084B mt 00:56。\nentry 真翻代（判据 sha≠292afb86… 直接满足，无需同名同 sha 分支）：assets/index-DcbOa7Cb.js 174971B sha256 292afb863d2d4c9882b383e4dc9100d6e8a14d4f792aedd399b800c741b6f48a mt 00:26:03 → assets/index-C4jqbwEw.js 174971B sha256 5ca827a832c7098fda2ef0fe997d2fd9c771ebe71cbd6020a157c598e9a77892 mt 00:56:13。\n9122 换代（v4-serve，绝不跑 lan）：已停（pid=27582）→ 已起 pid=3080（自报）→ status pid=3067 root=200 size=1084 mtime=Nov 24 00:56:13 entry=assets/index-C4jqbwEw.js sha256=5ca827a8…(served==磁盘) proxied=401 bff=401（/agent-api→8092，401=fail-closed 正常）；lsof :9122=3067 ⇒ 进程身份 27582→3067 本道所起；start 自报与 status/lsof 实活差属既有自报形制，判据取 served==磁盘 + mtime。\n8092 伴生定性：换代前后 lsof :8092 均 = pid 740，lstart Mon Nov 23 21:30:30 2026 早于本波 rebuild ⇒ 本波 8092 无 pid 翻转，不构成 rebuild 伴生重启。\nlan（Caddy 8181）本波未跑：其源仓 /Users/kevin_studio/Projects/forks/bisheng-chat-panel 在本机不存在，前波据此致 8181 停服事故 ⇒ 该腿建议改「不适用/退役」，仍等 L0 裁定（既有纪律：总控命令须与磁盘实脸对照）。\n八腿 regen（逐字判据命令未改，运行期 HEAD 恒等 b0503d7926，腿件 mtime 00:59-01:01 全部晚于本波 rebuild 00:56:13 ⇒ 代次对齐硬判据成立）：assert-ia-html=0 assert-ia-react=0 lint-fake-success=0 lint-reuse=0 vitest=0 crawl-routes=0 state-quad=0 crawl-anon exitCode=0。\n腿件代次读数：assert-ia-html/react headHash=b0503d7926 ok=True；crawl/crawl-anon headHash=b0503d7926 ok=True probed=75 三表空；state-quad headHash=b0503d79 sampled=20 passed=20（ok=None 以 passed==sampled 判绿，形制注，未改脚本）；lint-fake linesScanned=9252、lint-reuse scanned=607 均 NOKEY 属脚本形制（未改判据）；--out= 与 stdout 正本 cmp：ia-html/ia-react SAME，crawl DIFF char 8180 line 234 属活流量抖动。\nvitest：Test Files 523 passed / Tests 3915 passed / Duration 48.36s + 部署校验行 VERDICT=VERIFIED PORT=9122 ENTRY=assets/index-C4jqbwEw.js（Q47 基线 522/3914 ⇒ +1 文件/+1 测试 = DU-03 duty.fleetRail.test.tsx 进线旁证）。\ncrawl-auth.json 不重跑（第九章单明令）：现值 headHash=3a23db37a2 ok=True（Q43″ 补腿代），账本内只报不钉；shots 主腿（L6 R328）与 shots-anon（L6 R333/R335）未代跑未双跑；本波 porcelain 的 L6 shots 面 M 计数=0 ⇒ 无生成键可随章钉入（第九章单第 3 条为条件句，本拍不适用）。\nlanes.yaml qa/L6 owner_session 现查（Q45 单第 4 条遗留）：l0-board 与主仓 docs/governance/lanes.yaml 现值均已 = ses_e1e33791fffeP5YjZVjOVyjWuH ⇒ 无需修复、无需板笔。\n参谋拍板入册：「并窗写回未提交腿件」本坑只记 ledger 不入册（改判据需产品缺陷样本，出现第二例真实丢腿件再立项 AGENTS.md 规则）；CB-03 占位拒签先例（未验真+载体冲突拒签一次即停+重派已并入）同记于此。\n自纠（幻象链纪律）：早前链里记的 face=c9f0d8b3e0 / 上波 gates 章 90738e55c1929242a8ea62dc27b55122324b7729 / gates head=389c98b3f6 / 现产物 index-B5Fbdzif.js 572d6a1c… mt 01:49 / 9122 pid=64273 在当拍磁盘与对象库均不存在（含未来时刻 mtime），属幻象一律不入账；本笔全部读数改为磁盘现查，纪律：face/产物/pid/mtime 动手前现查，工单只给短 sha 时须 git rev-parse 现解析禁补全。\n写域纪律与代次覆盖：本笔仅 docs/_artifacts/tonight/**（账本+腿件+build 日志）；他道 junk（default/ fixture/ owned/ target/ docs/governance/LANE-ROSTER.md）零入；无 add -A/--no-verify/force；just 在位；merge-q78 worktree 未删；上一账 head=f529efa9a8 被本笔覆盖并停用最末引用（历史措辞不回改）。",
   "legs": [
     {
       "leg": "assert-ia-html",
@@ -11,7 +11,7 @@
       "exit": 0,
       "digest": {
         "ok": true,
-        "headHash": "f529efa9a8",
+        "headHash": "b0503d7926",
         "exitCode": 0,
         "counts": {
           "routes": 51,
@@ -30,7 +30,7 @@
       "exit": 0,
       "digest": {
         "ok": true,
-        "headHash": "f529efa9a8",
+        "headHash": "b0503d7926",
         "exitCode": 0,
         "counts": {
           "routes": 51,
@@ -50,6 +50,11 @@
         "ok": true,
         "violations": [],
         "linesScanned": 9252,
+        "allowedInfo": {
+          "规划中": 188,
+          "不会保存": 1,
+          "未接入": 22
+        },
         "headHash": "NOKEY(脚本形制：lint-*.mjs 不写 headHash)"
       }
     },
@@ -61,7 +66,7 @@
       "exit": 0,
       "digest": {
         "ok": true,
-        "scanned": 607,
+        "scanned": 608,
         "reuseMarkers": 28,
         "violations": [],
         "exempted": [
@@ -83,10 +88,10 @@
       "artifact": "vitest.txt",
       "exit": 0,
       "digest": {
-        "testFiles": "522",
-        "tests": "3903",
-        "durationSec": "45.46",
-        "deployVerification": "VERDICT=VERIFIED PORT=9122 ENTRY=assets/index-DcbOa7Cb.js",
+        "testFiles": "523",
+        "tests": "3915",
+        "durationSec": "48.36",
+        "deployVerification": "VERDICT=VERIFIED PORT=9122 ENTRY=assets/index-C4jqbwEw.js",
         "allPassed": true
       }
     },
@@ -105,11 +110,11 @@
         "notes": [
           "redirects=24 vs 门定值 23（routes.ts 并发新增形态，归因非判红；门值更新归 L0/A）"
         ],
-        "headHash": "f529efa9a8",
+        "headHash": "b0503d7926",
         "exitCode": 0,
         "stdoutCapture": {
           "artifact": "_l0-crawl.stdout.txt",
-          "cmp": "活流量字段可 1~2 字节抖动（两次独立采样），非形制破坏；判据读 --out 落盘件"
+          "cmp": "DIFF char 8180 line 234（两次独立采样的活流量字段抖动，非形制破坏）"
         }
       }
     },
@@ -128,7 +133,7 @@
         "notes": [
           "redirects=24 vs 门定值 23（routes.ts 并发新增形态，归因非判红；门值更新归 L0/A）"
         ],
-        "headHash": "f529efa9a8",
+        "headHash": "b0503d7926",
         "exitCode": 0
       }
     },
@@ -143,7 +148,7 @@
         "method": "playwright hash-form /#/<route>?state=<s>; hook=[data-fixture]+[data-testid=shell-fixture-badge] (web/src/shell/fixtures.ts)",
         "sampled": 20,
         "passed": 20,
-        "headHash": "f529efa9",
+        "headHash": "b0503d79",
         "allPassed": true,
         "ok": null,
         "note": "形制注：state-quad.json 无顶层 ok/entry 键（脚本形制如此，禁改判定逻辑）；绿判据=passed==sampled"
