@@ -1,0 +1,67 @@
+{
+  "script": "lane-D gate ledger",
+  "stamped": "stamped at 5710116161",
+  "head": "571011616189edbb153c6fd2203c03882a2f9f39",
+  "stampTime": "2026-11-23 16:14 +0800",
+  "servedBase": "http://127.0.0.1:9122",
+  "entry": "index-CiJcZ4mg.js",
+  "provenance": "legs re-run 16:12-16:14 at HEAD 5710116161; dist mtime 14:57 ≤ HEAD(16:02, docs-only 追加段) → 同一产品代次；章后仅 docs 单文件，同波豁免口径",
+  "legs": [
+    {
+      "leg": "assert-ia-react",
+      "cwd": "web/",
+      "command": "cd web && node scripts/assert-ia.mjs --source=react",
+      "artifact": "docs/_artifacts/tonight/_l0-ia-react.stdout.txt",
+      "exit": 0,
+      "digest": { "ok": true, "headHash": "5710116161", "routes": 51, "tabs": 22, "chatHosts": 1, "modules": 8, "badCode": [], "missing": [] }
+    },
+    {
+      "leg": "assert-ia-html",
+      "cwd": "web/",
+      "command": "cd web && node scripts/assert-ia.mjs",
+      "artifact": "docs/_artifacts/tonight/_l0-ia-html.stdout.txt",
+      "exit": 0,
+      "digest": { "ok": true, "headHash": "5710116161", "routes": 51, "tabs": 22, "tabsAll": 23, "chatHosts": 1, "modules": 8, "badCode": [] }
+    },
+    {
+      "leg": "lint-fake-success",
+      "cwd": "web/",
+      "command": "cd web && node scripts/lint-fake-success.mjs",
+      "artifact": "docs/_artifacts/tonight/_l0-lint-fake.stdout.txt",
+      "exit": 0,
+      "digest": { "ok": true, "linesScanned": 9252, "violations": [], "allowedInfo": { "规划中": 188, "不会保存": 1, "未接入": 22 } }
+    },
+    {
+      "leg": "lint-reuse",
+      "cwd": "web/",
+      "command": "cd web && node scripts/lint-reuse.mjs",
+      "artifact": "docs/_artifacts/tonight/lint-reuse.json",
+      "exit": 0,
+      "digest": { "ok": true, "scanned": 584, "reuseMarkers": 28, "violations": [], "count": 0, "exemptionCount": 1 }
+    },
+    {
+      "leg": "vitest",
+      "cwd": "web/",
+      "command": "cd web && node_modules/.bin/vitest run",
+      "artifact": "docs/_artifacts/tonight/vitest.txt",
+      "exit": 0,
+      "digest": { "testFiles": 502, "tests": 3699, "failed": 0, "durationS": 53.79 }
+    },
+    {
+      "leg": "crawl-routes",
+      "cwd": "web/",
+      "command": "cd web && node scripts/crawl-routes.mjs --base http://127.0.0.1:9122",
+      "artifact": "docs/_artifacts/tonight/_l0-crawl.stdout.txt",
+      "exit": 0,
+      "digest": { "ok": true, "headHash": "5710116161", "probed": 75, "mainRows": 51, "redirectRows": 24, "deadLinks": 0, "contentEmpty": 0, "probeErrors": 0, "parseErrors": 0, "contentVerified": true, "routesRenderedWithoutMainEl": 0, "routesWithConsoleErrors": 51, "ceAuthority": "login-state", "notes": ["redirects=24 vs 门定值23：routes.ts 并发新增形态，归因非判红；门值更新归 L0/A", "routesWithConsoleErrors=51 属登录态控制台错误既有基线；ok 以 deadLinks/contentEmpty/parseErrors 为准"] }
+    },
+    {
+      "leg": "state-quad",
+      "cwd": "repo-root",
+      "command": "node docs/_artifacts/tonight/state-quad.mjs http://127.0.0.1:9122",
+      "artifact": "docs/_artifacts/tonight/state-quad.json",
+      "exit": 0,
+      "digest": { "ok": true, "headHash": "57101161", "entry": "index-CiJcZ4mg.js", "sampled": 20, "passed": 20, "method": "playwright hash-form 5路由×4态" }
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+assert-ia-react=0
+crawl-routes=0
+vitest=0
+assert-ia-html=0
+lint-fake-success=0
+lint-reuse=0
+state-quad=0
