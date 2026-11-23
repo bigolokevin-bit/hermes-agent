@@ -1,12 +1,12 @@
 {
- "script": "L7 gate ledger, re-stamped at f096471064 (五门换代重跑：账本、产物、9122 同代码代)",
- "head": "f096471064969bd735fcabda4f2aaa0bf12a44c4",
- "provenance": "dist rebuilt 17:33 from 105f17f0ae via node26 scripts/build/web.mjs (no-arg default out=hermes_cli/web_dist, gitignored); log docs/_artifacts/tonight/_l7-build-105f17f0ae.log; f096471064 相对 105f17f0ae 只有 docs/_artifacts/tonight/crawl-anon.json 一笔，web/src web/scripts web/public 差为空 => 同一代码代，产物不冒充新代次 (entry 同名同 sha: index-DZVbT_9g.js, sourceHash 1f137d37/outputHash c2cb1aff 未变). 9122 restarted with ops/console.sh v4-serve stop+start (pid 49665 收编 pidfile); entry=assets/index-DZVbT_9g.js, sha256=f24e272a57e17132880eeb9c346d5bae05c4fd3e903b58b4440954fdd608762a served==磁盘, root=200 mtime 17:33:01. 七门 exits 见 _l0-exits.txt，全部 exit=0，运行期 HEAD 前后恒为 f096471064. lint-fake-success / lint-reuse 脚本无 headHash 字段形制 (NOKEY)，判据不改，代次以本账本 head 与 _l0-exits.txt 为凭。",
+ "script": "L7 gate ledger, re-stamped at ad3cd13eb7 (五门换代重跑：账本、产物、9122 同代码代)",
+ "head": "ad3cd13eb735d05e91028e0737f5b7519df61720",
+ "provenance": "dist rebuilt 17:33 from 105f17f0ae via node26 scripts/build/web.mjs (no-arg default out=hermes_cli/web_dist, gitignored); log docs/_artifacts/tonight/_l7-build-105f17f0ae.log; f096471064 相对 105f17f0ae 只有 docs/_artifacts/tonight/crawl-anon.json 一笔，web/src web/scripts web/public 差为空 => 同一代码代，产物不冒充新代次 (entry 同名同 sha: index-DZVbT_9g.js, sourceHash 1f137d37/outputHash c2cb1aff 未变). 9122 restarted with ops/console.sh v4-serve stop+start (pid 49665 收编 pidfile); entry=assets/index-DZVbT_9g.js, sha256=f24e272a57e17132880eeb9c346d5bae05c4fd3e903b58b4440954fdd608762a served==磁盘, root=200 mtime 17:33:01. 七门 exits 见 _l0-exits.txt，全部 exit=0，运行期 HEAD 前后恒为 ad3cd13eb7. lint-fake-success / lint-reuse 脚本无 headHash 字段形制 (NOKEY)，判据不改，代次以本账本 head 与 _l0-exits.txt 为凭。 形制注：assert-ia / crawl-routes / lint-fake-success 传 --out= 时不打印 stdout，故 _l0-*.stdout.txt 为 payload 正本，同代 leg json 是该 stdout 的落盘副本（字节相同），判据命令未改。",
  "legs": [
   {
    "leg": "assert-ia-html",
    "cwd": "web",
-   "command": "node scripts/assert-ia.mjs --out=docs/_artifacts/tonight/assert-ia-html.json",
+   "command": "node scripts/assert-ia.mjs",
    "artifact": "docs/_artifacts/tonight/_l0-ia-html.stdout.txt",
    "exit": 0,
    "digest": {
@@ -53,14 +53,14 @@
      }
     ],
     "ok": true,
-    "headHash": "f096471064",
+    "headHash": "ad3cd13eb7",
     "exitCode": 0
    }
   },
   {
    "leg": "assert-ia-react",
    "cwd": "web",
-   "command": "node scripts/assert-ia.mjs --source=react --out=docs/_artifacts/tonight/assert-ia-react.json",
+   "command": "node scripts/assert-ia.mjs --source=react",
    "artifact": "docs/_artifacts/tonight/_l0-ia-react.stdout.txt",
    "exit": 0,
    "digest": {
@@ -129,14 +129,14 @@
      }
     ],
     "ok": true,
-    "headHash": "f096471064",
+    "headHash": "ad3cd13eb7",
     "exitCode": 0
    }
   },
   {
    "leg": "lint-fake-success",
    "cwd": "web",
-   "command": "node scripts/lint-fake-success.mjs --out=docs/_artifacts/tonight/lint-fake.json",
+   "command": "node scripts/lint-fake-success.mjs",
    "artifact": "docs/_artifacts/tonight/_l0-lint-fake.stdout.txt",
    "exit": 0,
    "digest": {
@@ -263,7 +263,7 @@
   {
    "leg": "crawl-routes",
    "cwd": "web",
-   "command": "node scripts/crawl-routes.mjs --base http://127.0.0.1:9122 --out=docs/_artifacts/tonight/crawl.json",
+   "command": "node scripts/crawl-routes.mjs --base http://127.0.0.1:9122",
    "artifact": "docs/_artifacts/tonight/_l0-crawl.stdout.txt",
    "exit": 0,
    "digest": {
@@ -275,7 +275,7 @@
     "notes": [
      "redirects=24 vs 门定值 23（routes.ts 并发新增形态，归因非判红；门值更新归 L0/A）"
     ],
-    "headHash": "f096471064"
+    "headHash": "ad3cd13eb7"
    }
   },
   {
@@ -289,7 +289,7 @@
     "method": "playwright hash-form /#/<route>?state=<s>; hook=[data-fixture]+[data-testid=shell-fixture-badge] (web/src/shell/fixtures.ts)",
     "sampled": 20,
     "passed": 20,
-    "headHash": "f0964710",
+    "headHash": "ad3cd13e",
     "allPassed": true
    }
   }
