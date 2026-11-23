@@ -1,7 +1,7 @@
 import { beijing } from '../duty/format';
 import { isRecord, num } from '../duty/types';
 import type { Loadable, RunStatsBody } from '../duty/types';
-import type { OverviewSummaryBody, SummaryField } from './api';
+import type { OverviewSummaryBody, QueueBody, RunsBody, SummaryField, TasksBody } from './api';
 
 /**
  * Q11 合同：总览 KPI 只来自现网 BFF 两个已存在端点——
@@ -198,4 +198,114 @@ export function trendPoints(
       failed: typeof b.failed === 'number' && !Number.isNaN(b.failed) ? b.failed : null,
     };
   });
+}
+
+/* ── OM-07/OM-08 列表行归一化 ─────────────────────────────────────────────
+ * 只做形状取值：每条都从接口原始 item 防御读取；缺 runId/taskId 的行直接丢
+ * 弃（没有可钻取目标就不上屏），不做任何补数。 */
+
+export interface ActivityRow {
+  runId: string;
+  time: string | null;
+  status: string | null;
+}
+
+export function activityRows(body: RunsBody | null): ActivityRow[] {
+  if (!body || !Array.isArray(body.items)) return [];
+  const rows: ActivityRow[] = [];
+  for (const it of body.items) {
+    if (!isRecord(it)) continue;
+    const runId = typeof it.runId === 'string' && it.runId ? it.runId : null;
+    if (!runId) continue;
+    const stamp =
+      typeof it.startedAt === 'string'
+        ? it.startedAt
+        : typeof it.endedAt === 'string'
+          ? it.endedAt
+          : null;
+    rows.push({
+      runId,
+      time: stamp ? beijing(stamp) : null,
+      status: typeof it.status === 'string' && it.status ? it.status : null,
+    });
+  }
+  return rows.slice(0, 3);
+}
+
+export interface BlockerRow {
+  key: string;
+  origin: '失败运行' | '任务' | '审批';
+  title: string;
+  to: string | null;
+}
+
+function itemsOf(body: { items?: unknown } | null): unknown[] | null {
+  if (!body || !Array.isArray(body.items)) return null;
+  return body.items;
+}
+
+export function blockerRows(
+  failed: RunsBody | null,
+  blocked: TasksBody | null,
+  queue: QueueBody | null,
+): BlockerRow[] {
+  const rows: BlockerRow[] = [];
+  const failItems = itemsOf(failed);
+  if (failItems) {
+    for (const it of failItems) {
+      if (!isRecord(it)) continue;
+      const runId = typeof it.runId === 'string' && it.runId ? it.runId : null;
+      const reason = typeof it.reasonCode === 'string' ? ` · ${it.reasonCode}` : '';
+      rows.push({
+        key: `run-${runId ?? rows.length}`,
+        origin: '失败运行',
+        title: runId ? `运行 ${runId}${reason}` : `失败运行${reason}`,
+        to: runId ? `/runs/${runId}` : null,
+      });
+    }
+  }
+  const taskItems = itemsOf(blocked);
+  if (taskItems) {
+    for (const it of taskItems) {
+      if (!isRecord(it)) continue;
+      const taskId = typeof it.taskId === 'string' && it.taskId ? it.taskId : null;
+      const title = typeof it.title === 'string' && it.title ? it.title : '受阻任务';
+      rows.push({
+        key: `task-${taskId ?? rows.length}`,
+        origin: '任务',
+        title,
+        to: taskId ? `/tasks/${taskId}` : null,
+      });
+    }
+  }
+  const queueItems = itemsOf(queue);
+  if (queueItems) {
+    for (const it of queueItems) {
+      if (!isRecord(it)) continue;
+      const id = typeof it.id === 'string' && it.id ? it.id : null;
+      const title =
+        (typeof it.title === 'string' && it.title) ||
+        (typeof it.name === 'string' && it.name) ||
+        id ||
+        '审批项';
+      rows.push({
+        key: `queue-${id ?? rows.length}`,
+        origin: '审批',
+        title,
+        to: null, // 队列项没有现网详情页，只列文不造链。
+      });
+    }
+  }
+  return rows.slice(0, 8);
+}
+
+/** 三路各自的诚实计数：ready 才是真数（含真 0），未接通是 null。 */
+export function blockerCounts(
+  failed: Loadable<RunsBody>,
+  blocked: Loadable<TasksBody>,
+  queue: Loadable<QueueBody>,
+): { failed: number | null; blocked: number | null; queue: number | null } {
+  const count = (l: Loadable<{ items?: unknown }>): number | null =>
+    l.k === 'ready' && Array.isArray(l.data.items) ? l.data.items.length : null;
+  return { failed: count(failed), blocked: count(blocked), queue: count(queue) };
 }

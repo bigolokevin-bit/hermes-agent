@@ -124,7 +124,7 @@ describe('OverviewModulePage 合同：KPI 只走现网 BFF 两端口', () => {
     expect(container.textContent).toContain('未接');
   });
 
-  it('LiveOverview 只请求 /api/overview/summary 与 /api/run-stats（含今日窗与14日窗）', async () => {
+  it('LiveOverview 读数腿集合＝合同端点（KPI 三腿 + OM-07/08 列表腿），run-stats 恰两次', async () => {
     const urls: string[] = [];
     let runStatsSeq = 0;
     vi.stubGlobal(
@@ -135,9 +135,11 @@ describe('OverviewModulePage 合同：KPI 只走现网 BFF 两端口', () => {
         // 两腿同参数名，只按请求次序区分：今日窗先请、14 日窗后请（与 loadAll 顺序一致）。
         const body = url.includes('/api/overview/summary')
           ? SUMMARY_BODY
-          : runStatsSeq++ === 0
-            ? todayRunsBody(0, 0, 0)
-            : TREND_BODY;
+          : url.includes('/run-stats')
+            ? runStatsSeq++ === 0
+              ? todayRunsBody(0, 0, 0)
+              : TREND_BODY
+            : { items: [] };
         return new Response(JSON.stringify(body), {
           status: 200,
           headers: { 'content-type': 'application/json' },
@@ -147,7 +149,13 @@ describe('OverviewModulePage 合同：KPI 只走现网 BFF 两端口', () => {
     await render(<OverviewModulePage />);
     const paths = urls.map((u) => new URL(u, 'http://localhost').pathname);
     expect(new Set(paths)).toEqual(
-      new Set(['/agent-api/api/overview/summary', '/agent-api/api/run-stats']),
+      new Set([
+        '/agent-api/api/overview/summary',
+        '/agent-api/api/run-stats',
+        '/agent-api/api/runs',
+        '/agent-api/api/tasks',
+        '/agent-api/api/workbench/queue',
+      ]),
     );
     const runStats = urls.filter((u) => new URL(u, 'http://localhost').pathname.includes('/run-stats'));
     expect(runStats).toHaveLength(2);
@@ -157,6 +165,9 @@ describe('OverviewModulePage 合同：KPI 只走现网 BFF 两端口', () => {
       expect(params.get('from')).toMatch(/^\d{4}-\d{2}-\d{2}T/);
       expect(params.get('to')).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     }
+    const runs = urls.filter((u) => new URL(u, 'http://localhost').pathname === '/agent-api/api/runs');
+    expect(runs.some((u) => new URL(u, 'http://localhost').searchParams.get('since'))).toBe(true);
+    expect(runs.some((u) => new URL(u, 'http://localhost').searchParams.get('status') === 'failed')).toBe(true);
   });
 
   it('真 0 带来源说明、读数逐卡呈现、无 GAP 文本外漏', async () => {

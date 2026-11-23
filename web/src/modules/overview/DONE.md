@@ -65,7 +65,7 @@ observer 第三轮（OM-03 五列网格）判定 PASS，另记 1440 五列变窄
 
 ## 测试与构建
 
-- `cd web && node_modules/.bin/vitest run src/modules/overview` → **26 passed / 26**
+- `cd web && node_modules/.bin/vitest run src/modules/overview` → **32 passed / 32**（OverviewModulePage.test 11 + overview.window.test 6 + overview.trend.test 4 + overview.gaps.test 5 + overview.feeds.test 6）
   （OverviewModulePage.test 11 + overview.window.test 6 + overview.trend.test 4 + overview.gaps.test 5）
   （合同：forced 态零请求；只打两端口且 bucket=day；真 0 带来源原文；失败率同源 20%；
   summary 挂→各卡未接入+编号+重试；今日窗挂只影响运行卡；全挂整页错误声明不编造；
@@ -128,6 +128,19 @@ OM-02 可径直标 VERIFIED（腿已在）。P-OM-3 的「workbench 0 命中」�
 - 运行卡缺 todayRuns → 注明「未用 run-stats 桶合计冒充（口径不同）」；失败率缺分母 → 「未接」不出 0%。
 - 健康卡缺 `healthStatus` → 「未接」，且全页无「n/6 来源正常」类合成计数话术。
 - 测试：`overview.gaps.test.tsx` 5 项（每缺口点名 testid 断言；模块用例总数 26 ≥ backlog 要求的 15）。
+
+## OM-07 最近运行 + OM-08 阻塞三路（2026-11-23 续跑，同分支）
+
+- **端点全部现网实测后才动工**（登录态 9122 脸直探）：
+  - `GET /api/runs` 裸请求 → 400 `request.missing_filter`（至少要有 employeeId/status/since 之一）；`runs?since=<7天前ISO>&limit=3` → 200，items 带 runId/status/reasonCode/startedAt/costUsd。
+  - `GET /api/run-activity` 虽 200，但返回的是**热力格 cells**（dow/hour/count），不是可点行——弃用，活动腿改走 `runs?since&limit`。
+  - `runs?status=failed&limit=5` → 200 `items:[]`（今日真 0）；`tasks?status=blocked&limit=5` → 200 items（含标题「验收用任务 · 受阻」）；`workbench/queue?page_size=5` → 200 `items:[], total:0, available:true`。
+- **OM-07 呈现契约**：每行必须接口自带 runId 才上屏并链 `/runs/<id>`（缺 runId 的行直接丢弃，不编号不造假 id）；时间=beijing(startedAt||endedAt)，两者皆缺显示「时间未带」；空 items → 「近 7 天接口没有返回任何运行记录（真 0，不是占位）。」；错误腿 → 「最近运行未接入：<message>」+请求编号+重试钮。
+- **OM-08 呈现契约**：失败运行/受阻任务/审批三路各自独立成腿，计数只来自各接口返回条数（真 0 来自接口）；行链 `/runs/<id>`、`/tasks/<id>`；审批项无现网详情页故**不造链**；三路未全通时文案明说「只列已接通部分的阻塞项，不合并猜测」，禁全 0 假安慰。
+- **KPI 卡口径未变**：仍只来自 overview/summary + run-stats；新腿只喂列表节（测试钉住：KPI 卡的 source/stamp 仍指这两端点）。
+- **修出一个真 bug**：`loadSummaryToday` 旧补丁 `({summary, today, trend: prev.trend})` 不展开 prev，会把后到的 extras 四字段整体抹掉（页面上列表节永远「读取中」）——改为 `({...prev, summary, today})`；这正是「部分构造新对象丢字段」的经典雷。
+- 自动重试 20s 周期现在覆盖全部六条腿（任一 error 即静默重读）。
+- 取证：三张图重拍于新代码（含列表节），见上节截图路径。
 
 ## 已知边界（如实上报，非缺陷隐瞒）
 

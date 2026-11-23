@@ -16,9 +16,22 @@ import { fetchRunStats, load } from '../duty/api';
 import { DEFAULT_DUTY_RANGE, DUTY_RANGES, parseDutyRange, type DutyRangeId } from '../duty/dutyRange';
 import { beijing, beijingDayWindow, daysAgoWindow, usd } from '../duty/format';
 import type { Loadable, RunStatsBody } from '../duty/types';
-import { fetchOverviewSummary, type OverviewSummaryBody } from './api';
+import {
+  fetchBlockedTasks,
+  fetchFailedRuns,
+  fetchOverviewSummary,
+  fetchRecentRuns,
+  fetchWorkbenchQueue,
+  type OverviewSummaryBody,
+  type QueueBody,
+  type RunsBody,
+  type TasksBody,
+} from './api';
 import {
   OVERVIEW_GAP,
+  activityRows,
+  blockerCounts,
+  blockerRows,
   buildKpis,
   sourceStamp,
   todayBucketRun,
@@ -30,17 +43,29 @@ import './overview.css';
 
 const RETRY_MS = 20_000;
 
-interface OverviewState {
+export interface OverviewState {
   summary: Loadable<OverviewSummaryBody>;
   today: Loadable<RunStatsBody>;
   trend: Loadable<RunStatsBody>;
+  /** OM-07 最近运行（runs?since&limit）。 */
+  act?: Loadable<RunsBody>;
+  /** OM-08 阻塞三路。 */
+  fail?: Loadable<RunsBody>;
+  blocked?: Loadable<TasksBody>;
+  queue?: Loadable<QueueBody>;
 }
 
 const INITIAL: OverviewState = {
   summary: { k: 'loading' },
   today: { k: 'loading' },
   trend: { k: 'loading' },
+  act: { k: 'loading' },
+  fail: { k: 'loading' },
+  blocked: { k: 'loading' },
+  queue: { k: 'loading' },
 };
+
+const LOADING: Loadable<never> = { k: 'loading' };
 
 function RequestId({ id }: { id: string | null }) {
   if (!id) return null;
@@ -161,6 +186,18 @@ export function OverviewView({
   const rangeDef = DUTY_RANGES.find((r) => r.id === rangeId) ?? DUTY_RANGES[2];
   const hourBucket = rangeDef.id === '24h';
   const bucketUnit = hourBucket ? '小时' : '日';
+  // OM-07/08：可选腿缺省按读取中处理（旧测试构造的三腿 state 不受影响）。
+  const act = state.act ?? LOADING;
+  const fail = state.fail ?? LOADING;
+  const blockedL = state.blocked ?? LOADING;
+  const queueL = state.queue ?? LOADING;
+  const actRows = activityRows(act.k === 'ready' ? act.data : null);
+  const bCounts = blockerCounts(fail, blockedL, queueL);
+  const bRows = blockerRows(
+    fail.k === 'ready' ? fail.data : null,
+    blockedL.k === 'ready' ? blockedL.data : null,
+    queueL.k === 'ready' ? queueL.data : null,
+  );
   const kpis = useMemo(
     () =>
       buildKpis(
@@ -196,8 +233,12 @@ export function OverviewView({
     const ready: Array<{ name: string; body: unknown }> = [];
     if (state.summary.k === 'ready') ready.push({ name: 'GET /api/overview/summary', body: state.summary.data });
     if (state.today.k === 'ready') ready.push({ name: 'GET /api/run-stats（今日窗）', body: state.today.data });
+    if (act.k === 'ready') ready.push({ name: 'GET /api/runs?since&limit（近 7 天）', body: act.data });
+    if (fail.k === 'ready') ready.push({ name: 'GET /api/runs?status=failed', body: fail.data });
+    if (blockedL.k === 'ready') ready.push({ name: 'GET /api/tasks?status=blocked', body: blockedL.data });
+    if (queueL.k === 'ready') ready.push({ name: 'GET /api/workbench/queue', body: queueL.data });
     return ready;
-  }, [state.summary, state.today]);
+  }, [state.summary, state.today, act, fail, blockedL, queueL]);
 
   return (
     <div className="ov5-page" data-testid="overview-page" data-demo-state={demo ? '1' : undefined}>
@@ -359,6 +400,88 @@ export function OverviewView({
         </p>
       </section>
 
+      <section className="ov5-block" data-testid="ov6-activity" aria-label="最近运行">
+        <header className="ov5-block-hd">
+          <span>近 7 天 · 最近运行</span>
+          <span className="ov5-source">GET /api/runs?since&amp;limit</span>
+        </header>
+        {act.k === 'error' ? (
+          <div className="ov5-kpi-issue" data-testid="ov6-activity-issue">
+            最近运行未接入：{act.message}
+            <RequestId id={act.requestId} />
+            <button type="button" onClick={onRetry} data-testid="ov6-activity-issue-retry">重试</button>
+          </div>
+        ) : act.k !== 'ready' ? (
+          <div className="ov5-empty-line" data-testid="ov6-activity-loading">读取中…</div>
+        ) : actRows.length === 0 ? (
+          <div className="ov5-empty-line" data-testid="ov6-activity-empty">
+            近 7 天接口没有返回任何运行记录（真 0，不是占位）。
+          </div>
+        ) : (
+          <ul className="ov5-rows" data-testid="ov6-activity-rows">
+            {actRows.map((r) => (
+              <li key={r.runId} data-testid="ov6-activity-row">
+                <Link to={`/runs/${r.runId}`}>{r.runId}</Link>
+                <span className="ov5-obj">{r.status ?? '状态未带'}</span>
+                <span className="ov5-obj">{r.time ?? '时间未带'}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+        <Freshness stamp={sourceStamp(act)} id="ov6-activity-stamp" />
+      </section>
+
+      <section className="ov5-block" data-testid="ov6-blockers" aria-label="阻塞项">
+        <header className="ov5-block-hd">
+          <span>阻塞项（三路接口合并）</span>
+          <span className="ov5-source">runs?status=failed · tasks?status=blocked · workbench/queue</span>
+        </header>
+        {([
+          { leg: fail, label: '失败运行', testid: 'fail' },
+          { leg: blockedL, label: '受阻任务', testid: 'blocked' },
+          { leg: queueL, label: '待审批队列', testid: 'queue' },
+        ] as Array<{ leg: Loadable<unknown>; label: string; testid: string }>)
+          .filter((e) => e.leg.k === 'error')
+          .map((e) => (
+            <div className="ov5-kpi-issue" data-testid={`ov6-blockers-issue-${e.testid}`} key={e.testid}>
+              {e.label}未接入：
+              {e.leg.k === 'error' ? e.leg.message : ''}
+              <RequestId id={e.leg.k === 'error' ? e.leg.requestId : null} />
+              <button type="button" onClick={onRetry} data-testid="ov6-blockers-issue-retry">
+                重试
+              </button>
+            </div>
+          ))}
+        {bRows.length === 0 ? (
+          fail.k === 'ready' && blockedL.k === 'ready' && queueL.k === 'ready' ? (
+            <div className="ov5-empty-line" data-testid="ov6-blockers-empty">
+              三路接口都接通了，当前没有阻塞项（真 0，不是占位）。
+            </div>
+          ) : (
+            <div className="ov5-empty-line" data-testid="ov6-blockers-pending">
+              三路读数未全部接通，这里只列已接通部分的阻塞项，不合并猜测。
+            </div>
+          )
+        ) : (
+          <ul className="ov5-rows" data-testid="ov6-blocker-rows">
+            {bRows.map((r) => (
+              <li key={r.key} data-testid="ov6-blocker-row">
+                {r.to ? (
+                  <Link to={r.to}>{r.title}</Link>
+                ) : (
+                  <span>{r.title}</span>
+                )}
+                <span className="ov5-obj">{r.origin}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+        <p className="ov5-note" data-testid="ov6-blockers-count">
+          失败运行 {bCounts.failed ?? '未接'} · 受阻任务 {bCounts.blocked ?? '未接'} · 待审批{' '}
+          {bCounts.queue ?? '未接'}（计数来自各接口返回条数，真 0 来自接口）。
+        </p>
+      </section>
+
       <section className="ov5-block" data-testid="ov6-source">
         <header className="ov5-block-hd">
           <span>本次读数（接口原文，未加工）</span>
@@ -409,6 +532,9 @@ export function OverviewModulePage() {
     return { ...w, bucket: 'day' as const };
   }, [rangeDef]);
 
+  // OM-07：近 7 天窗在挂载时定窗；重试沿用同窗（daysAgoWindow 内部取时，保持渲染纯度）。
+  const since7d = useMemo(() => daysAgoWindow(7).from, []);
+
   const loadSummaryToday = useCallback(async () => {
     summarySeq.current += 1;
     const seq = summarySeq.current;
@@ -417,7 +543,7 @@ export function OverviewModulePage() {
       load(() => fetchRunStats(win.from, win.to)),
     ]);
     if (seq !== summarySeq.current) return; // 迟到的旧响应不得覆盖新结果（防闪烁规则）。
-    setState((prev) => ({ summary: s, today: t, trend: prev.trend }));
+    setState((prev) => ({ ...prev, summary: s, today: t }));
   }, [win]);
 
   const loadTrend = useCallback(async () => {
@@ -429,10 +555,25 @@ export function OverviewModulePage() {
     setState((prev) => ({ ...prev, trend: tr }));
   }, [trendWin]);
 
+  const extrasSeq = useRef(0);
+  const loadExtras = useCallback(async () => {
+    extrasSeq.current += 1;
+    const seq = extrasSeq.current;
+    const [a, f, b, q] = await Promise.all([
+      load(() => fetchRecentRuns(since7d)),
+      load(fetchFailedRuns),
+      load(fetchBlockedTasks),
+      load(fetchWorkbenchQueue),
+    ]);
+    if (seq !== extrasSeq.current) return;
+    setState((prev) => ({ ...prev, act: a, fail: f, blocked: b, queue: q }));
+  }, [since7d]);
+
   const retryAll = useCallback(() => {
     void loadSummaryToday();
     void loadTrend();
-  }, [loadSummaryToday, loadTrend]);
+    void loadExtras();
+  }, [loadSummaryToday, loadTrend, loadExtras]);
 
   const selectRange = useCallback(
     (id: string) => {
@@ -459,9 +600,21 @@ export function OverviewModulePage() {
     void loadTrend();
   }, [loadTrend, forced]);
 
+  // OM-07/08：列表腿挂载一次 + 手动/定时重试；换档不重发（与趋势无关）。
+  useEffect(() => {
+    if (forced === 'loading' || forced === 'empty' || forced === 'error') return;
+    void loadExtras();
+  }, [loadExtras, forced]);
+
   // 自动重试：任一路失败时静默周期重读；成功即停表。
   const anyError =
-    state.summary.k === 'error' || state.today.k === 'error' || state.trend.k === 'error';
+    state.summary.k === 'error' ||
+    state.today.k === 'error' ||
+    state.trend.k === 'error' ||
+    state.act?.k === 'error' ||
+    state.fail?.k === 'error' ||
+    state.blocked?.k === 'error' ||
+    state.queue?.k === 'error';
   useEffect(() => {
     if (!anyError || forced) return;
     const timer = window.setInterval(retryAll, RETRY_MS);
@@ -482,6 +635,10 @@ export function OverviewModulePage() {
           summary: { k: 'ready', data: {} },
           today: { k: 'ready', data: {} },
           trend: { k: 'ready', data: {} },
+          act: { k: 'ready', data: {} },
+          fail: { k: 'ready', data: {} },
+          blocked: { k: 'ready', data: {} },
+          queue: { k: 'ready', data: {} },
         }}
         todayDate={win.date}
         onRetry={retryAll}
@@ -499,6 +656,10 @@ export function OverviewModulePage() {
           summary: { k: 'error', status: 503, message: '演示错误态（未请求接口）', requestId: null },
           today: { k: 'error', status: 503, message: '演示错误态（未请求接口）', requestId: null },
           trend: { k: 'error', status: 503, message: '演示错误态（未请求接口）', requestId: null },
+          act: { k: 'error', status: 503, message: '演示错误态（未请求接口）', requestId: null },
+          fail: { k: 'error', status: 503, message: '演示错误态（未请求接口）', requestId: null },
+          blocked: { k: 'error', status: 503, message: '演示错误态（未请求接口）', requestId: null },
+          queue: { k: 'error', status: 503, message: '演示错误态（未请求接口）', requestId: null },
         }}
         todayDate={win.date}
         onRetry={retryAll}

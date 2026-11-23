@@ -59,6 +59,10 @@ function stubFetch() {
         calls.summary += 1;
         return json(SUMMARY_BODY);
       }
+      if (u.pathname !== '/agent-api/api/run-stats') {
+        // OM-07/08 列表腿：回空 items，不计入趋势计数。
+        return json({ items: [] });
+      }
       calls.runStats.push(u);
       if (calls.runStats.length === 1) {
         return json({ buckets: [{ bucketStart: '2026-11-23T16:00:00Z', runs: 0, failed: 0 }], totals: { runs: 0, failed: 0 } });
