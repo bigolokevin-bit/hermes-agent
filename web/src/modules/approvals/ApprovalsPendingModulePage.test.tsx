@@ -562,7 +562,7 @@ describe("R59 pending queue search (apv8-*)", () => {
     const toggle = document.querySelector<HTMLButtonElement>('[data-testid^="apv9-toggle-"][data-record="ap_9F3A1111"]');
     expect(toggle).toBeTruthy();
     await act(async () => {
-      toggle.click();
+      toggle!.click();
     });
     expect(api.fetchJSON.mock.calls.length).toBe(calls);
     const preview = document.querySelector('[data-testid="apv9-preview-ap_9F3A1111"]');
@@ -637,7 +637,7 @@ describe("R71 pending column sorting", () => {
       btn!.click();
     });
     await act(async () => {});
-    expect(btn.getAttribute("aria-sort")).toBe("ascending");
+    expect(btn!.getAttribute("aria-sort")).toBe("ascending");
     expect(api.fetchJSON.mock.calls.length, "sorting never fetches").toBe(before);
     // P1-A1: 元说明三行已移入筛选折叠面板——先展开再断言（口径断言原样保留）。
     await openFilters();
@@ -761,7 +761,7 @@ describe("R88 pending permalink (apd10-*)", () => {
     await mount(queue(), "/approvals?tab=pending");
     await waitFor(() => !!qa("apr5-row-ap_9F3A1111"), "row");
     await act(async () => {
-      qa("apr5-row-ap_9F3A1111")!.click();
+      (qa("apr5-row-ap_9F3A1111") as HTMLElement).click();
     });
     await waitFor(() => !!qa("apd10-permalink"), "button");
     const written: string[] = [];
@@ -918,7 +918,7 @@ describe("R100 row detail copy (apd11-*)", () => {
       toggle.click();
     });
     expect(btn.disabled).toBe(false);
-    const writeText = vi.fn(async () => {});
+    const writeText = vi.fn<(text: string) => Promise<void>>(async () => {});
     Object.defineProperty(window.navigator, "clipboard", {
       configurable: true,
       value: { writeText },

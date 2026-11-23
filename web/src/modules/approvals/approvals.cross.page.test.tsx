@@ -130,7 +130,7 @@ const attrIn = (box: HTMLDivElement, sel: string, name: string): string => {
   const el = box.querySelector(sel);
   return el ? (el.getAttribute(name) ?? "") : `<<missing ${sel}>>`;
 };
-const clickIn = async (box: HTMLDivElement, el: Element | null, label: string): Promise<void> => {
+const clickIn = async (_box: HTMLDivElement, el: Element | null, label: string): Promise<void> => {
   expect(el, label).toBeTruthy();
   await act(async () => {
     el!.dispatchEvent(new MouseEvent("click", { bubbles: true }));

@@ -247,7 +247,7 @@ const serve = (): void => {
 describe("R273 approvals row copy paging guards", () => {
   it("keeps page-one order after appending, dedupes the repeated row, and the new copy button carries the appended id", async () => {
     serve();
-    stubClipboard(written.length);
+    stubClipboard();
     await render();
     expect(rowIds()).toEqual(["ap_pf1", "ap_pf2"]);
     await clickTestId("apv-page-more");
@@ -275,7 +275,7 @@ describe("R273 approvals row copy paging guards", () => {
     const data = grid.slice(1);
     expect(data.map((r) => r[0])).toEqual(rowIds());
     expect(listCalls(), "paging cost exactly one extra list read").toBe(2);
-    stubClipboard(written.length);
+    stubClipboard();
     const copied = await copyRowById("ap_pf3");
     const seg = (prefix: string): string =>
       copied.split("\n").find((line) => line.startsWith(prefix)) ?? "";
@@ -300,7 +300,7 @@ describe("R273 approvals row copy paging guards", () => {
     const { grid } = await grabCsv();
     expect(grid.length - 1).toBe(rowIds().length);
     expect(grid[1][0]).toBe(rowIds()[0]);
-    stubClipboard(written.length);
+    stubClipboard();
     const copied = await copyRowById("ap_pf2");
     expect(copied.split("\n")[0]).toBe(`单号：${grid[1][0]}`);
     expect(copied).toContain("待处理");

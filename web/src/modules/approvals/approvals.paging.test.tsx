@@ -148,7 +148,7 @@ describe("R139 ①⑤ after append: three numbers equal, row copy stays index-al
     for (let i = 0; i < ids.length; i += 1) {
       const btn = document.querySelector(`[data-testid="apr-row-copy-${i}"]`) as HTMLButtonElement | null;
       expect(btn, `copy button ${i}`).toBeTruthy();
-      expect(btn.getAttribute("aria-label"), `copy ${i} names row ${i}`).toContain(titles[i]);
+      expect(btn!.getAttribute("aria-label"), `copy ${i} names row ${i}`).toContain(titles[i]);
     }
     // ⑤ 首行复制以审批单号段开头；复制零新请求。
     const written: string[] = [];

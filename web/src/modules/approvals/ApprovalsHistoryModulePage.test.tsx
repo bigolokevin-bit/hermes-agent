@@ -832,9 +832,9 @@ describe("R59 approvals queue search (apv8-*)", () => {
       const calls = api.fetchJSON.mock.calls.length;
       const toggle = (document.querySelector as (sel: string) => HTMLButtonElement | null)('[data-testid^="apv9-toggle-"][data-record="ap_v1"]');
       expect(toggle).toBeTruthy();
-      expect(toggle.getAttribute("aria-expanded")).toBe("false");
+      expect(toggle!.getAttribute("aria-expanded")).toBe("false");
       await act(async () => {
-        toggle.click();
+        toggle!.click();
       });
       expect(api.fetchJSON.mock.calls.length).toBe(calls); // 禁额外请求：数据全来自已加载行
       const preview = (document.querySelector as (sel: string) => HTMLElement | null)('[data-testid="apv9-preview-ap_v1"]');
@@ -1812,7 +1812,7 @@ describe("R77 time-range quick filter (apv-since-*)", () => {
       const btn = qa(id) as HTMLButtonElement | null;
       expect(btn, id).toBeTruthy();
       expect((btn as HTMLButtonElement).disabled, `${id} gated`).toBe(true);
-      expect(btn.getAttribute("title")).toContain("不能按时间范围筛选：列表读取失败");
+      expect(btn!.getAttribute("title")).toContain("不能按时间范围筛选：列表读取失败");
     }
   });
 });
@@ -2119,7 +2119,7 @@ describe("R83 risk local filter (apv-risk-*)", () => {
       const btn = qa(id) as HTMLButtonElement | null;
       expect(btn, id).toBeTruthy();
       expect((btn as HTMLButtonElement).disabled, `${id} gated`).toBe(true);
-      expect(btn.getAttribute("title")).toContain("不能按风险档筛选：列表读取失败");
+      expect(btn!.getAttribute("title")).toContain("不能按风险档筛选：列表读取失败");
     }
   });
 });
@@ -2277,7 +2277,7 @@ describe("R88 permalink copy (apd10-*)", () => {
   const openDetail = async () => {
     await waitFor(() => !!qa("apr5-row-ap_p10"), "row");
     await act(async () => {
-      qa("apr5-row-ap_p10")!.click();
+      (qa("apr5-row-ap_p10") as HTMLElement).click();
     });
     await waitFor(() => !!qa("apr5-detail"), "detail open");
   };
@@ -2721,10 +2721,10 @@ describe("R127 row copy (apr-row-copy-*)", () => {
     const sortBtn = document.querySelector('[data-testid="apv-sort-title"]') as HTMLButtonElement | null;
     expect(sortBtn, "title sort button").toBeTruthy();
     await act(async () => {
-      sortBtn.click(); // asc —— 服务端序本已升序
+      sortBtn!.click(); // asc —— 服务端序本已升序
     });
     await act(async () => {
-      sortBtn.click(); // desc —— 行序翻转
+      sortBtn!.click(); // desc —— 行序翻转
     });
     await act(async () => {});
     const rowIds = Array.from(document.querySelectorAll('[data-testid^="apr5-row-ap"]')).map((el) =>

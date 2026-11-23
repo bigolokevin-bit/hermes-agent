@@ -42,6 +42,7 @@ interface ListState {
   rows: ApprovalRow[];
   unreadable: number;
   next: string | null;
+  total: number | null;
   failure: FailureCopy | null;
   pageFailure: FailureCopy | null;
   loadingMore: boolean;

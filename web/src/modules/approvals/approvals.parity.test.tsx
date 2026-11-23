@@ -214,7 +214,7 @@ const previewDds = (id: string) =>
   Array.from(q(`apv9-preview-${id}`)?.querySelectorAll("dd") ?? []).map((el) => el.textContent ?? "");
 
 /** RelativeTime 的 title 绝对句里取「YYYY-MM-DD HH:mm」（「绝对 」前缀 3 字符）。 */
-const absMinute = (title: string | null) => (title ?? "").slice(3, 19);
+const absMinute = (title: string | null | undefined) => (title ?? "").slice(3, 19);
 
 const rowIds = () =>
   Array.from(document.querySelectorAll('[data-testid^="apr5-row-ap"]')).map(

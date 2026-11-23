@@ -357,7 +357,7 @@ describe("EmployeeDetailModulePage — approvals / runs / audit", () => {
     expect(text).toContain("01M7D742");
     expect(card?.querySelector('[data-testid="ed7-runs-duration-1"]')?.getAttribute("title")).toContain("还没有结束");
     // 查询腿带 employeeId（活体实证真过滤：13 行/0 行差集）。
-    const runUrl = fetchJSON.mock.calls.map((c) => String(c[0])).find((u) => u.includes("/api/runs"));
+    const runUrl = vi.mocked(fetchJSON).mock.calls.map((c) => String(c[0])).find((u) => u.includes("/api/runs"));
     expect(runUrl).toContain("employeeId=");
   });
 

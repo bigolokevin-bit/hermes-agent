@@ -25,7 +25,7 @@
  * 等待策略教训（本文件首跑 3 FAIL 根因）：loadMore/chip 移除不显 .animate-pulse，
  * 只轮询骨架的 waitFor 会立即放行——全部改为条件轮询 until()。
  */
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 import { act, createElement } from "react";
 import { MemoryRouter, useLocation } from "react-router";
 import { createRoot, type Root } from "react-dom/client";
@@ -37,19 +37,19 @@ vi.mock("@/lib/api", () => ({ fetchJSON: api.fetchJSON }));
 // 与 approvals.parity.test.tsx 同形：只拆 children，其余（含 onClick/disabled/data-*）
 // 原样透传到原生元素，避免 eslint no-unused-vars 拦解构丢弃项。
 vi.mock("@nous-research/ui", () => ({
-  Badge: (props: Record<string, unknown>) => {
+  Badge: (props: { children?: ReactNode; [k: string]: unknown }) => {
     const { children, ...rest } = props;
     return createElement("span", rest as Record<string, unknown>, children);
   },
-  Button: (props: Record<string, unknown>) => {
+  Button: (props: { children?: ReactNode; [k: string]: unknown }) => {
     const { children, ...rest } = props;
     return createElement("button", { type: "button", ...(rest as object) }, children);
   },
-  Card: (props: Record<string, unknown>) => {
+  Card: (props: { children?: ReactNode; [k: string]: unknown }) => {
     const { children, ...rest } = props;
     return createElement("div", rest as Record<string, unknown>, children);
   },
-  CardContent: (props: Record<string, unknown>) => {
+  CardContent: (props: { children?: ReactNode; [k: string]: unknown }) => {
     const { children, ...rest } = props;
     return createElement("div", rest as Record<string, unknown>, children);
   },
@@ -80,7 +80,7 @@ function mount(handler: (url: string) => Promise<unknown>, entry: string): void 
   document.body.appendChild(node);
   root?.unmount();
   root = createRoot(node);
-  function Probe(): ReturnType<typeof createElement> {
+  function Probe() {
     const loc = useLocation();
     useEffect(() => {
       document.body.setAttribute("data-r238-search", loc.search);

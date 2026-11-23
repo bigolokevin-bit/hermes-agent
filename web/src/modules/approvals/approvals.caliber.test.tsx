@@ -128,7 +128,7 @@ describe("R92 ① ed8 aggregate cap sentence", () => {
     expect(document.body.textContent).not.toContain("加载更多");
     const queue = q("ed8-appr-scope-queue") as HTMLAnchorElement | null;
     expect(queue, "real queue exit").toBeTruthy();
-    expect(queue.getAttribute("href")).toBe("/approvals?status=all");
+    expect(queue!.getAttribute("href")).toBe("/approvals?status=all");
   });
 });
 

@@ -9,7 +9,7 @@
  * 轮播几何（步进 = 卡宽 + gap）在浏览器里实测；这里的五种「不动」情形与重新计时
  * 全部走命令式 ref（事件里即时生效、不依赖重渲染），时钟只在条件齐备时挂起。
  */
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type JSX } from "react";
 
 import { employeeLabel, lifecycleLabel } from "./format";
 import type { EmployeeRow, Loadable } from "./types";

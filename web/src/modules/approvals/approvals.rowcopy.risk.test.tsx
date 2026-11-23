@@ -194,7 +194,6 @@ async function grabCsvGrid(): Promise<string[][]> {
   const origCreate = URL.createObjectURL;
   const origRevoke = URL.revokeObjectURL;
   const origClick = HTMLAnchorElement.prototype.click;
-  // @ts-expect-error test stub
   URL.createObjectURL = (blob: Blob) => {
     blobs.push(blob);
     return "blob:csv";

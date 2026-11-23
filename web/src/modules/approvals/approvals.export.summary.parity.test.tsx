@@ -250,7 +250,7 @@ describe("R269 approvals export x summary parity guards", () => {
     expect(rejected).toBe(1);
     expect(data.length).toBe(rowIds().length);
     expect(Number(q("apv5-count")?.textContent)).toBe(data.length);
-    expect(pending + approved + rejected).toBe(data.length);
+    expect(pending! + approved! + rejected!).toBe(data.length);
     // 行级互等：桶计数与 CSV 分状态行数同一谓词
     expect(approved).toBe(data.filter((r) => r[2] === statusView("approved").label).length);
   });

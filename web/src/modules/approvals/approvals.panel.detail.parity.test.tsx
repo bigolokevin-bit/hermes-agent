@@ -190,7 +190,7 @@ const detailBadges = () => {
 const previewDds = (id: string) =>
   Array.from(q(`apv9-preview-${id}`)?.querySelectorAll("dd") ?? []).map((el) => el.textContent ?? "");
 
-const absMinute = (title: string | null) => (title ?? "").slice(3, 19);
+const absMinute = (title: string | null | undefined) => (title ?? "").slice(3, 19);
 
 describe("R230 ③④ combo — switch to ?status=approved keeps every carrier in lockstep", () => {
   it("row×preview×drawer×row-copy×CSV read one record identically after a server-side status switch; closing keeps apv5-count", async () => {

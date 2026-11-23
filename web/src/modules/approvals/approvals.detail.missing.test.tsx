@@ -217,7 +217,8 @@ async function grabCsvGrid(): Promise<string[][]> {
       writable: true,
     });
   }
-  const text = await (blob as Blob).text();
+  // blob 在 createObjectURL 回调（闭包）里赋值，控制流分析看不见 ⇒ 只把类型放宽回声明类型。
+  const text = await (blob as Blob | null)!.text();
   return text
     .replace(/^\uFEFF/, "")
     .split("\r\n")

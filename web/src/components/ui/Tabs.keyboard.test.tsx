@@ -112,7 +112,7 @@ describe("UiTabs 键盘与 ARIA 语义", () => {
   it("反证：DS 裸 TabsTrigger 确实不写这些语义（缺口是真的）", () => {
     const host = mount(
       <DsTabs defaultValue="a">
-        {() => <DsTabsTrigger active>甲</DsTabsTrigger>}
+        {() => <DsTabsTrigger active value="a">甲</DsTabsTrigger>}
       </DsTabs>,
     );
     expect(host.querySelectorAll('[role="tab"]').length, "DS 不给 role=tab").toBe(0);

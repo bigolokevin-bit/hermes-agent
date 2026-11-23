@@ -394,7 +394,7 @@ function DutyDetailsSection({
     dutyAsOfText: beijing(caliberAsOf),
   });
   const shownRuns =
-    todayRuns.k === "ready" ? filterDutyRuns(todayRuns.data, statusFilterId) : todayRuns.data;
+    todayRuns.k === "ready" ? filterDutyRuns(todayRuns.data, statusFilterId) : [];
   const cost = buildCost(
     day.k === "ready" ? day.data : null,
     month.k === "ready" ? month.data : null,

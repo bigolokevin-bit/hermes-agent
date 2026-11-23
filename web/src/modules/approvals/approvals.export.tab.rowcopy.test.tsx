@@ -241,7 +241,7 @@ const serve = (): void => {
 
 describe("R260 approvals export tab-rowcopy cross-remount guards", () => {
   it("keeps the six copy segments, the CSV head column and the export counts identical across a tab remount rotation", async () => {
-    stubClipboard(written);
+    stubClipboard();
     written.length = 0;
     serve();
 

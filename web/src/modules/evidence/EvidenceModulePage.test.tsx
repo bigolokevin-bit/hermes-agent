@@ -295,7 +295,9 @@ describe('session verdict is the same source as the shell (P0-1)', () => {
     expect(q('ev5-checking')).toBeTruthy();
     expect(container.textContent).toContain('正在确认登录状态');
     expect(api.fetchJSON).not.toHaveBeenCalled();
-    release?.(
+    // release 在 fetch 桩的 Promise 执行器里赋值，控制流分析看不见 ⇒ 只把类型放宽回声明类型。
+    const settle = release as ((v: Response) => void) | null;
+    settle?.(
       new Response(JSON.stringify({ display: 'opsadmin' }), {
         status: 200,
         headers: { 'content-type': 'application/json' },

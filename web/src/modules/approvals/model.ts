@@ -312,6 +312,8 @@ export interface StatusView extends StatusCopy {
 /** R29 item 4: business text may quote raw operator handles (e.g. a seed
  * ticket reason saying "human:1"). On screen those handles read as 「人员」;
  * the untouched sentence goes to the card's title attribute. */
+export function humanizeHandles(text: string): string;
+export function humanizeHandles(text: string | null): string | null;
 export function humanizeHandles(text: string | null): string | null {
   if (!text) return text;
   return text.replace(/\b(?:human|user):[0-9A-Za-z._-]+/g, "人员");
@@ -501,9 +503,10 @@ export interface ApprovalPage {
   /** Records the answer carried but that could not be read — counted, never dressed up. */
   unreadable: number;
   next: string | null;
-}
   /* R79: 读口顶层无 total 键（实测 keys=[items,nextCursor]）——解析 total/count
    * 以备契约升级，缺省恒 null；UI 禁按已加载条数推算。 */
+  total: number | null;
+}
 
 /** null = the answer is not a list at all, which is a failure, not an empty queue. */
 export function approvalsPageFrom(payload: unknown): ApprovalPage | null {

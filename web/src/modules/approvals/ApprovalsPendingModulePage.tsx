@@ -338,7 +338,7 @@ export function ApprovalsPendingModulePage(): ReactNode {
         setBatchSelected(new Set());
         setBatchResult({ sentence: `批量${VERDICT_LABEL[verdict]}完成：已提交 ${done} 单。`, ok: true });
       } else {
-        const succeeded = new Set(rows.slice(0, done).map((row) => row.rawId));
+        const succeeded = new Set(rows.slice(0, done).map((row) => row.rawId as string));
         setBatchSelected((prev) => {
           const next = new Set(prev);
           for (const id of succeeded) next.delete(id);

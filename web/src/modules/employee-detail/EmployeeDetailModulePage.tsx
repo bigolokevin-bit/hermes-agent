@@ -201,7 +201,8 @@ function actionLabel(value: string | null): string {
  * fetch hook (one per zone; urls computed from the active zone only)
  * ------------------------------------------------------------------ */
 
-function toResourceError(err: unknown): Resource<never> {
+/** 只可能落到这两个失败档：denied 与 error（403/404 同一句话，R-ed5）。 */
+function toResourceError(err: unknown): Extract<Resource<never>, { phase: "denied" | "error" }> {
   const api = err instanceof ApiError ? err : null;
   const status = api?.status;
   if (status === 403) return { phase: "denied", message: DENIED_COPY, requestId: api?.requestId ?? null };

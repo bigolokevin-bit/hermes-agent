@@ -22,8 +22,29 @@
  *     {(active) => <ZonePanel zone={active} />}
  *   </UiTabs>
  */
-import { useRef, useState, type KeyboardEvent, type ReactNode } from "react";
-import { TabsList as DsTabsList, TabsTrigger as DsTabsTrigger } from "@nous-research/ui/ui/components/tabs";
+import {
+  useRef,
+  useState,
+  type ButtonHTMLAttributes,
+  type KeyboardEvent,
+  type ReactNode,
+  type Ref,
+} from "react";
+import {
+  TabsList as DsTabsList,
+  TabsTrigger as DsTabsTriggerPrimitive,
+} from "@nous-research/ui/ui/components/tabs";
+
+/** DS 的 TabsTriggerProps 没声明 ref（React 19 起函数组件把 ref 当普通 prop
+ *  收下，DS 又把剩余 props 原样铺到底层 button 上 ⇒ 运行时确实拿得到节点）。
+ *  这里只把这条运行时事实补进类型，渲染的仍是同一个 DS 基元。 */
+type DsTabsTriggerProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "ref"> & {
+  active: boolean;
+  value: string;
+  ref?: Ref<HTMLButtonElement>;
+};
+
+const DsTabsTrigger = DsTabsTriggerPrimitive as (props: DsTabsTriggerProps) => ReactNode;
 
 export interface UiTabItem {
   value: string;
