@@ -26,7 +26,7 @@ import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 import { Spinner } from "@nous-research/ui/ui/components/spinner";
 
 import { STATUS_FILTERS, approvalSortKeyOf, approvalsRowSearchText, isKnownStatus, sortApprovalRows, type ApprovalSortDir, type ApprovalSortKey } from "./model";
-import { actionGates, announcement } from "./gates";
+import { actionGates, announcement, crossPageLoadHint } from "./gates";
 import { QueueSummaryBar, denominatorReadout } from "./QueueSummaryBar";
 import { clearFilterParams, hasActiveFilters, resetTitle } from "./FilterReset";
 import { FilterSummary } from "./FilterSummary";
@@ -400,6 +400,9 @@ export function ApprovalsHistoryModulePage(): ReactNode {
     [list.rows.length, list.total, list.next, aggregated],
   );
   const readout = denominatorReadout(denominator);
+  // AP-07①: 服务端给了下一页游标＝本地过滤作用域还没到底，各过滤器作用域句据此追加
+  // 「需先加载」提示；status 是唯一真服务端筛选（读口实测只发 status/limit/cursor）。
+  const hasMore = list.next !== null;
   return (
     <div className="flex min-w-0 w-full max-w-full flex-col gap-3" data-testid="apr5-page-history">
       <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
@@ -521,14 +524,27 @@ export function ApprovalsHistoryModulePage(): ReactNode {
             title="实测：本页读口带 q/keyword/title 任一参数都与不带时返回同一全量（同集合），后台不做关键字过滤；为避免「假服务端搜索」，这里只做前端本地过滤。"
           >
             仅在当前已加载 {list.rows.length} 条内搜索；关键字是前端本地过滤，不产生新请求（实测后台 q/keyword/title 参数被忽略）。
+            {hasMore ? (
+              <span data-testid="apv8-search-crosspage" data-apv8-search-crosspage="needs-load">
+                {` ${crossPageLoadHint(true)}`}
+              </span>
+            ) : null}
           </p>
-          <ActorBuckets rows={riskBaseRows} phase={list.phase} actor={actor} onPick={pickActor} />
-          <SinceQuickFilter phase={list.phase} since={since} loadedCount={list.rows.length} onPick={pickSince} />
-          <RiskQuickFilter rows={actorBaseRows} phase={list.phase} risk={risk} onPick={pickRisk} />
+          <p
+            className="min-w-0 break-words text-xs text-muted-foreground"
+            data-testid="apv-h-status-note"
+            data-apv-h-status-scope="server"
+            title="本页的「按处理结果筛选」八态组是真正发到服务端的 status 维度（实测 listUrl 只发 status/limit/cursor）；上面搜索/审批人/时间/风险与排序都是当前已加载行上的本地过滤，二者不同源。"
+          >
+            下面的「按处理结果筛选」八态＝服务端 status 筛选（切换会重新请求）；搜索、审批人、时间窗、风险档、排序都是本地过滤，只在已加载行内生效。
+          </p>
+          <ActorBuckets rows={riskBaseRows} phase={list.phase} actor={actor} onPick={pickActor} hasMore={hasMore} />
+          <SinceQuickFilter phase={list.phase} since={since} loadedCount={list.rows.length} onPick={pickSince} hasMore={hasMore} />
+          <RiskQuickFilter rows={actorBaseRows} phase={list.phase} risk={risk} onPick={pickRisk} hasMore={hasMore} />
         </div>
       ) : null}
 
-      <QueueSortBar phase={list.phase} sort={asort} dir={adir} loadedCount={list.rows.length} onCycle={cycleSort} />
+      <QueueSortBar phase={list.phase} sort={asort} dir={adir} loadedCount={list.rows.length} onCycle={cycleSort} hasMore={hasMore} />
       <RowDetailCopy row={visibleRows.find((r) => r.key === previewKey) ?? null} />
 
 

@@ -36,7 +36,7 @@ import type { ApprovalRow } from "./model";
 import { approvalSortKeyOf, approvalsRowSearchText, sortApprovalRows, type ApprovalSortDir, type ApprovalSortKey } from "./model";
 import { DeniedPanel, EmptyPanel, ErrorPanel, InlineFailure, LoadingPanel } from "./states";
 import { useApprovalDetail, useApprovalsList, type ForcedState } from "./useApprovalsData";
-import { actionGates, announcement } from "./gates";
+import { actionGates, announcement, crossPageLoadHint } from "./gates";
 import { DECISION_GATE } from "./writeGate";
 import { QueueSummaryBar, denominatorReadout } from "./QueueSummaryBar";
 import { clearFilterParams, hasActiveFilters, resetTitle } from "./FilterReset";
@@ -164,6 +164,9 @@ export function ApprovalsPendingModulePage(): ReactNode {
     [list.rows.length, list.total, list.next],
   );
   const readout = denominatorReadout(denominator);
+  // AP-07①: 服务端给了下一页游标＝本地过滤的作用域还没到底，各过滤器作用域句据此
+  // 追加「需先加载」提示；status 是唯一真服务端筛选（listUrl 实测只发 status/limit/cursor）。
+  const hasMore = list.next !== null;
 
   // R59: keyword search is a local filter over the loaded rows (the read
   // port ignores q/keyword/title — measured), so typing never fetches.
@@ -579,8 +582,11 @@ export function ApprovalsPendingModulePage(): ReactNode {
             </span>
           ) : null}
         </div>
+        {/* AP-07②：写通道关时，逐单抽屉的可见禁用说明与两个钮的 title、批量钮的禁用
+            title 同读 DECISION_GATE.title 这一个来源——环境只读这一句，全模块只有一个出口，
+            不再分叉第二套措辞。 */}
         <p className="max-w-prose min-w-0 break-words text-xs text-muted-foreground" data-testid="apr5-actions-readonly-note">
-          当前环境的控制台是只读的：批准、驳回在这里点了也不会生效，所以两个按钮先禁用了。要处理这张单，请走它原本产生决定的渠道。
+          {DECISION_GATE.title}
         </p>
       </div>
     ) : (
@@ -674,25 +680,31 @@ export function ApprovalsPendingModulePage(): ReactNode {
             title="实测：本页读口带 q/keyword/title 任一参数都与不带时返回同一全量（同集合），后台不做关键字过滤；为避免「假服务端搜索」，这里只做前端本地过滤。"
           >
             仅在当前已加载 {list.rows.length} 条内搜索；关键字是前端本地过滤，不产生新请求（实测后台 q/keyword/title 参数被忽略）。
+            {hasMore ? (
+              <span data-testid="apv8-search-crosspage" data-apv8-search-crosspage="needs-load">
+                {` ${crossPageLoadHint(true)}`}
+              </span>
+            ) : null}
           </p>
           <p
             className="min-w-0 break-words text-xs text-muted-foreground"
             data-testid="apv-status-note"
+            data-apv-status-scope="server"
             title="待处理页的数据腿固定读取 pending 队列（实测 status=pending&limit=50 → 200/0）；status 参数在本页不生效，切到「决策历史」页签后按状态筛选。"
           >
-            待办视图只列待办，status 筛选在历史 tab 生效。
+            status 是唯一在服务端生效的筛选（读口实测只发 status/limit/cursor）；待办视图只列待办，status 筛选在历史 tab 生效。
           </p>
-          <ActorBuckets rows={riskBaseRows} phase={list.phase} actor={actor} onPick={pickActor} />
-          <SinceQuickFilter phase={list.phase} since={since} loadedCount={list.rows.length} onPick={pickSince} />
-          <RiskQuickFilter rows={actorBaseRows} phase={list.phase} risk={risk} onPick={pickRisk} />
+          <ActorBuckets rows={riskBaseRows} phase={list.phase} actor={actor} onPick={pickActor} hasMore={hasMore} />
+          <SinceQuickFilter phase={list.phase} since={since} loadedCount={list.rows.length} onPick={pickSince} hasMore={hasMore} />
+          <RiskQuickFilter rows={actorBaseRows} phase={list.phase} risk={risk} onPick={pickRisk} hasMore={hasMore} />
           {/* P1-A1: 三行元说明（动作矩阵/键盘导航/本地排序口径）收进面板尾——
               testid 与文案逐字不变，收起时随面板卸载，展开即见。 */}
-          <QueueMetaNotes phase={list.phase} loadedCount={list.rows.length} />
+          <QueueMetaNotes phase={list.phase} loadedCount={list.rows.length} hasMore={hasMore} />
         </div>
       ) : null}
 
       <QueueCsvExport rows={visibleRows} tab="pending" status="pending" phase={list.phase} sort={asort} dir={asort ? adir : null} />
-      <QueueSortBar phase={list.phase} sort={asort} dir={adir} loadedCount={list.rows.length} onCycle={cycleSort} hideNotes />
+      <QueueSortBar phase={list.phase} sort={asort} dir={adir} loadedCount={list.rows.length} onCycle={cycleSort} hideNotes hasMore={hasMore} />
       <RowDetailCopy row={visibleRows.find((r) => r.key === previewKey) ?? null} />
 
       <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
