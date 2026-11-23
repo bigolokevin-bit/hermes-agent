@@ -19,7 +19,7 @@ import type {
   ReadinessEvidence,
   StationBinding,
 } from "./readiness";
-import { EMPLOYEES_PAGE_LIMIT, READINESS_FANOUT_LIMIT } from "./aggregate";
+import { READINESS_FANOUT_LIMIT } from "./aggregate";
 
 export const BFF = "/agent-api/api";
 

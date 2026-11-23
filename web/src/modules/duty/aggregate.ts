@@ -16,8 +16,8 @@ import { beijing } from "./format";
 import type { GateVerdict, ReadinessEvidence } from "./readiness";
 import { DENOMINATOR_STATES, rollup, v1Verdict, v2Verdict, v3Verdict, v6Verdict } from "./readiness";
 
-/** 员工目录固定单页 limit=100；拉满一页就证明不了全量（DU-01④）。 */
-export const EMPLOYEES_PAGE_LIMIT = 100;
+/** 员工目录固定单页 limit=100；拉满一页就证明不了全量（DU-01④）。owner=types.ts，此处仅再导出兼容旧引用。 */
+export { EMPLOYEES_PAGE_LIMIT } from "./types";
 /** 逐员工证据扇出硬上限；超出部分按待核实并在卡上披露 n/N。 */
 export const READINESS_FANOUT_LIMIT = 32;
 

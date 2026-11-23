@@ -35,6 +35,8 @@ function evidenceFor(ids: string[], over: Partial<ReadinessEvidence> = {}): Read
     knowledge: ready({ wired: true, count: 5, asOf: null }),
     // V6 审批：无有效决策 → 全员 fail
     approvals: ready([]),
+    // DU-01④：逐员工证据扇出覆盖 n/N（默认全员覆盖，非全量披露由 over 注入）
+    coverage: { covered: ids.length, requested: ids.length },
     ...over,
   };
 }
