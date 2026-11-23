@@ -1275,6 +1275,7 @@
 [data-testid="met6-cmp-table"] thead th:nth-child(3),
 [data-testid="met6-cmp-table"] thead th:nth-child(4),
 [data-testid="met6-cmp-table"] thead th:nth-child(5),
+[data-testid="met6-cmp-table"] thead th:nth-child(6),
 thead.metAF-sticky-share th:nth-child(5),
 #metK-table thead th:nth-child(2),
 #metK-table tbody td:nth-child(2) {

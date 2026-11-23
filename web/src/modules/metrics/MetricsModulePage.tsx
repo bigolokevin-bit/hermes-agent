@@ -206,6 +206,12 @@ interface CmpRow {
   prevRuns: number | null;
   cost: number | null;
   prevCost: number | null;
+  /** 95th-percentile run duration per window; null when the contract omits it. */
+  p95Ms: number | null;
+  prevP95Ms: number | null;
+  /** Sample counts behind each percentile — the contract's own sufficiency gate. */
+  p95Sample: number | null;
+  prevP95Sample: number | null;
   basis: string;
 }
 
@@ -397,6 +403,15 @@ function cellTone(cell: HeatCell): string {
 
 function cellText(cell: HeatCell): string {
   return cell.present ? `${cell.count} 次` : '接口未返回这一格（—）';
+}
+
+/** MT-03 — the percentile is honest about being absent: a real 0 shows as 0ms,
+ *  a withheld value says why (the contract drops p95 under 20 samples), and
+ *  only a source that returned nothing at all shows «—». Nothing is estimated. */
+function fmtP95(p95: number | null, sample: number | null): string {
+  if (p95 !== null) return `${p95}ms`;
+  if (sample !== null && sample < 20) return `样本不足（${sample}/20）`;
+  return '—';
 }
 
 export function MetricsModulePage() {
@@ -1054,14 +1069,21 @@ export function MetricsModulePage() {
         }
         return ledgerTotal(rows);
       };
-      const runsFor = async (from: string, to: string): Promise<number | null> => {
+      const runsFor = async (
+        from: string,
+        to: string,
+      ): Promise<{ runs: number | null; p95Ms: number | null; sample: number | null }> => {
         const parsed = readRunStats(
           await loadJson(
             `/agent-api/api/run-stats?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&bucket=day`,
           ),
         );
         if (parsed.kind !== 'ok') throw new ApiError(parsed.reason, { status: 200, body: '', url: 'run-stats' });
-        return parsed.stats.totals.runs;
+        return {
+          runs: parsed.stats.totals.runs,
+          p95Ms: parsed.stats.totals.p95DurationMs,
+          sample: parsed.stats.totals.sampleCount,
+        };
       };
 
       const to = now.toISOString();
@@ -1075,7 +1097,7 @@ export function MetricsModulePage() {
         specs.map(async (spec) => {
           const from = new Date(now.getTime() - spec.hours * 3_600_000).toISOString();
           const prevFrom = new Date(now.getTime() - spec.hours * 2 * 3_600_000).toISOString();
-          const [runs, prevRuns, cost, prevCost] = await Promise.all([
+          const [cur, prev, cost, prevCost] = await Promise.all([
             runsFor(from, to),
             runsFor(prevFrom, from),
             sumLedger(spec.kind, spec.keys),
@@ -1084,10 +1106,14 @@ export function MetricsModulePage() {
           return {
             id: spec.id,
             label: spec.label,
-            runs,
-            prevRuns,
+            runs: cur.runs,
+            prevRuns: prev.runs,
             cost,
             prevCost,
+            p95Ms: cur.p95Ms,
+            prevP95Ms: prev.p95Ms,
+            p95Sample: cur.sample,
+            prevP95Sample: prev.sample,
             basis: spec.kind === 'month' ? '本月 vs 上月（账本按月落账）' : `${spec.hours / 24} 天 vs 前 ${spec.hours / 24} 天`,
           };
         }),
@@ -1354,7 +1380,7 @@ export function MetricsModulePage() {
                       from: null,
                       to: null,
                       buckets: [],
-                      totals: { runs: 0, succeeded: 0, failed: 0, running: 0, sampleCount: 0, successRate: null },
+                      totals: { runs: 0, succeeded: 0, failed: 0, running: 0, sampleCount: 0, p95DurationMs: null, successRate: null },
                     },
                     from: new Date().toISOString(),
                     to: new Date().toISOString(),
@@ -3050,6 +3076,7 @@ export function MetricsModulePage() {
                         <th scope="col">较上一周期</th>
                         <th scope="col">成本</th>
                         <th scope="col">较上一周期</th>
+                        <th scope="col">P95 时长</th>
                         <th scope="col">口径</th>
                       </tr>
                     </thead>
@@ -3073,6 +3100,10 @@ export function MetricsModulePage() {
                               title={costDelta.kind === 'none' ? costDelta.reason : '账本实扣，与上一等长窗口比较'}>
                               {formatDeltaUsd(costDelta)}
                             </td>
+                            <td className="met6-num" data-testid={`met6-cmp-p95-${row.id}`}
+                              title={`上窗口 P95：${fmtP95(row.prevP95Ms, row.prevP95Sample)}`}>
+                              {fmtP95(row.p95Ms, row.p95Sample)}
+                            </td>
                             <td className="met6-rowsub">{row.basis}</td>
                           </tr>
                         );
@@ -3081,6 +3112,7 @@ export function MetricsModulePage() {
                   </table>
                 </div>
                 <p className="met6-hint">成本只认账本实扣；没有实扣行显示「—」，真实 0 显示零额；差值只做对比，不是花费预测。</p>
+                <p className="met6-hint" data-testid="met6-cmp-p50-note" title={`缺口编号 ${METRICS_GAP}`}>P50 分位未接：上游运行统计契约没有提供该分位字段。</p>
               </>
             ) : null}
           </div>
