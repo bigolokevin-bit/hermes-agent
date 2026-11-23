@@ -115,9 +115,13 @@ export function buildKpis(
   const totals = today && isRecord(today.totals) ? today.totals : null;
   const failedRaw = totals ? (totals as Record<string, unknown>).failed : null;
   const failed = typeof failedRaw === 'number' && !Number.isNaN(failedRaw) ? failedRaw : null;
+  // 失败率分子分母必须同源：run-stats 同窗 totals.failed ÷ totals.runs（跨端点相除会造出假率）。
+  const runsTotRaw = totals ? (totals as Record<string, unknown>).runs : null;
+  const runsTot = typeof runsTotRaw === 'number' && !Number.isNaN(runsTotRaw) ? runsTotRaw : null;
+  void todayRunsValue;
   const failureRate =
-    failed !== null && typeof todayRunsValue === 'number' && todayRunsValue > 0
-      ? Math.round((failed / todayRunsValue) * 1000) / 10
+    failed !== null && runsTot !== null && runsTot > 0
+      ? Math.round((failed / runsTot) * 1000) / 10
       : null;
 
   return {

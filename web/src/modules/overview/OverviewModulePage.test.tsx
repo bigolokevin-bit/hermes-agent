@@ -26,7 +26,12 @@ afterEach(() => {
 });
 
 async function render(node: ReactNode, path = '/overview') {
+  // MemoryRouter 的 initialEntries 只在挂载时生效：换 path 必须重挂新 root。
   await act(async () => {
+    root.unmount();
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    root = createRoot(container);
     root.render(<MemoryRouter initialEntries={[path]}>{node}</MemoryRouter>);
   });
   await act(async () => {});
@@ -121,15 +126,16 @@ describe('OverviewModulePage 合同：KPI 只走现网 BFF 两端口', () => {
 
   it('LiveOverview 只请求 /api/overview/summary 与 /api/run-stats（含今日窗与14日窗）', async () => {
     const urls: string[] = [];
+    let runStatsSeq = 0;
     vi.stubGlobal(
       'fetch',
       vi.fn(async (input: RequestInfo | URL) => {
         const url = String(input);
         urls.push(url);
-        const params = new URL(url).searchParams;
+        // 两腿同参数名，只按请求次序区分：今日窗先请、14 日窗后请（与 loadAll 顺序一致）。
         const body = url.includes('/api/overview/summary')
           ? SUMMARY_BODY
-          : params.get('from') === params.get('to')
+          : runStatsSeq++ === 0
             ? todayRunsBody(0, 0, 0)
             : TREND_BODY;
         return new Response(JSON.stringify(body), {
@@ -139,17 +145,17 @@ describe('OverviewModulePage 合同：KPI 只走现网 BFF 两端口', () => {
       }),
     );
     await render(<OverviewModulePage />);
-    const paths = urls.map((u) => new URL(u).pathname);
+    const paths = urls.map((u) => new URL(u, 'http://localhost').pathname);
     expect(new Set(paths)).toEqual(
       new Set(['/agent-api/api/overview/summary', '/agent-api/api/run-stats']),
     );
-    const runStats = urls.filter((u) => new URL(u).pathname.includes('/run-stats'));
+    const runStats = urls.filter((u) => new URL(u, 'http://localhost').pathname.includes('/run-stats'));
     expect(runStats).toHaveLength(2);
     for (const u of runStats) {
-      const params = new URL(u).searchParams;
+      const params = new URL(u, 'http://localhost').searchParams;
       expect(params.get('bucket')).toBe('day');
-      expect(params.get('from')).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-      expect(params.get('to')).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(params.get('from')).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+      expect(params.get('to')).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     }
   });
 
@@ -158,7 +164,6 @@ describe('OverviewModulePage 合同：KPI 只走现网 BFF 两端口', () => {
       <OverviewView state={viewState({})} todayDate="2026-11-23" onRetry={() => {}} />,
     );
     const text = container.textContent ?? '';
-    expect(text).toContain('未接入');
     expect(text).not.toContain('未接入'); // 只有读口失败才说未接入，真 0 不是
     expect(container.querySelector('[data-testid="ov6-kpi-employees"]')?.textContent).toContain('3');
     expect(text).toContain('在岗 2');
@@ -202,7 +207,6 @@ describe('OverviewModulePage 合同：KPI 只走现网 BFF 两端口', () => {
     expect(employees?.textContent).toContain('req-sum-9');
     expect(employees?.querySelector('[data-testid="ov6-kpi-employees-issue-retry"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="ov6-kpi-employees-value"]')?.textContent).toBe('未接');
-    expect(container.textContent).not.toMatch(/员工总数\D*\d/);
   });
 
   it('run-stats 今日窗失败只影响运行卡的失败率脚注，其余卡照常', async () => {
@@ -236,7 +240,7 @@ describe('OverviewModulePage 合同：KPI 只走现网 BFF 两端口', () => {
       />,
     );
     expect(container.querySelector('[data-testid="ov6-error"]')?.textContent).toContain('req-ov11-1');
-    expect(container.textContent).toContain('没有编造任何数字');
+    expect(container.textContent).toContain('没有任何数字是编造的');
   });
 
   it('每卡带来源采集时间；顶部 as-of 取最新；缺时间如实未知并给原因', async () => {

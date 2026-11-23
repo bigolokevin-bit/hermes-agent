@@ -10,7 +10,7 @@
  * 不引 fixture；原始 JSON 在「本次读数」面板原样可见（无 innerHTML 注入面）。
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router';
 
 import { fetchRunStats, load } from '../duty/api';
 import { beijing, beijingDayWindow, daysAgoWindow, usd } from '../duty/format';

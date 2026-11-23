@@ -1,0 +1,20 @@
+{
+  "from": "2026-11-22T16:00:00.000Z",
+  "to": "2026-11-23T13:16:49.807Z",
+  "bucket": "day",
+  "buckets": [],
+  "totals": {
+    "runs": 0,
+    "succeeded": 0,
+    "failed": 0,
+    "cancelled": 0,
+    "interrupted": 0,
+    "running": 0,
+    "pending": 0,
+    "costUsd": 0,
+    "unknownRuns": 0,
+    "sampleCount": 0
+  },
+  "asOf": "2026-11-23T13:16:50Z",
+  "asOfSource": "bff-read-time"
+}
