@@ -684,7 +684,7 @@ export function EmployeesModulePage() {
   };
 
   return (
-    <section className="space-y-4" data-testid="employees-module">
+    <section className="employees-page space-y-4" data-testid="employees-module">
       <header className="flex flex-col gap-[var(--space-3)] sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-[var(--space-4)]">
         <div className="flex min-w-0 flex-wrap items-center gap-[var(--space-2)]">
           <Users className="h-5 w-5 shrink-0 text-white/70" />

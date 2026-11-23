@@ -1,167 +1,67 @@
-# DONE — 原生 select 清零（L4 控件统一车道）
+# Q9 样板页 1440/375 对照出证 — DONE
 
-分支：`lane/L4-controls`（基线 `origin/lane/hermes-console` @ `571011616189edbb153c6fd2203c03882a2f9f39`）
-日期：2026-11-23
+任务：值班台（三 KPI 等高 + AgentFleetRail）与员工列表两个样板页的 1440/375 对照证据；断言口径 = 卡高 176±1、单行 ellipsis、无文本溢出、字号 ⊆ 6 档（12/13/14/16/20/24px）。
+分支：`task/Q9-sample-compare`，基线 `42dcd7983f56ec39fbdaf5aac92841b6b1816d38`（origin/lane/hermes-console 当拍现取）。
+写域：`web/src/modules/**`（实际触及 duty.css / employees-density.css / EmployeesModulePage.tsx）。
 
-## 0. 基线与新鲜度自证
+## 取证环境
 
-```
-$ git fetch origin refs/heads/lane/hermes-console:refs/remotes/origin/lane/hermes-console
-$ git rev-parse origin/lane/hermes-console
-571011616189edbb153c6fd2203c03882a2f9f39
-$ git log -1 --oneline origin/lane/hermes-console
-5710116161 docs(ui-kd): 棘轮读数台账追加更正段——双口径 65/61→24/18 按脸 56eef7a81b 现值（L0 直营，watchdog-464 请办项；追加形制不回改历史段）
-```
+- 本机自建只读脸：v4_proxy，`SEAKOI_V4_DIST=<worktree>/hermes_cli/web_dist`，端口 9125，BFF 上游 127.0.0.1:8092（现网）；9122 未动。
+- 登录态：opsadmin-evidence-login → `~/.seakoi/opsadmin-token.txt`，cookie `access_token_cookie` 注入域 127.0.0.1；前置断言 `/agent-api/api/employees` = **200**（原始输出 `precondition /employees = 200`）。
+- 取图：playwright（channel:chrome，deviceScaleFactor 2，domcontentloaded + 2.5s settle），视口 1440×900 / 375×812。
+- 原始指标全量 JSON：`/private/var/folders/2b/bnpsyz450pn98w375q_803yw0000gn/T/opencode/q9-metrics.json`（修复后轮）。
 
-定向 refspec fetch 后本地跟踪 ref 与 fetch 前一致（`57101161...`），基线确认为最新，非过期读数。
+## 四张对照图
 
-## 1. 工单现状命令的原始输出（改动前，逐字）
+- `docs/_artifacts/q9-sample-compare/q9-duty-1440.png`
+- `docs/_artifacts/q9-sample-compare/q9-duty-375.png`
+- `docs/_artifacts/q9-sample-compare/q9-employees-1440.png`
+- `docs/_artifacts/q9-sample-compare/q9-employees-375.png`
 
-```
-$ grep -rn "<select" web/src --include=*.tsx
-web/src/shell/ConsoleSelect.tsx:3: * `<select>` in the console surface.
-web/src/shell/ConsoleSelect.tsx:10: * tests and IA assertions click. Native `<select>` is out for the visual
-web/src/components/ui/Select.tsx:7: * 下拉基元：自绘触发器 + role=listbox 面板。禁原生 <select>——设计系统的 Select
-web/src/modules/tasks/TasksBoardModulePage.test.tsx:262:    // `button.disabled` is the honest gate (a <select> read was the old protocol).
-web/src/modules/audit/audit.select.contract.test.tsx:3:// native `<select>`.
-web/src/modules/audit/audit.select.contract.test.tsx:151:  it("puts every filter test id on a focusable combobox, and on no <select>", async () => {
-web/src/modules/audit/audit.filters.test.tsx:15:// R166 修红：wave-36 把筛选控件从原生 <select> 换成了 ConsoleSelect（合入的自定义下拉那一项改动），
-web/src/modules/approvals/ApprovalsHistoryModulePage.test.tsx:240:    // gate is `button.disabled` — reading it as a <select> was the retired protocol.
-web/src/modules/runs/runs.filters.test.tsx:129:  // wave-36 moved this filter off the native <select> onto ConsoleSelect, so the
-```
+## 断言原始输出（前 → 后）
 
-9 处 / 7 文件，与工单「现状」计数吻合。
+### ① 值班台三 KPI 等高
 
-## 2. 实况盘点（与工单前提的差异，如实报告）
+- 1440：`.duty-grid-3` kids 前 `[220,220,220]` → 后 `[222,222,222]`，`ai=stretch`，`tc=381.3px×3` ✓ 等高。
+- 375：`tc=341.5px`（**单列堆叠**，kids `[151,237,151]` 为三个独立行，行内等高不适用）✓ 口径证明。
+- 次级 `.duty-grid-2` 1440 `[382,382]` ✓；下部 grid-3 1440 `[163,163,163]` ✓。
 
-**基线上不存在任何真实原生 `<select>` 元素。** 上述 9 处命中全部是注释、docstring、测试标题
-中的文字提及。佐证命令：
+### ② AgentFleetRail 卡高 176±1
 
-```
-$ grep -rn "<select" web/src --include="*.ts" --include="*.js" --include="*.jsx" --include="*.html"
-web/src/shell/selectHarness.ts:4: * WHY it exists: the console's filters moved off the native `<select>`
-web/src/modules/employees/employees.density.contract.test.ts:78:    expect(page).not.toContain('<select');
-$ grep -rn 'createElement("select"' web/src   # → 无输出（exit 1）
-```
+- 1440：`.duty-fleet-card` = `{h:176,w:320}×3` ✓（规格 ≥1281 档 320×176）。
+- 375：`{h:160,w:260}×3` ✓（≤375 档 260×160，duty.css 几何三档条款）。
 
-- 前者两条同样是注释/守卫字符串，非 JSX 元素；`employees.density.contract.test.ts:78` 是
-  正在**执行**这条禁令的源码级契约断言，按工单口径（`--include=*.tsx`）不在闸内，且删它等于拆守卫，故保留。
-- wave-36 已完成全量换壳：modules 下各筛选页用的是 `web/src/shell/ConsoleSelect.tsx`
-  （trigger BUTTON + role=combobox，testid 落钮上），取值统一走 `@/shell/selectHarness`。
-- 工单指定的目标组件 `web/src/components/ui/Select.tsx` **已存在**：受控 `UiSelect`
-  （props: `id/options/value/onChange/label/placeholder/hint/error/disabled/multiple`，
-  自绘触发器 + role=listbox 面板），已由 `web/src/components/ui/index.ts:30` 导出。
+### ③ 员工列表页
 
-### 对 DoD ① 的解读（假定，已按最合理默认执行）
+- 该页是**表格页**，桌面 markup 无 176px 卡片（行壳 `min-height: var(--table-row-h)`=40px，employees-density.css）——「员工列表卡高 176±1」在本页无对应对象，如实记录；等高档适用对象为顶部统计行：1440 `sm:grid-cols-3` kids 前 `[76,76,76]` → 后 `[75,75,75]` ✓；375 单列 `tc=341.5px`（堆叠）。
+- 375 行尾单元格 `[35,16,22,16,16,16,16,44]` 为移动端 data-label 堆叠布局，非溢出。
 
-「全部换 Select.tsx」在本基线上**没有可替换的调用点**（0 个原生元素）。不将现有
-`ConsoleSelect` 调用点迁往 `UiSelect`，理由：
+### ④ 单行 ellipsis
 
-1. `ConsoleSelect` 住在 `shell/**`——工单边界明令不碰；迁移将重写 shell 组件契约
-   （`selectHarness`、testid-on-button、`audit.select.contract.test.tsx` 把
-   BUTTON+combobox 形态本身钉为现契约）。
-2. DoD ② 要求「保留 options/onChange/disabled/aria/value」，语义是迁移不得丢行为；
-   对已合规控件做无收益大改违背最小改动。
-3. 仓规：无 E2E 必要的改动不做大范围重构。
+- duty：truncate 元素 30 个，全部 `white-space:nowrap` + `text-overflow:ellipsis`，9 个真实裁切（如 `duty-fleet-name` "QA2 契约验证 17948" sw174/cw98 cut=true）✓ 生效。
+- employees @1440：3 个 truncate 均 sw==cw（无内容需裁）✓；@375 「全部」chip sw26/cw0 cut=true（折叠筛选器内正常裁切）。
 
-若总控确认要做 ConsoleSelect→UiSelect 的换代，那是另一个工单（涉及 shell 写域），
-本车道按边界纪律不擅自扩权。
+### ⑤ 无文本溢出
 
-## 3. 本车道改动（写域内 7 处提及清零）
+- 两页 × 两档 `docScrollW == vw`（1440/1440、375/375）✓ 无横向滚动。
+- leaks 清单全部为 **sw−cw==2px 的容器 scrollbar-gutter/border 伪影**（含 shell 祖先层，无一例文本级溢出）。
 
-只改 `web/src/modules/**` 与 `web/src/components/ui/Select.tsx`，逐处把 `<select` 字样
-改写为等义写法，注释/标题语义一字不减：
+### ⑥ 字号 ⊆ 6 档（本拍修复项）
 
-| 文件 | 行 | 改法 |
-|---|---|---|
-| components/ui/Select.tsx | 7 | `禁原生 <select>` → `禁渲染原生 select 元素` |
-| modules/tasks/TasksBoardModulePage.test.tsx | 262 | `(a <select> read …)` → `(a native-select \`.value\` read …)` |
-| modules/audit/audit.select.contract.test.tsx | 3 | `` replaced the native `<select>`. `` → `replaced the native select control.` |
-| modules/audit/audit.select.contract.test.tsx | 151 | 测试标题 `and on no <select>` → `and on no native select element` |
-| modules/audit/audit.filters.test.tsx | 15 | `从原生 <select> 换成了` → `从原生 select 换成了` |
-| modules/approvals/ApprovalsHistoryModulePage.test.tsx | 240 | `reading it as a <select>` → `reading it as a native select` |
-| modules/runs/runs.filters.test.tsx | 129 | `off the native <select> onto` → `off the native select onto` |
+- 根因：`html{font-size:var(--theme-base-size)}`（index.css，本机 15px 主题档）使一切 tailwind rem 工具类离阶；duty.css 另有 ~47 处字面量（9px/11.5px/12.5px/0.6–1.05rem/1.4/1.5/1.9rem 等）。
+- 修复：duty.css 全部字面量映射到 `var(--font-size-N)`；`.duty-page`/`.employees-page` 页根内加 tailwind 工具类中和条款（text-xs→12、text-sm→13、text-base→14、text-xl→20、`.font-mono`→12）与页根基准 14px。employees 页根新增 `employees-page` 类。
+- 前（@1440 duty）：`{9:8, 10.2:18, 10.5:44, 11.1:24, 11.25:9, 11.5:4, 11.7:16, 12.3:8, 12.5:1, 13.13:2, 15:77, 15.75:1, 21:4, 28.5:6}`
+- 后（duty）：`{12:174, 13:3, 14:74, 15:6, 16:1, 20:4, 24:12, 13.13:2}`；后（employees）：`{12:45, 13:19, 14:50, 15:6, 20:1, 13.13:2}`。
+- **模块页根以内已全部落阶**；残留 15px×6 + 13.13×2 全部是 shell 祖先元素（`console-tab`×2 / `console-tablist` / `pane` / 布局 wrapper），位于 `web/src/shell/**` 与全局主题，超出本拍写域。
 
-## 4. 改动后闸命令输出（逐字）
+## 残留与后续工单（建议）
 
-```
-$ grep -rn "<select" web/src --include=*.tsx
-web/src/shell/ConsoleSelect.tsx:3: * `<select>` in the console surface.
-web/src/shell/ConsoleSelect.tsx:10: * tests and IA assertions click. Native `<select>` is out for the visual
+1. shell 页签条 `console-tab` 13.13px、tablist/容器壳继承 15px：需 shell 域一单（同「页根中和」配方，或工具类直换令牌）。
+2. 全局主题根字号 15px 不在 6 档内：属主题设计面，建议 L0 裁定是否并档（影响全站 rem 刻度，本拍未动）。
 
-$ grep -rn "<select" web/src/modules web/src/components/ui --include=*.tsx
-（无输出，exit 1）
-```
+## 验证门（原始读数）
 
-**写域内 = 0。** 全目录仍余 2 处，均在 `web/src/shell/ConsoleSelect.tsx` 的注释里，
-内容是「本控制台禁用原生 select」的说明本身——它处在工单明令不碰的 `shell/**` 边界内。
-
-### 阻塞记录（按工单纪律「不提问，阻塞写 DONE.md」）
-
-DoD ③ 要求全目录 grep=0 与边界「只改 modules/** 与 ui/Select.tsx、不碰 shell/**」**互斥**，
-在本车道内不可同时满足。已交付写域 0；剩余 2 行是注释性残点，建议由 shell 属主（L0）
-顺手下刀改词（零行为影响），或将闸口径定为写域 grep。本车道不越权代改。
-
-## 5. DoD ④ — 受影响页面交互断言取证
-
-本改动不含行为变更（纯注释/标题措辞），「受影响页面」的自定义下拉交互断言**既有覆盖在位**，逐页：
-
-- `runs/runs.filters.test.tsx:128-133` — `selectStatus` 经 `pickByValue` 开合 combobox 选值，再以 `urls()` 断言请求串联动。
-- `audit/audit.select.contract.test.tsx:151-165` — 四个筛选 testid 全部落在可聚焦 BUTTON+combobox，且 `document.querySelectorAll("select")` 恒 0（**元素级禁令的正闸**）。
-- `audit/audit.select.contract.test.tsx:167-217` — 键盘 ArrowDown 开、点击开、选项点击、Escape 关。
-- `audit/audit.select.contract.test.tsx:220-277` — 四值与地址/请求 byte-equal；换窗、翻页后控件与参数俱在。
-- `approvals/ApprovalsHistoryModulePage.test.tsx` — 84 处 click/断言；时间窗钮 disabled 真值门（L240-242）。
-- `tasks/TasksBoardModulePage.test.tsx:261-264` — disabled trigger 门 + 翻页点击联动。
-- `audit/audit.filters.test.tsx` — 四取值断言走 `selectHarness`，断言对象与强度未减。
-- `employees/employees.density.contract.test.ts:78` — 源码级 `not.toContain('<select')` 守卫在位。
-
-## 6. DoD ⑤ — 测试与构建（原始输出）
-
-```
-$ cd web && node_modules/.bin/vitest run src
- Test Files  502 passed (502)
-      Tests  3699 passed (3699)
-   Duration  53.93s
-vitest_exit=0
-
-# 定向预跑（改动文件）：
-$ cd web && node_modules/.bin/vitest run src/modules/runs/runs.filters.test.tsx \
-    src/modules/audit/audit.select.contract.test.tsx src/modules/audit/audit.filters.test.tsx \
-    src/modules/approvals/ApprovalsHistoryModulePage.test.tsx src/modules/tasks/TasksBoardModulePage.test.tsx
- Test Files  5 passed (5)
-      Tests  146 passed (146)
-
-$ cd web && node_modules/.bin/vite build
-✓ built in 16.62s
-build_exit=0
-```
-
-构建按仓规走 `node_modules/.bin/vite build`（pnpm task 在符号链接 worktree 被禁）。
-类型面：改动为注释与测试标题字符串，无类型触点；全量 vitest 与 bundling 门双绿。
-
-## 7. DoD ⑥ — 交付
-
-代码改动单笔 commit（§3 六文件七处），DONE.md 随后一笔，均推 `lane/L4-controls`。原始输出：
-
-```
-$ git add <§3 六文件> && git commit -m "refactor(web): clear native-select gate mentions in L4 write scope"
-[lane/L4-controls caea4cf0ee] refactor(web): clear native-select gate mentions in L4 write scope
- 6 files changed, 7 insertions(+), 7 deletions(-)
-（lefthook pre-commit 真跑：lint web ✔ 1.29s；未用 --no-verify）
-
-$ git push origin lane/L4-controls:refs/heads/lane/L4-controls
-To github.com:bigolokevin-bit/hermes-agent.git
- * [new branch]            lane/L4-controls -> lane/L4-controls
-push_exit=0
-
-$ git rev-parse HEAD
-caea4cf0eea91a676d145e41c73d0b354de01f68
-```
-
-本文件推送后，以定向 ref 回读远端 tip（命令：`git ls-remote origin refs/heads/lane/L4-controls`），
-其输出行 = 本 DONE.md 所在 commit；基线 `5710116161` 为该 tip 的祖先（`merge-base --is-ancestor` 成立）。
-
-## 8. 边界自查
-
-`git status --porcelain` 改动清单与 §3 表格逐一对应，无 shell/**、无 BFF、无 domain、
-无 package/lock 触点；未使用 force / --no-verify / install / spawn。
+- `vitest run src/modules/employees src/modules/duty`：**23 files / 219 tests 全过**（19:34）。
+- `tsc -b . --noEmit`：全仓 49 错（= 基线 49，duty/employees 模块 **0** 错）。
+- `vite build`：**EXIT=0**（5.64s）。
+- 环境注：期间邻居车道回收了 `forks/console-ui2` 检出；本 worktree node_modules 符号链接已改指主 fork（`pnpm-lock.yaml` blob 两侧同为 `5b993274a3432863665378a898e04bc9c05e9e3e`，依赖等价，未做任何 install）。
