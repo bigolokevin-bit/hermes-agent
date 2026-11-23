@@ -115,6 +115,9 @@ export function useApprovalsList(status: string | null, forced: ForcedState): Li
               : page.rows,
             unreadable: append ? prev.unreadable + page.unreadable : page.unreadable,
             next: nextRef.current,
+            // AP-01 清点结论：这是「跨页保住读口给过的真 total」，不是按条数推算——
+            // 两个分支的值都来自服务端顶层键（page.total / prev.total，prev 同样只可能
+            // 来自 page.total）；读口没给时恒 null，UI 侧只报「已加载 n 条（非全量）」。
             total: page.total ?? (append ? prev.total : null),
             failure: null,
             pageFailure: append ? prev.pageFailure : null,

@@ -1837,8 +1837,11 @@ describe("R79 cursor pagination and honest total (apv-page-*)", () => {
   it("states 「总数不可用」, pages with the real cursor and dedupes appended rows", async () => {
     await mount(twoPages, "/approvals?tab=history");
     await waitFor(() => !!qa("apr5-row-ap_g1"), "page one");
-    expect(qa("apv-page-count")?.textContent).toBe("总数不可用 · 已显示 1 条");
-    expect(qa("apv-page-count")?.getAttribute("title")).toContain("无 total 键");
+    // AP-01①：无 total 腿的分母句单点＝denominatorReadout ⇒「已加载 n 条（非全量）」。
+    // 「总数不可用 · 已显示 n 条」那套句式退出：它把游标缺失说成末页事实，也能被
+    // 读成总量，与本车道 DoD（队列内无按已加载条数推算的总量文案）冲突。
+    expect(qa("apv-page-count")?.textContent).toBe("已加载 1 条（非全量）");
+    expect(qa("apv-page-count")?.getAttribute("title")).toContain("没有 total 键");
     const more = qa("apv-page-more") as HTMLButtonElement;
     expect(more.disabled).toBe(false);
     expect(qa("apv-page-end"), "not at end yet").toBeNull();
@@ -1853,7 +1856,10 @@ describe("R79 cursor pagination and honest total (apv-page-*)", () => {
     expect(document.querySelectorAll('[data-testid^="apr5-row-ap_g"]').length, "duplicate row suppressed").toBe(2);
     expect((qa("apv-page-more") as HTMLButtonElement).disabled, "more disabled at end").toBe(true);
     expect(qa("apv-page-more")?.getAttribute("title")).toContain("已到末页");
-    expect(qa("apv-page-count")?.textContent).toBe("已到末页 · 已显示 2 条");
+    expect(qa("apv-page-count")?.textContent).toBe("已加载 2 条（非全量）");
+    // AP-01②：截断/到底的诚实说明随分母句上屏（本页 status 缺省＝扇出腿）。
+    expect(qa("apv-denominator-note")?.textContent, "fan-out truncation sentence").toContain("截断");
+    expect(qa("apv-denominator-note")?.textContent).toContain("非全量");
   });
 
   it("a status switch resets the list and never carries the stale cursor", async () => {
@@ -1874,9 +1880,9 @@ describe("R79 cursor pagination and honest total (apv-page-*)", () => {
     expect(fresh.every((u) => !u.includes("cursor=")), fresh.join("|")).toBe(true);
     await waitFor(() => !!qa("apr5-row-ap_g3"), "rows replaced");
     expect(qa("apr5-row-ap_g1"), "stale page gone").toBeNull();
-    // P1-A2 ② 改判：切换后的 fresh 页既无 total 也无 nextCursor（聚合首屏到末页），
-    // 新语义下 count 只说一句「已到末页」，与「总数不可用」不再并存。
-    expect(qa("apv-page-count")?.textContent).toBe("已到末页 · 已显示 1 条");
+    // AP-01①（原 P1-A2 ② 改判腿）：切换后的 fresh 页既无 total 也无 nextCursor，
+    // 分母句仍是「已加载 n 条（非全量）」——游标缺失不换成语句里的总量承诺。
+    expect(qa("apv-page-count")?.textContent).toBe("已加载 1 条（非全量）");
   });
 });
 
