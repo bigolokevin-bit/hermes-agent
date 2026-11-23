@@ -64,6 +64,11 @@ import {
   readLedger,
   readModelCost,
   readModelUsage,
+  readModelBreakdown,
+  sortModelBreakdown,
+  COST_LEDGER_SOURCE,
+  BYMODEL_COST_CALIBER,
+  BYMODEL_RATE_NOTE,
   readPricing,
   readRunStats,
   previousRange,
@@ -104,6 +109,7 @@ import {
   type LedgerRow,
   type BudgetLine,
   type ModelCostRow,
+  type ModelBreakdownRow,
   type ModelCostSort,
   type PriceRow,
   type StatHeatGrid,
@@ -208,6 +214,18 @@ type CmpState = { kind: 'loading' } | UsageBlock<CmpRow[]>;
 type ShareState =
   | { kind: 'loading' }
   | UsageBlock<{ rows: ModelCostRow[]; asOf: string | null; days: number; source: 'model' | 'employee' }>;
+
+// Q14 — the model axis (tokens / ledger cost / success rate) reads the same
+// /api/hermes-usage endpoint the other blocks use; it is its own block so a
+// failed read lands here only, never on the cards or the share table.
+type ByModelState =
+  | { kind: 'loading' }
+  | UsageBlock<{
+      rows: ModelBreakdownRow[];
+      asOf: string | null;
+      days: number;
+      costSource: string | null;
+    }>;
 
 type BudgetState =
   | { kind: 'loading' }
@@ -406,6 +424,7 @@ export function MetricsModulePage() {
   const [budget, setBudget] = useState<BudgetState>({ kind: 'loading' });
   const [cmp, setCmp] = useState<CmpState>({ kind: 'loading' });
   const [share, setShare] = useState<ShareState>({ kind: 'loading' });
+  const [byModel, setByModel] = useState<ByModelState>({ kind: 'loading' });
   const [heatAt, setHeatAt] = useState<string>(new Date().toISOString());
   const [attempt, setAttempt] = useState(0);
   // Fold aliases and unusable values into the canonical spelling once, on the
@@ -434,6 +453,7 @@ export function MetricsModulePage() {
     budget: BudgetState;
     cmp: CmpState;
     share: ShareState;
+    byModel: ByModelState;
   }>(null);
   const [refreshAt, setRefreshAt] = useState<string | null>(null);
   const [refreshError, setRefreshError] = useState<{ message: string; requestId: string | null } | null>(null);
@@ -751,9 +771,38 @@ export function MetricsModulePage() {
     });
   }, [weeks]);
 
+  // Q14-FIX — the byModel block does not own a request: the page already reads
+  // /api/hermes-usage wherever a model axis is shown, so the block parses the
+  // SAME body instead of asking the source a second time. Ownership follows the
+  // reader of that axis: share table (groupBy=model) > detail body (view=model)
+  // > the standalone fallback loader below (neither axis reads usage then).
+  const applyByModelBody = useCallback(
+    (signal: { live: boolean }, body: unknown, windowId: UsageWindowId) => {
+      const days = Math.max(1, Math.round(usageWindowOf(windowId).hours / 24));
+      const parsed = readModelBreakdown(body);
+      if (!signal.live) return;
+      if (parsed.kind === 'invalid') {
+        setByModel({ kind: 'unavailable', reason: parsed.reason, gap: USAGE_GAP, requestId: null });
+        return;
+      }
+      setByModel({
+        kind: 'ready',
+        value: { rows: sortModelBreakdown(parsed.rows), asOf: parsed.asOf, days, costSource: parsed.costSource },
+      });
+    },
+    [],
+  );
+
   const loadBreakdown = useCallback(
-    async (signal: { live: boolean }, windowId: UsageWindowId, view: 'employee' | 'model') => {
+    async (
+      signal: { live: boolean },
+      windowId: UsageWindowId,
+      view: 'employee' | 'model',
+      groupByNow: 'employee' | 'model',
+    ) => {
       setBreakdown({ kind: 'loading' });
+      // Owner mirror: this read carries the block when the share axis is not model.
+      if (view === 'model' && groupByNow !== 'model') setByModel({ kind: 'loading' });
       const preset = usageWindowOf(windowId);
       const days = Math.max(1, Math.round(preset.hours / 24));
       const now = new Date();
@@ -767,7 +816,11 @@ export function MetricsModulePage() {
       }
       try {
         if (view === 'model') {
-          const parsed = readModelUsage(await loadJson(`/agent-api/api/hermes-usage?days=${days}`));
+          // byModel ownership: when the share table is not the model axis, the
+          // detail body's read is the one usage read on the page — ride it too.
+          const usageBody = await loadJson(`/agent-api/api/hermes-usage?days=${days}`);
+          if (groupByNow !== 'model') applyByModelBody(signal, usageBody, windowId);
+          const parsed = readModelUsage(usageBody);
           if (parsed.kind === 'invalid') {
             setBreakdown({ kind: 'unavailable', reason: parsed.reason, gap: null, requestId: null });
             return;
@@ -849,19 +902,22 @@ export function MetricsModulePage() {
       } catch (error) {
         if (!signal.live) return;
         setBreakdown({ kind: 'unavailable', ...blockFailure(error) });
+        // When this read is the block's owner (model detail without a model share
+        // table), the failure belongs to the byModel block as well.
+        if (view === 'model' && groupByNow !== 'model') setByModel({ kind: 'unavailable', ...blockFailure(error) });
       }
     },
-    [loadJson],
+    [loadJson, applyByModelBody],
   );
 
   useEffect(() => {
     if (forced) return;
     const signal = { live: true };
-    void loadBreakdown(signal, usageWindow.id, viewMode);
+    void loadBreakdown(signal, usageWindow.id, viewMode, groupBy);
     return () => {
       signal.live = false;
     };
-  }, [attempt, forced, loadBreakdown, usageWindow.id, viewMode]);
+  }, [attempt, forced, loadBreakdown, usageWindow.id, viewMode]); // eslint-disable-line react-hooks/exhaustive-deps -- groupBy is an argument, not a driver: switching it re-lands byModel through the loadShare / loadByModel effects, so this loader must not refetch the whole ledger on a grouping toggle.
 
   const loadHeat = useCallback(async (signal: { live: boolean }) => {
     setHeat({ kind: 'loading' });
@@ -1056,11 +1112,16 @@ export function MetricsModulePage() {
 
   const loadShare = useCallback(async (signal: { live: boolean }, windowId: UsageWindowId, view: 'model' | 'employee') => {
     setShare({ kind: 'loading' });
+    // Owner mirror: the model share read carries the byModel block.
+    if (view === 'model') setByModel({ kind: 'loading' });
     const preset = usageWindowOf(windowId);
     const days = Math.max(1, Math.round(preset.hours / 24));
     try {
       if (view === 'model') {
-        const parsed = readModelCost(await loadJson(`/agent-api/api/hermes-usage?days=${days}`));
+        // byModel rides this read (ownership: the share table is the model axis).
+        const usageBody = await loadJson(`/agent-api/api/hermes-usage?days=${days}`);
+        applyByModelBody(signal, usageBody, windowId);
+        const parsed = readModelCost(usageBody);
         if (!signal.live) return;
         if (parsed.kind === 'invalid') {
           setShare({ kind: 'unavailable', reason: parsed.reason, gap: USAGE_GAP, requestId: null });
@@ -1103,8 +1164,9 @@ export function MetricsModulePage() {
     } catch (error) {
       if (!signal.live) return;
       setShare({ kind: 'unavailable', ...blockFailure(error) });
+      if (view === 'model') setByModel({ kind: 'unavailable', ...blockFailure(error) });
     }
-  }, [loadJson]);
+  }, [loadJson, applyByModelBody]);
 
   useEffect(() => {
     if (forced) return;
@@ -1114,6 +1176,52 @@ export function MetricsModulePage() {
       signal.live = false;
     };
   }, [attempt, forced, groupBy, loadShare, usageWindow.id]);
+
+  // Q14 — the byModel block reads /api/hermes-usage?days=N, the one BFF endpoint
+  // carrying per-model data; it never invents a second source.
+  // Q14-FIX — fallback only. Ownership follows the readers of that source: the
+  // share table when groupBy=model, the detail body when view=model (both toggles
+  // are pinned to NOT refetch usage, so the axes arrive as arguments). This leg
+  // reads the source only when no model axis does — one mount, one read.
+  const loadByModel = useCallback(
+    async (
+      signal: { live: boolean },
+      windowId: UsageWindowId,
+      groupByNow: 'employee' | 'model',
+      viewNow: 'employee' | 'model',
+    ) => {
+      if (groupByNow === 'model' || viewNow === 'model') return;
+      setByModel({ kind: 'loading' });
+      const preset = usageWindowOf(windowId);
+      const days = Math.max(1, Math.round(preset.hours / 24));
+      try {
+        const parsed = readModelBreakdown(await loadJson(`/agent-api/api/hermes-usage?days=${days}`));
+        if (!signal.live) return;
+        if (parsed.kind === 'invalid') {
+          setByModel({ kind: 'unavailable', reason: parsed.reason, gap: USAGE_GAP, requestId: null });
+          return;
+        }
+        setByModel({
+          kind: 'ready',
+          value: { rows: sortModelBreakdown(parsed.rows), asOf: parsed.asOf, days, costSource: parsed.costSource },
+        });
+      } catch (error) {
+        if (!signal.live) return;
+        setByModel({ kind: 'unavailable', ...blockFailure(error) });
+      }
+    },
+    [loadJson],
+  );
+
+  useEffect(() => {
+    if (forced) return;
+    const signal = { live: true };
+    void loadByModel(signal, usageWindow.id, groupBy, viewMode);
+    return () => {
+      signal.live = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the axes are arguments, not drivers: a grouping or detail toggle must not refetch usage (metS); attempt / window / remount refreshes re-decide ownership with the current values.
+  }, [attempt, forced, loadByModel, usageWindow.id]);
 
 
   // metAK — one manual refresh reads the whole page once: the seven loaders run
@@ -1132,7 +1240,7 @@ export function MetricsModulePage() {
     const signal = { live: true };
     refreshSignalRef.current = signal;
     refreshBusyRef.current = true;
-    setRefreshSnapshot({ state, usage, breakdown, heat, budget, cmp, share });
+    setRefreshSnapshot({ state, usage, breakdown, heat, budget, cmp, share, byModel });
     setRefreshBusy(true);
     setRefreshError(null);
 
@@ -1143,11 +1251,12 @@ export function MetricsModulePage() {
     await Promise.allSettled([
       load(signal),
       loadUsage(signal, usageWindow.id),
-      loadBreakdown(signal, usageWindow.id, viewMode),
+      loadBreakdown(signal, usageWindow.id, viewMode, groupBy),
       loadHeat(signal),
       loadBudget(signal, usageWindow.id),
       loadCmp(signal),
       loadShare(signal, usageWindow.id, groupBy),
+      loadByModel(signal, usageWindow.id, groupBy, viewMode),
     ]);
 
     if (!signal.live) return;
@@ -1185,6 +1294,7 @@ export function MetricsModulePage() {
   const shownBudget = refreshBusy && refreshSnapshot ? refreshSnapshot.budget : budget;
   const shownCmp = refreshBusy && refreshSnapshot ? refreshSnapshot.cmp : cmp;
   const shownShare = refreshBusy && refreshSnapshot ? refreshSnapshot.share : share;
+  const shownByModel = refreshBusy && refreshSnapshot ? refreshSnapshot.byModel : byModel;
 
   const view: PageState = forced
     ? forced === 'loading'
@@ -1406,6 +1516,48 @@ export function MetricsModulePage() {
     if (row.costUsd === null) return sum;
     return (sum ?? 0) + row.costUsd;
   }, null) : null;
+
+  // Q14 — one place turns the model-axis rows into faces; missing primitives
+  // read 未接 (no source), never 0, and the whole-window success rate is never
+  // copied into a per-model cell.
+  const byModelView: ByModelState = forced
+    ? forced === 'loading'
+      ? { kind: 'loading' }
+      : forced === 'empty'
+        ? { kind: 'ready', value: { rows: [], asOf: null, days: Math.max(1, Math.round(usageWindow.hours / 24)), costSource: null } }
+        : {
+            kind: 'unavailable',
+            reason:
+              forced === 'denied'
+                ? '这项数据当前读不到：可能还没有接入，也可能当前账号没有查看权限。'
+                : '这次没能读取这项数据，请稍后重试。',
+            gap: forced === 'denied' ? USAGE_GAP : null,
+            requestId: null,
+          }
+    : shownByModel;
+
+  const byModelRows =
+    byModelView.kind === 'ready'
+      ? byModelView.value.rows.map((row, index) => {
+          const slug = row.model.replace(/[^0-9a-zA-Z]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase() || `row-${index}`;
+          return { ...row, slug };
+        })
+      : [];
+  const byModelCostShares = shareOfCosts(byModelRows.map((row) => row.costUsd));
+  const byModelCostTitleNull =
+    byModelView.kind === 'ready' && byModelView.value.costSource !== null && byModelView.value.costSource !== COST_LEDGER_SOURCE
+      ? `账本声明的成本来源是 ${byModelView.value.costSource}，不是 cost_ledger，本表不采信金额。`
+      : '这一行没有 cost_ledger 实扣行；不按 0 计。';
+  const byModelTotals = {
+    input: sumOrNull(byModelRows.map((row) => row.inputTokens)),
+    output: sumOrNull(byModelRows.map((row) => row.outputTokens)),
+    total: sumOrNull(byModelRows.map((row) => row.tokenTotal)),
+    calls: sumOrNull(byModelRows.map((row) => row.apiCalls)),
+    sessions: sumOrNull(byModelRows.map((row) => row.sessions)),
+    cost: sumOrNull(byModelRows.map((row) => row.costUsd)),
+    share: shareOfWhole(byModelRows.map((row) => row.costUsd), sumOrNull(byModelRows.map((row) => row.costUsd))),
+  };
+  const bmCell = (value: number | null): string => (value === null ? '未接' : formatCount(value));
 
   // metS — a group switch keeps the time window and the share-table sort, but
   // the detail table's own sort returns to its default (cost, descending) and
@@ -3150,6 +3302,96 @@ export function MetricsModulePage() {
                     「查看运行」按同一个时间窗打开运行列表——运行页暂不支持按模型筛选，这里不假装过滤。
                   </p>
                 )}
+              </>
+            ) : null}
+          </div>
+
+          <div className="metBM" data-testid="metBM-by-model">
+            <div className="met6-cat-head">
+              <div>
+                <h3>按模型拆解</h3>
+                <p className="met6-rowsub" data-testid="metBM-caliber-cost">{BYMODEL_COST_CALIBER}</p>
+                <p className="met6-rowsub" data-testid="metBM-caliber-rate">{BYMODEL_RATE_NOTE}</p>
+              </div>
+            </div>
+            {byModelView.kind === 'loading' ? (
+              <Card data-testid="metBM-loading">
+                <CardContent className="p-4"><div className="met5-skeleton h-24 w-full" /></CardContent>
+              </Card>
+            ) : null}
+            {byModelView.kind === 'unavailable' ? (
+              <Card data-testid="metBM-error">
+                <CardContent className="space-y-2 p-4">
+                  <p className="font-medium">这份按模型拆解暂时读不到</p>
+                  <p className="text-sm text-muted-foreground" title={byModelView.gap ?? undefined}>{byModelView.reason}</p>
+                  <RequestId id={byModelView.requestId} />
+                  <Button size="sm" outlined onClick={() => setAttempt((value) => value + 1)} data-testid="metBM-retry">重试</Button>
+                </CardContent>
+              </Card>
+            ) : null}
+            {byModelView.kind === 'ready' && byModelRows.length === 0 ? (
+              <Card data-testid="metBM-empty">
+                <CardContent className="space-y-2 p-4">
+                  <p className="font-medium">这个窗口没有按模型的用量记录</p>
+                  <p className="text-sm text-muted-foreground">上游没有返回任何模型行，因此不画空表、不报 0 条，也不把「没有记录」当成「花费 0」。</p>
+                </CardContent>
+              </Card>
+            ) : null}
+            {byModelView.kind === 'ready' && byModelRows.length > 0 ? (
+              <>
+                <p className="metW-scroll-hint" data-testid="metW-scroll-hint-bymodel">左右滑动查看全部列</p>
+                <div className="met6-table-scroll metW-table" role="region" tabIndex={0} aria-label="按模型拆解表，可横向滚动" data-testid="metW-scroll-bymodel" onKeyDown={handleTableScrollKeys}>
+                  <table className="met6-table" data-testid="metBM-table">
+                    <caption className="metG-caption" data-testid="metBM-caption">{`按模型拆解：${usageWindow.label} · token / 成本 / 成功率`}</caption>
+                    <thead>
+                      <tr>
+                        <th scope="col">模型</th>
+                        <th scope="col" className="met6-num metAF-nowrap" title="上游 input_tokens；单位：token">输入 tokens</th>
+                        <th scope="col" className="met6-num metAF-nowrap" title="上游 output_tokens；单位：token">输出 tokens</th>
+                        <th scope="col" className="met6-num metAF-nowrap" title="输入与输出相加；全缺显示「未接」">Tokens 合计</th>
+                        <th scope="col" className="met6-num metAF-nowrap" title="上游 api_calls；单位：次">调用次数</th>
+                        <th scope="col" className="met6-num metAF-nowrap" title="上游 sessions；单位：次">会话数</th>
+                        <th scope="col" className="met6-num metAF-nowrap" title="金额单位：美元（USD），两位小数；只认 cost_ledger 实扣">成本（USD）</th>
+                        <th scope="col" className="met6-num metAF-nowrap" title="占本窗口可读实扣的比例，单位：百分比，一位小数">成本占比（%）</th>
+                        <th scope="col" className="met6-num metAF-nowrap" title="按模型的成功率数据源现网未提供；不拿整窗成功率顶替">成功率</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {byModelRows.map((row, index) => (
+                        <tr key={`${row.model}-${row.slug}`} className="met7-row" data-testid={`metBM-row-${row.slug}`}>
+                          <td className="met7-model" title={row.model}>{row.model}</td>
+                          <td className="met6-num" data-testid={`metBM-tokIn-${row.slug}`}>{bmCell(row.inputTokens)}</td>
+                          <td className="met6-num" data-testid={`metBM-tokOut-${row.slug}`}>{bmCell(row.outputTokens)}</td>
+                          <td className="met6-num" data-testid={`metBM-tokTotal-${row.slug}`}>{bmCell(row.tokenTotal)}</td>
+                          <td className="met6-num" data-testid={`metBM-calls-${row.slug}`}>{bmCell(row.apiCalls)}</td>
+                          <td className="met6-num" data-testid={`metBM-sessions-${row.slug}`}>{bmCell(row.sessions)}</td>
+                          <td className="met6-num" data-testid={`metBM-cost-${row.slug}`} title={row.costUsd === null ? byModelCostTitleNull : 'cost_ledger 实扣 USD'}>{row.costUsd === null ? '未接' : formatUsd(row.costUsd)}</td>
+                          <td className="met6-num" data-testid={`metBM-share-${row.slug}`}>{formatSharePct(byModelCostShares[index])}</td>
+                          <td className="met6-num" data-testid={`metBM-rate-${row.slug}`} title={BYMODEL_RATE_NOTE}>{row.successRate === null ? '未接' : formatRate(row.successRate)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr className="metT-total" data-testid="metBM-total-row">
+                        <th scope="row">合计</th>
+                        <td className="met6-num" data-testid="metBM-total-tokIn">{bmCell(byModelTotals.input)}</td>
+                        <td className="met6-num" data-testid="metBM-total-tokOut">{bmCell(byModelTotals.output)}</td>
+                        <td className="met6-num" data-testid="metBM-total-tokTotal">{bmCell(byModelTotals.total)}</td>
+                        <td className="met6-num" data-testid="metBM-total-calls">{bmCell(byModelTotals.calls)}</td>
+                        <td className="met6-num" data-testid="metBM-total-sessions">{bmCell(byModelTotals.sessions)}</td>
+                        <td className="met6-num" data-testid="metBM-total-cost">{byModelTotals.cost === null ? '未接' : formatUsd(byModelTotals.cost)}</td>
+                        <td className="met6-num" data-testid="metBM-total-share">{formatSharePct(byModelTotals.share)}</td>
+                        <td className="met6-num" data-testid="metBM-total-rate">未接</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+                <p className="met6-source" data-testid="metBM-source">
+                  来源：模型用量接口 · 截至{' '}
+                  {byModelView.value.asOf ? formatBeijing(byModelView.value.asOf) : '—'} · 窗口 {byModelView.value.days} 天 · 成本来源{' '}
+                  <span className="font-mono">{byModelView.value.costSource ?? '未标注'}</span>
+                </p>
+                <p className="met6-hint" data-testid="metBM-missing-note">「未接」= 现网接口在这一格没有数据源；真实 0 会原样显示 0 或 $0.00，缺失不按 0 计。</p>
               </>
             ) : null}
           </div>

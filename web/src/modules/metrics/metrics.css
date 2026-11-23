@@ -456,6 +456,13 @@
   overflow-wrap: anywhere;
 }
 
+.metBM {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
 .met6-rowsub {
   display: block;
   margin-top: var(--space-1);
