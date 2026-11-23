@@ -273,7 +273,13 @@ describe("DU-02② 固定槽位：每卡一个主数字／一句状态／一个�
     await mount({ runs: 3, employees: 2, budget: 2 });
     const card = cardBy("duty-ready");
     expect(card.querySelector('[data-duty-testid="duty-ready-value"]')?.textContent).toContain("已确认");
-    expect(noteText("duty-ready-denominator")).toContain("分母口径");
+    // DU-08①·D1：屏上句改成「分母：」＋同一条动态真数（披露内容一字未减），
+    // 「比率分母怎么算」的定义收进 glossary duty.denominator，由卡外折叠区的
+    // InfoHint 承载（卡内不得摆按钮，见同文件「正常态不许摆按钮」）。
+    expect(noteText("duty-ready-denominator")).toContain("分母：");
+    expect(noteText("duty-denominator-caliber"), "分母定义只在 InfoHint 一处").toContain(
+      "本页 2 人",
+    );
     expect(cardBy("duty-ready").querySelector("a")?.getAttribute("href")).toBe("/employees");
   });
 });

@@ -18,7 +18,7 @@ import { epochOf, timeTitle } from "./RelativeTime";
 import { APPROVAL_RID_MISSING, FIELD_MISSING_SENTENCE } from "./stateCopy";
 import type { ApprovalRow } from "./model";
 
-/** 同一拼装单点：每行 标签：值；缺值句与屏上同口径。 */
+/** 同一拼装单点：每行 标签：值；缺值句与屏上同形制。 */
 export function rowDetailText(row: ApprovalRow): string {
   const submitted = epochOf(row.submittedAt);
   const decided = epochOf(row.decidedAt);
@@ -59,7 +59,7 @@ export function RowDetailCopy({ row }: { row: ApprovalRow | null }) {
         title={
           text === null
             ? "先展开一行审批再复制"
-            : "复制这一行的预览详情为纯文本（标题/状态/风险档/时间/审批人/请求编号，缺值句与屏上同口径）；只读已加载行数据，不产生请求。"
+            : "复制这一行的预览详情为纯文本（标题/状态/风险档/时间/审批人/请求编号，缺值句与屏上同形制）；只读已加载行数据，不产生请求。"
         }
         onClick={copy}
       >

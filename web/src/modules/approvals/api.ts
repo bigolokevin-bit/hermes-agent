@@ -276,7 +276,7 @@ export function isUnknownOutcome(err: unknown, info: FailureInfo): boolean {
 
 /**
  * AP-05 ③：结果未知后的唯一后继——恰好一次 GET 读回票面（同一个详情读口
- * `/api/approval?id=`，看 status/decisions 再决定；deep/03 §3.4 口径）。
+ * `/api/approval?id=`，看 status/decisions 再决定；deep/03 §3.4 判据）。
  * 本函数只读不写；submitDecisionWithRecovery 的每个未知分支只调它一次、
  * 绝不重发 POST（approvals.idempotency.test.tsx 以请求计数钉死第二 POST 不发生）。
  */
@@ -300,7 +300,7 @@ export async function readBackDecisionTicket(id: string): Promise<ApprovalDetail
  * 都不许出现在这条腿上。
  *
  * 形制注记：本腿走原始 fetch（要的是状态码+Allow+顶层码这三件确定事实，
- * fetchJSON 在 4xx 上抛结构化错、丢 Allow 头，判据就没了）。凭据口径与读口一致：
+ * fetchJSON 在 4xx 上抛结构化错、丢 Allow 头，判据就没了）。凭据形制与读口一致：
  * 只随 cookie（credentials include）＋ 网关注入的会话 token 头，内部服务凭据
  * 不出浏览器、不手写 Authorization。反代前缀部署（__HERMES_BASE_PATH__ 非空）下
  * 相对路径会打到前缀外的口 ⇒ 答复非确定 ⇒ unknown ⇒ 按关，保守且诚实。

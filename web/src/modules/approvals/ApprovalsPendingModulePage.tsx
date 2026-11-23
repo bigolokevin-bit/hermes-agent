@@ -158,7 +158,7 @@ export function ApprovalsPendingModulePage(): ReactNode {
 
   // AP-01 分母事实（单点）。本 tab 恒发 `status=pending`＝BFF 的单态透传腿
   // （_approvals_alias_map 只补行别名，不补 total），实测顶层 keys=[items,nextCursor]
-  // ⇒ list.total 恒 null；屏上任何总数口径都必须引用这一份事实，禁按 rows.length 推算。
+  // ⇒ list.total 恒 null；屏上任何总数措辞都必须引用这一份事实，禁按 rows.length 推算。
   // 「全部」扇出腿（history 的 status=all/缺省）走同一个 denominatorReadout，两路同形。
   const denominator = useMemo(
     () => ({
@@ -610,7 +610,7 @@ export function ApprovalsPendingModulePage(): ReactNode {
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           {/* P1-375-1: 同屏主按钮唯一——批准是这张单的最主操作，保持实心；
               驳回降为次级（既有 outlined×destructive 组合样式），文案与 testid 不动。
-              P0-1r/AP-04①: 三属性同源于 DECISION_GATE（runs 的 run5-retry-new 口径），
+              P0-1r/AP-04①: 三属性同源于 DECISION_GATE（runs 的 run5-retry-new 形制），
               它自 AP-04 起是「探测 ∧ 旗标 ∧ 负例证明」的合取活视图——开闸后代不再删
               常量，而是让三输入各自变真；onClick 与确认流原样保留。 */}
           <Button
@@ -773,7 +773,7 @@ export function ApprovalsPendingModulePage(): ReactNode {
           <ActorBuckets rows={riskBaseRows} phase={list.phase} actor={actor} onPick={pickActor} hasMore={hasMore} />
           <SinceQuickFilter phase={list.phase} since={since} loadedCount={list.rows.length} onPick={pickSince} hasMore={hasMore} />
           <RiskQuickFilter rows={actorBaseRows} phase={list.phase} risk={risk} onPick={pickRisk} hasMore={hasMore} />
-          {/* P1-A1: 三行元说明（动作矩阵/键盘导航/本地排序口径）收进面板尾——
+          {/* P1-A1: 三行元说明（动作矩阵/键盘导航/本地排序范围）收进面板尾——
               testid 与文案逐字不变，收起时随面板卸载，展开即见。 */}
           <QueueMetaNotes phase={list.phase} loadedCount={list.rows.length} hasMore={hasMore} />
         </div>

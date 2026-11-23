@@ -414,7 +414,7 @@ export interface ApprovalRow {
   decided: string | null;
   /**
    * 批量 P0: the real change kind, honored only from changeKind/binding.changeKind
-   * (R25 口径：顶层 kind/type 是审批类不是变更类型)。缺了就是缺了，raw 为 null，
+   * (R25 判据：顶层 kind/type 是审批类不是变更类型)。缺了就是缺了，raw 为 null，
    * 门控据此「判不了就不批量」，绝不推断。
    */
   changeKind: { label: string; raw: string | null };
@@ -510,7 +510,7 @@ export interface ApprovalPage {
    *     且跨态 cursor 恒为 None、合并后按 limit 截断；
    *   单态透传（如 status=expired/pending）→ keys=[items]（无游标即无续页）。
    * 这里解析 total|count 只为契约升级预留；缺省恒 null。null 是「读口没说」，
-   * 不是「0」也不是「rows.length」——UI 侧唯一的分母口径见 QueueSummaryBar 的
+   * 不是「0」也不是「rows.length」——UI 侧唯一的分母来源见 QueueSummaryBar 的
    * denominatorReadout()，禁在任何地方用本页已加载条数推算总量。 */
   total: number | null;
 }
@@ -588,7 +588,7 @@ export interface ApprovalDiff {
  * 形制来自 2026-11-23 本机金标准实测（evidence/raw-detail-*.json）：
  * 只有 employee_version_create 的单带回 detail.changeDetail/resource 的
  * 字段级前后值；message_send / grant_escalation 实测没有差异载体。
- * 分支只认 changeKind|change_kind|binding.changeKind（R25 口径，顶层
+ * 分支只认 changeKind|change_kind|binding.changeKind（R25 判据，顶层
  * type=business_action 是审批类不是变更类型），未知类型不推断成任何已知类。
  * ------------------------------------------------------------------ */
 
@@ -596,7 +596,7 @@ export interface ApprovalDiff {
 export const VERSION_CHANGE_KIND = "employee_version_create";
 
 export type DiffBranch =
-  /** 员工版本变更：响应载体出字段级行；缺载体时按相邻版本口径说「未提供」。 */
+  /** 员工版本变更：响应载体出字段级行；缺载体时按相邻版本判据说「未提供」。 */
   | { kind: "version"; state: "rows" | "carrier-empty" | "no-carrier" }
   /** 已知但不带差异数据源的变更类型（message_send / grant_escalation / …）。 */
   | { kind: "no-source"; label: string; raw: string }

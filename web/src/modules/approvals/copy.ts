@@ -202,7 +202,7 @@ export function recordsFailureSentence(status: number): string {
 /* ------------------------------------------------------------------ *
  * AP-05 ②③ — 提交结果的「回填票面」与「结果未知」句（单点措辞）。
  *
- * 域口径（services/domain/approvals.py decide_approval，盘读 2026-11-24）：
+ * 域判据（services/domain/approvals.py decide_approval，盘读 2026-11-24）：
  * 幂等键＝(approval_id, user_id)；同键重放（含双击）答 200 并带回整张票面，
  * 这些分支是成功侧——措辞不出现「失败/出错/没能」，票面节点沿用 DecisionTrail
  * 的「who · 结论 · 时间 · 意见」形制与 TRAIL_FACE_RECORDED 标注。

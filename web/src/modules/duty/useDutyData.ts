@@ -177,7 +177,7 @@ interface LegDeps {
  * 单腿「原请求」的唯一出处：collect 首读与 retryLegs 重试都从这张表取闭包，
  * 保证重试重发的就是原请求（同 URL、同参数、同窗口推导），不存在第二套拼法。
  * OM-04④：activity 的消费者开关也挂在这张表上，于是首读与单卡重试走的是
- * 同一条受开关约束的路，不会出现「首读不发、重试却发」的第二套口径。
+ * 同一条受开关约束的路，不会出现「首读不发、重试却发」的第二套走法。
  */
 function legRequests(rangeId: DutyRangeId, deps: LegDeps, opts: DutyReadOpts = {}) {
   const range = dutyRange(rangeId);

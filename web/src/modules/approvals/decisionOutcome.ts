@@ -7,7 +7,7 @@
  *    都以「该键的票在单上」为前提，票面已落定时「你已经投过票」为真话。
  * 2. 409 只会来自 idempotency key 复用且请求体不一致（先例
  *    docs/_artifacts/D/T03-ENDPOINT-RECONCILIATION.md L137-141；本 worktree 盘上
- *    无该文件，口径按总控转述落注）——人话提示冲突，**不重试**。
+ *    无该文件，判据按总控转述落注）——人话提示冲突，**不重试**。
  * 3. 超时/断连＝结果未知，客户端分不出「票已记上但回执没回来」与「根本没记上」；
  *    唯一后继是恰好一次 GET 读回（api.ts readBackDecisionTicket），看
  *    status/decisions 再决定。本模块任何分支都不存在第二次 POST 路径——

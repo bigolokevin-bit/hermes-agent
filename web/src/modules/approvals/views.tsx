@@ -87,7 +87,7 @@ function Field({
 
 // R80: 长值单行截断——阈值与字符截断形态集中在这一处；行卡/行内预览/详情主体/
 // trail 全走同一助手，屏上显截断值、title 恒全文（与复制/导出的全文同源同值）。
-// 不超过阈值不加省略号也不加 title；空值走各自既有缺值口径，不进本助手。
+// 不超过阈值不加省略号也不加 title；空值走各自既有缺值句，不进本助手。
 export const TRUNCATE_LIMIT = 60;
 
 export function truncateDisplay(text: string): { shown: string; full: string | null } {
@@ -333,7 +333,7 @@ export function ApprovalRowCard({
               />
               {/* R65 parity: the risk reads exactly what the detail badge
                 * reads (riskView 同值，缺值=「未标注风险」)；时间走 decided —
-                * 与详情的「决定时间」同一键序同一助手。缺字段口径=「该字段未返回」。 */}
+                * 与详情的「决定时间」同一键序同一助手。缺字段判定=「该字段未返回」。 */}
               <Field
                 label="风险档"
                 muted
@@ -659,7 +659,7 @@ export function DecisionTrail({ detail }: { detail: ApprovalDetail }): ReactNode
           readOnly
           rows={8}
           aria-label="决策链路文本（手动复制）"
-          title="剪贴板不可用时的兜底：全选后手动复制；文本与屏上链路同序同口径。"
+          title="剪贴板不可用时的兜底：全选后手动复制；文本与屏上链路同序同形制。"
           className="w-full min-w-0 rounded-sm border border-border bg-transparent p-2 font-mono text-xs"
           value={copyText}
           onFocus={(e) => e.currentTarget.select()}
@@ -879,7 +879,7 @@ export function ProcessingRecords({ detail }: { detail: ApprovalDetail }): React
 /* ------------------------------------------------------------------ *
  * AP-02 差异分区——Q13「变更差异 · 字段级（只读）」段的 changeKind 分支版。
  *
- * 分支口径（backlog §AP-02 步骤①，四类各有确定形态）：
+ * 分支判据（backlog §AP-02 步骤①，四类各有确定形态）：
  *  ① employee_version_create + 响应带差异键 → 字段级前/后行（与 Q13 同形同键）
  *     ＋ 相邻版本核对腿（GET /api/employee-versions?id=，BFF 既有端点，
  *     不新增端点）：把 fromVersionId 对进版本链，能说 v几→v几 才说；

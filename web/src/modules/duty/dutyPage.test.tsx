@@ -160,7 +160,10 @@ describe("DutyPage", () => {
     expect(readyValue).not.toMatch(/\d+(\.\d+)?%/);
     expect(text).toContain("待核实");
     expect(container.querySelector('[data-testid="duty-ready-denominator"]')?.textContent ?? "").toContain(
-      "分母口径：目录已加载 1 条",
+      // DU-08①·D1：标签词「分母口径」收进 glossary duty.denominator（折叠区 InfoHint 承载），
+      // 卡内仍留同一条动态真数句——披露内容一字未减，只去掉禁词词面（卡内零按钮，
+      // 见 duty.slotCounts「正常态不许摆按钮」）。
+      "分母：目录已加载 1 条",
     );
     expect(text).not.toContain("HTTP");
   });
