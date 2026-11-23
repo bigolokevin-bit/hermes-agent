@@ -40,6 +40,9 @@ import {
   formatCount,
   formatSharePct,
   formatUsd,
+  fanoutCoveredDays,
+  FANOUT_REQUEST_BUDGET,
+  shareCoverageNote,
   shareOf,
   sortDetailLines,
   sumOrNull,
@@ -892,3 +895,51 @@ describe("R160 ⑤ the same readings at three widths", () => {
 function paramsDir(search: string): SortDir {
   return new URLSearchParams(search).get("ddir") === "asc" ? "asc" : "desc";
 }
+
+/*
+ * MT-05 取数策略债的第一条：24 小时档在用量读口上被折叠成整天（days=1 的今日
+ * 整日账）。卡里裁定「不改行为，只明示」，所以这里钉的是屏上那句话的在场与缺席，
+ * 不是请求形制——请求仍走 `?days=1`，那是上面 R160 ① 已经钉过的契约。
+ */
+describe("MT-05 ⑥ the 24h window says it reads whole days", () => {
+  it("writes the day caliber under the window buttons, verbatim", async () => {
+    await mount("/metrics");
+    // 默认档就是 24 小时，明示句才有理由出现。
+    expect(q("met6-window-24h")?.getAttribute("aria-pressed")).toBe("true");
+    const note = q("metU-24h-daycaliber-note");
+    expect(note).not.toBeNull();
+    expect(note?.textContent ?? "").toContain("该读口按整天记账，24 小时档取的是今日整日账。");
+  });
+
+  it("says nothing extra for a window that is whole days anyway", async () => {
+    await mount("/metrics?window=7d");
+    expect(q("met6-window-7d")?.getAttribute("aria-pressed")).toBe("true");
+    expect(q("metU-24h-daycaliber-note")).toBeNull();
+  });
+});
+
+/*
+ * MT-05 的第二条：员工份额扇出的请求预算。纯函数例留在这里，是因为口径（预算、
+ * 截断方向、什么时候才有这句话）本身就是这条腿的契约；DOM 侧的请求增量在
+ * `metrics.requests.test.tsx` 里数。
+ */
+describe("MT-05 ⑦ the fan-out budget as a pure contract", () => {
+  it("keeps the most recent days when the fan-out would exceed the budget", () => {
+    expect(FANOUT_REQUEST_BUDGET).toBe(12);
+    // 12 天 × 4 片 = 48 次 ⇒ 每片只保 3 天。
+    expect(fanoutCoveredDays(12, 4)).toBe(3);
+    // 预算内不动：7 天 × 1 片 = 7 次。
+    expect(fanoutCoveredDays(7, 1)).toBe(7);
+    // 30 天单片也要砍：30 > 12 ⇒ 12 天（每个分片至少保 1 天）。
+    expect(fanoutCoveredDays(30, 1)).toBe(12);
+    expect(fanoutCoveredDays(30, 4)).toBe(3);
+    // 没有分片就没有扇出，整窗照读。
+    expect(fanoutCoveredDays(30, 0)).toBe(30);
+  });
+
+  it("only speaks when a cut actually happened", () => {
+    expect(shareCoverageNote(12, 3)).toBe("仅覆盖近 3 天，非全窗");
+    expect(shareCoverageNote(30, 12)).toBe("仅覆盖近 12 天，非全窗");
+    expect(shareCoverageNote(7, 7)).toBeNull();
+  });
+});

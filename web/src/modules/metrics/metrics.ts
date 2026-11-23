@@ -1,4 +1,6 @@
 // Module: metrics — 7×24 run activity heatmap.
+import { ApiError } from '@/lib/api-error';
+
 import { ASOF_KEYS, readAsOf } from './asof';
 //
 // The activity endpoint aggregates runs by (weekday, hour) over a rolling
@@ -232,6 +234,8 @@ export interface RunTotals {
   failed: number | null;
   running: number | null;
   sampleCount: number | null;
+  /** 95th-percentile run duration; the contract omits it below 20 samples. */
+  p95DurationMs: number | null;
   successRate: number | null;
 }
 
@@ -256,6 +260,7 @@ function totalsOf(raw: Record<string, unknown>): RunTotals {
     failed: numberOrNull(raw.failed),
     running: numberOrNull(raw.running),
     sampleCount: numberOrNull(raw.sampleCount),
+    p95DurationMs: numberOrNull(raw.p95DurationMs),
     successRate: numberOrNull(raw.successRate),
   };
 }
@@ -429,6 +434,26 @@ export function chunkIds(ids: string[], size = LEDGER_CHUNK): string[][] {
   return chunks;
 }
 
+/** 员工份额扇出的请求预算（一次读 = 一天 × 一个 id 分片）。30 天 × 200 人
+ *  会发 120 次读，一次切窗就是一场取数风暴；封顶 12 次。 */
+export const FANOUT_REQUEST_BUDGET = 12;
+
+/**
+ * 闸门落在「按最近日优先截断」而不是「读不到」：份额表读的是天账，少几天只是
+ * 覆盖变窄（屏上必须明示），比整块空掉更接近读者的问题。预算内整窗照读；超限时
+ * 每个分片至少保 1 天（floor(预算/分片数)，最少 1）。
+ */
+export function fanoutCoveredDays(days: number, chunks: number): number {
+  if (chunks <= 0 || days * chunks <= FANOUT_REQUEST_BUDGET) return days;
+  return Math.max(1, Math.floor(FANOUT_REQUEST_BUDGET / chunks));
+}
+
+/** 只在真发生截断时说一句话。口径是「非全窗」：没读到的天数不补 0，合计照旧只
+ *  加可读到的行，所以这里不换算、不改格式，只把覆盖范围写在屏上。 */
+export function shareCoverageNote(days: number, coveredDays: number): string | null {
+  return coveredDays < days ? `仅覆盖近 ${coveredDays} 天，非全窗` : null;
+}
+
 export interface SparkSlot {
   hour: number;
   runs: number | null;
@@ -548,6 +573,40 @@ export function formatUnitPrice(value: number | null, currency: string | null): 
   const symbol = currency === null || currency.toUpperCase() === 'USD' ? '$' : '';
   const digits = usdDigits(value) ?? '—';
   return digits === '—' ? digits : `${symbol}${groupThousands(digits)} / 百万 token`;
+}
+
+/**
+ * The pricing read口 has one honest sentence of its own: a 403/404/501/503
+ * here means the price source is not wired upstream, so the card says 标价未接
+ * instead of the generic «cannot read». A code the console actually returns
+ * (models.pricing_not_wired, or the unwired-route shape) is named in it;
+ * anything else in that status set keeps the sentence without the name.
+ * Other statuses — and other blocks — are not this function's business:
+ * it returns null and the caller falls back to the shared wording.
+ */
+export function pricingFailure(
+  error: unknown,
+): { reason: string; gap: string | null; requestId: string | null } | null {
+  if (!(error instanceof ApiError)) return null;
+  if (error.status !== 403 && error.status !== 404 && error.status !== 501 && error.status !== 503) {
+    return null;
+  }
+  const requestId = error.requestId ?? null;
+  let code: unknown = null;
+  try {
+    const body: unknown = JSON.parse(error.body);
+    code = isRecord(body) ? body.code : null;
+  } catch {
+    code = null;
+  }
+  if (code === 'models.pricing_not_wired' || code === 'console.unknown_route') {
+    return {
+      reason: '标价未接：上游价目数据源还没有接入（models.pricing_not_wired）。',
+      gap: USAGE_GAP,
+      requestId,
+    };
+  }
+  return { reason: '标价未接：上游价目数据源还没有接入。', gap: USAGE_GAP, requestId };
 }
 
 // ---- MET6: breakdown views (by employee / by model) -------------------------
@@ -751,6 +810,105 @@ export function readModelCost(payload: unknown): ParsedModelCost {
     rows.push({ model, runs: numberOrNull(raw.sessions) ?? numberOrNull(raw.runs), costUsd });
   }
   return { kind: 'ok', rows, asOf };
+}
+
+// ---- Q14: model-axis breakdown (tokens / cost / success rate) --------------
+
+export interface ModelBreakdownRow {
+  model: string;
+  inputTokens: number | null;
+  outputTokens: number | null;
+  /** Input + output, only when at least one side is readable; never a 0 fill. */
+  tokenTotal: number | null;
+  apiCalls: number | null;
+  sessions: number | null;
+  /** cost_ledger actual only; an estimate or another declared source stays null. */
+  costUsd: number | null;
+  /** null wherever the BFF carries no per-model outcome field — the view says 未接. */
+  successRate: number | null;
+}
+
+export type ParsedModelBreakdown =
+  | {
+      kind: 'ok';
+      rows: ModelBreakdownRow[];
+      asOf: string | null;
+      /** The cost block's declared source, verbatim; null when it declares none. */
+      costSource: string | null;
+    }
+  | { kind: 'invalid'; reason: string };
+
+/** The only cost source this breakdown trusts. A block that declares another
+ *  source (a price card, an estimate pipeline) has its money ignored per row. */
+export const COST_LEDGER_SOURCE = 'cost_ledger';
+
+export const BYMODEL_COST_CALIBER =
+  '成本只认扣费账本聚合：账本没有按模型给出实扣的行显示「未接」，不按 0 计；估算金额与价目折算一律不采信。';
+
+export const BYMODEL_RATE_NOTE =
+  '成功率未接：现网运行统计只提供整窗成功率，没有按模型的结果数据源；这一列不拿整窗数值顶替，每行保持「未接」。';
+
+/** Read the model-axis breakdown out of `/api/hermes-usage?days=N`. Tokens come
+ *  from the same `by_model` rows the detail table already reads; money comes
+ *  only from ledger actual keys, and only while the payload's cost block does
+ *  not declare a different source. Nothing here is derived from run counts,
+ *  prices or another window. */
+export function readModelBreakdown(payload: unknown): ParsedModelBreakdown {
+  if (!isRecord(payload)) return { kind: 'invalid', reason: '返回内容里没有按模型的用量。' };
+  const asOf = readTopAsOf(payload);
+  const costBlock = isRecord(payload.cost) ? payload.cost : null;
+  const costSource = costBlock ? text(costBlock.source) : null;
+  const ledgerBacked = costSource === null || costSource === COST_LEDGER_SOURCE;
+  const rowsRaw = Array.isArray(payload.by_model) ? payload.by_model : [];
+  const rows: ModelBreakdownRow[] = [];
+  for (const raw of rowsRaw) {
+    if (!isRecord(raw)) continue;
+    const model = text(raw.model) ?? text(raw.modelId) ?? text(raw.name);
+    if (!model) continue;
+    const inputTokens = numberOrNull(raw.input_tokens) ?? numberOrNull(raw.inputTokens);
+    const outputTokens = numberOrNull(raw.output_tokens) ?? numberOrNull(raw.outputTokens);
+    const apiCalls = numberOrNull(raw.api_calls) ?? numberOrNull(raw.apiCalls);
+    const sessions = numberOrNull(raw.sessions);
+    let costUsd: number | null = null;
+    if (ledgerBacked) {
+      for (const key of MODEL_COST_MONEY_KEYS) {
+        const value = numberOrNull(raw[key]);
+        if (value !== null) {
+          costUsd = value;
+          break;
+        }
+      }
+    }
+    const explicitRate = numberOrNull(raw.success_rate) ?? numberOrNull(raw.successRate);
+    const succeeded = numberOrNull(raw.succeeded);
+    const failed = numberOrNull(raw.failed);
+    const derived =
+      succeeded !== null && failed !== null && succeeded + failed > 0
+        ? succeeded / (succeeded + failed)
+        : null;
+    rows.push({
+      model,
+      inputTokens,
+      outputTokens,
+      tokenTotal: sumOrNull([inputTokens, outputTokens]),
+      apiCalls,
+      sessions,
+      costUsd,
+      successRate: explicitRate ?? derived,
+    });
+  }
+  return { kind: 'ok', rows, asOf, costSource };
+}
+
+/** Tokens total leads (the axis the BFF always carries), then ledger cost,
+ *  then the name; unreadable values sort last and ties keep a stable order. */
+export function sortModelBreakdown(rows: ModelBreakdownRow[]): ModelBreakdownRow[] {
+  return [...rows].sort(
+    (a, b) =>
+      (b.tokenTotal ?? -1) - (a.tokenTotal ?? -1) ||
+      (b.costUsd ?? -1) - (a.costUsd ?? -1) ||
+      a.model.localeCompare(b.model),
+  );
 }
 
 /** Percent shares in tenths of a point; the readable rows always add up to

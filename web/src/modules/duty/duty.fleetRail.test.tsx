@@ -11,8 +11,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
+import { MemoryRouter } from "react-router";
+import { readFileSync } from "node:fs";
+
+const fetchJSON = vi.fn();
+vi.mock("@/lib/api", () => ({
+  fetchJSON: (...args: unknown[]) => fetchJSON(...args),
+}));
 
 import { AgentFleetRail } from "./AgentFleetRail";
+import DutyPage from "./DutyPage";
 import type { EmployeeRow, Loadable } from "./types";
 
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -107,6 +115,7 @@ beforeEach(() => {
 afterEach(() => {
   act(() => root.unmount());
   container.remove();
+  fetchJSON.mockReset();
   vi.useRealTimers();
 });
 
@@ -341,5 +350,102 @@ describe("箭头门槛与手动横滚（v2 §4 交互）", () => {
     expect(btn.textContent).toContain("继续轮播");
     act(() => btn.click());
     expect(btn.textContent).toContain("暂停轮播");
+  });
+});
+
+describe("DU-03 增量：①禁空壳 / ③键盘可见落点 / ④减动可手滚", () => {
+  it("①第③层禁空壳：卡内只有 ①② 两层容器，部门/能力标签的占位元素一个都不存在", () => {
+    mount(roster(4));
+    const cards = Array.from(container.querySelectorAll("[data-fleet-card]"));
+    expect(cards).toHaveLength(4);
+    for (const card of cards) {
+      // 卡面只留 l1（身份）+ l2（未知指标）两层；第③层连空 div 都不给
+      expect((card as HTMLElement).children).toHaveLength(2);
+    }
+    expect(
+      container.querySelector("[data-fleet-l3],[data-fleet-dept],[data-fleet-tags],.duty-fleet-l3"),
+    ).toBeNull();
+  });
+
+  it("③轨道可 Tab 进入（tabIndex=0＋中文组名），focus 有可见描边（CSS 源码契约，dutyPage.test 同形制）", () => {
+    mount(roster(3));
+    const vp = container.querySelector("[data-fleet-viewport]") as HTMLElement;
+    expect(vp.getAttribute("tabindex")).toBe("0");
+    expect(vp.getAttribute("role")).toBe("group");
+    expect(vp.getAttribute("aria-label") ?? "").toContain("舰队");
+    const css = readFileSync("src/modules/duty/duty.css", "utf8");
+    expect(css, "DU-03③：轨道焦点必须可见，描边与前后箭头同值").toMatch(
+      /\.duty-fleet-viewport:focus-visible\s*\{[^}]*outline:\s*2px solid var\(--color-primary\)/,
+    );
+  });
+
+  it("④减动偏好：时钟挂起 12 秒不自动走，但键盘 ←→ 与箭头钮仍可逐个换卡", () => {
+    vi.useFakeTimers();
+    stubMatchMedia(true);
+    mount(roster(9));
+    const vp = container.querySelector("[data-fleet-viewport]") as HTMLElement;
+    const sc = stubScroller(vp, { client: 324, content: 9 * 268 });
+    stubCardWidths(container, 260);
+    refreshOverflow();
+    act(() => {
+      vi.advanceTimersByTime(12000);
+    });
+    expect(sc.get(), "reduced-motion：自动轮播必须挂起").toBe(0);
+    act(() => {
+      vp.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }));
+    });
+    expect(sc.get(), "手动键盘横滚不受减动偏好限制").toBe(268);
+    const next = container.querySelector("[data-testid='duty-fleet-next']") as HTMLElement;
+    expect(next).not.toBeNull();
+    act(() => next.click());
+    expect(sc.get()).toBe(536);
+    stubMatchMedia(false);
+  });
+});
+
+describe("DU-03 页面级：折叠区承接第③层缺口说明（mock @/lib/api，形制照 duty.slotClause5）", () => {
+  const rosterBody = {
+    items: [
+      { employeeId: "emp_st_0000123456789", name: "值班员1", lifecycleState: "active", title: "客服专员" },
+      { employeeId: "emp_st_0000987654321", name: "值班员2", lifecycleState: "paused", title: "工单专员" },
+    ],
+  };
+
+  async function renderPage(): Promise<void> {
+    fetchJSON.mockImplementation(async (u: unknown) => {
+      const url = String(u);
+      if (url.includes("/employees")) return rosterBody;
+      return { items: [] };
+    });
+    await act(async () => {
+      root.render(
+        <MemoryRouter>
+          <DutyPage />
+        </MemoryRouter>,
+      );
+    });
+    await act(async () => {});
+  }
+
+  it("折叠区有第③层缺口说明（与真响应口径一致：无能力标签列、部门多空值、待 /api/matrix 扩列），轨实渲且页面零进度条、零裸 id", async () => {
+    await renderPage();
+    const rail = container.querySelector('[data-testid="duty-fleet-rail"]');
+    expect(rail, "花名册 ready 时轨道必须实渲").not.toBeNull();
+    expect(container.querySelectorAll("[data-fleet-card]")).toHaveLength(2);
+    const note = container.querySelector('[data-testid="duty-fleet-l3-note"]');
+    expect(note, "DU-03①：第③层缺口必须在卡外折叠区写明").not.toBeNull();
+    expect(note!.textContent).toContain("舰队轨第③层未显示");
+    expect(note!.textContent).toContain("花名册无能力标签列");
+    expect(note!.textContent).toContain("待 /api/matrix 扩列");
+    // 诚实红线：现网 department 有键且有值，屏上不得谎称「无数据源」
+    expect(note!.textContent).not.toContain("无数据源");
+    // 说明行属折叠区（details 内），不占卡面
+    expect(container.querySelector("details [data-testid='duty-fleet-l3-note']")).not.toBeNull();
+    // I4 页面级再钉一遍：未知态全页零进度条
+    expect(container.querySelectorAll("[role=progressbar]")).toHaveLength(0);
+    // 屏上无裸内部 id（含短码文本），全值只进 title（READY-BACKLOG L52 腿保持）
+    expect(rail!.textContent).not.toMatch(/emp_[0-9A-Za-z]{6,}/);
+    const cardTitle = container.querySelector("[data-fleet-card]")!.getAttribute("title") ?? "";
+    expect(cardTitle).toContain("emp_st_0000123456789");
   });
 });

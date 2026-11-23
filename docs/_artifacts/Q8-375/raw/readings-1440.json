@@ -1,0 +1,167 @@
+[
+  {
+    "key": "knowledge-base",
+    "label": "知识库",
+    "url": "http://127.0.0.1:5199/knowledge",
+    "whoami": 200,
+    "measured": {
+      "docH": 900,
+      "shellH": 1167,
+      "inner": {
+        "w": 1440,
+        "h": 900
+      }
+    },
+    "shotViewport": {
+      "w": 1440,
+      "h": 1227
+    },
+    "afterResize": {
+      "docH": 1227,
+      "shellH": 0,
+      "inner": {
+        "w": 1440,
+        "h": 1227
+      }
+    },
+    "fitsViewport": true,
+    "png": {
+      "w": 1440,
+      "h": 1227,
+      "bytes": 232423
+    },
+    "status": "OK"
+  },
+  {
+    "key": "knowledge-qa",
+    "label": "知识问答",
+    "url": "http://127.0.0.1:5199/knowledge?tab=spaces&panel=retrieval",
+    "whoami": 200,
+    "measured": {
+      "docH": 900,
+      "shellH": 1262,
+      "inner": {
+        "w": 1440,
+        "h": 900
+      }
+    },
+    "shotViewport": {
+      "w": 1440,
+      "h": 1322
+    },
+    "afterResize": {
+      "docH": 1322,
+      "shellH": 0,
+      "inner": {
+        "w": 1440,
+        "h": 1322
+      }
+    },
+    "fitsViewport": true,
+    "png": {
+      "w": 1440,
+      "h": 1322,
+      "bytes": 224619
+    },
+    "status": "OK"
+  },
+  {
+    "key": "docs",
+    "label": "文档",
+    "url": "http://127.0.0.1:5199/docs",
+    "whoami": 200,
+    "measured": {
+      "docH": 900,
+      "shellH": 0,
+      "inner": {
+        "w": 1440,
+        "h": 900
+      }
+    },
+    "shotViewport": {
+      "w": 1440,
+      "h": 960
+    },
+    "afterResize": {
+      "docH": 960,
+      "shellH": 0,
+      "inner": {
+        "w": 1440,
+        "h": 960
+      }
+    },
+    "fitsViewport": true,
+    "png": {
+      "w": 1440,
+      "h": 960,
+      "bytes": 178528
+    },
+    "status": "OK"
+  },
+  {
+    "key": "tasks",
+    "label": "任务",
+    "url": "http://127.0.0.1:5199/tasks",
+    "whoami": 200,
+    "measured": {
+      "docH": 900,
+      "shellH": 3036,
+      "inner": {
+        "w": 1440,
+        "h": 900
+      }
+    },
+    "shotViewport": {
+      "w": 1440,
+      "h": 3096
+    },
+    "afterResize": {
+      "docH": 3096,
+      "shellH": 0,
+      "inner": {
+        "w": 1440,
+        "h": 3096
+      }
+    },
+    "fitsViewport": true,
+    "png": {
+      "w": 1440,
+      "h": 3096,
+      "bytes": 317393
+    },
+    "status": "OK"
+  },
+  {
+    "key": "sessions",
+    "label": "会话",
+    "url": "http://127.0.0.1:5199/sessions",
+    "whoami": 200,
+    "measured": {
+      "docH": 900,
+      "shellH": 0,
+      "inner": {
+        "w": 1440,
+        "h": 900
+      }
+    },
+    "shotViewport": {
+      "w": 1440,
+      "h": 960
+    },
+    "afterResize": {
+      "docH": 960,
+      "shellH": 0,
+      "inner": {
+        "w": 1440,
+        "h": 960
+      }
+    },
+    "fitsViewport": true,
+    "png": {
+      "w": 1440,
+      "h": 960,
+      "bytes": 72645
+    },
+    "status": "OK"
+  }
+]

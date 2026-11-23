@@ -46,6 +46,29 @@ type State = {
   loadingMore: boolean;
 };
 
+/** PE-01: 带 ?cursor= 挂载时，从第一页起最多自动续取这么多页去找链接位置。
+ *  现网实测（docs/_artifacts/PE-01/DONE.md）游标可按同参重复取回同集合，
+ *  所以恢复不必依赖「一次性令牌还认不认」；上限只是防止数据异常时链式跑飞。 */
+const RESTORE_MAX_HOPS = 10;
+
+/** PE-01: 挂载时按链接游标恢复翻页位置的结果，只用于计数区的诚实说明。 */
+type RestoreInfo = {
+  hops: number;
+  outcome: "reached" | "shortened" | "capped" | "failed";
+};
+
+/** PE-01: 链接游标恢复后的诚实说明 —— 计数区一行，只报「实际发生了什么」。 */
+function restoreNoteText(info: RestoreInfo): string {
+  if (info.outcome === "reached")
+    return info.hops === 0
+      ? "已从链接位置恢复（首页即到该位）"
+      : `已从链接位置恢复 · 自动续取 ${info.hops} 页`;
+  if (info.outcome === "shortened") return "原链接位置超出当前数据：已停在真实末页";
+  if (info.outcome === "capped")
+    return `原链接位置过远：续取 ${RESTORE_MAX_HOPS} 页仍未到，已如实停在续到的位置`;
+  return "原链接位置续取失败：已显示此前加载的行";
+}
+
 const PAGE_SIZE = 50;
 
 /** ② / ③ 数据与动作的形状分工：计数用胶囊（等宽数字、无 hover、不可点），
@@ -508,6 +531,10 @@ export function EmployeesModulePage() {
   const [debounced, setDebounced] = useState(q);
   const [reload, setReload] = useState(0);
   const [state, setState] = useState<State>({ phase: "loading", items: [], status: 0, nextCursor: null, total: null, loadingMore: false });
+  // PE-01: URL 里的 cursor 语义 = 「上一页响应给出的下一页游标」。挂载时一次性
+  // 取走它当恢复目标（之后由翻页写回，不再回读 URL），失败/换筛选即丢弃。
+  const restoreTargetRef = useRef<string | null>(params.get("cursor"));
+  const [restoreInfo, setRestoreInfo] = useState<RestoreInfo | null>(null);
   // R63: at most one row carries the inline preview (page-local state:
   // the URL is untouched and a reload collapses everything back).
   const [previewKey, setPreviewKey] = useState<string | null>(null);
@@ -541,11 +568,76 @@ export function EmployeesModulePage() {
     setParams(draft, { replace: true });
   };
 
+  /** PE-01: 同一套筛选参数下拼一页请求 —— 首页不带 cursor，续页带上游标。 */
+  const pageQuery = (cursor: string | null) => {
+    const query = new URLSearchParams();
+    query.set("limit", String(PAGE_SIZE));
+    query.set("expand", "version,knowledge");
+    if (q) query.set("keyword", q);
+    if (lifecycle) query.set("lifecycleState", lifecycle);
+    if (cursor) query.set("cursor", cursor);
+    return `/agent-api/api/employees?${query.toString()}`;
+  };
+
+  /** R58/PE-01 共用的续取处置：按工号去重追加，并把服务端最新给出的下一页游标
+   *  写回 URL（null 即清键 —— 与「已到末页」同一口径，不留陈旧位置）。 */
+  const mergeAppended = (parsed: ReturnType<typeof readRows>) => {
+    setState((prev) => {
+      const seen = new Set(prev.items.map((row) => row.employeeId));
+      const fresh = parsed.rows.filter((row) => !seen.has(row.employeeId));
+      return {
+        ...prev,
+        phase: "ready",
+        items: [...prev.items, ...fresh],
+        nextCursor: parsed.nextCursor,
+        total: parsed.total ?? prev.total,
+        loadingMore: false,
+      };
+    });
+    patchParams({ cursor: parsed.nextCursor });
+  };
+
+  /** PE-01 恢复：从首屏起，只用「本页响应自己给出的 nextCursor」逐页续取，直到它
+   *  等于链接里的目标游标（= 回到原位）或撞到真实末页/上限。链接里那个 cursor 值
+   *  本身一次都不发出去 —— 那是拿外部输入猜服务端状态，猜歪就是半屏错位数据。 */
+  const resumeFromLink = async (from: string | null, target: string, isCancelled: () => boolean) => {
+    let cursor = from;
+    let hops = 0;
+    while (cursor && cursor !== target && hops < RESTORE_MAX_HOPS) {
+      hops += 1;
+      setState((prev) => ({ ...prev, loadingMore: true }));
+      let parsed: ReturnType<typeof readRows>;
+      try {
+        parsed = readRows(await fetchJSON<unknown>(pageQuery(cursor)));
+      } catch (err) {
+        if (isCancelled()) return;
+        // 失败态不碰 URL：已写回的键位仍对应已加载的行。
+        setState((prev) => ({ ...errorState(err), items: prev.items }));
+        setRestoreInfo({ hops: hops - 1, outcome: "failed" });
+        return;
+      }
+      if (isCancelled()) return;
+      mergeAppended(parsed);
+      cursor = parsed.nextCursor;
+    }
+    if (isCancelled()) return;
+    if (cursor === target) setRestoreInfo({ hops, outcome: "reached" });
+    else if (!cursor) setRestoreInfo({ hops, outcome: "shortened" });
+    else setRestoreInfo({ hops, outcome: "capped" });
+    // 数据变短/超出上限：链接位置在当前数据里已不存在，键位如实清掉。
+    if (cursor !== target) patchParams({ cursor: null });
+  };
+
   useEffect(() => {
-    if (debounced !== q) patchParams({ q: debounced || null });
+    // PE-01: 关键词一变，已加载位置即作废——同一次写回里清掉 cursor 键。
+    if (debounced !== q) patchParams({ q: debounced || null, cursor: null });
   }, [debounced]);
 
   useEffect(() => {
+    // PE-01: 恢复目标只在挂载那一趟生效；换筛选/重试都算从头开始。
+    const target = restoreTargetRef.current;
+    restoreTargetRef.current = null;
+    setRestoreInfo(null);
     if (forced === "loading" || forced === "empty" || forced === "error" || forced === "denied") {
       setState({
         phase: forced,
@@ -562,12 +654,7 @@ export function EmployeesModulePage() {
     }
     let cancelled = false;
     setState((prev) => ({ ...prev, phase: "loading" }));
-    const query = new URLSearchParams();
-    query.set("limit", String(PAGE_SIZE));
-    query.set("expand", "version,knowledge");
-    if (q) query.set("keyword", q);
-    if (lifecycle) query.set("lifecycleState", lifecycle);
-    fetchJSON<unknown>(`/agent-api/api/employees?${query.toString()}`)
+    fetchJSON<unknown>(pageQuery(null))
       .then((body) => {
         if (cancelled) return;
         const parsed = readRows(body);
@@ -579,6 +666,10 @@ export function EmployeesModulePage() {
           total: parsed.total,
           loadingMore: false,
         });
+        // PE-01: 只有取数成功才碰 URL；失败腿（下面 catch）一律不写。
+        if (target && parsed.nextCursor === target) setRestoreInfo({ hops: 0, outcome: "reached" });
+        else if (target) void resumeFromLink(parsed.nextCursor, target, () => cancelled);
+        else if (parsed.nextCursor === null) patchParams({ cursor: null });
       })
       .catch((err: unknown) => {
         if (!cancelled) setState((prev) => ({ ...errorState(err), items: prev.items }));
@@ -611,9 +702,10 @@ export function EmployeesModulePage() {
   const dir: "asc" | "desc" = params.get("dir") === "desc" ? "desc" : "asc";
   const sortActive = sort === "name" || sort === "code" || sort === "state" || sort === "time";
   const cycleSort = (key: SortKey) => {
-    if (sort !== key) patchParams({ sort: key, dir: "asc" });
-    else if (dir === "asc") patchParams({ sort: key, dir: "desc" });
-    else patchParams({ sort: null, dir: null });
+    // PE-01: 视图口径一变即清位置键，防筛选后残留旧位。
+    if (sort !== key) patchParams({ sort: key, dir: "asc", cursor: null });
+    else if (dir === "asc") patchParams({ sort: key, dir: "desc", cursor: null });
+    else patchParams({ sort: null, dir: null, cursor: null });
   };
   const sortedItems = useMemo(() => {
     if (!sortActive) return state.items;
@@ -647,7 +739,12 @@ export function EmployeesModulePage() {
     [sortedItems, dept],
   );
 
-  const retry = () => setReload((n) => n + 1);
+  const retry = () => {
+    // PE-01: 刷新是从第一页重取，链接里的位置键当场作废（不留陈旧游标冒充原位）。
+    restoreTargetRef.current = null;
+    patchParams({ cursor: null });
+    setReload((n) => n + 1);
+  };
 
   // ③ 「加载更多」在没有下一页（或非 ready）时保留文案与原因，但既不响应、
   // 也不进 tab 序列：原生 disabled 已不可聚焦，这里再显式坐实 tabIndex=-1。
@@ -655,36 +752,17 @@ export function EmployeesModulePage() {
 
   // R58: real cursor paging. Same filter query plus the server's nextCursor;
   // appended rows are deduplicated by employeeId (never repeat a row).
+  // PE-01: 成功后由 mergeAppended 把下一页游标写进 URL，刷新即回此位。
   const loadMore = () => {
     if (state.phase !== "ready" || !state.nextCursor || state.loadingMore) return;
-    const query = new URLSearchParams();
-    query.set("limit", String(PAGE_SIZE));
-    query.set("expand", "version,knowledge");
-    if (q) query.set("keyword", q);
-    if (lifecycle) query.set("lifecycleState", lifecycle);
-    query.set("cursor", state.nextCursor);
     setState((prev) => ({ ...prev, loadingMore: true }));
-    fetchJSON<unknown>(`/agent-api/api/employees?${query.toString()}`)
-      .then((body) => {
-        const parsed = readRows(body);
-        setState((prev) => {
-          const seen = new Set(prev.items.map((row) => row.employeeId));
-          const fresh = parsed.rows.filter((row) => !seen.has(row.employeeId));
-          return {
-            ...prev,
-            phase: "ready",
-            items: [...prev.items, ...fresh],
-            nextCursor: parsed.nextCursor,
-            total: parsed.total ?? prev.total,
-            loadingMore: false,
-          };
-        });
-      })
+    fetchJSON<unknown>(pageQuery(state.nextCursor))
+      .then((body) => mergeAppended(readRows(body)))
       .catch((err: unknown) => setState((prev) => ({ ...errorState(err), items: prev.items })));
   };
 
   return (
-    <section className="space-y-4" data-testid="employees-module">
+    <section className="employees-page space-y-4" data-testid="employees-module">
       <header className="flex flex-col gap-[var(--space-3)] sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-[var(--space-4)]">
         <div className="flex min-w-0 flex-wrap items-center gap-[var(--space-2)]">
           <Users className="h-5 w-5 shrink-0 text-white/70" />
@@ -771,7 +849,7 @@ export function EmployeesModulePage() {
           <span data-testid="emp-l-filter-lifecycle" className="contents">
           <ConsoleSelect
             value={lifecycle}
-            onChange={(next) => patchParams({ lifecycle: next || null })}
+            onChange={(next) => patchParams({ lifecycle: next || null, cursor: null })}
             className="rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm"
             data-testid="employees-lifecycle"
             options={[
@@ -795,7 +873,7 @@ export function EmployeesModulePage() {
               aria-pressed={dept === null}
               disabled={state.phase !== "ready"}
               title={state.phase === "ready" ? "显示全部部门" : `不能按部门筛选：${phaseReason(state.phase)}；恢复列表后自动可用。`}
-              onClick={() => patchParams({ dept: null })}
+              onClick={() => patchParams({ dept: null, cursor: null })}
               className="h-6 min-w-0 rounded-md border border-white/15 px-2 hover:bg-white/5 focus-visible:outline focus-visible:outline-1 focus-visible:outline-white/60 disabled:cursor-not-allowed disabled:opacity-60"
             >
               全部
@@ -814,7 +892,7 @@ export function EmployeesModulePage() {
                       ? "只看没有部门信息的行（本地过滤，不发新请求）"
                       : `筛选部门「${key}」（本地过滤，不发新请求）`
                 }
-                onClick={() => patchParams({ dept: dept === key ? null : key })}
+                onClick={() => patchParams({ dept: dept === key ? null : key, cursor: null })}
                 className="h-6 min-w-0 max-w-full truncate rounded-md border border-white/15 px-2 hover:bg-white/5 focus-visible:outline focus-visible:outline-1 focus-visible:outline-white/60 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {key === NONE_DEPT ? DEPT_UNLABELED_LABEL : key}{" "}
@@ -836,7 +914,7 @@ export function EmployeesModulePage() {
               onClick={() => {
                 setKeyword("");
                 setDebounced("");
-                patchParams({ q: null, lifecycle: null, dept: null });
+                patchParams({ q: null, lifecycle: null, dept: null, cursor: null });
               }}
               data-testid="employees-clear"
             >
@@ -919,7 +997,7 @@ export function EmployeesModulePage() {
                 onClick={() => {
                   setKeyword("");
                   setDebounced("");
-                  patchParams({ q: null, lifecycle: null, dept: null });
+                  patchParams({ q: null, lifecycle: null, dept: null, cursor: null });
                 }}
               >
                 清除筛选
@@ -936,7 +1014,7 @@ export function EmployeesModulePage() {
             <p className="text-xs text-muted-foreground">
               这是当前已加载 {state.items.length} 人里的真实结果：没有部门等于该筛选值的行（缺部门的行归「未标注部门」桶）；可清空部门筛选。
             </p>
-            <Button size="sm" outlined data-testid="emp-list-dept-clear" onClick={() => patchParams({ dept: null })}>
+            <Button size="sm" outlined data-testid="emp-list-dept-clear" onClick={() => patchParams({ dept: null, cursor: null })}>
               清空部门筛选
             </Button>
           </CardContent>
@@ -1091,6 +1169,17 @@ export function EmployeesModulePage() {
               ? `总数不可用 · 已显示 ${state.items.length} 人`
               : `共 ${state.total} 人 / 已显示 ${state.items.length} 人`}
         </span>
+        {/* PE-01: 链接里带过 cursor 才出现这一行 —— 说清「刷新后到底停在哪儿」，
+            以及为什么不直接把链接游标当请求参数发（那是拿外部输入猜服务端）。 */}
+        {restoreInfo ? (
+          <span
+            data-testid="emp-list-cursor-restored"
+            className="text-white/45"
+            title="URL 里的 cursor 是「上一页响应的 nextCursor」。刷新后从第一页起，按服务端每页自己给出的游标逐页续取到该位置；链接里那枚游标本身从不发出去。数据变短时如实停在真实末页并清掉键位。"
+          >
+            {restoreNoteText(restoreInfo)}
+          </span>
+        ) : null}
         <Button
           size="sm"
           outlined

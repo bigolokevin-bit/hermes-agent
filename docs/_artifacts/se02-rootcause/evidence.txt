@@ -1,0 +1,108 @@
+SE-02 / SE-03 根因单 · 原始取证输出（fork 仓 /Users/kevin_studio/Projects/forks/hermes-agent）
+运行期 face = git rev-parse HEAD = 92ef2b4b3f63a0eba348a5da69fc237d7d5010c0
+取证时刻：2026-11-24 01:5x–02:0x（证据件本身 mtime 晚于全部取证命令 = 本单代次对齐形制）
+
+[1] 挂载点与 importer 扫描（假说 A）
+$ grep -n "SessionsPage" web/src/App.tsx
+207:const SessionsPage = lazy(() => import("@/pages/SessionsPage"));
+329:    "/sessions": SessionsPage,
+
+$ grep -rln "SessionsPage\|modules/sessions" web/src | grep -v "^web/src/modules/sessions/"
+web/src/App.tsx
+web/src/shell/routes.ts
+web/src/pages/SessionsPage.tsx
+web/src/pages/SessionsPage.test.tsx
+⇒ web/src/modules/sessions/{SessionsList.tsx,index.ts,sessionsApi.ts,SessionsList.test.tsx} 无任何外部 importer。
+$ ls web/src/modules/sessions
+SessionsList.test.tsx  SessionsList.tsx  index.ts  sessionsApi.ts
+
+[2] 路由别名面（compat-module 注记原文）
+$ grep -n "sessions" web/src/shell/routes.ts | head
+11:  // ALIAS rows with no sub-tab mapping: metrics / sessions / org / access / audit
+267:  // …同上口径…
+269:  { hash: "#/sessions", path: "/sessions", module: "employees", tabId: "list", kind: "compat-module",
+      visible: false, label: "列表", dataSource: "随目标", to: "#/employees",
+      conflict: "path '/sessions' is an existing App route (upstream SessionsPage); the compat form
+                 wants to redirect it to the employees list — stage 2 decides precedence" }
+
+[3] 产物侧 token 计数（grep -rlF <tok> hermes_cli/web_dist/assets | wc -l）
+se2-sessions=0
+se2-sessions-list=0
+se2-sessions-more=0
+se2-sessions-empty=0
+se2-sessions-error=0
+se2-sessions-denied=0
+se2-sessions-unwired=0
+se2-sessions-login=0
+se2-sessions-request-id=0
+对照同次构建内 approvals 面（同一产物、同一时刻）：
+apr5-decision-face=1
+apr5-decision-face-sentence=1
+apr5-actions-hash-missing-note=1
+apr5-copy-request-id=1
+⇒ 构建链正常（同批 token 能上脸），se2 缺席非构建陈旧所致。
+
+[4] session 名 chunk 与旧页
+$ ls hermes_cli/web_dist/assets | grep -i session
+SessionsPage-BzFnx7u0.js
+$ for t in se2-sessions se2-sessions-list se2-sessions-more; do grep -c "$t" hermes_cli/web_dist/assets/SessionsPage-BzFnx7u0.js; done
+0
+0
+0
+⇒ 在架的是上游旧 SessionsPage chunk，不含 SE-02 面 token。
+
+[5] code-splitting 机制核实（假说 B：存在但非债因）
+$ grep -c "lazy(() => import" web/src/App.tsx
+（全站页面级 lazy ⇒ 每页独立 chunk）
+$ grep -rn "manualChunks\|rollupOptions" web/vite.config.* web/vite.config.ts 2>/dev/null
+（无命中）
+
+[6] 51 建 / 52 建 幂等对照
+51 建：entry assets/index-DZJ7eIFp.js 174971B sha256 fc677670fe5fcab5694385f5496b1388ea508006c6bcc74c72ddc751366bd5ef mtime Nov 24 01:45:17
+52 建：同名同 sha 同字节，mtime Nov 24 01:51，in-graph 一次性目录 .web_dist-build-vxz6JJ（事后 ls -d → No such file）
+两次 BUILD_EXIT=0，日志 docs/_artifacts/tonight/_l7-build-92ef2b4b3f.log 与 _l7-build-92ef2b4b3f-52.log
+⇒ 多跑一次构建不改变产物字节；债不在构建次数。
+
+[7] SE-03 对象可达性
+$ test -f .git/shallow && echo YES
+YES
+$ cat .git/objects/info/alternates
+（不存在 → NONE）
+$ git cat-file -t 675d0f29f6851b210000d4b25e32d34f7061f552
+fatal: git cat-file: could not get object info
+$ git ls-remote origin > $S/se03-all.txt   # LSR=0，3634 refs
+$ grep -c "675d0f29f6851b210000d4b25e32d34f7061f552" $S/se03-all.txt
+0
+$ grep -c "SE-03" $S/se03-all.txt
+0
+$ grep "SE-0" $S/se03-all.txt
+b0a7392d4525cebc0d8260a47672bc7e99d68833	refs/heads/task/SE-02-sessions-list
+$ git fetch --depth=2 origin 675d0f29f6851b210000d4b25e32d34f7061f552
+fatal: remote error: upload-pack: not our ref 675d0f29f6851b210000d4b25e32d34f7061f552
+$ git fetch --unshallow origin lane/hermes-console
+（被并发 git 进程的 pack-*.pack 锁打断：另一车道正在 fetch/gc，非本道问题；重试前需错峰）
+$ git remote -v
+origin  git@github.com:bigolokevin-bit/hermes-agent.git (fetch)
+origin  git@github.com:bigolokevin-bit/hermes-agent.git (push)
+$ git config --get remote.origin.fetch
++refs/heads/pin/7c0e12a5:refs/remotes/origin/pin/7c0e12a5
+$ ls /Users/kevin_studio/Projects/hermes-agent
+ls: No such file or directory
+⇒ 根因不是「浅窗口太窄」，而是该 sha 不在 origin 任何一个 ref（3634 条全扫）上；
+  upload-pack 直呈「not our ref」= 该对象未被服务端任何引用可达。需 L0/L6 给出承载仓+分支名。
+
+[8] SE-02 入线血统（源码面确在 face 内）
+$ git log -1 --format="%h %ad %s" --date=format:"%H:%M:%S" b0a7392d45
+b0a7392d45 23:12:06 feat(sessions): real session list with cursor paging for employee detail
+$ git log -1 --format="%h %ad %s" --date=format:"%H:%M:%S" 1109fcdd62
+1109fcdd62 01:27:27 merge(sessions): 重并 SE-02（前波 push 并窗覆盖事故——以本笔为真入线）
+$ git merge-base --is-ancestor b0a7392d45 HEAD && echo ANC=yes
+ANC=yes
+⇒ 源码进线成立；未入 bundle 的原因是「无在挂引用」，不是「未并入」。
+
+[9] 工单计数口径与源码全列实测差异
+$ grep -rhoE '"se2-sessions[a-z0-9-]*"' web/src/modules/sessions | sort -u | wc -l
+18
+$ grep -rhoE '"apr5-[a-z0-9-]+"' web/src/modules/approvals | sort -u | wc -l
+40+
+⇒ 工单「九枚 / 四枚」是子集口径；债判据须按「在挂闭包内模块」的全列实测枚数复跑，禁按族名幻构。
