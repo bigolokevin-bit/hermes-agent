@@ -232,6 +232,8 @@ export interface RunTotals {
   failed: number | null;
   running: number | null;
   sampleCount: number | null;
+  /** 95th-percentile run duration; the contract omits it below 20 samples. */
+  p95DurationMs: number | null;
   successRate: number | null;
 }
 
@@ -256,6 +258,7 @@ function totalsOf(raw: Record<string, unknown>): RunTotals {
     failed: numberOrNull(raw.failed),
     running: numberOrNull(raw.running),
     sampleCount: numberOrNull(raw.sampleCount),
+    p95DurationMs: numberOrNull(raw.p95DurationMs),
     successRate: numberOrNull(raw.successRate),
   };
 }
