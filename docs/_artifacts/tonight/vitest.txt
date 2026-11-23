@@ -22,21 +22,15 @@ Not implemented: HTMLCanvasElement's getContext() method: without installing the
 Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
 Not implemented: navigation to another Document
 Not implemented: navigation to another Document
-Not implemented: Window's scrollTo() method
 Not implemented: navigation to another Document
-Not implemented: Window's scrollTo() method
-Not implemented: Window's scrollTo() method
 Not implemented: navigation to another Document
 Not implemented: navigation to another Document
 Not implemented: Window's scrollTo() method
-Not implemented: navigation to another Document
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
 Not implemented: Window's scrollTo() method
 Not implemented: navigation to another Document
-Not implemented: navigation to another Document
 Not implemented: Window's scrollTo() method
-Not implemented: navigation to another Document
-Not implemented: navigation to another Document
-Not implemented: navigation to another Document
 Not implemented: navigation to another Document
 Not implemented: navigation to another Document
 Not implemented: navigation to another Document
@@ -56,6 +50,11 @@ Not implemented: navigation to another Document
 Not implemented: navigation to another Document
 Not implemented: navigation to another Document
 Not implemented: navigation to another Document
+Not implemented: navigation to another Document
+Not implemented: navigation to another Document
+Not implemented: navigation to another Document
+Not implemented: navigation to another Document
+Not implemented: navigation to another Document
 Not implemented: Window's scrollTo() method
 Not implemented: Window's scrollTo() method
 Not implemented: Window's scrollTo() method
@@ -71,35 +70,25 @@ Not implemented: Window's scrollTo() method
 Not implemented: Window's scrollTo() method
 Not implemented: Window's scrollTo() method
 Not implemented: Window's scrollTo() method
-Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
-Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
 Not implemented: Window's scrollTo() method
-Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
-Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
-Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
-Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
-Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
-Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
-Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
-Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
-Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
-Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
-Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
-Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
-Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
-Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
-Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
-Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
-Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
-Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
-Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
-Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
-Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
-Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
-Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
-Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
-Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
-Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: navigation to another Document
+Not implemented: navigation to another Document
+Not implemented: navigation to another Document
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
 Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
 Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
 Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
@@ -125,6 +114,38 @@ Not implemented: HTMLCanvasElement's getContext() method: without installing the
 Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
 Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
 Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: Window's scrollTo() method
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
 Not implemented: Window's scrollTo() method
 Not implemented: Window's scrollTo() method
 Not implemented: Window's scrollTo() method
@@ -138,6 +159,41 @@ Not implemented: Window's scrollTo() method
 Not implemented: Window's scrollTo() method
 Not implemented: Window's scrollTo() method
 Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: navigation to another Document
+Not implemented: navigation to another Document
+Not implemented: navigation to another Document
+Not implemented: navigation to another Document
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: navigation to another Document
+Not implemented: navigation to another Document
+Not implemented: navigation to another Document
+Not implemented: navigation to another Document
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: navigation to another Document
+Not implemented: navigation to another Document
+Not implemented: Window's scrollTo() method
+Not implemented: navigation to another Document
+Not implemented: navigation to another Document
 Not implemented: Window's scrollTo() method
 Not implemented: Window's scrollTo() method
 Not implemented: Window's scrollTo() method
@@ -153,56 +209,8 @@ Not implemented: Window's scrollTo() method
 Not implemented: navigation to another Document
 Not implemented: Window's scrollTo() method
 Not implemented: navigation to another Document
-Not implemented: Window's scrollTo() method
-Not implemented: Window's scrollTo() method
-Not implemented: Window's scrollTo() method
-Not implemented: Window's scrollTo() method
-Not implemented: Window's scrollTo() method
-Not implemented: Window's scrollTo() method
-Not implemented: Window's scrollTo() method
-Not implemented: Window's scrollTo() method
-Not implemented: Window's scrollTo() method
-Not implemented: Window's scrollTo() method
-Not implemented: Window's scrollTo() method
-Not implemented: Window's scrollTo() method
-Not implemented: Window's scrollTo() method
-Not implemented: Window's scrollTo() method
-Not implemented: Window's scrollTo() method
-Not implemented: Window's scrollTo() method
-Not implemented: Window's scrollTo() method
-Not implemented: Window's scrollTo() method
-Not implemented: Window's scrollTo() method
-Not implemented: Window's scrollTo() method
-Not implemented: Window's scrollTo() method
-Not implemented: Window's scrollTo() method
-Not implemented: Window's scrollTo() method
-Not implemented: Window's scrollTo() method
-Not implemented: Window's scrollTo() method
-Not implemented: Window's scrollTo() method
-Not implemented: Window's scrollTo() method
-Not implemented: Window's scrollTo() method
-Not implemented: Window's scrollTo() method
-Not implemented: Window's scrollTo() method
 Not implemented: navigation to another Document
 Not implemented: navigation to another Document
-Not implemented: navigation to another Document
-Not implemented: Window's scrollTo() method
-Not implemented: Window's scrollTo() method
-Not implemented: Window's scrollTo() method
-Not implemented: Window's scrollTo() method
-Not implemented: navigation to another Document
-Not implemented: navigation to another Document
-Not implemented: Window's scrollTo() method
-Not implemented: Window's scrollTo() method
-Not implemented: navigation to another Document
-Not implemented: Window's scrollTo() method
-Not implemented: navigation to another Document
-Not implemented: Window's scrollTo() method
-Not implemented: navigation to another Document
-Not implemented: navigation to another Document
-Not implemented: navigation to another Document
-Not implemented: navigation to another Document
-Not implemented: Window's scrollTo() method
 Not implemented: navigation to another Document
 Not implemented: navigation to another Document
 Not implemented: Window's scrollTo() method
@@ -210,18 +218,8 @@ Not implemented: Window's scrollTo() method
 Not implemented: Window's scrollTo() method
 Not implemented: navigation to another Document
 Not implemented: navigation to another Document
-Not implemented: Window's scrollTo() method
 Not implemented: navigation to another Document
 Not implemented: navigation to another Document
-Not implemented: navigation to another Document
-Not implemented: navigation to another Document
-Not implemented: navigation to another Document
-Not implemented: Window's scrollTo() method
-Not implemented: navigation to another Document
-Not implemented: Window's scrollTo() method
-Not implemented: Window's scrollTo() method
-Not implemented: navigation to another Document
-Not implemented: Window's scrollTo() method
 Not implemented: navigation to another Document
 Not implemented: navigation to another Document
 Not implemented: navigation to another Document
@@ -242,18 +240,20 @@ Not implemented: Window's scrollTo() method
 Not implemented: Window's scrollTo() method
 Not implemented: Window's scrollTo() method
 Not implemented: navigation to another Document
+Not implemented: Window's scrollTo() method
+Not implemented: navigation to another Document
+Not implemented: navigation to another Document
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: navigation to another Document
+Not implemented: navigation to another Document
+Not implemented: navigation to another Document
 Not implemented: navigation to another Document
 Not implemented: navigation to another Document
 Not implemented: navigation to another Document
 Not implemented: Window's scrollTo() method
 Not implemented: Window's scrollTo() method
 Not implemented: Window's scrollTo() method
-Not implemented: navigation to another Document
-Not implemented: navigation to another Document
-Not implemented: navigation to another Document
-Not implemented: navigation to another Document
-Not implemented: navigation to another Document
-Not implemented: navigation to another Document
 Not implemented: Window's open() method
 Not implemented: Window's open() method
 Not implemented: Window's open() method
@@ -262,11 +262,11 @@ Not implemented: Window's open() method
 HOOK_A collapsedHex=0 files=3 hits=0
 HOOK_B labelStructuralCount=1 (runs card field label, narrow tier)
 HOOK_C staleNameHits=0 innerPanels=4 innerNames=[空间台账/数据接入/检索/运行事件引用]
-PORT=9122 DISK_ENTRY=assets/index-DhHLpLyc.js SERVED_ENTRY=assets/index-DhHLpLyc.js (dist=/Users/kevin_studio/Projects/forks/hermes-agent/hermes_cli/web_dist/index.html)
-VERDICT=VERIFIED PORT=9122 ENTRY=assets/index-DhHLpLyc.js
+PORT=9122 DISK_ENTRY=assets/index-_P6-d4dz.js SERVED_ENTRY=assets/index-_P6-d4dz.js (dist=/Users/kevin_studio/Projects/forks/hermes-agent/hermes_cli/web_dist/index.html)
+VERDICT=VERIFIED PORT=9122 ENTRY=assets/index-_P6-d4dz.js
 
- Test Files  510 passed (510)
-      Tests  3770 passed (3770)
-   Start at  22:50:54
-   Duration  43.32s (transform 72.27s, setup 0ms, import 195.94s, tests 207.65s, environment 159.53s)
+ Test Files  513 passed (513)
+      Tests  3789 passed (3789)
+   Start at  23:14:23
+   Duration  47.53s (transform 71.96s, setup 0ms, import 202.09s, tests 229.06s, environment 167.34s)
 
