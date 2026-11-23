@@ -1,59 +1,60 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Link, useParams } from "react-router";
-import {
-  Activity,
-  ArrowLeft,
-  CircleDollarSign,
-  ListChecks,
-  MessageSquare,
-  ScrollText,
-  Users,
-} from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@nous-research/ui/ui/components/card";
+import { useEffect, useState } from "react";
+import { Link, useParams, useSearchParams } from "react-router";
+import { ArrowLeft, Users } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@nous-research/ui/ui/components/tabs";
-import { H2 } from "@nous-research/ui/ui/components/typography/h2";
 
 import { fetchJSON } from "@/lib/api";
-import { cn } from "@/lib/utils";
-
 import {
   EmptyBlock,
   ErrorStateBlock,
   LIFECYCLE,
   RowsSkeleton,
   StatusBadge,
-  WORK,
-  beijing,
-  countDash,
   displayName,
   errStatus,
   humanize,
   idOf,
   isRecord,
   lifecycleOf,
-  money,
   nameOf,
-  pickStr,
-  refLabel,
   requestIdOf,
   type BlockState,
   type Rec,
 } from "@/pages/EmployeesPage";
 
+import OverviewPane from "@/modules/employees/detail/OverviewPane";
+import AssignmentPane from "@/modules/employees/detail/AssignmentPane";
+import AccessPane from "@/modules/employees/detail/AccessPane";
+import IdentityPane from "@/modules/employees/detail/IdentityPane";
+import ActivityPane from "@/modules/employees/detail/ActivityPane";
+
 /**
- * 数字员工详情页（只读）：概览 / 聊天 / 任务 / 运行 / 审计 五个 Tab。
+ * 数字员工详情页（只读）—— PE-03：五个冻结分区
+ * 档案 / 任职 / 权限 / 身份链接 / 活动。
  *
- * 数据全部来自 BFF（Caddy 代理到 8092）。概览读 `/agent-api/api/employees/:id`，
- * 其余四个 Tab 各读各的端点、各自维护加载/空/错误/无权限四态，互不牵连；任一端点
- * 没上线时只降级它自己那一块，绝不编造行。整页没有任何写操作。
+ * 分区口径（卡面对齐，旧「概览/聊天/任务/运行/审计」Tab 集退役）：
+ *  - 档案（OverviewPane）：基本信息 + 当前版本（employee-versions 读腿）
+ *    + 最近流转（读口 501 → 未接入腿，不阻塞其余字段）；
+ *  - 任职（AssignmentPane）：workstations?id=&limit=20 真数据行；
+ *  - 权限（AccessPane）：effective-config?id= 投影 grants[] + 数据时刻，
+ *    409 no_effective_version = 真实状态文案；
+ *  - 身份链接（IdentityPane）：PE-04 挂载点，读口未活前整块未接入；
+ *  - 活动（ActivityPane）：PE-02 钉死的四区块（sessions/tasks/runs/audit
+ *    参数名 + 防串护栏）原样合并，一字不回退。
+ * 聊天区（ChatPage 挂载）属 B 车道：不并入、不重排其入口，本文件不碰。
+ *
+ * 每个分区只在被选中时挂载并各取各的数，独立 loading/ready/failed+原因
+ * +请求号/empty 四态，互不牵连；任一端点没上线只降级它自己那一块，绝不
+ * 编造行。整页没有任何写操作。
+ *
+ * 旧值深链兼容（不动 shell/routes.ts，页内映射）：
+ *   ?zone=config → 权限；?zone=tasks|runs|evidence → 活动（并直投对应区块）；
+ *   新值 overview|assignment|access|identity|activity 直通；未知值 → 默认。
  *
  * 路由约定（编排方接线）：本页 `/employees/:id`，返回链回 `/employees`。
  */
 
-// ── 详情对象 + 单区块状态机 ───────────────────────────────────────────────
-
-/** 护栏文案：数据归属对不上时的唯一说法，测试与页面共用一条。 */
-const MISMATCH_MESSAGE = "返回数据不属于该员工，已停止显示以防串数据。";
+// ── 详情对象取数 ─────────────────────────────────────────────────────────
 
 type EmployeeState = BlockState<Rec>;
 
@@ -91,7 +92,8 @@ function useEmployeeDetail(rawId: string): { state: EmployeeState; reload: () =>
       .catch((err1: unknown) =>
         fetchJSON<unknown>(fallback)
           .then((raw) => alive && setState({ k: "ready", data: unwrap(raw) }))
-          .catch((err2: unknown) => alive && setState(failedState(err1 instanceof Error && errStatus(err1) ? err1 : err2))),
+          .catch((err2: unknown) =>
+            alive && setState(failedState(err1 instanceof Error && errStatus(err1) ? err1 : err2))),
       );
     return () => {
       alive = false;
@@ -101,95 +103,42 @@ function useEmployeeDetail(rawId: string): { state: EmployeeState; reload: () =>
   return { state, reload: () => setNonce((n) => n + 1) };
 }
 
-/** 引用字段的两种形制：现网 tasks/audit 给 `{type:"employee", id}` 对象，旧形制给
- *  字符串。refLabel 只认字符串，所以先摊平成 id，否则有指派的行会显示「未指派」。 */
-function refValue(value: unknown): unknown {
-  if (isRecord(value)) return value.id;
-  return value;
-}
+// ── 分区表 ───────────────────────────────────────────────────────────────
+
+const ZONES = [
+  { value: "overview", label: "档案" },
+  { value: "assignment", label: "任职" },
+  { value: "access", label: "权限" },
+  { value: "identity", label: "身份链接" },
+  { value: "activity", label: "活动" },
+] as const;
+
+type ZoneValue = (typeof ZONES)[number]["value"];
 
 /**
- * 行的归属员工 id。BFF 三种形制（现网实测）：
- *   - sessions / runs → `employeeId`
- *   - tasks           → `assignee` 对象 `{type:"employee", id}`（旧形制也可能是字符串 `employee:xxx`）
- *   - audit           → `resource.id`
- * 取不到归属键时返回 ""，交给调用方判为「不属于该员工」——宁可不显示，不可串数据。
+ * 旧深链值 → 新分区（?zone= 旧不死条款）；tasks/runs/evidence 进活动分区时
+ * 直投对应区块（evidence 的现网载体是 audit 区块）。
+ * 默认落「活动」：与 routes.ts DETAIL_TAB 的 workbench 默认区（任务/运行/
+ * 会话/证据看板）语义最接近；档案 Tab 仍在首位。此为卡面未明说的假定，
+ * 已在 DONE.md「假定」台账记录。
  */
-function rowOwner(row: Rec): string {
-  const direct = row.employeeId;
-  if (typeof direct === "string" || typeof direct === "number") return String(direct);
-  const ref = row.assignee ?? row.resource;
-  if (isRecord(ref)) {
-    const id = ref.id;
-    return typeof id === "string" || typeof id === "number" ? String(id) : "";
-  }
-  if (typeof ref === "string") return ref.startsWith("employee:") ? ref.slice("employee:".length) : ref;
-  return "";
-}
+const ZONE_COMPAT: Record<string, { zone: ZoneValue; block?: string }> = {
+  config: { zone: "access" },
+  tasks: { zone: "activity", block: "tasks" },
+  runs: { zone: "activity", block: "runs" },
+  evidence: { zone: "activity", block: "audit" },
+};
 
-/** 单个 Tab 列表端点（带员工过滤），各 Tab 独立加载。 */
-function useEmployeeList(
-  url: string,
-  employeeId: string,
-): { state: BlockState<Rec[]>; reload: () => void } {
-  const [nonce, setNonce] = useState(0);
-  const [state, setState] = useState<BlockState<Rec[]>>({ k: "loading" });
+const DEFAULT_ZONE: ZoneValue = "activity";
 
-  useEffect(() => {
-    let alive = true;
-    setState({ k: "loading" });
-    fetchJSON<unknown>(url)
-      .then((raw) => {
-        if (!alive) return;
-        const rows = asRows(raw);
-        // 防串数据护栏：BFF 会忽略它不认识的过滤参数并返回未过滤列表（现网实证
-        // tasks 20 条里 10 条是别人的）。归属对不上就整块转错误态，绝不部分渲染、
-        // 绝不显示别人的行，也不拿假空态冒充「没有数据」。
-        if (!rows.every((row) => rowOwner(row) === employeeId)) {
-          // status 0 = 没有 HTTP 状态可用：请求本身是 200，坏的是数据归属，
-          // 走通用错误呈现（非 403/404 的「未开放」话术）。
-          setState({ k: "error", status: 0, message: MISMATCH_MESSAGE, requestId: null });
-          return;
-        }
-        setState({ k: "ready", data: rows });
-      })
-      .catch((err: unknown) => {
-        if (alive)
-          setState({
-            k: "error",
-            status: errStatus(err),
-            message: humanize(err),
-            requestId: requestIdOf(err),
-          });
-      });
-    return () => {
-      alive = false;
-    };
-  }, [url, employeeId, nonce]);
-
-  return { state, reload: () => setNonce((n) => n + 1) };
-}
-
-function asRows(raw: unknown): Rec[] {
-  if (Array.isArray(raw)) return raw.filter(isRecord);
-  if (isRecord(raw)) {
-    for (const k of ["items", "results", "data", "rows", "list", "runs", "tasks", "audit", "events", "sessions"]) {
-      const v = raw[k];
-      if (Array.isArray(v)) return v.filter(isRecord);
-    }
-  }
-  return [];
+function resolveZone(raw: string): { zone: ZoneValue; block?: string } {
+  const compat = ZONE_COMPAT[raw];
+  if (compat) return compat;
+  if (ZONES.some((z) => z.value === raw)) return { zone: raw as ZoneValue };
+  return { zone: DEFAULT_ZONE };
 }
 
 // ── 页面 ─────────────────────────────────────────────────────────────────
-
-const TABS = [
-  { value: "overview", label: "概览" },
-  { value: "chat", label: "聊天" },
-  { value: "tasks", label: "任务" },
-  { value: "runs", label: "运行" },
-  { value: "audit", label: "审计" },
-] as const;
 
 export default function EmployeeDetailPage() {
   // Snapshot fix (PRD §9.1 lane A): the live route registers `:employeeId`
@@ -203,6 +152,9 @@ export default function EmployeeDetailPage() {
   const rawId = rawParam !== "" ? decodeURIComponent(rawParam) : "";
   const enc = encodeURIComponent(rawId);
   const { state, reload } = useEmployeeDetail(rawId);
+
+  const [sp] = useSearchParams();
+  const resolved = resolveZone(sp.get("zone") ?? "");
 
   const detail = state.k === "ready" ? state.data : null;
   const dn = detail ? displayName(nameOf(detail), (idOf(detail) ?? rawId) || null) : null;
@@ -260,79 +212,33 @@ export default function EmployeeDetailPage() {
             {dn?.raw && <span className="text-xs text-muted-foreground">工位编号仅用于系统标识</span>}
           </header>
 
-          <Tabs defaultValue="overview">
+          <Tabs key={resolved.zone} defaultValue={resolved.zone}>
             {(active, setActive) => (
               <>
                 <TabsList role="tablist" aria-label="员工详情分区" className="w-full overflow-x-auto scrollbar-none">
-                  {TABS.map((tab) => (
+                  {ZONES.map((zone) => (
                     <TabsTrigger
-                      key={tab.value}
+                      key={zone.value}
                       role="tab"
-                      value={tab.value}
-                      id={`tab-${tab.value}`}
-                      aria-selected={active === tab.value}
-                      aria-controls={`panel-${tab.value}`}
-                      active={active === tab.value}
-                      onClick={() => setActive(tab.value)}
+                      value={zone.value}
+                      id={`zone-tab-${zone.value}`}
+                      aria-selected={active === zone.value}
+                      aria-controls={`zone-panel-${zone.value}`}
+                      active={active === zone.value}
+                      onClick={() => setActive(zone.value)}
                     >
-                      {tab.label}
+                      {zone.label}
                     </TabsTrigger>
                   ))}
                 </TabsList>
 
-                <div role="tabpanel" id={`panel-${active}`} aria-labelledby={`tab-${active}`} className="pt-1">
-                  {active === "overview" && <OverviewPanel detail={detail} rawId={rawId} />}
-                  {active === "chat" && (
-                    <Section
-                      url={`/agent-api/api/sessions?employeeId=${enc}`}
-                      employeeId={rawId}
-                      icon={<MessageSquare className="h-4 w-4 shrink-0" />}
-                      title="聊天"
-                      emptyText="暂无聊天"
-                      emptyHint="这位员工还没有产生可展示的会话记录。"
-                      deniedTitle="无法打开聊天"
-                      errorTitle="聊天加载失败"
-                      renderItem={(s) => <ChatRow s={s} />}
-                    />
-                  )}
-                  {active === "tasks" && (
-                    <Section
-                      url={`/agent-api/api/tasks?assignee=employee:${enc}&limit=20`}
-                      employeeId={rawId}
-                      icon={<ListChecks className="h-4 w-4 shrink-0" />}
-                      title="任务"
-                      emptyText="暂无任务"
-                      emptyHint="这位员工当前没有进行中或历史任务记录。"
-                      deniedTitle="无法打开任务"
-                      errorTitle="任务加载失败"
-                      renderItem={(t) => <TaskRow t={t} />}
-                    />
-                  )}
-                  {active === "runs" && (
-                    <Section
-                      url={`/agent-api/api/runs?employeeId=${enc}&limit=20`}
-                      employeeId={rawId}
-                      icon={<Activity className="h-4 w-4 shrink-0" />}
-                      title="运行"
-                      emptyText="暂无运行"
-                      emptyHint="这位员工还没有运行记录。"
-                      deniedTitle="无法打开运行"
-                      errorTitle="运行加载失败"
-                      renderItem={(r) => <RunRow r={r} />}
-                    />
-                  )}
-                  {active === "audit" && (
-                    <Section
-                      url={`/agent-api/api/audit?resourceId=${enc}&limit=50`}
-                      employeeId={rawId}
-                      icon={<ScrollText className="h-4 w-4 shrink-0" />}
-                      title="审计"
-                      emptyText="暂无审计记录"
-                      emptyHint="这位员工还没有可展示的审计事件。"
-                      deniedTitle="无法打开审计"
-                      errorTitle="审计加载失败"
-                      renderItem={(a) => <AuditRow a={a} />}
-                    />
+                <div role="tabpanel" id={`zone-panel-${active}`} aria-labelledby={`zone-tab-${active}`} className="pt-1">
+                  {active === "overview" && <OverviewPane detail={detail} rawId={rawId} enc={enc} />}
+                  {active === "assignment" && <AssignmentPane rawId={rawId} enc={enc} />}
+                  {active === "access" && <AccessPane rawId={rawId} enc={enc} />}
+                  {active === "identity" && <IdentityPane />}
+                  {active === "activity" && (
+                    <ActivityPane key={resolved.block ?? "chat"} rawId={rawId} enc={enc} initialBlock={resolved.block} />
                   )}
                 </div>
               </>
@@ -342,278 +248,6 @@ export default function EmployeeDetailPage() {
       )}
     </div>
   );
-}
-
-// ── 概览 ─────────────────────────────────────────────────────────────────
-
-function OverviewPanel({ detail, rawId }: { detail: Rec; rawId: string }) {
-  const station = pickStr(detail, ["station", "seat", "workspace", "role", "position", "desk"]);
-  const model = pickStr(detail, ["model", "model_name"]);
-  const provider = pickStr(detail, ["provider"]);
-  const owner = refLabel(detail.owner ?? detail.manager ?? detail.created_by ?? detail.assignee);
-  const created = beijing(detail.created_at ?? detail.createdAt ?? detail.created);
-  const lastSeen = beijing(detail.last_seen ?? detail.last_active ?? detail.last_active_at ?? detail.updated_at);
-  const spend = money(detail.spend ?? detail.spent ?? detail.cost ?? detail.usage_cost ?? detail.budget_spent);
-
-  const stats = isRecord(detail.stats) || isRecord(detail.metrics) || isRecord(detail.summary)
-    ? ((detail.stats ?? detail.metrics ?? detail.summary) as Rec)
-    : null;
-  const kpis = useMemo(() => {
-    const src = stats ?? detail;
-    return {
-      tasks: pickStr(src, ["tasks", "tasks_count", "task_count", "total_tasks", "open_tasks", "pending_tasks"]),
-      runs: pickStr(src, ["runs", "runs_count", "run_count", "total_runs"]),
-      sessions: pickStr(src, ["sessions", "sessions_count", "chat_count", "total_sessions"]),
-    };
-  }, [stats, detail]);
-
-  return (
-    <div className="flex flex-col gap-4">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">基本信息</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <dl className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
-            <Info term="工位">{station ?? "—"}</Info>
-            <Info term="身份" raw={rawId}>{displayName(nameOf(detail), (idOf(detail) ?? rawId) || null).text}</Info>
-            <Info term="模型" raw={model ?? undefined}>{model ?? "—"}</Info>
-            <Info term="模型提供方">{provider ?? "—"}</Info>
-            <Info term="负责人">{owner ?? "未指派"}</Info>
-            <Info term="在岗状态">
-              <StatusBadge value={lifecycleOf(detail)} table={LIFECYCLE} unknownLabel="待核实" />
-            </Info>
-            <Info term="创建时间">{created}</Info>
-            <Info term="最近活动">{lastSeen}</Info>
-          </dl>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-sm">
-            <CircleDollarSign className="h-4 w-4 text-muted-foreground" />
-            预算与支出
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <dl className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3">
-            <Info term="支出">{spend}</Info>
-            <Info term="预算">{hasMoney(detail.budget) ? money(detail.budget) : "—"}</Info>
-            <Info term="剩余">{hasMoney(detail.remaining ?? detail.budget_remaining) ? money(detail.remaining ?? detail.budget_remaining) : "—"}</Info>
-          </dl>
-          <p className="mt-2 text-xs text-muted-foreground">金额为美元；未提供的项目显示「—」，未计价的成本显示「未计价」。</p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">工作量</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-3 gap-3">
-            <Kpi label="任务" value={kpis.tasks} />
-            <Kpi label="运行" value={kpis.runs} />
-            <Kpi label="会话" value={kpis.sessions} />
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-function hasMoney(v: unknown): boolean {
-  if (typeof v === "number") return Number.isFinite(v);
-  return typeof v === "string" && v.trim() !== "" && Number.isFinite(Number(v));
-}
-
-function Info({ term, raw, children }: { term: string; raw?: string | null; children: ReactNode }) {
-  return (
-    <div className="min-w-0">
-      <dt className="text-xs text-muted-foreground">{term}</dt>
-      <dd className="mt-0.5 truncate text-sm" title={raw ?? undefined}>
-        {children}
-      </dd>
-    </div>
-  );
-}
-
-function Kpi({ label, value }: { label: string; value: string | null }) {
-  return (
-    <div className="flex flex-col items-center gap-1 rounded-md border border-border/60 bg-muted/10 px-2 py-3 text-center">
-      <span className="text-lg font-semibold tabular-nums">{value ?? "—"}</span>
-      <span className="text-xs text-muted-foreground">{label}</span>
-    </div>
-  );
-}
-
-// ── 通用 Tab 区块（独立四态） ──────────────────────────────────────────────
-
-function Section({
-  url,
-  employeeId,
-  icon,
-  title,
-  emptyText,
-  emptyHint,
-  deniedTitle,
-  errorTitle,
-  renderItem,
-}: {
-  url: string;
-  employeeId: string;
-  icon: ReactNode;
-  title: string;
-  emptyText: string;
-  emptyHint: string;
-  deniedTitle: string;
-  errorTitle: string;
-  renderItem: (row: Rec) => ReactNode;
-}) {
-  const { state, reload } = useEmployeeList(url, employeeId);
-
-  return (
-    <div className="flex flex-col gap-3">
-      <H2 variant="sm" className="flex items-center gap-2 text-muted-foreground">
-        {icon}
-        {title}
-        {state.k === "ready" && state.data.length > 0 && <span>（{state.data.length}）</span>}
-      </H2>
-
-      {state.k === "loading" && <RowsSkeleton rows={3} />}
-
-      {state.k === "error" && (
-        <ErrorStateBlock
-          status={state.status}
-          message={state.message}
-          requestId={state.requestId}
-          deniedTitle={deniedTitle}
-          errorTitle={errorTitle}
-          onRetry={reload}
-        />
-      )}
-
-      {state.k === "ready" &&
-        (state.data.length === 0 ? (
-          <EmptyBlock text={emptyText} hint={emptyHint} />
-        ) : (
-          <ul className="flex flex-col gap-2">{state.data.map((row, i) => <li key={rowKeyOf(row, i)}>{renderItem(row)}</li>)}</ul>
-        ))}
-    </div>
-  );
-}
-
-function rowKeyOf(row: Rec, i: number): string {
-  return idOf(row) ?? pickStr(row, ["uuid", "run_id", "task_id", "session_id", "audit_id", "event_id"]) ?? `row-${i}`;
-}
-
-function RowShell({ children, className }: { children: ReactNode; className?: string }) {
-  return (
-    <Card>
-      <CardContent className={cn("flex flex-col gap-1.5 py-3 text-sm", className)}>{children}</CardContent>
-    </Card>
-  );
-}
-
-function ChatRow({ s }: { s: Rec }) {
-  const dn = displayName(pickStr(s, ["title", "name", "subject"]), idOf(s));
-  const when = beijing(s.last_active ?? s.last_active_at ?? s.updated_at ?? s.started_at ?? s.created_at);
-  const msgs = countDash(s.message_count ?? s.messages ?? s.msg_count);
-  return (
-    <RowShell>
-      <div className="flex items-center justify-between gap-3">
-        <span className="min-w-0 truncate font-medium" title={idOf(s) ?? undefined}>{dn.text}</span>
-        <span className="shrink-0 text-xs text-muted-foreground">{when}</span>
-      </div>
-      <div className="text-xs text-muted-foreground">消息 {msgs} 条</div>
-    </RowShell>
-  );
-}
-
-function TaskRow({ t }: { t: Rec }) {
-  const dn = displayName(pickStr(t, ["title", "name", "subject", "summary"]), idOf(t));
-  const assigneeRef = refValue(t.assignee ?? t.owner ?? t.assigned_to ?? t.assignedTo);
-  const assignee = refLabel(assigneeRef);
-  const when = beijing(t.updated_at ?? t.due_at ?? t.created_at);
-  return (
-    <RowShell>
-      <div className="flex items-center justify-between gap-3">
-        <span className="min-w-0 truncate font-medium" title={idOf(t) ?? undefined}>{dn.text}</span>
-        <StatusBadge value={t.status ?? t.state} table={WORK} />
-      </div>
-      <div className="flex items-center gap-3 text-xs text-muted-foreground">
-        <span title={typeof assigneeRef === "string" ? assigneeRef : undefined}>指派：{assignee ?? "未指派"}</span>
-        <span className="ml-auto">{when}</span>
-      </div>
-    </RowShell>
-  );
-}
-
-function RunRow({ r }: { r: Rec }) {
-  const started = beijing(r.started_at ?? r.created_at ?? r.start_time ?? r.timestamp);
-  const cost = money(r.cost ?? r.spend ?? r.total_cost ?? r.usage_cost);
-  const dur = duration(r.duration ?? r.duration_seconds ?? r.elapsed);
-  const tokens = countDash(r.tokens ?? r.total_tokens ?? (r.input_tokens != null || r.output_tokens != null ? num(r.input_tokens) + num(r.output_tokens) : null));
-  return (
-    <RowShell>
-      <div className="flex items-center justify-between gap-3">
-        <span className="min-w-0 truncate font-medium" title={idOf(r) ?? undefined}>
-          {pickStr(r, ["name", "title", "job", "label"]) ?? (idOf(r) ? refLabel(idOf(r)!) : "一次运行")}
-        </span>
-        <StatusBadge value={r.status ?? r.state ?? r.result} table={WORK} />
-      </div>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-        <span>{started}</span>
-        <span>耗时 {dur}</span>
-        <span>用量 {tokens}</span>
-        <span className="ml-auto">{cost}</span>
-      </div>
-    </RowShell>
-  );
-}
-
-function AuditRow({ a }: { a: Rec }) {
-  const when = beijing(a.created_at ?? a.timestamp ?? a.at ?? a.time ?? a.occurred_at);
-  const actorRef = refValue(a.actor ?? a.by ?? a.user ?? a.principal ?? a.who);
-  const actor = refLabel(actorRef);
-  const action = pickStr(a, ["action", "event", "type", "operation", "name", "summary", "message"]);
-  return (
-    <RowShell>
-      <div className="flex items-center justify-between gap-3">
-        <span className="min-w-0 truncate font-medium">{action ?? "—"}</span>
-        <span className="shrink-0 text-xs text-muted-foreground">{when}</span>
-      </div>
-      <div className="text-xs text-muted-foreground" title={typeof actorRef === "string" ? actorRef : undefined}>
-        操作者：{actor ?? "未指派"}
-      </div>
-    </RowShell>
-  );
-}
-
-// ── 小工具 ───────────────────────────────────────────────────────────────
-
-function num(v: unknown): number {
-  if (typeof v === "number" && Number.isFinite(v)) return v;
-  if (typeof v === "string") {
-    const n = Number(v);
-    if (Number.isFinite(n)) return n;
-  }
-  return 0;
-}
-
-function duration(value: unknown): string {
-  if (value == null || value === "") return "—";
-  let secs: number | null = null;
-  if (typeof value === "number") secs = value;
-  else if (typeof value === "string" && /^\d+(\.\d+)?$/.test(value.trim())) secs = Number(value);
-  if (secs == null || !Number.isFinite(secs) || secs < 0) return "—";
-  const s = Math.round(secs);
-  if (s < 60) return `${s} 秒`;
-  const m = Math.floor(s / 60);
-  const rs = s % 60;
-  if (m < 60) return `${m} 分 ${rs} 秒`;
-  const h = Math.floor(m / 60);
-  return `${h} 时 ${m % 60} 分`;
 }
 
 function DetailHeaderSkeleton() {

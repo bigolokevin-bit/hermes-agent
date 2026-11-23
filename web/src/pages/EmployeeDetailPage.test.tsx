@@ -1,4 +1,9 @@
 // @vitest-environment jsdom
+/**
+ * PE-03 更新说明：Tab 集已从「概览/聊天/任务/运行/审计」对齐到五个冻结分区
+ * （档案/任职/权限/身份链接/活动），旧顶层 Tab 名断言按卡面授权随更；
+ * 三条既有用例的口径（概览诚实化 / 整块替换 / 单分区独立降级）逐字保留。
+ */
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { MemoryRouter, Route, Routes } from "react-router";
@@ -32,18 +37,19 @@ afterEach(() => {
 const err = (status: number, body = "") =>
   new ApiError("拒绝", { status, body, url: "/agent-api" });
 
-/** 概览端点返回 detail；其它 ?employee= 端点返回 fallback。 */
+/** 详情端点返回 detail；活动四区块腿返回 sections；其余读腿给空信封。 */
 function route(detail: unknown, sections: unknown = []) {
   fetchJSON.mockImplementation((url: string) => {
-    if (url.includes("employee=")) return Promise.resolve(sections);
+    if (/\/api\/(sessions|tasks|runs|audit)\?/.test(url)) return Promise.resolve(sections);
+    if (/\/api\/(employee-versions|workstations|effective-config)\?/.test(url)) return Promise.resolve({ items: [] });
     return Promise.resolve(detail);
   });
 }
 
-async function render() {
+async function render(entry = "/employees/emp_9f3a4b7c") {
   await act(async () => {
     root.render(
-      <MemoryRouter initialEntries={["/employees/emp_9f3a4b7c"]}>
+      <MemoryRouter initialEntries={[entry]}>
         <Routes>
           <Route path="/employees/:id" element={<EmployeeDetailPage />} />
         </Routes>
@@ -65,7 +71,7 @@ const clickTab = async (label: string) => {
 };
 
 describe("EmployeeDetailPage", () => {
-  it("概览：姓名优先、emp_ 不外泄、缺失金额/计数不造假 0", async () => {
+  it("档案：姓名优先、emp_ 不外泄、缺失金额/计数不造假 0", async () => {
     route({
       id: "emp_9f3a4b7c",
       name: "小鲤",
@@ -74,6 +80,7 @@ describe("EmployeeDetailPage", () => {
       last_seen: "2026-11-18T02:30:00Z",
     });
     await render();
+    await clickTab("档案");
     const text = container.textContent ?? "";
     expect(text).toContain("小鲤");
     expect(text).not.toContain("emp_9f3a4b7c");
@@ -84,27 +91,28 @@ describe("EmployeeDetailPage", () => {
     expect(text).toContain("未计价");
   });
 
-  it("整块替换：详情 404 时只渲染无权限块，不出现任何 Tab", async () => {
+  it("整块替换：详情 404 时只渲染无权限块，不出现任何分区 Tab", async () => {
     fetchJSON.mockImplementation(() => Promise.reject(err(404)));
     await render();
     const text = container.textContent ?? "";
     expect(text).toContain("无法打开该员工");
     expect(container.querySelector('[role="tab"]')).toBeNull();
-    expect(text).not.toContain("概览");
+    expect(text).not.toContain("档案");
   });
 
-  it("单个 Tab 各自降级：运行 404 不影响概览头部", async () => {
+  it("单分区独立降级：运行区块 404 不影响概览头部", async () => {
     route({ id: "emp_9f3a4b7c", name: "小鲤", status: "active" });
-    // 让运行端点 404，概览正常
+    // 让运行端点 404，其余正常
     fetchJSON.mockImplementation((url: string) => {
       if (url.includes("/api/runs")) return Promise.reject(err(404));
-      if (url.includes("employee=")) return Promise.resolve([]);
+      if (/\/api\/(sessions|tasks|runs|audit)\?/.test(url)) return Promise.resolve([]);
+      if (/\/api\/(employee-versions|workstations|effective-config)\?/.test(url)) return Promise.resolve({ items: [] });
       return Promise.resolve({ id: "emp_9f3a4b7c", name: "小鲤", status: "active" });
     });
     await render();
     await clickTab("运行");
     const text = container.textContent ?? "";
-    expect(text).toContain("无法打开运行"); // 仅该面板替换
+    expect(text).toContain("无法打开运行"); // 仅该区块替换
     expect(text).toContain("小鲤"); // 头部仍在
   });
 });
