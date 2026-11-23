@@ -270,3 +270,23 @@ $ git status --porcelain
 5. **词汇表未扩**：`approval.decided` 等四码在审计车道 `ACTION_LABEL` 已有人话，
    本单 import 复用；AP-08（审计留痕含拒绝票）若要在审计页读 outcome 细分，
    由该车道改它自己的表。
+
+## 8. 交付补记（提交后复跑，逐字核对）
+
+- pre-commit（lefthook→eslint）首跑拦下新测试件里 1 个真错（`_drop` 未用变量），
+  已改为显式 `delete row.eventId`；改后 eslint **0 error**，仅剩一条**预存在**警告
+  （`react-refresh/only-export-components`，用 `git show HEAD:…views.tsx` 基线探针
+  复现同一行号族，非本 diff 引入）。
+- 该修正只动测试件（不进 bundle），§6 截图仍出自本 worktree 的 `vite build` 产物。
+- 提交态复跑数字（与本节同批）：`vitest run src/modules/approvals` →
+  **88 files / 443 tests 全绿**；`vite build` → `VITE_BUILD_EXIT=0`；
+  `lint-fake-success` → `violations: [] ok: true`；
+  `tsc -p tsconfig.app.json --noEmit` → 49 行 error 全在 `../apps/shared/src`，
+  `grep -c "src/modules"` = **0**。
+- 提交与推送同批完成，无 force、无 `--no-verify`；远端核验用定向 ref
+  （`git ls-remote origin refs/heads/task/AP-03-timeline`，按**输出行**判存在，
+  不 `ls-remote | grep <sha>`——全量行走管道会被截成假「没推」）：
+  远端 tip 与 `git rev-parse HEAD` 全长逐字相等，该两行原始输出贴在车道回执里，
+  本文件不写死 sha（写死就会随下一笔提交失真）。
+- diff 面 7 个文件（6 写域 + 本 DONE）；`git status --porcelain` 仅剩 `?? evidence/`
+  （取证件，按纪律不提交）。
