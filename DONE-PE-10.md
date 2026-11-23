@@ -206,6 +206,17 @@ whoami=200 user=opsadmin
 
 ---
 
+## 6. 交付台账
+
+* 功能笔 `adffb81aac`（6 件写域 + DONE），形制笔 `c6f82df10e`（列形制定档改走响应数据，
+  消掉 eslint `react-hooks/refs`；门禁按末笔重跑）。
+* 末笔推送后 `git ls-remote origin refs/heads/task/PE-10-search-server` 原文行：
+  `c6f82df10e93c3a47c9f3f72e57a58a7d4b81a40	refs/heads/task/PE-10-search-server`
+  （与 `git rev-parse HEAD` 逐字同值；本条 hash 即末笔，故 DONE 的最后一次
+  文档笔 hash 以回执里的 ls-remote 定向 ref 读数为准）。
+
+---
+
 ## 5. 偏差清单
 
 * **D-1（DoD 第 21 名腿：现网存量不足，未造数）**
