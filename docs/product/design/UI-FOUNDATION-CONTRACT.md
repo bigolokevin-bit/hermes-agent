@@ -66,3 +66,17 @@
 | 字体 14 种以上（12px 69、11px 60、0.6875rem 35…） | 待逐页采样后由 `font-scale-token-only` 给集合 | 静态 grep 只能数声明，DOM computed 才是判据 |
 | 9 个原生 select | 我早前口径＝6 文件 / 8 命中（生产码 0 命中，9 命中全在注释与测试叙述） | 用户数的含测试/注释面；本闸只判 DOM 里真实 `<select>` |
 | 61 处内联 style、38 个散 hex | 棘轮双口径：字面量 `style={{` 61 / 全形制 `style={` 65，差 4＝盲区站点须落登记豁免面 | 盲区＝换行形制与 `style={变量}`；豁免表见 `docs/_artifacts/ui-kd/inline-style-ratchet-readings.md` |
+
+## 六、机检闸的运行形制（写死，别再靠口口相传）
+
+- 唯一形制：**仓根执行** `node scripts/assert-ui-contract.mjs --url=http://127.0.0.1:<端口> --auth=<storageState.json> --stage=<duty|none>`。
+  `cd web` 里跑同一脚本不再算合规形制（`REPO` 由脚本自身位置解析，仓根最稳）。
+- 只读闸：不启服务、不改产物、不写文件；退出码只由 FAIL 驱动，DEFERRED 不判绿也不掩盖。
+- **闸需要浏览器**这个事实：条款 1/2/5/6/7/8/9/10 要真页面。`web/package.json` 已钉
+  `playwright: 1.64.0`（devDependencies，用户 10:1x 明文授权；其余依赖版本一律未动），
+  但 **devDep 要一次 `pnpm install` 才会链接进 node_modules**。在此之前脚本按解析链兜底：
+  `import("playwright")` → `web/package.json` 的 require → `UI_GATE_PLAYWRIGHT` 指路 →
+  同级 `../hermes-agent/node_modules/.pnpm/playwright@1.64.0*`。浏览器可执行文件同理：
+  `UI_GATE_CHROMIUM` → 本机 `~/Library/Caches/ms-playwright/chromium-*` 实存优先。
+- 全链落空时打印 `RUNTIME-CLAUSE-SKIPPED …` 并按 DEFERRED 收尾，**不伪装 PASS、不崩栈**。
+- 新闸 `scripts/assert-agent-rail.mjs`（舰队卡列七判据）沿用同一形制与同一解析链。
