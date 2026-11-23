@@ -290,7 +290,7 @@ export function UsagePage() {
   const header = (
     <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
       <Gauge className="h-5 w-5 shrink-0 text-white/70" aria-hidden="true" />
-      <h1 className="min-w-0 break-words font-mondwest text-xl">用量与成本</h1>
+      <span className="min-w-0 break-words font-mondwest text-xl">用量与成本</span>
       <label className="flex min-w-0 flex-col gap-1 text-xs" htmlFor="usg4-window">
         <span className="text-white/50">统计窗口</span>
         <ConsoleSelect

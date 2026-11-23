@@ -1125,7 +1125,7 @@ export default function DutyPage() {
       <header className="duty-head">
         <div className="duty-title">
           <ShieldCheck className="h-5 w-5" aria-hidden />
-          <h1>值班台</h1>
+          <span className="duty-title-name">值班台</span>
           <span>运营总览 · 只读</span>
           {(() => {
             // R41: ANY source that carries its own collection stamp counts;

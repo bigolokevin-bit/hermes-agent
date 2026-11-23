@@ -24,11 +24,15 @@
   gap: 8px;
 }
 
-.duty-title h1 {
+/* w190 条款6：页名由 h1 标签降格为具名 span，唯一 h1 归顶栏（TopBar @87873845ed）。
+   选择器从元素改类名并显式补回 color/line-height，保证计算值与降格前恒等。 */
+.duty-title .duty-title-name {
   font-family: var(--font-display, inherit);
   font-size: 1.05rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  color: var(--color-foreground);
+  line-height: normal;
 }
 
 .duty-title > span {
