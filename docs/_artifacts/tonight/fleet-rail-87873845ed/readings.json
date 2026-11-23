@@ -1,0 +1,272 @@
+{
+ "ticket": "w190 FleetRail 样板 A 对照图（18:00 检查点要件）",
+ "face": "87873845ed2cda106b23db324b8b7a913c3f8ec1",
+ "faceSource": "定向 ls-remote lane/hermes-console @11:45 落文件",
+ "buildSha": "a98d657788",
+ "builtEntry": "index-DXjSkqyg.js（console-aud 树 dist，含 FleetRail+h1 降格）",
+ "tokenSource": "keep-jar 只读（whoami curl 200@11:45:32 granted:false），未代登未碰 plist",
+ "disclosures": [
+  "after 腿 = 夹具 :9127（os.chdir console-aud web_dist + SPA 回退 + /auth 与 /agent-api 代理 127.0.0.1:9122 + employees 桩数据 9 条合成 emp_st_*，仅供版面对照，非现网数据）",
+  "before 腿 = 现部署 8183（部署 dist 已含 FleetRail 代码，但 granted:false ⇒ employees 403 ⇒ 组件守卫不出轨，如实 before 态）",
+  "playwright 经 sibling createRequire(seakoi-console-web)，chromium-1255；截图=视口加高破内部滚动壳（新站规：验收脸禁 networkidle，domcontentloaded+settle 1.8s）",
+  "本机根字号 15px（AGENTS 测量腿三坑②），几何读数一律 px 实测"
+ ],
+ "legs": [
+  {
+   "label": "before",
+   "origin": "http://100.117.184.117:8183",
+   "viewport": "1440x1411",
+   "shotMode": "heightened-viewport",
+   "whoamiPre": {
+    "status": 200,
+    "at": "2026-11-23T03:53:46.651Z"
+   },
+   "whoamiTight": {
+    "status": 200,
+    "at": "2026-11-23T03:53:47.426Z"
+   },
+   "blocked": null,
+   "png": "/tmp/d-w190-shot/fleet-before-1440.png",
+   "pngBytes": 212841,
+   "entry": "/assets/index-DU9vDpj3.js",
+   "h1Count": 2,
+   "h1Texts": [
+    "运营总览",
+    "值班台"
+   ],
+   "progressbars": 0,
+   "fleetCards": 3,
+   "fleetRects": [
+    {
+     "w": 320,
+     "h": 176,
+     "left": 231,
+     "right": 551
+    },
+    {
+     "w": 320,
+     "h": 176,
+     "left": 559,
+     "right": 879
+    },
+    {
+     "w": 320,
+     "h": 176,
+     "left": 887,
+     "right": 1207
+    }
+   ],
+   "metricSample": [
+    "—",
+    "—"
+   ],
+   "bodyTextLen": 1325,
+   "visibleRatio375": null,
+   "heightDiffMax": 0,
+   "rects1280": null,
+   "carousel": null,
+   "overflow375Count": null,
+   "overflow375Samples": null,
+   "jsErrors": 0,
+   "jsErrorSample": [],
+   "consoleErrors": 0,
+   "res4xxCount": 0,
+   "res4xxFullUrls": []
+  },
+  {
+   "label": "before",
+   "origin": "http://100.117.184.117:8183",
+   "viewport": "375x2557",
+   "shotMode": "heightened-viewport",
+   "whoamiPre": {
+    "status": 200,
+    "at": "2026-11-23T03:53:49.636Z"
+   },
+   "whoamiTight": {
+    "status": 200,
+    "at": "2026-11-23T03:53:50.406Z"
+   },
+   "blocked": null,
+   "png": "/tmp/d-w190-shot/fleet-before-375.png",
+   "pngBytes": 178443,
+   "entry": "/assets/index-DU9vDpj3.js",
+   "h1Count": 2,
+   "h1Texts": [
+    "运营总览",
+    "值班台"
+   ],
+   "progressbars": 0,
+   "fleetCards": 3,
+   "fleetRects": [
+    {
+     "w": 260,
+     "h": 160,
+     "left": 11,
+     "right": 271
+    },
+    {
+     "w": 260,
+     "h": 160,
+     "left": 279,
+     "right": 539
+    },
+    {
+     "w": 260,
+     "h": 160,
+     "left": 547,
+     "right": 807
+    }
+   ],
+   "metricSample": [
+    "—",
+    "—"
+   ],
+   "bodyTextLen": 1330,
+   "visibleRatio375": null,
+   "heightDiffMax": 0,
+   "rects1280": null,
+   "carousel": null,
+   "overflow375Count": 0,
+   "overflow375Samples": [],
+   "jsErrors": 0,
+   "jsErrorSample": [],
+   "consoleErrors": 0,
+   "res4xxCount": 0,
+   "res4xxFullUrls": []
+  },
+  {
+   "label": "after",
+   "origin": "http://127.0.0.1:9127",
+   "viewport": "1440x1451",
+   "shotMode": "heightened-viewport",
+   "whoamiPre": {
+    "status": 200,
+    "at": "2026-11-23T03:53:52.723Z"
+   },
+   "whoamiTight": {
+    "status": 200,
+    "at": "2026-11-23T03:53:54.617Z"
+   },
+   "blocked": null,
+   "png": "/tmp/d-w190-shot/fleet-after-1440.png",
+   "pngBytes": 215627,
+   "entry": "/assets/index-BLhDxkaC.js",
+   "h1Count": 1,
+   "h1Texts": [
+    "运营总览"
+   ],
+   "progressbars": 0,
+   "fleetCards": 9,
+   "fleetRects": [
+    {
+     "w": 320,
+     "h": 176,
+     "left": 271,
+     "right": 591
+    },
+    {
+     "w": 320,
+     "h": 176,
+     "left": 599,
+     "right": 919
+    },
+    {
+     "w": 320,
+     "h": 176,
+     "left": 927,
+     "right": 1247
+    }
+   ],
+   "metricSample": [
+    "—",
+    "—"
+   ],
+   "bodyTextLen": 1435,
+   "visibleRatio375": null,
+   "heightDiffMax": 0,
+   "rects1280": [
+    {
+     "w": 288,
+     "h": 168,
+     "left": 271,
+     "right": 559
+    },
+    {
+     "w": 288,
+     "h": 168,
+     "left": 567,
+     "right": 855
+    }
+   ],
+   "carousel": null,
+   "overflow375Count": null,
+   "overflow375Samples": null,
+   "jsErrors": 0,
+   "jsErrorSample": [],
+   "consoleErrors": 0,
+   "res4xxCount": 0,
+   "res4xxFullUrls": []
+  },
+  {
+   "label": "after",
+   "origin": "http://127.0.0.1:9127",
+   "viewport": "375x2631",
+   "shotMode": "heightened-viewport",
+   "whoamiPre": {
+    "status": 200,
+    "at": "2026-11-23T03:53:56.785Z"
+   },
+   "whoamiTight": {
+    "status": 200,
+    "at": "2026-11-23T03:53:57.557Z"
+   },
+   "blocked": null,
+   "png": "/tmp/d-w190-shot/fleet-after-375.png",
+   "pngBytes": 177980,
+   "entry": "/assets/index-BLhDxkaC.js",
+   "h1Count": 1,
+   "h1Texts": [
+    "运营总览"
+   ],
+   "progressbars": 0,
+   "fleetCards": 9,
+   "fleetRects": [
+    {
+     "w": 260,
+     "h": 160,
+     "left": 11,
+     "right": 271
+    },
+    {
+     "w": 260,
+     "h": 160,
+     "left": 279,
+     "right": 539
+    },
+    {
+     "w": 260,
+     "h": 160,
+     "left": 547,
+     "right": 807
+    }
+   ],
+   "metricSample": [
+    "—",
+    "—"
+   ],
+   "bodyTextLen": 1435,
+   "visibleRatio375": null,
+   "heightDiffMax": 0,
+   "rects1280": null,
+   "carousel": null,
+   "overflow375Count": 0,
+   "overflow375Samples": [],
+   "jsErrors": 0,
+   "jsErrorSample": [],
+   "consoleErrors": 0,
+   "res4xxCount": 0,
+   "res4xxFullUrls": []
+  }
+ ],
+ "finishedAt": "2026-11-23T03:53:57.875Z"
+}
