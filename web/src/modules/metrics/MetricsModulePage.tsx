@@ -3092,7 +3092,11 @@ export function MetricsModulePage() {
                               className="met9-link"
                               data-testid={`met9-link-${row.slug}`}
                               title={row.drill.note ?? '让运行页只看这一项的运行'}
-                              aria-label={`查看${row.model}的运行`}
+                              aria-label={
+                                row.drill.filtered
+                                  ? `查看${row.model}的运行（已按该行过滤）`
+                                  : `打开同一时间窗的全部运行（${row.drill.note ?? ''}）`
+                              }
                             >
                               查看运行
                             </Link>
