@@ -11,57 +11,12 @@
     "note": "parse failed: SyntaxError: Unexpected token '<', \"<!doctype \"... is not valid JSON"
   },
   "statusByCode": {
-    "200": 69,
-    "ERR": 6
+    "200": 75
   },
   "verdicts": {
-    "spa-hash": 69,
-    "transport-error": 6
+    "spa-hash": 75
   },
-  "deadLinks": [
-    {
-      "url": "http://127.0.0.1:9122/",
-      "hash": "#/employees?tab=matrix",
-      "source": "CONSOLE_TABS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNRESET 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/",
-      "hash": "#/work",
-      "source": "CONSOLE_TABS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNRESET 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/",
-      "hash": "#/identity",
-      "source": "CONSOLE_TABS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNRESET 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/",
-      "hash": "#/identity?tab=roles",
-      "source": "CONSOLE_TABS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNRESET 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/",
-      "hash": "#/knowledge?tab=sources",
-      "source": "CONSOLE_TABS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNRESET 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/",
-      "hash": "#/capabilities?tab=channels",
-      "source": "CONSOLE_TABS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNRESET 127.0.0.1:9122)"
-    }
-  ],
+  "deadLinks": [],
   "transportNote": "200 text/html = the SPA shell served the form (client routing). Every served HTML body shares this many distinct sha256 digests; the server therefore cannot distinguish the routes, which is why the content judgement is rendered, not fetched.",
   "uniqueHtmlShells": 1,
   "contentMethod": "render",
@@ -627,13 +582,13 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 624,
+      "mainChars": 647,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 6,
+      "consoleErrors": 2,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
-      "headSample": "系统健康默认设置版本审计事件 审计事件读取失败 时间为北京时间导出 CSV完整性校验刷新 导出当"
+      "headSample": "系统健康 默认设置 版本 审计事件 审计事件读取失败 时间为北京时间 导出 CSV 完整性校验 "
     },
     {
       "route": "#/system?tab=events&view=anomaly",
@@ -669,7 +624,7 @@
       "mainChars": 281,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 9,
+      "consoleErrors": 5,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
       "headSample": "安全设置 登录、密钥与高危操作 · 只读 重新读取 重新登录后回到这个页面，即可继续查看。请求编"
@@ -679,13 +634,13 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 542,
+      "mainChars": 554,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 7,
+      "consoleErrors": 4,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
-      "headSample": "系统健康默认设置版本审计事件 版本 构建与依赖信息 刷新 下载诊断包（计划中） 组件版本与健康 "
+      "headSample": "系统健康 默认设置 版本 审计事件 版本 构建与依赖信息 刷新 下载诊断包（计划中） 组件版本与"
     },
     {
       "route": "#/work",
@@ -718,13 +673,13 @@
       "source": "COMPAT_TABS",
       "kind": "compat-tab",
       "verdict": "content-ok",
-      "mainChars": 251,
+      "mainChars": 259,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 12,
+      "consoleErrors": 7,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
-      "headSample": "任务运行 任务看板 按后端状态看任务；拖动排序未启用，状态不会被前端改写。 新建任务刷新 状态："
+      "headSample": "任务 运行 任务看板 按后端状态看任务；拖动排序未启用，状态不会被前端改写。 新建任务 刷新 状"
     },
     {
       "route": "#/work?tab=runs",
@@ -740,7 +695,7 @@
       "headSample": "任务 运行 刷新 控制台 · 运行 运行 按时间看运行记录。这一面只读：不取消运行；重试的含义是"
     }
   ],
-  "distinctMainHeads": 38,
+  "distinctMainHeads": 36,
   "medianMainChars": 271,
   "contentEmpty": [],
   "contentEmptyCount": 0,
@@ -806,17 +761,16 @@
   "routesRenderedWithoutMainEl": 0,
   "routesWithConsoleErrors": 51,
   "parseErrors": [],
-  "ok": false,
-  "headHash": "56eef7a81b",
-  "exitCode": 1,
+  "ok": true,
+  "headHash": "105f17f0ae",
+  "exitCode": 0,
   "counts": {
     "probed": 75,
-    "deadLinks": 6,
+    "deadLinks": 0,
     "contentEmpty": 0,
     "probeErrors": 0,
     "verdicts": {
-      "spa-hash": 69,
-      "transport-error": 6
+      "spa-hash": 75
     }
   },
   "ceAuthority": "login-state"
