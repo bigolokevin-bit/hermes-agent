@@ -755,7 +755,7 @@ export function EmployeesModulePage() {
       </div>
 
       <Card>
-        <CardContent className="flex flex-wrap items-center gap-2 p-3">
+        <CardContent className="emp-filter-row flex items-center gap-2 p-3">
           <span data-testid="emp-l-search" className="contents">
           <label className="relative min-w-0 flex-1 sm:max-w-xs">
             <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-white/40" />
@@ -763,7 +763,7 @@ export function EmployeesModulePage() {
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
               placeholder="搜索姓名或岗位"
-              className="w-full rounded-md border border-white/10 bg-white/5 py-2 pl-9 pr-3 text-sm outline-none"
+              className="emp-filter-control w-full rounded-md border border-white/10 bg-white/5 py-2 pl-9 pr-3 text-sm outline-none"
               data-testid="employees-search"
             />
           </label>
@@ -783,7 +783,7 @@ export function EmployeesModulePage() {
           />
           </span>
           <div
-            className="flex min-w-0 flex-wrap items-center gap-1.5 text-xs"
+            className="emp-dept-rail flex min-w-0 items-center gap-1.5 text-xs"
             role="group"
             aria-label="部门"
             data-testid="emp-list-dept-rail"

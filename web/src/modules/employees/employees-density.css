@@ -29,3 +29,24 @@
     font-variant-numeric: tabular-nums;
   }
 }
+
+/* L0 13:05 密度收敛首码腿：筛选行只允许一行。控件挤不下时在本行内横滚，
+ * 部门胶囊不收缩、不换行成第二行——计数、状态、动作各归各的排。 */
+.emp-filter-row {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+}
+
+.emp-dept-rail {
+  flex-wrap: nowrap;
+}
+
+.emp-dept-rail > button {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* 页面级控件高收口到令牌档（行内控件的命中区由 40px 行壳保障，例外 E4）。 */
+.emp-filter-control {
+  height: var(--btn-h);
+}
