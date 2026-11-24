@@ -7,7 +7,8 @@
  * GET-only 只读列表口仍挂起待 D 车道/参谋裁定。V2/V6 逐员工可判 pass/fail。V3 的真 pass 分支
  * 需要「可引用文档 > 0」与「强制引用策略可读」两腿同时有真读数；2026-11-23
  * 实测策略腿在 BFF 没有任何读口，所以现网 V3 恒「待核实」——这是给不出的
- * 原因，不是可以硬造的数字。
+ * 原因，不是可以硬造的数字。口径变更（2026-11-24）：V3 因此整门排除出交集
+ * （见 GATE_READ_PORTS / intersection），卡上写「未接策略」而不是「— / —」。
  * 证据源没回答的员工按「待核实」(unknown) 计，unknown 永不进分子。
  */
 import type { Loadable } from "./types";
@@ -65,6 +66,53 @@ export interface ReadinessEvidence {
 }
 
 export type GateVerdict = "pass" | "fail" | "unknown";
+
+/**
+ * 门级读口登记：门本身有没有读口。这是「交集分母」的唯一依据——
+ * 有读口的门才可能给出 pass/fail，才进交集；没有读口的门整门排除（不是按
+ * 员工排除）。V3 的「强制引用策略」腿在 BFF 从未接线（api.ts 恒传 wired:false），
+ * 所以 V3 即使文档腿将来接通也拿不到 pass，整门不进交集，只在表里如实标注。
+ */
+export const GATE_READ_PORTS = {
+  V1: { decidable: true, reason: null },
+  V2: { decidable: true, reason: null },
+  V3: { decidable: false, reason: "上游无强制引用策略读口；不影响其它三门交集" },
+  V6: { decidable: true, reason: null },
+} as const;
+
+export type GateKey = keyof typeof GATE_READ_PORTS;
+
+export interface IntersectionResult {
+  /** 可判定门全部通过的员工数；一门都判不出来时为 null（不许补 0）。 */
+  pass: number | null;
+  /** 可判定门都能给出判定（pass/fail）的员工数，即交集分母；同上为 null。 */
+  denom: number | null;
+}
+
+/**
+ * 可判定门取交集（口径变更 2026-11-24）：
+ * - 分母只数「每一道可判定门都给出了 pass/fail」的员工；某门未知/未回答者
+ *   不进分母（也就不会把未知当成未通过）。
+ * - 分子数这些员工里所有可判定门都 pass 的人。
+ * - 有人能判定但无人通过 → pass=0（真 0，照给）；一门都判不出来 → null。
+ * 没读口的门不在这组 verdict 里——调用方只传可判定门。
+ */
+export function intersection(
+  verdictSets: (GateVerdict | null)[][],
+  rowCount: number,
+): IntersectionResult {
+  if (verdictSets.length === 0 || rowCount === 0) return { pass: null, denom: null };
+  let pass = 0;
+  let denom = 0;
+  for (let i = 0; i < rowCount; i += 1) {
+    const row = verdictSets.map((v) => v[i] ?? null);
+    if (!row.every((v) => v === "pass" || v === "fail")) continue;
+    denom += 1;
+    if (row.every((v) => v === "pass")) pass += 1;
+  }
+  if (denom === 0) return { pass: null, denom: null };
+  return { pass, denom };
+}
 
 function alive(expiresAt: string | null, now: number): boolean {
   if (expiresAt === null) return true;

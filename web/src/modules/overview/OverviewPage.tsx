@@ -547,7 +547,9 @@ function ReadyCard({
   const total = readiness.total ?? kpis.total;
   const denom = total ?? (employees ? employees.length : null);
   const narrowestKey = readiness.narrowest?.key ?? null;
-  const failingGates = readiness.gates.filter((gate) => (gate.fail ?? 0) > 0);
+  const failingGates = readiness.gates.filter(
+    (gate) => (gate.fail ?? 0) > 0 && gate.decidable !== false,
+  );
   const restricted =
     buckets === null
       ? '四门证据未到'
@@ -557,9 +559,15 @@ function ReadyCard({
   const pct = (n: number | null | undefined) =>
     n === null || n === undefined || !denom ? null : Math.round((n / denom) * 1000) / 10;
   const unknownGates = readiness.gates.filter((gate) => gate.state === 'unknown');
-  const unknownNames = unknownGates
-    .map((gate) => (gate.name === '引用' ? '引用门' : gate.name))
+  // 口径变更（2026-11-24）：交集只取「门本身有读口」的门。V3 引用门无读口，
+  // 整门排除；卡上要把「基于几门」和「哪门没进」写清楚，不能让人读成四门全判。
+  const excludedGates = readiness.excludedGates ?? [];
+  const excludedLabel = excludedGates
+    .map((gate) => (gate.key === 'V3' ? 'V3 引用门' : gate.label))
     .join('、');
+  const decidableCount =
+    readiness.decidableGateCount ?? readiness.gates.filter((gate) => gate.decidable !== false).length;
+  const undecidedNames = readiness.undecidedGates ?? [];
   const v3Known = readiness.gates.find((gate) => gate.key === 'V3')?.state !== 'unknown';
   const coverageReady = [
     data.employees.k === 'ready',
@@ -573,34 +581,45 @@ function ReadyCard({
     ...(kpis.atRisk === null ? [{ label: '风险口径', reason: '风险矩阵' }] : []),
   ];
   const statusTone = gapList.length === 0 && unknownGates.length === 0 ? 'ok' : 'unknown';
-  // 交集句常驻：有 confirmed 说人数；没有就把「哪一门没有读口」写明白，不留空 callout。
+  // 交集句常驻：有数就说人数 + 最窄门；没有就点名「哪道可判定门本轮没回答」。
+  // 「无读口」只点真正没有读口的门（excludedGates），不再把有读口的三门一起说死。
+  const calloutTail =
+    readiness.narrowest !== null
+      ? `最窄的「${readiness.narrowest.name}」拦下 ${readiness.narrowest.fail} 人`
+      : '当前没有单独卡人的可判定门';
+  const noPortTail = excludedLabel ? `；${excludedLabel}无读口，未计入` : '';
   const callout =
     readiness.confirmed !== null ? (
       <>
-        <b>四门交集 {readiness.confirmed} 人可上岗</b>
+        <b>
+          可判定 {decidableCount} 门交集 {readiness.confirmed} 人可上岗
+        </b>
         <span className="ov5-hsep">·</span>
-        {readiness.netNote}
+        {calloutTail}
+        {noPortTail}
       </>
     ) : (
       <>
-        <b>四门交集暂不给</b>
+        <b>交集暂不给</b>
         <span className="ov5-hsep">·</span>
-        {unknownGates.length > 0
-          ? `${unknownNames} 无读口，交集人数不能确认`
-          : '各门读数未齐，交集人数不能确认'}
-        {readiness.narrowest ? `；最窄门「${readiness.narrowest.name}」已拦 ${readiness.narrowest.fail} 人` : ''}
+        {undecidedNames.length > 0
+          ? `${undecidedNames.join('、')} 读口本轮未回，交集人数不能确认`
+          : '可判定门读数未齐，交集人数不能确认'}
+        {noPortTail}
       </>
     );
   return (
     <KpiCard
       title="可上岗"
-      meta={`${dashed(denom)} 名 · 四门取交集`}
+      meta={`${dashed(denom)} 名 · 可判定 ${decidableCount} 门交集`}
       value={readiness.confirmed === null ? <UnknownValue /> : readiness.confirmed}
-      unit={`/ ${denom === null ? '—' : denom} 可上岗`}
+      unit={`/ ${dashed(readiness.decidableDenom)} 可上岗`}
       note={
-        readiness.confirmed === null
-          ? `${unknownNames || '引用门'} 无读口 · 交集暂不给`
-          : undefined
+        readiness.confirmed !== null
+          ? `交集基于 ${decidableCount} 门${excludedLabel ? `（${excludedLabel}无读口，未计入）` : ''}`
+          : undecidedNames.length > 0
+            ? `缺：${undecidedNames.join('、')} 读口未回${excludedLabel ? ` · ${excludedLabel}无读口` : ''}`
+            : undefined
       }
       status={{
         tone: statusTone,
@@ -630,24 +649,44 @@ function ReadyCard({
       </p>
       <div className="ov5-gline">
         <span>各门独立通过</span>
-        <span>/ {dashed(denom)} 人</span>
+        <span>/ 可判定人数</span>
       </div>
       <div className="ov5-gates">
         {readiness.gates.map((gate) => {
+          const decidable = gate.decidable !== false;
           const dot = gate.state === 'pass' ? 'ok' : gate.state === 'fail' ? 'bad' : 'warn';
           return (
-            <div className={`ov5-gate${gate.key === narrowestKey ? ' is-narrow' : ''}`} key={gate.key}>
+            <div
+              className={`ov5-gate${gate.key === narrowestKey ? ' is-narrow' : ''}${decidable ? '' : ' is-static'}`}
+              key={gate.key}
+            >
               <span className="ov5-gk" title={gate.source}>
                 {gate.name}
                 {gate.key === narrowestKey ? <span className="ov5-gtag">最窄</span> : null}
               </span>
-              <span className="ov5-gv">
-                {gate.pass === null ? '—' : gate.pass} / {dashed(denom)}
-              </span>
-              <span className="ov5-gcut">
-                {gate.state === 'unknown' ? '—' : `未达 ${gate.fail ?? 0}`}
-              </span>
-              <i className={`ov5-gdot ${dot}`} title={gate.whyNot ?? `${gate.name}：${gate.state}`} />
+              {decidable ? (
+                <>
+                  <span className="ov5-gv">
+                    {gate.pass === null ? '—' : gate.pass} /{' '}
+                    {gate.decided === null || gate.decided === undefined ? '—' : gate.decided}
+                  </span>
+                  <span className="ov5-gcut">
+                    {gate.state === 'unknown' ? '—' : `未达 ${gate.fail ?? 0}`}
+                  </span>
+                </>
+              ) : (
+                <>
+                  {/* 无读口的门不写「— / —」：写清它没接，并在行尾说明为何不进交集。 */}
+                  <span className="ov5-gv">未接策略</span>
+                  <span className="ov5-gcut">
+                    {gate.excludedReason ?? '上游无强制引用策略读口；不影响其它三门交集'}
+                  </span>
+                </>
+              )}
+              <i
+                className={`ov5-gdot ${dot}`}
+                title={gate.whyNot ?? gate.excludedReason ?? `${gate.name}：${gate.state}`}
+              />
             </div>
           );
         })}
@@ -697,7 +736,7 @@ function ReadyCard({
             <i className="unknown" />
             {dashed(buckets?.pending)} 未知
           </span>
-          <span className="ov5-legend-note">四门各自独立判定后再取交集</span>
+          <span className="ov5-legend-note">可判定各门独立判定后再取交集</span>
         </div>
       </div>
     </KpiCard>

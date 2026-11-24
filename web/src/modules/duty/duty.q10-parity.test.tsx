@@ -68,12 +68,13 @@ describe("Q10 条目4+5 · buildReadiness 纯函数", () => {
       null,
       now,
     );
-    // V3 恒 unknown → unknownGates=1 → confirmed=null，净效果句必须说「暂不给」而非给数
+    // V3 恒 unknown 且无读口 → 整门不进交集；可判定三门全员被 V2/V6 挡住 → 交集
+    // 0 人 / 3 人。净效果句仍点名最窄门，并明写「引用门无读口，未计入」，不编净人数。
     expect(view.unknownGates).toBe(1);
-    expect(view.confirmed).toBeNull();
+    expect(view.confirmed).toBe(0);
     expect(view.netNote).toContain("最窄");
     expect(view.netNote).toContain(view.narrowest!.name);
-    expect(view.netNote).toMatch(/暂不|未接|没有接入|不能判定/);
+    expect(view.netNote).toContain("引用门无读口，未计入");
   });
 
   it("分母护栏：单页 limit 触顶时口径句点名「上限 100 · 非全量」", () => {

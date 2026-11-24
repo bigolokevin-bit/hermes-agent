@@ -14,7 +14,17 @@ import type {
 import { num, EMPLOYEES_PAGE_LIMIT } from "./types";
 import { beijing } from "./format";
 import type { GateVerdict, ReadinessEvidence } from "./readiness";
-import { DENOMINATOR_STATES, rollup, v1Verdict, v2Verdict, v3Verdict, v6Verdict } from "./readiness";
+import {
+  DENOMINATOR_STATES,
+  GATE_READ_PORTS,
+  intersection,
+  rollup,
+  v1Verdict,
+  v2Verdict,
+  v3Verdict,
+  v6Verdict,
+  type GateKey,
+} from "./readiness";
 
 /** 员工目录固定单页 limit=100；拉满一页就证明不了全量（DU-01④）。owner=types.ts，此处仅再导出兼容旧引用。 */
 export { EMPLOYEES_PAGE_LIMIT } from "./types";
@@ -48,9 +58,11 @@ export function activeCount(stats: Record<string, unknown> | null): number | nul
  * 在卡上：V1 是单腿（渠道事件列表读口属 BFF 红线；DU-04 已按 A 路交付=不接，
  * B 路只读列表口仍挂起待裁定，屏上不写「等裁定」）；V3 只有
  * 「可引用文档>0 ∧ 强制引用策略可读」才可能 pass，而策略腿 2026-11-23 实测无
- * 读口 ⇒ 现网恒「待核实」；V2/V6 逐员工可判。证据源没回答的员工按「待核实」
- * 计、unknown 永不进分子；目录拉满单页或分母对不上时整组按证据不完整处理
- * （DU-01④），`evidence` 为 null 只在扇出仍在途（或目录本身失败）时出现。
+ * 读口 ⇒ V3 整门排除出交集（表里保留一行写「未接策略」）；V2/V6 逐员工可判。
+ * 交集口径（2026-11-24 变更）：只取有读口的门，按「每道可判定门都给出
+ * pass/fail 的员工」做分母，未知门显式计数、不冒充通过；证据源没回答的员工按
+ * 「待核实」计、unknown 永不进分子；目录拉满单页或分母对不上时整组按证据不完整
+ * 处理（DU-01④），`evidence` 为 null 只在扇出仍在途（或目录本身失败）时出现。
  */
 export function buildReadiness(
   employees: EmployeeRow[] | null,
@@ -102,7 +114,7 @@ export function buildReadiness(
   const v6Verdicts = denom.map((e) => (apRows ? v6Verdict(apRows, e.employeeId, now) : null));
 
   const roll = (
-    key: GateView["key"],
+    key: GateKey,
     name: string,
     code: string,
     source: string,
@@ -110,10 +122,14 @@ export function buildReadiness(
     stampOverride?: string | null,
     whyNot?: string | null,
   ): GateView => {
+    const port = GATE_READ_PORTS[key];
     if (!complete || evidence === null) {
       return {
         key, name, pass: null, fail: null, state: "unknown", code, source, asOf: null,
-        whyNot: "目录分页或统计对不上账，本轮整组按证据不完整处理",
+        whyNot: whyNot ?? "目录分页或统计对不上账，本轮整组按证据不完整处理",
+        decidable: port.decidable,
+        excludedReason: port.reason,
+        decided: null,
       };
     }
     const r = rollup(verdicts);
@@ -127,6 +143,9 @@ export function buildReadiness(
       source,
       asOf: r.pass === null ? null : stampOverride ?? stamp,
       whyNot: r.state === "unknown" ? whyNot ?? "部分员工的证据腿没有回答" : null,
+      decidable: port.decidable,
+      excludedReason: port.reason,
+      decided: r.pass === null ? null : r.pass + (r.fail ?? 0),
     };
   };
 
@@ -171,27 +190,53 @@ export function buildReadiness(
 
   const gates = [v1, v2, v3, v6];
   const unknownGates = gates.filter((g) => g.state === "unknown").length;
-  // 可上岗分子：四门全部显式通过的员工；任何一门 fail/unknown/无证据都不入。
-  // 仍有 unknown 门时不给出伪权威总数（PRD v4 风险表 #1：GAP-01 前不显示单一权威可上岗率）。
-  const confirmed =
-    unknownGates > 0 || !complete || evidence === null
-      ? null
-      : denom.reduce(
-          (n, _e, i) =>
-            n + (v1Verdicts[i] === "pass" && v2Verdicts[i] === "pass" && v3Verdicts[i] === "pass" && v6Verdicts[i] === "pass" ? 1 : 0),
-          0,
-        );
-  // 三分态（DU-01⑤）：分母按真证据划分——「未达」要有至少一门显式 fail（真读数），
-  // 「已确认」要四门全部显式 pass，其余（含扇出未覆盖行）一律「待核实」。
-  // 目录单页拉满时分母本身不可信，不给任何计数（连桶也不给）。
+  // 口径变更（2026-11-24）：交集只取「门本身有读口」的门。V3 的强制引用策略腿
+  // 在 BFF 没有读口（api.ts 恒 policy.wired:false），拿不到 pass 就永远不能当
+  // 「已知的通过」——把它留在分母会让整张卡恒塌成「— / —」。所以 V3 整门排除出
+  // 交集（在四门表里照旧保留一行，写「未接策略」并注明未计入），其它三门按
+  // 「每道门都给出 pass/fail 的员工」做交集；未知门显式计数，不冒充通过。
+  const verdictSets: Record<GateKey, (GateVerdict | null)[]> = {
+    V1: v1Verdicts,
+    V2: v2Verdicts,
+    V3: v3Verdicts,
+    V6: v6Verdicts,
+  };
+  const decidableKeys = (Object.keys(GATE_READ_PORTS) as GateKey[]).filter(
+    (key) => GATE_READ_PORTS[key].decidable,
+  );
+  const inter =
+    complete && evidence !== null
+      ? intersection(
+          decidableKeys.map((key) => verdictSets[key]),
+          denom.length,
+        )
+      : { pass: null, denom: null };
+  const confirmed = inter.pass;
+  const decidableDenom = inter.denom;
+  const excludedGates = gates
+    .filter((g) => g.decidable === false)
+    .map((g) => ({
+      key: g.key,
+      // 屏幕上只写人话门名；工程码（V3）留给 overview 旁注/title，值班台屏文本不许出现裸码。
+      label: g.key === "V3" ? "引用门" : `${g.name}门`,
+      reason: g.excludedReason ?? "该门没有读口，未计入交集",
+    }));
+  // 一门都判不出来时才允许「—」：点名的正是「有读口但本轮没回答」的门。
+  const undecidedGates =
+    confirmed === null
+      ? gates.filter((g) => g.decidable !== false && g.state === "unknown").map((g) => g.name)
+      : [];
+  // 三分态（DU-01⑤）：分母按真证据划分——「未达」要有至少一门可判定门的显式 fail
+  // （真读数），「已确认」要可判定门全部显式 pass（V3 无读口，不进任何一条判断），
+  // 其余（含扇出未覆盖行）一律「待核实」。三桶之和恒等于分母行数。
   const buckets: ReadinessView["buckets"] =
     employees === null || pageSaturated
       ? null
       : denom.reduce<NonNullable<ReadinessView["buckets"]>>(
           (acc, _e, i) => {
-            const vs = [v1Verdicts[i], v2Verdicts[i], v3Verdicts[i], v6Verdicts[i]];
+            const vs = decidableKeys.map((key) => verdictSets[key][i]);
             if (vs.some((v) => v === "fail")) return { ...acc, failing: acc.failing + 1 };
-            if (vs.every((v) => v === "pass")) return { ...acc, confirmed: acc.confirmed + 1 };
+            if (vs.length > 0 && vs.every((v) => v === "pass")) return { ...acc, confirmed: acc.confirmed + 1 };
             return { ...acc, pending: acc.pending + 1 };
           },
           { confirmed: 0, pending: 0, failing: 0 },
@@ -211,7 +256,9 @@ export function buildReadiness(
               : `本轮逐员工判定覆盖 ${cov.covered}/${cov.requested}`
             : "逐员工证据本轮没有回答",
         ].join(" · ");
-  const failing = gates.filter((g) => g.state !== "unknown" && (g.fail ?? 0) > 0);
+  const failing = gates.filter(
+    (g) => g.decidable !== false && g.state !== "unknown" && (g.fail ?? 0) > 0,
+  );
   const narrowest = failing.sort((a, b) => (b.fail ?? 0) - (a.fail ?? 0))[0] ?? null;
   const deltaToNext =
     confirmed !== null && total !== null && confirmed < total ? 1 : null;
@@ -219,17 +266,28 @@ export function buildReadiness(
   // Q10 条目3（截断披露）：明细出卡进折叠区后，「总数 / 被截条数」由本页读到的
   // 条数如实承担——运行·任务·审批每个读口单页上限 3，触顶即明写可能还有更多。
   // 条目4（最窄门置顶 + 交集句）：最窄限制门排到第一，其余保持原序；净效果句
-  // 用门名 + 拦下人数说人话，unknown 存在时明说「净人数暂不给」。
+  // 用门名 + 拦下人数说人话，未知门显式计数。口径变更后句子只谈「可判定门」，
+  // 并把排除出交集的门（无读口）逐个点名，不让读者误以为是四门交集。
   const orderedGates = narrowest
     ? [narrowest, ...gates.filter((g) => g.key !== narrowest.key)]
     : gates;
+  const decidableGateCount = decidableKeys.length;
+  const unknownDecidable = gates.filter(
+    (g) => g.decidable !== false && g.state === "unknown",
+  ).length;
+  const excludedTail =
+    excludedGates.length > 0
+      ? `；${excludedGates.map((g) => `${g.label}无读口，未计入`).join("、")}`
+      : "";
   const netNote = narrowest
-    ? unknownGates > 0
-      ? `四门叠加先看最窄的一道「${narrowest.name}」：拦下 ${narrowest.fail} 人；还有 ${unknownGates} 项检查结果未知，叠加后的净人数暂不给。`
-      : `四门叠加后最窄的一道是「${narrowest.name}」：它拦下 ${narrowest.fail} 人，其余检查单独看都更宽。`
-    : unknownGates > 0
-      ? `还有 ${unknownGates} 项检查的数据源没有接入，四门叠加的净效果暂不能判定。`
-      : "四门检查全部通过才可上岗；当前没有单独卡人的检查。";
+    ? unknownDecidable > 0
+      ? `可判定 ${decidableGateCount} 门叠加先看最窄的「${narrowest.name}」：拦下 ${narrowest.fail} 人；还有 ${unknownDecidable} 项可判定检查结果未知${excludedTail}。`
+      : `可判定 ${decidableGateCount} 门叠加后最窄的是「${narrowest.name}」：它拦下 ${narrowest.fail} 人，其余检查单独看都更宽${excludedTail}。`
+    : unknownDecidable > 0
+      ? `还有 ${unknownDecidable} 项可判定检查的数据源没有回答，叠加后的净效果暂不能判定${excludedTail}。`
+      : decidableGateCount === 0
+        ? `四门都没有读口，交集无从谈起${excludedTail}。`
+        : `可判定 ${decidableGateCount} 门全部通过才可上岗；当前没有单独卡人的检查${excludedTail}。`;
 
   // Q10 条目5（分母护栏）：员工目录是单页读取（上限 100）。触顶或目录条数低于
   // 在册统计时，比率分母只是「本页算出来的」，句子里必须点名，不得假造全量分母。
@@ -244,7 +302,23 @@ export function buildReadiness(
         ? `比率分母：本页 ${employees.length} 人 · 在册统计 ${total} 人，目录未拉满，非全量。`
         : `比率分母：本页 ${employees.length} 人，未触单页上限 ${EMPLOYEES_PAGE_LIMIT}，与在册统计一致。`;
 
-  return { total, active, confirmed, buckets, denominatorNote, unknownGates, narrowest, deltaToNext, gates: orderedGates, netNote, denomNote };
+  return {
+    total,
+    active,
+    confirmed,
+    decidableDenom,
+    decidableGateCount,
+    excludedGates,
+    undecidedGates,
+    buckets,
+    denominatorNote,
+    unknownGates,
+    narrowest,
+    deltaToNext,
+    gates: orderedGates,
+    netNote,
+    denomNote,
+  };
 }
 
 export interface RunTotalsView {

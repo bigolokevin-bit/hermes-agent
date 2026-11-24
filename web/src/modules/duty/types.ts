@@ -227,6 +227,22 @@ export interface GateView {
   inferred?: boolean;
   /** state=unknown 时在卡上直出的「为什么给不出」一句话结论；其它态为 null。 */
   whyNot?: string | null;
+  /**
+   * 门本身有没有读口（口径变更 2026-11-24）。false 的门不进交集：V3 的强制
+   * 引用策略腿从未接线，整门排除；卡上改显「未接策略」，不再是「— / —」。
+   */
+  decidable?: boolean;
+  /** decidable=false 时卡上明写的排除理由；其它门为 null。 */
+  excludedReason?: string | null;
+  /** 本门能给出 pass/fail 判定的员工数（pass+fail）；没有判定为 null。 */
+  decided?: number | null;
+}
+
+/** 被排除出交集的门（无读口），卡上要明写「未计入」。 */
+export interface ExcludedGate {
+  key: GateView["key"];
+  label: string;
+  reason: string;
 }
 
 /** 可上岗三分态（工单 DU-01⑤）：按每个员工的真实证据归类，三桶之和=分母行数。 */
@@ -242,7 +258,19 @@ export interface ReadinessBuckets {
 export interface ReadinessView {
   total: number | null;
   active: number | null;
+  /**
+   * 可判定门全部通过的员工数（口径变更 2026-11-24：不再要求无读口的 V3 也判出）。
+   * null = 一道可判定门都判不出来（读口全未回），此时卡上写「—」并点名缺哪门。
+   */
   confirmed: number | null;
+  /** 交集分母：可判定门都能给出判定的员工数；与 confirmed 同 null 同源。 */
+  decidableDenom: number | null;
+  /** 进入交集的门数（V3 无读口时为 3，不是四门）。 */
+  decidableGateCount: number;
+  /** 排除出交集的门：卡上明写「无读口，未计入」。 */
+  excludedGates: ExcludedGate[];
+  /** 一门都判不出来时缺读口的可判定门名；能判出数字时为空。 */
+  undecidedGates: string[];
   /** 三分态；目录未到位时 null（此时不给任何计数，连 0 也不给）。 */
   buckets: ReadinessBuckets | null;
   /** 分母范围的可见披露：单页加载与逐员工扇出覆盖 n/N。 */

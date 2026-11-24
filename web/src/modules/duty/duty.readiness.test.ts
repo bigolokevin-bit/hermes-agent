@@ -4,6 +4,8 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+  GATE_READ_PORTS,
+  intersection,
   rollup,
   v1Verdict,
   v2Verdict,
@@ -161,15 +163,24 @@ describe("buildReadiness — 2026-11-23 现网真实读数", () => {
     expect(v3?.pass).toBeNull();
     expect(view.unknownGates).toBe(1);
   });
-  it("存在 unknown 门时不给出伪权威总数：confirmed=null", () => {
-    expect(view.confirmed).toBeNull();
+  it("口径变更：V3 无读口不进分母，报可判定门的真交集（0 也照给）", () => {
+    // 2026-11-24 产品口径：交集只取「门本身有读口」的门（V1/V2/V6）。真实形态两人
+    // 都被过期审批挡住 ⇒ 交集 0 人 / 可判定 2 人。这是 3 门交集真读数，不是伪权威；
+    // V3 的强制引用策略腿在 BFF 无读口，故整门排除（readiness.ts GATE_READ_PORTS），
+    // 旧口径「四门全有才给数」会让整卡恒塌成「— / —」。
+    expect(view.confirmed).toBe(0);
+    expect(view.decidableDenom).toBe(2);
+    expect(view.decidableGateCount).toBe(3);
+    expect(view.excludedGates.map((g) => g.key)).toEqual(["V3"]);
+    expect(view.gates.find((g) => g.key === "V3")?.decidable).toBe(false);
   });
-  it("四门全有证据且无 unknown 时才报分子", () => {
+  it("V3 未接不再阻断交集：可判定门齐了就报分子（V3 排除，不假报通过）", () => {
     const wired = structuredClone(evidence);
-    wired.knowledge = { k: "ready", data: { wired: true, count: 2, asOf: null } }; // 仍 unknown（策略/运行腿）
+    wired.knowledge = { k: "ready", data: { wired: true, count: 2, asOf: null } }; // 文档腿通了，策略腿仍无读口
     const failAll = buildReadiness(employees, stats, wired, "s", NOW);
-    expect(failAll.unknownGates).toBe(1);
-    expect(failAll.confirmed).toBeNull();
+    expect(failAll.unknownGates).toBe(1); // V3 仍如实记 unknown
+    expect(failAll.confirmed).toBe(0); // 可判定 3 门里两人 V6 都挡 → 真 0
+    expect(failAll.decidableDenom).toBe(2);
 
     const wired0 = structuredClone(evidence);
     wired0.knowledge = { k: "ready", data: { wired: true, count: 0, asOf: null } };
@@ -182,11 +193,13 @@ describe("buildReadiness — 2026-11-23 现网真实读数", () => {
     };
     wired0.stations.emp_A22649 = { k: "ready", data: [groupStation] };
     const allPass = buildReadiness(employees, stats, wired0, "s", NOW);
-    // V3 wired+count>0 → 仍 unknown；count=0 → fail。构造 count>0 的通过态不可能，
-    // 用 count=0 的 fail 验证「无 unknown 门时报分子」路径：
+    // V3 wired+count=0 → 真 fail；但 V3 不进交集，可判定三门两人全过 ⇒ 分子 2。
     expect(allPass.unknownGates).toBe(0);
-    expect(allPass.confirmed).toBe(0); // V3 全 fail → 分子 0，分母 2
-    expect(allPass.gates.find((g) => g.key === "V3")?.state).toBe("fail");
+    expect(allPass.confirmed).toBe(2);
+    expect(allPass.decidableDenom).toBe(2);
+    const v3 = allPass.gates.find((g) => g.key === "V3");
+    expect(v3?.state).toBe("fail");
+    expect(v3?.decidable).toBe(false);
   });
   it("证据腿仍在途（evidence=null）时四门按未接处理，不报数", () => {
     const loading = buildReadiness(employees, stats, null, null, NOW);
@@ -205,7 +218,8 @@ describe("三分态与分母披露（DU-01）", () => {
     expect(b!.confirmed + b!.pending + b!.failing).toBe(2);
     // 真实形态：两人 V6 全 fail（决策过期）→ 双双「未达」；「已确认」一个不给。
     expect(b).toEqual({ confirmed: 0, pending: 0, failing: 2 });
-    expect(view.confirmed).toBeNull(); // unknownGates>0 的 null 链保持
+    // 口径变更：V3 无读口不进交集，主数字是真 0（不是 null）——0 也是读数。
+    expect(view.confirmed).toBe(0);
   });
 
   it("扇出未覆盖的分母行按待核实，并披露「本轮逐员工判定覆盖 n/N」", () => {
@@ -265,5 +279,47 @@ describe("三分态与分母披露（DU-01）", () => {
     expect(view.unknownGates).toBe(0);
     expect(view.confirmed).toBe(2);
     expect(view.buckets).toEqual({ confirmed: 2, pending: 0, failing: 0 });
+  });
+});
+
+/* ── 口径变更（2026-11-24）：可判定门取交集、未知门显式计数 ── */
+
+describe("intersection / 门读口登记（为什么允许 V3 不进分母）", () => {
+  it("只按传入的可判定门算：一行全过、一行有 fail → 分母 2 / 分子 1", () => {
+    expect(
+      intersection([["pass", "pass"], ["pass", "fail"], ["pass", "fail"]], 2),
+    ).toEqual({ pass: 1, denom: 2 });
+  });
+  it("某门 unknown 的员工不进分母（不把未知当未通过），也不编 0", () => {
+    expect(intersection([["pass", null], ["pass", "pass"]], 2)).toEqual({ pass: 1, denom: 1 });
+  });
+  it("一门都判不出来 → pass/denom 双 null（卡上才允许「—」）", () => {
+    expect(intersection([[null, null], [null, null]], 2)).toEqual({ pass: null, denom: null });
+    expect(intersection([], 2)).toEqual({ pass: null, denom: null });
+  });
+  it("V3 登记为无读口：reason 明写不影响其它三门交集", () => {
+    // V3 的真 pass 需要「强制引用策略可读」，而 BFF 没有这个读口 ⇒ 整门排除。
+    // 这不是降标准：其它三门照旧逐员工判 pass/fail，V3 在表里如实写「未接策略」。
+    expect(GATE_READ_PORTS.V3.decidable).toBe(false);
+    expect(GATE_READ_PORTS.V3.reason).toContain("不影响其它三门交集");
+    expect([
+      GATE_READ_PORTS.V1.decidable,
+      GATE_READ_PORTS.V2.decidable,
+      GATE_READ_PORTS.V6.decidable,
+    ]).toEqual([true, true, true]);
+  });
+});
+
+describe("buildReadiness — 可判定门全未回答时才给「—」并点名缺门", () => {
+  it("工位/配置/审批三腿全无回答 → confirmed=null，undecidedGates 点名三门", () => {
+    const ev = structuredClone(evidence);
+    ev.stations = {};
+    ev.configs = {};
+    ev.approvals = { k: "error", status: 0, message: "审批腿没回答", requestId: null };
+    const view = buildReadiness(employees, stats, ev, "s", NOW);
+    expect(view.confirmed).toBeNull();
+    expect(view.decidableDenom).toBeNull();
+    expect(view.undecidedGates.slice().sort()).toEqual(["ReBAC", "审批", "群@"].sort());
+    expect(view.buckets).toEqual({ confirmed: 0, pending: 2, failing: 0 });
   });
 });
