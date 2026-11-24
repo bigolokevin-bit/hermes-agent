@@ -169,6 +169,34 @@ function SectionCard({ row }: { row: SectionRow }): ReactNode {
   );
 }
 
+/**
+ * AU-03③: the audit↔retention link. The list refuses an entirely-expired
+ * custom range before it asks — but only ever off a horizon the ledger really
+ * answered. This section says, on the retention face itself, whether that link
+ * is live, reading the SAME audit days the section card already shows. When
+ * there is no day count it says so (未接入) and states that nothing is blocked
+ * — it never hands the list a number to fake.
+ */
+function RetentionWindowLink({ auditRow }: { auditRow: SectionRow | undefined }): ReactNode {
+  const wired = auditRow !== undefined && !auditRow.unwired && auditRow.days !== null;
+  return (
+    <Card className="border-border bg-card" data-testid="ret4-window-link" data-state={wired ? "ready" : "unwired"}>
+      <CardContent className="flex min-w-0 items-start gap-2 px-4 py-3">
+        <CalendarClock className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+        {wired ? (
+          <p className="m-0 max-w-prose break-words text-xs text-muted-foreground" data-testid="ret4-window-link-text">
+            审计事件保留 {auditRow?.days} 天。事件列表的时间窗已与此联动：整段早于保留线的自定义区间会在发出请求前本地拦下，并写明「该时间窗超出保留期（{auditRow?.days} 天）」，不拿它去换一屏空表。
+          </p>
+        ) : (
+          <p className="m-0 max-w-prose break-words text-xs text-muted-foreground" title={`${GAP}：${auditRow?.note ?? UNWIRED_REASON}`} data-testid="ret4-window-link-text">
+            保留天数没有读到，这一联动按未接入处理：事件列表不猜天数、也不拦任何时间窗（绝不硬编码假 7 天）。天数一旦接通，链接自动生效。
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 function PlannedActions(): ReactNode {
   return (
     <Card className="border-border bg-card" data-testid="ret4-planned">
@@ -414,6 +442,10 @@ export function RetentionModulePage(): ReactNode {
             <SectionCard key={row.key as SectionKey} row={row} />
           ))}
         </div>
+      ) : null}
+
+      {read.phase === "unwired" || read.phase === "ready" ? (
+        <RetentionWindowLink auditRow={read.sections.find((row) => row.key === "audit")} />
       ) : null}
 
       {read.phase === "ready" || read.phase === "unwired" ? <PlannedActions /> : null}

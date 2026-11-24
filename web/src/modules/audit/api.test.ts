@@ -92,10 +92,12 @@ describe("audit endpoints", () => {
     expect(choices.some((c) => c.value === "task.created")).toBe(true);
     expect(choices.some((c) => c.value === "task_created")).toBe(false);
     expect(choices.some((c) => c.value === "approval_approved")).toBe(false);
-    // known codes get the Chinese word; an unmapped live code is offered as 其他事件
-    // (the dropdown carries the label only — the wire value stays the raw code)
+    // known codes get the Chinese word; an unmapped live code is offered under
+    // its OWN spelling — never the shared 其他事件 row word, so several codes we
+    // cannot name cannot collapse into duplicate options a person cannot tell
+    // apart (that is the same "no control that pretends" law the rows obey).
     expect(choices.find((c) => c.value === "employee.create.denied")?.label).toBe("驳回新建数字员工");
-    expect(choices.find((c) => c.value === "dispatch.event")?.label).toBe("其他事件");
+    expect(choices.find((c) => c.value === "dispatch.event")?.label).toBe("dispatch.event");
     // a chosen label is what the wire must carry
     for (const choice of choices) {
       expect(listUrl(null, { action: choice.value, from: null, to: null })).toContain(`&action=${encodeURIComponent(choice.value)}`);

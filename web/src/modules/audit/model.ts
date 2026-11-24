@@ -366,6 +366,13 @@ const ACTION_LABEL: Record<string, string> = {
   budget_ledger_entry_applied: "记录一笔预算流水",
   budget_ledger_ensured: "核对预算账本",
   budget_soft_alert_sent: "发出预算提醒",
+  // ── LIVE additions, 2026-11-24 (AU-03 枚举同源). `workstation_unbound` is the
+  // literal inverse of the approved `workstation_bound` (绑定工位): both tokens
+  // are already in the table, so this is a direct word reading, not a claim.
+  // `recognition.unknown` and `channel.event_ingested` stay deliberately
+  // UNLABELLED — their subject tokens (recognition; ingested) name no object in
+  // this vocabulary (§T33-2 law 3), so they render under their own spelling.
+  workstation_unbound: "解绑工位",
 };
 
 /**
@@ -378,11 +385,19 @@ export const OTHER_ACTION_LABEL = "其他事件";
 
 /**
  * The `action` codes sampled verbatim off the running BFF (2026-11-19 session
- * probe — HTTP 200, distinct `action` values in docs/_artifacts/aud/DONE.md).
+ * probe — HTTP 200, distinct `action` values in docs/_artifacts/aud/DONE.md;
+ * re-sampled FULL-WINDOW 2026-11-24 by AU-03: 10 cursor pages, 494 rows, 21
+ * distinct codes — evidence/au03b-enumeration.txt in the lane worktree).
  * The filter dropdown offers these EXACT spellings because the service matches
  * `action` literally: the dotted `task.created` answers, the underscore
  * `task_created` (this file's own normalize key) answers ZERO, so the wire
- * must carry the dotted form.
+ * must carry the dotted form. Each of the five 2026-11-24 additions was
+ * individually probed and returns its own rows with every hit carrying the
+ * exact code (`approval.denied`=2, `employee.updated`=1,
+ * `workstation.unbound`=7, `recognition.unknown`=17,
+ * `channel.event_ingested`=3) — so the offered set and the wire set are now
+ * one and the same table: no offered code is absent from the wire (no control
+ * that pretends), and no code the wire holds is missing from the picker.
  */
 export const LIVE_ACTION_CODES: readonly string[] = [
   "employee.create.denied",
@@ -393,14 +408,19 @@ export const LIVE_ACTION_CODES: readonly string[] = [
   "approval.decided",
   "approval.consumed",
   "approval.expired",
+  "approval.denied",
   "task.created",
   "grant.created",
   "dispatch.event",
+  "recognition.unknown",
   "workstation.bound",
   "workstation.bind_conflict",
+  "workstation.unbound",
+  "channel.event_ingested",
   "budget.ledger_entry_applied",
   "budget.ledger_ensured",
   "budget.soft_alert_sent",
+  "employee.updated",
 ];
 
 /**
@@ -436,17 +456,20 @@ export function actionView(raw: string | null): ActionView {
 
 /**
  * The 事件类型 filter's options: the live `action` codes the service was
- * probed to use (2026-11-19), sent VERBATIM so the exact-match `action`
- * parameter actually answers. A code we know in words gets its Chinese label;
- * one we do not is offered under its own spelling rather than a claim. Codes
- * from the internal vocabulary that were never seen on the wire are NOT
- * offered — a choice that would filter to zero rows is a control that
- * pretends.
+ * probed to use, sent VERBATIM so the exact-match `action` parameter actually
+ * answers. A code we know in words gets its Chinese label; one we do not is
+ * offered under its OWN spelling rather than a claim — and rather than the
+ * shared 其他事件 row word, because several codes we cannot name would otherwise
+ * collapse into duplicate 「其他事件」 options a person cannot tell apart, which
+ * is a control that pretends. Codes from the internal vocabulary that were
+ * never seen on the wire are NOT offered — a choice that would filter to zero
+ * rows is a control that pretends.
  */
 export function eventTypeChoices(): { value: string; label: string }[] {
-  return LIVE_ACTION_CODES.map((value) => ({ value, label: actionView(value).label })).sort((a, b) =>
-    a.label.localeCompare(b.label, "zh-CN"),
-  );
+  return LIVE_ACTION_CODES.map((value) => {
+    const view = actionView(value);
+    return { value, label: view.known ? view.label : value };
+  }).sort((a, b) => a.label.localeCompare(b.label, "zh-CN"));
 }
 
 // ── Outcome vocabulary ───────────────────────────────────────────────
@@ -523,6 +546,17 @@ const CURSOR_KEYS = ["nextCursor", "next_cursor", "next", "cursor", "nextPage", 
  * show.
  */
 const PAGE_TOTAL_KEYS = ["total", "totalCount", "total_count", "totalSize", "total_size"] as const;
+
+/**
+ * AU-03③: spellings under which the LIST answer itself may state the audit
+ * retention horizon. This deployment never states it (the ledger page answers
+ * `events/nextCursor/limit/cursor/hasMore/total/totalSource` — sampled
+ * 2026-11-24), so the reader stays null and the过期窗 gate sleeps. A future
+ * backend that answers the horizon activates the gate with no code change:
+ * the page's own read is the truth source. An absent field is never a default.
+ */
+const PAGE_RETENTION_KEYS = ["auditRetentionDays", "audit_retention_days"] as const;
+const PAGE_RETENTION_NESTED_KEYS = ["auditDays", "audit_days", "days"] as const;
 
 /**
  * audH: spellings of the page size the answer says it actually served. The BFF
@@ -744,6 +778,13 @@ export interface AuditPage {
    * answer never stated one, and the screen must not invent it.
    */
   pageSize: number | null;
+  /**
+   * AU-03③: the audit retention horizon IN DAYS when this answer states one;
+   * `null` when it says nothing (every answer on this deployment). The过期窗
+   * gate only ever sees this value through the truth source — never a default,
+   * never a guessed 7.
+   */
+  retentionDays: number | null;
 }
 
 /** null = the answer is not a list at all, which is a failure, not an empty ledger. */
@@ -752,6 +793,7 @@ export function auditPageFrom(payload: unknown): AuditPage | null {
   let next: string | null = null;
   let total: number | null = null;
   let pageSize: number | null = null;
+  let retentionDays: number | null = null;
   if (Array.isArray(payload)) {
     items = payload;
   } else {
@@ -784,6 +826,18 @@ export function auditPageFrom(payload: unknown): AuditPage | null {
     const sizeCandidates = [pickNumber(rec, PAGE_SIZE_KEYS), pickNumber(outer, PAGE_SIZE_KEYS), meta ? pickNumber(meta, PAGE_SIZE_KEYS) : null];
     const sized = sizeCandidates.find((value) => value !== null && Number.isInteger(value) && value > 0);
     pageSize = sized ?? null;
+    // AU-03③: the retention horizon IN DAYS, only when this answer states one.
+    // A non-integer, zero, negative or absent answer is not a horizon — it
+    // stays null so the gate sleeps instead of inventing a boundary.
+    const retention =
+      pickNumber(rec, PAGE_RETENTION_KEYS) ?? pickNumber(outer, PAGE_RETENTION_KEYS);
+    const retentionNestedRecord =
+      pickRecord(rec, ["retention"]) ?? pickRecord(outer, ["retention"]);
+    const retentionFromNested = retentionNestedRecord
+      ? pickNumber(retentionNestedRecord, PAGE_RETENTION_NESTED_KEYS)
+      : null;
+    const statedDays = retention ?? retentionFromNested;
+    retentionDays = statedDays !== null && Number.isInteger(statedDays) && statedDays > 0 ? statedDays : null;
     if (!items) return null;
   }
   const rows: AuditRow[] = [];
@@ -793,7 +847,7 @@ export function auditPageFrom(payload: unknown): AuditPage | null {
     if (row) rows.push(row);
     else unreadable += 1;
   });
-  return { rows, unreadable, next, total, pageSize };
+  return { rows, unreadable, next, total, pageSize, retentionDays };
 }
 
 // ── Detail model ─────────────────────────────────────────────────────

@@ -73,6 +73,48 @@ import {
   type FilterWindowKey,
 } from "./window";
 import { ConsoleSelect } from "@/shell/ConsoleSelect";
+import { expiryVerdict, type ExpiryVerdict } from "./retention";
+
+/**
+ * AU-03③: the retention linkage, said in words on the list. One line, three
+ * honest states, and it never invents a day count:
+ * - no horizon answered (`days===null`, every answer on this deployment) → 未接入
+ *   with a reason and 「不拦任何时间窗」 — we do not block a window we have not
+ *   been told is expired.
+ * - horizon answered and the window reaches into it → 仍在保留期内.
+ * - horizon answered and the whole window sits before it → 超出保留期（N 天）.
+ */
+function RetentionLinkLine({ verdict }: { verdict: ExpiryVerdict }): ReactNode {
+  const shell = "min-w-0 basis-full break-words text-xs text-muted-foreground";
+  if (verdict.state === "expired") {
+    return (
+      <p className={`text-warning ${shell}`} role="alert" data-testid="aud03-retention-link" data-state="expired">
+        {verdict.sentence}：这段时间的记录已经离开账本，本页在发出请求前本地拦下，不拿它去换一屏空表。
+      </p>
+    );
+  }
+  if (verdict.state === "within") {
+    return (
+      <p className={shell} data-testid="aud03-retention-link" data-state="within">
+        审计事件保留 {verdict.days} 天，这个时间窗还在保留期内。
+      </p>
+    );
+  }
+  // unknown: two honest reasons — no horizon answered (未接入), or the range is
+  // not usable yet while a horizon IS known. Neither invents a day count.
+  if (verdict.days === null) {
+    return (
+      <p className={shell} data-testid="aud03-retention-link" data-state="unwired" title="GAP-13">
+        保留期：未接入 ———— 这个环境的审计账本没有带回保留天数；本页不猜一个数，因此也不拦任何时间窗（取不到真源时按未接入处理，绝不硬编码假 7 天）。
+      </p>
+    );
+  }
+  return (
+    <p className={shell} data-testid="aud03-retention-link" data-state="incomplete">
+      保留期：{verdict.days} 天；这个时间窗还不完整，无法判断它是否超出保留期。
+    </p>
+  );
+}
 
 /**
  * The 时间窗 filter is a set of named windows, not two date inputs: the choice
@@ -812,6 +854,8 @@ function AuditEventsSurface(): ReactNode {
   // still say what the address says, so a pasted or refreshed link paints its
   // own range without any local copy to keep in step.
   const [range, setRange] = useState<{ from: string; to: string } | null>(null);
+  // AU-03③: set when 应用 refuses an entirely-expired custom range (see below).
+  const [expiredDraft, setExpiredDraft] = useState<string | null>(null);
   const rangeDraftFrom = range?.from ?? beijingInputValue(customFromParam);
   const rangeDraftTo = range?.to ?? beijingInputValue(customToParam);
   const rangeFromIso = parseBeijingInput(rangeDraftFrom);
@@ -873,6 +917,14 @@ function AuditEventsSurface(): ReactNode {
       : silentShortPage
         ? `服务没有带回这一页按多少条读；请求路径写的是 limit=${sizeReading.asked}，屏上实收 ${list.rows.length} 条 —— 这里只报这两个数，不替服务认一个生效值。`
         : null);
+  // AU-03③: what the ledger's own answered horizon (never a default) says about
+  // the window the address is reading right now. Rendered as the retention-link
+  // line; `unknown` is the honest 未接入 state on this deployment.
+  const appliedVerdict = expiryVerdict(
+    { from: bounds?.from ?? null, to: bounds?.to ?? null },
+    list.retentionDays,
+  );
+
   const detail = useAuditDetail(selected, null);
   const [unaddressable, setUnaddressable] = useState(false);
   // aud8: the two inline folds are URL-owned now (they used to be page-local),
@@ -1239,6 +1291,7 @@ function AuditEventsSurface(): ReactNode {
   const setWindow = useCallback(
     (next: FilterWindowKey) => {
       setRange(null); // audB: a quick window replaces any typed draft
+      setExpiredDraft(null); // AU-03③: a refused draft is this draft's business only
       const draft = new URLSearchParams(params);
       draft.set("window", next);
       if (next !== "custom") {
@@ -1267,8 +1320,18 @@ function AuditEventsSurface(): ReactNode {
    * half-filled range is not a question the service can answer (it 400s
    * `request.invalid_query`), so 应用 is refused and the reason is on screen.
    */
+  // AU-03③: a custom range the ledger says is fully past the retention horizon
+  // is refused HERE, before it ever reaches the address — so no request is
+  // issued for a window whose rows are gone. This only engages when
+  // `list.retentionDays` was actually answered; null horizon blocks nothing.
   const applyCustom = useCallback(() => {
     if (rangeError !== null || rangePending === null) return;
+    const verdict = expiryVerdict(rangePending, list.retentionDays);
+    if (verdict.state === "expired") {
+      setExpiredDraft(verdict.sentence ?? "该时间窗超出保留期");
+      return;
+    }
+    setExpiredDraft(null);
     const draftUrl = new URLSearchParams(params);
     resetPagingAndFolds(draftUrl);
     draftUrl.set("window", "custom");
@@ -1276,7 +1339,7 @@ function AuditEventsSurface(): ReactNode {
     draftUrl.set("to", rangePending.to);
     setRange(null);
     setParams(draftUrl, { replace: true, state: locationState ?? null });
-  }, [locationState, params, rangeError, rangePending, setParams]);
+  }, [list.retentionDays, locationState, params, rangeError, rangePending, setParams]);
 
   /** audB: 清空区间 — drop the custom range, go back to the 7-day quick window. */
   const clearCustom = useCallback(() => {
@@ -1692,6 +1755,15 @@ function AuditEventsSurface(): ReactNode {
         loaded={list.rows.length}
         matched={listedRows.length}
       />
+
+      {/* AU-03③: the retention link, said from the ledger's own horizon when it
+          answered one; 未接入 with a reason (and no block) when it did not. */}
+      <RetentionLinkLine verdict={appliedVerdict} />
+      {expiredDraft !== null ? (
+        <p className="min-w-0 basis-full break-words text-xs text-warning" role="alert" data-testid="aud03-retention-block">
+          {expiredDraft}——这一区间没有应用，本页没有为它发出请求。要读这段时间，请让结束时间落在保留线（{appliedVerdict.horizonIso ? beijingInputValue(appliedVerdict.horizonIso) : "—"}，北京时间）之后。
+        </p>
+      ) : null}
 
       {/* aud8: every piece of reading state above is in the address, so this
           line is what a pasted link restores — stated in words, not implied. */}

@@ -74,6 +74,12 @@ export interface ListApi {
    * the screen reports the rows it got instead of claiming an effective size.
    */
   servedLimit: number | null;
+  /**
+   * AU-03③: the audit retention horizon IN DAYS when the answer states one.
+   * `null` on every answer this deployment makes, and the过期窗 gate sleeps on
+   * null — it never assumes a number the service did not give.
+   */
+  retentionDays: number | null;
   reload: () => void;
   loadMore: () => void;
 }
@@ -92,6 +98,8 @@ interface ListState {
   askedPath: string | null;
   /** audH: the size the answer itself said it served, when it said one. */
   servedLimit: number | null;
+  /** AU-03③: the retention horizon IN DAYS the answer stated, or null. */
+  retentionDays: number | null;
 }
 
 const INITIAL: ListState = {
@@ -106,6 +114,7 @@ const INITIAL: ListState = {
   forced: false,
   askedPath: null,
   servedLimit: null,
+  retentionDays: null,
 };
 
 function listCopy(err: unknown): FailureCopy {
@@ -173,6 +182,9 @@ export function useAuditList(
             // audH: a later page states its own size; keep the first stated one
             // only while nothing was said, so a silent answer never overwrites.
             servedLimit: page.pageSize ?? (append ? prev.servedLimit : null),
+            // AU-03③: the horizon is a property of the ledger, not the page.
+            // A stated value persists across pages; an unstated one stays null.
+            retentionDays: append ? (prev.retentionDays ?? page.retentionDays) : page.retentionDays,
           }));
         } catch (err) {
           if (ticket !== seq.current) return;

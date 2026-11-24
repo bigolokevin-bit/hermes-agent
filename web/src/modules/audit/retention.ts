@@ -353,3 +353,83 @@ export const PLANNED_ACTIONS: readonly PlannedAction[] = [
     reason: "保留策略的写入面还没有接通：这个按钮不会保存任何修改，接线后才会启用。",
   },
 ];
+
+// ── AU-03③: the retention-expiry gate for a chosen time window ────────────
+//
+// The audit ledger keeps only N days of history. A query whose WHOLE range
+// already sits before that horizon returns nothing because the rows are gone —
+// asking is wasted and paints 「no rows」 where the truth is 「beyond retention」.
+// So the page can refuse it locally, in words. But the horizon is only real if
+// the ledger ANSWERED one: on this deployment it never does (the retention read
+// is 未接入 — see the header probe). `days === null` therefore means 「not
+// wired」: the gate blocks nothing and says nothing. There is no default N, no
+// 365, no 「大概是 7」 — inventing a boundary to look guarded is the fake success
+// this lane exists to remove.
+
+/** A bounded range's two instants, as the page computed them (ISO or null). */
+export interface WindowRange {
+  from: string | null;
+  to: string | null;
+}
+
+export type ExpiryState =
+  /** No horizon was answered — nothing is judged, nothing is blocked. */
+  | "unknown"
+  /** The whole range sits inside the retained window (or reaches into it). */
+  | "within"
+  /** The whole range ends before the horizon: its rows are already purged. */
+  | "expired";
+
+export interface ExpiryVerdict {
+  state: ExpiryState;
+  /** The horizon in days, or null when it was not answered. */
+  days: number | null;
+  /** The oldest instant still retained, as an ISO instant; null when unknown. */
+  horizonIso: string | null;
+  /** The 人话 sentence, only when `state === "expired"`. */
+  sentence: string | null;
+}
+
+const DAY_MS = 86_400_000;
+
+function finiteIso(value: string | null): number | null {
+  if (value === null) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const ms = Date.parse(trimmed);
+  return Number.isFinite(ms) ? ms : null;
+}
+
+/**
+ * Decide whether a chosen window is entirely past the retention horizon.
+ *
+ * - `days` absent/not-a-positive-count → `unknown`: no default, no guess, and
+ *   the caller must block nothing.
+ * - a usable range whose LATER end (`to`) is still at/after the horizon keeps
+ *   at least some retained rows → `within` (a partial overlap is not 「超出」).
+ * - only a range whose `to` is strictly before the horizon is `expired`, and it
+ *   carries the 「该时间窗超出保留期（N 天）」 sentence with the real N.
+ */
+export function expiryVerdict(range: WindowRange, days: number | null): ExpiryVerdict {
+  if (days === null || !Number.isFinite(days) || days <= 0) {
+    return { state: "unknown", days: null, horizonIso: null, sentence: null };
+  }
+  const horizonMs = Date.now() - days * DAY_MS;
+  const horizonIso = new Date(horizonMs).toISOString();
+  const fromMs = finiteIso(range.from);
+  const toMs = finiteIso(range.to);
+  // No usable instant: we cannot claim it is past anything.
+  if (fromMs === null && toMs === null) {
+    return { state: "unknown", days, horizonIso, sentence: null };
+  }
+  // The range reaches into (or after) the retained window → some rows survive.
+  if (toMs === null || toMs >= horizonMs) {
+    return { state: "within", days, horizonIso, sentence: null };
+  }
+  return {
+    state: "expired",
+    days,
+    horizonIso,
+    sentence: `该时间窗超出保留期（${days} 天）`,
+  };
+}
