@@ -1,0 +1,151 @@
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - `__dirname` (vitest.config.ts:17:25). Use `import.meta.dirname` instead
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+ RUN  v4.1.12 /Users/kevin_studio/Projects/tasks/AU-01-run/web
+
+ ❯ src/modules/audit/audit.time.window.parity.test.tsx (3 tests | 3 failed) 110ms
+     × prints the same instant in the row mark, the pane, the readout and the copied line 67ms
+     × swaps the row set and leaves no reading of the old window behind 24ms
+     × costs one read to open, nothing to close, and moves nothing else 19ms
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/modules/audit/audit.time.window.parity.test.tsx > R229 - the stacked question, four faces at once > prints the same instant in the row mark, the pane, the readout and the copied line
+AssertionError: expected [ 'evt_r229_bravo1_00001', …(1) ] to deeply equal [ 'evt_r229_alpha1_00001', …(1) ]
+
+- Expected
++ Received
+
+  [
+-   "evt_r229_alpha1_00001",
+-   "evt_r229_alpha2_00001",
++   "evt_r229_bravo1_00001",
++   "evt_r229_bravo2_00001",
+  ]
+
+ ❯ src/modules/audit/audit.time.window.parity.test.tsx:258:27
+    256|     expect(paramOf(read, "window")).toBeNull();
+    257|     expect(paramOf(read, "from")).not.toBeNull();
+    258|     expect(paintedRows()).toEqual([A1, A2]);
+       |                           ^
+    259|     await openRecord(A1);
+    260|     expect(markValue(`audJ-time-list-${A1}`)).toBe(TIME_A);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  src/modules/audit/audit.time.window.parity.test.tsx > R229 - changing the window changes the answer, everywhere at once > swaps the row set and leaves no reading of the old window behind
+AssertionError: aud01-cell-evt_r229_alpha1_00001-type: expected null not to be null
+ ❯ clickNode src/modules/audit/audit.time.window.parity.test.tsx:129:29
+    127|
+    128| async function clickNode(target: Element | null | undefined, label: st…
+    129|   expect(target, label).not.toBeNull();
+       |                             ^
+    130|   await act(async () => {
+    131|     (target as HTMLElement).dispatchEvent(new MouseEvent("click", { bu…
+ ❯ openRecord src/modules/audit/audit.time.window.parity.test.tsx:139:9
+ ❯ src/modules/audit/audit.time.window.parity.test.tsx:279:11
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  src/modules/audit/audit.time.window.parity.test.tsx > R229 - the new answer holds under close and reopen > costs one read to open, nothing to close, and moves nothing else
+AssertionError: aud01-cell-evt_r229_alpha1_00001-type: expected null not to be null
+ ❯ clickNode src/modules/audit/audit.time.window.parity.test.tsx:129:29
+    127|
+    128| async function clickNode(target: Element | null | undefined, label: st…
+    129|   expect(target, label).not.toBeNull();
+       |                             ^
+    130|   await act(async () => {
+    131|     (target as HTMLElement).dispatchEvent(new MouseEvent("click", { bu…
+ ❯ openRecord src/modules/audit/audit.time.window.parity.test.tsx:139:9
+ ❯ src/modules/audit/audit.time.window.parity.test.tsx:326:11
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed | 90 passed (91)
+      Tests  3 failed | 704 passed (707)
+   Start at  08:19:30
+   Duration  9.90s (transform 11.85s, setup 0ms, import 45.42s, tests 34.28s, environment 31.28s)
+

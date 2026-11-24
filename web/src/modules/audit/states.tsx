@@ -33,13 +33,19 @@ import type { Gate } from "./auditGates";
 import { FILTER_SUMMARY_COPY_LABEL } from "./filterSummary";
 import { AUDIT_RESOURCE_NO_LINK_TEXT, resourceLinkOf } from "./resourceLinks";
 import {
+  AUDIT_CHAIN_NO_PAGE_TEXT,
+  AUDIT_CHAIN_UNRELATED_TEXT,
+  auditChainsOf,
+  type AuditChain,
+} from "./contextLinks";
+import {
   DETAIL_COPY_DISABLED_TITLE,
   DETAIL_COPY_LABEL,
   auditCopyText,
   type CopyableEvent,
 } from "./detailCopy";
 import { AUDJ_TIME_MISSING } from "./timeActor";
-import type { ResourceView } from "./model";
+import type { AuditLink, Person, ResourceView } from "./model";
 import type { AuditChip } from "./filterChips";
 
 /**
@@ -82,6 +88,80 @@ export function AuditResourceLink({ resource }: { resource: ResourceView }): Rea
     <span className={shell} data-testid="aud-resource-nolink" title={link.title}>
       {AUDIT_RESOURCE_NO_LINK_TEXT}
     </span>
+  );
+}
+
+/**
+ * AU-01 — the three context chains of a record (谁 / 哪次运行 / 哪次判定),
+ * decided by the ONE table in contextLinks.ts and rendered here for the detail
+ * pane. Same doctrine as the resource link: a real page plus a real id is a
+ * real anchor; a value with no page is said, not linked; a missing value says
+ * 「无关联」 — the ledger is not guilty of an association it never sent.
+ */
+const CHAIN_ROWS: readonly { key: string; noun: string }[] = [
+  { key: "actor", noun: "谁" },
+  { key: "run", noun: "哪次运行" },
+  { key: "decision", noun: "哪次判定" },
+];
+
+export function AuditContextChains({
+  actor,
+  links,
+}: {
+  actor: Person;
+  links: readonly AuditLink[];
+}): ReactNode {
+  const chains = auditChainsOf(actor, links);
+  const shell =
+    "flex min-w-0 items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 text-xs text-muted-foreground";
+  const anchor =
+    "min-w-0 max-w-full break-words rounded-md border border-border bg-card px-2 py-1 text-xs underline underline-offset-2";
+  return (
+    <p className="flex min-w-0 flex-wrap items-center gap-1.5 text-xs" data-testid="aud3-chains">
+      {CHAIN_ROWS.map(({ key, noun }) => {
+        const chain = chains[key as keyof typeof chains] as AuditChain;
+        if (chain.kind === "link") {
+          return (
+            <a
+              key={key}
+              href={chain.href}
+              target="_blank"
+              rel="noreferrer noopener"
+              className={anchor}
+              data-testid={`aud3-chain-${key}`}
+              data-aud-chain-kind="link"
+              title={chain.title}
+            >
+              {noun}：{chain.label}
+            </a>
+          );
+        }
+        if (chain.kind === "no-page") {
+          return (
+            <span
+              key={key}
+              className={shell}
+              data-testid={`aud3-chain-${key}`}
+              data-aud-chain-kind="no-page"
+              title={chain.title}
+            >
+              {noun}：{chain.label}（{AUDIT_CHAIN_NO_PAGE_TEXT}）
+            </span>
+          );
+        }
+        return (
+          <span
+            key={key}
+            className={shell}
+            data-testid={`aud3-chain-${key}`}
+            data-aud-chain-kind="unrelated"
+            title={chain.title}
+          >
+            {noun}：{AUDIT_CHAIN_UNRELATED_TEXT}
+          </span>
+        );
+      })}
+    </p>
   );
 }
 
