@@ -201,11 +201,11 @@
 .sidebar-account {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 5px;
   width: 100%;
   min-width: 0;
   min-height: 38px;
-  padding: 4px 6px;
+  padding: 4px;
   border-radius: var(--r-sm);
   text-align: left;
 }
@@ -219,8 +219,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
+  width: 26px;
+  height: 26px;
   border: 1px solid var(--line-2);
   border-radius: 50%;
   background: rgba(255, 230, 203, 0.08);
@@ -273,6 +273,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  width: 24px;
+  height: 24px;
   min-width: 24px;
   min-height: 24px;
   border: 0;
@@ -287,35 +289,36 @@
   color: var(--fg);
 }
 
-/* 工具行：主题 / 语言 / 版本 / 组织，一行收口，不再各占一行。 */
-.sidebar-utils {
+/* 芯片右端的紧凑动作（主题 / 语言）：与头像、姓名同一行，不另起一行。
+ * 骨架侧栏底部只有额度块 + 账号芯片，没有语言/版本那一行；按钮压到 24px，
+ * 让 208px 档里的姓名不被挤到截断。 */
+.sidebar-chip-actions {
   display: flex;
+  flex: none;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  min-width: 0;
-  padding: 4px 10px 8px;
+  gap: 1px;
 }
 
-.sidebar-version {
-  font-family: var(--mono);
+/* 24px 紧凑档：208px 侧栏里同时放得下头像 / 姓名 / 主题 / 语言 / 出口。 */
+.sidebar-chip-actions button {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  min-height: 24px;
+  padding: 0;
+}
+
+/* 主题按钮只留图形标：12px 的「HERMES TEAL」在 24px 里只能截出半个词，更糟。
+   （主题自己的 wrapper 是 div.relative，语言的 wrapper 是 div.relative.inline-flex。） */
+.sidebar-chip-actions > div > div.relative:not(.inline-flex) .text-display {
+  display: none;
+}
+
+/* 语言按钮保留 locale 名（EN / 中文 / …）：它本身就是最省的标识，
+   24px 装得下两个汉字；listbox 仍由 LanguageSwitcher 自己弹。 */
+.sidebar-chip-actions > div > div.relative.inline-flex .text-display {
   font-size: 10px;
-  letter-spacing: 0.08em;
-  color: var(--fg-4);
-  white-space: nowrap;
-}
-
-.sidebar-org {
-  font-family: var(--mono);
-  font-size: 9px;
-  letter-spacing: 0.12em;
-  color: var(--fg-3);
-  text-decoration: none;
-  white-space: nowrap;
-}
-
-.sidebar-org:hover {
-  color: var(--fg);
+  letter-spacing: 0;
 }
 
 /* 侧栏定宽 208px：宽视口（≥1440 目标，1100 起生效避开窄屏折叠交互）锁定，
@@ -327,4 +330,78 @@
     width: var(--side);
     flex-basis: var(--side);
   }
+}
+/* 语言按钮（账号芯片右端的图标档）：24px 地球图标 + 向上弹出的 locale listbox。
+ * 与组件化 LanguageSwitcher 共用 LOCALE_META / setLocale，只是外壳压成图标，
+ * 让 208px 侧栏里姓名不被「简体中文」四个字挤掉。 */
+.sidebar-locale {
+  position: relative;
+  flex: none;
+  display: flex;
+  align-items: center;
+}
+
+.sidebar-locale-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  min-height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: none;
+  color: var(--fg-3);
+  cursor: pointer;
+}
+
+.sidebar-locale-trigger:hover,
+.sidebar-locale-trigger[aria-expanded="true"] {
+  background: rgba(255, 230, 203, 0.08);
+  color: var(--fg);
+}
+
+.sidebar-locale-menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 6px);
+  z-index: var(--z-ls-dropdown);
+  display: grid;
+  gap: 1px;
+  width: 168px;
+  max-height: 248px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 4px 0;
+  list-style: none;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r);
+  background: var(--panel-2);
+  box-shadow: var(--shadow-2);
+}
+
+.sidebar-locale-option {
+  display: block;
+  width: 100%;
+  padding: 6px 12px;
+  border: 0;
+  background: none;
+  color: var(--fg-2);
+  font-family: var(--sans);
+  font-size: 12px;
+  line-height: 1.3;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sidebar-locale-option:hover {
+  background: rgba(255, 230, 203, 0.06);
+  color: var(--fg);
+}
+
+.sidebar-locale-option[aria-selected="true"] {
+  color: var(--fg);
+  background: rgba(255, 230, 203, 0.08);
 }

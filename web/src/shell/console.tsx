@@ -811,13 +811,11 @@ export function ConsoleNav({
           </div>
         );
       })}
-      {/* R29 item 2: the audit surface is reachable from the console sidebar;
-        * a plain anchor so the DOM keeps a single Chinese label. */}
-      <div className="console-nav-section">
-        <NavLink to="/audit" onClick={onNavigate} className="console-nav-link">
-          <span className="console-nav-label">审计</span>
-        </NavLink>
-      </div>
+      {/* 2026-11-24 末轮 IA 收口：侧栏不再有顶层「审计」。
+        * 依据 routes.ts：#/audit 是 `compat-module / visible:false`，落点是
+        * #/system?tab=events —— 它本就是 22 个可见 tab 之一（系统 · 审计事件），
+        * 不该在四组之外单独成项。路由 /audit 原样保留（App 里 AuditAwareEntry
+        * 仍服务该 URL），只摘掉侧栏这一枚入口，可达性走系统设置的 tab 条。 */}
     </div>
   );
 }

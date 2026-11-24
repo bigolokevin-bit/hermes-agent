@@ -93,13 +93,22 @@ describe("ConsoleNav (two tiers, 8 modules)", () => {
     expect(anchors[0]?.getAttribute("href")).toBe("/overview");
   });
 
-  it("R29: the sidebar carries a Chinese audit anchor into /audit", () => {
+  it("末轮 IA：侧栏不再有顶层「审计」——它归系统·审计事件 tab", () => {
     renderAt(<ConsoleNav />, "/overview");
-    const audit = Array.from(container.querySelectorAll("a")).find(
-      (a) => a.getAttribute("href") === "/audit",
-    );
-    expect(audit).toBeTruthy();
-    expect(audit?.textContent).toBe("审计");
+    // routes.ts: #/audit 是 compat-module / visible:false，落点 #/system?tab=events，
+    // 本就是 22 个可见 tab 之一；侧栏四组之外不得再多一枚独立入口。
+    expect(
+      Array.from(container.querySelectorAll("a")).some(
+        (a) => a.getAttribute("href") === "/audit",
+      ),
+    ).toBe(false);
+    expect(container.textContent).not.toContain("审计");
+    // 系统组仍在，其 tab 条（ConsoleModulePage）承载「审计事件」，路由 /audit 未删。
+    expect(
+      Array.from(container.querySelectorAll("a[data-mod]")).some(
+        (a) => a.getAttribute("data-mod") === "system",
+      ),
+    ).toBe(true);
     // data-mod contract stays exactly the 8 IA modules
     expect(container.querySelectorAll("a[data-mod]").length).toBe(8);
   });

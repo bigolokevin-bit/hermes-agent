@@ -8,7 +8,12 @@
  * （骨架 console-v4-skeleton.html 的 .account-btn 形态）。角色与租户仍在
  * DOM 里（sr-only，给读屏与验收读数），只是不再各占一行。
  */
-import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
+import {
+  useEffect,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
 import { useNavigate } from "react-router";
 import { LogOut } from "lucide-react";
 import { isSessionExpired, subscribeSessionExpired } from "@/lib/session-expiry";
@@ -23,7 +28,18 @@ function initialsOf(display: string): string {
   return single.slice(0, 2).toUpperCase();
 }
 
-export function Auth5Session(): ReactNode {
+export interface Auth5SessionProps {
+  /** 上游版本号（`/api/status` 回包才有）。骨架侧栏没有版本行，故只在
+   * 账号芯片的 title 里出现；没有回包就整段不进 DOM。 */
+  version?: string | null;
+  /** 芯片右端的紧凑动作（主题/语言等），与头像/姓名同处一行。 */
+  trailing?: ReactNode;
+}
+
+export function Auth5Session({
+  version = null,
+  trailing = null,
+}: Auth5SessionProps = {}): ReactNode {
   const navigate = useNavigate();
   // 设计车道 ①（P0-① 收敛）：「会话已过期」已由全站唯一 SessionExpiredBanner
   // 陈述，anon 分支不再在侧栏重复说「未登录」；「去登录」出口保留。
@@ -89,6 +105,9 @@ export function Auth5Session(): ReactNode {
         <div className="sidebar-account-meta">
           <span className="sidebar-account-sub">读取中…</span>
         </div>
+        {trailing !== null && (
+          <span className="sidebar-chip-actions">{trailing}</span>
+        )}
       </div>
     );
   }
@@ -120,24 +139,36 @@ export function Auth5Session(): ReactNode {
         : typeof window !== "undefined"
           ? window.location.host
           : "—";
+  // 骨架的账号行只有「头像 + 姓名 + 弱色行」；版本号与角色一起收进 title。
+  const chipTitle = [
+    who.display,
+    who.role !== "—" ? who.role : null,
+    version ? `v${version}` : null,
+  ]
+    .filter((part): part is string => part !== null)
+    .join(" · ");
   return (
     <>
-      <div className="sidebar-account" data-testid="auth5-widget">
+      <div
+        className="sidebar-account"
+        data-testid="auth5-widget"
+        data-version={version ?? undefined}
+        title={chipTitle}
+      >
         <span className="sidebar-avatar" aria-hidden="true">
           {initialsOf(who.display)}
         </span>
         <div className="sidebar-account-meta">
-          <b
-            className="sidebar-account-name"
-            data-testid="auth5-display"
-            title={who.display}
-          >
+          <b className="sidebar-account-name" data-testid="auth5-display">
             {who.display}
           </b>
           <span className="sidebar-account-sub" data-testid="auth5-tenant" title={sub}>
             {sub}
           </span>
         </div>
+        {trailing !== null && (
+          <span className="sidebar-chip-actions">{trailing}</span>
+        )}
         <button
           type="button"
           className="sidebar-account-exit"

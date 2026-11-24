@@ -67,6 +67,7 @@ import { Typography } from "@nous-research/ui/ui/components/typography/index";
 import { ConfirmDialog } from "@nous-research/ui/ui/components/confirm-dialog";
 import { cn } from "@/lib/utils";
 import { SidebarUsage } from "@/shell/SidebarUsage";
+import { SidebarLocaleButton } from "@/shell/SidebarLocaleButton";
 import { SidebarStatusStrip, gatewayLine } from "@/components/SidebarStatusStrip";
 import { useBelowBreakpoint } from "@nous-research/ui/hooks/use-below-breakpoint";
 import { useSidebarStatus } from "@/hooks/useSidebarStatus";
@@ -98,6 +99,7 @@ const ApprovalsPage = lazy(() => import("@/pages/ApprovalsPage"));
  * 继续锚定；是否退役另案（backlog OM-03+）。UsageConsolePage
  * （用量与成本 tab）不变。 */
 const OverviewConsolePage = lazy(() => import("@/modules/overview/OverviewPage"));
+const DemoOverviewConsolePage = lazy(() => import("@/modules/demo-tenant/DemoOverviewPage"));
 const MatrixConsolePage = lazy(() =>
   import("@/modules/matrix/MatrixModulePage").then((m) => ({
     default: m.MatrixModulePage,
@@ -255,7 +257,6 @@ import {
   writeSidebarCollapsed,
 } from "@/shell/shell-layout";
 import { ConsoleTopBar, SHELL_TOPBAR_SLOT_ID } from "@/shell/TopBar";
-import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { useI18n } from "@/i18n";
 import type { Translations } from "@/i18n/types";
@@ -1162,75 +1163,39 @@ export default function App() {
               )}
             </nav>
 
-            {/* 侧栏底部（骨架 .nav-foot + .account 对齐）：额度块 → 账号芯片 →
-              * 工具行。退出登录留在账号芯片右端；主题/语言/版本/组织收成一行。
-              * 骨架的「今日全局上限」分母在本树 BFF 没有真口径，SidebarUsage
-              * 只显示「今日成本 $X」，不编分母、不画占比条。 */}
-            <div
-              className={cn(
-                "shrink-0",
-                isDesktopCollapsed && "lg:hidden",
-              )}
-            >
+            {/* 侧栏底部只剩骨架的两块：额度块 + 账号芯片。
+              * 语言/主题不删功能，收成芯片右端同一行的紧凑图标按钮；
+              * 上游的「Nous Research」一行删掉（不是本产品品牌），版本号若有
+              * 读口回包则进芯片 title（Auth5Session 的 version 入参）。 */}
+            {isDesktopCollapsed && (
+              <div className="sidebar-icon-rail hidden shrink-0 flex-col items-center gap-2 py-2 lg:flex">
+                <ThemeSwitcher collapsed dropUp />
+                <SidebarLocaleButton />
+              </div>
+            )}
+
+            <div className={cn("shrink-0", isDesktopCollapsed && "lg:hidden")}>
               <SidebarUsage />
-              <div className="px-2.5 pb-1 pt-2">
-                <Auth5Session />
+              <div className="px-1.5 pb-2 pt-2">
+                <Auth5Session
+                  version={sidebarStatus?.version ?? null}
+                  trailing={
+                    <>
+                      <PluginSlot name="header-right" />
+                      <SidebarIconWithTooltip
+                        collapsed
+                        label={t.theme?.switchTheme ?? "Switch theme"}
+                        tooltipWarmRef={tooltipWarmRef}
+                      >
+                        <ThemeSwitcher collapsed dropUp />
+                      </SidebarIconWithTooltip>
+                      <SidebarLocaleButton />
+                    </>
+                  }
+                />
               </div>
             </div>
 
-            <div
-              className={cn(
-                "sidebar-utils shrink-0",
-                isDesktopCollapsed &&
-                  "lg:flex-col lg:items-center lg:gap-2 lg:px-0 lg:py-2",
-              )}
-            >
-              <div
-                className={cn(
-                  "flex min-w-0 items-center gap-1",
-                  isDesktopCollapsed && "lg:flex-col lg:items-center",
-                )}
-              >
-                <PluginSlot name="header-right" />
-
-                <SidebarIconWithTooltip
-                  collapsed
-                  label={t.theme?.switchTheme ?? "Switch theme"}
-                  tooltipWarmRef={tooltipWarmRef}
-                >
-                  <ThemeSwitcher collapsed dropUp />
-                </SidebarIconWithTooltip>
-
-                <SidebarIconWithTooltip
-                  collapsed
-                  label={t.language.switchTo}
-                  tooltipWarmRef={tooltipWarmRef}
-                >
-                  <LanguageSwitcher collapsed dropUp />
-                </SidebarIconWithTooltip>
-              </div>
-
-              <div
-                className={cn(
-                  "flex min-w-0 items-baseline gap-3",
-                  isDesktopCollapsed && "lg:hidden",
-                )}
-              >
-                {/* 版本号只在真有读口回包时才占一格；读不到就整格不渲染，
-                  * 不再留一个没有语义的「—」。 */}
-                {sidebarStatus?.version != null && (
-                  <span className="sidebar-version">v{sidebarStatus.version}</span>
-                )}
-                <a
-                  className="sidebar-org"
-                  href="https://nousresearch.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  {t.app.footer.org}
-                </a>
-              </div>
-            </div>
           </aside>
 
           {/* n17 (UI-SHELL): the main column becomes a stack — top bar,
@@ -1286,6 +1251,10 @@ export default function App() {
                               live={{ duty: <OverviewConsolePage />, usage: <UsageConsolePage /> }}
                             />
                           }
+                        />
+                        <Route
+                          path="/demo/overview"
+                          element={<DemoOverviewConsolePage />}
                         />
                         <Route
                           path="/work"
