@@ -1,14 +1,18 @@
 import { useEffect, useState } from "react";
-import { Badge, Button, Card, CardContent } from "@nous-research/ui";
+import { Badge, Button } from "@nous-research/ui";
+import { ConsoleCard } from "@/components/console/ConsoleCard";
+import { Pill } from "@/components/console/Pill";
 import { fetchJSON } from "@/lib/api";
 import { ApiError } from "@/lib/api-error";
 import { currentFixtureState, fixtureView, type FixtureState } from "../../shell/fixtures";
 import { PILOT_ROW, PROBE_DEFINITIONS, probeResult, summarize, type ProbeRow, type ProbeStatus } from "./health";
+import { EMPTY_KPI, readHealthKpi, type HealthKpi } from "./kpiRead";
 import { SystemHealthSurface } from "./SystemHealthSurface";
 import { PumpHeartbeat } from "./PumpHeartbeat";
 import { SourceMatrix } from "./SourceMatrix";
 import { SystemCaliberNotes } from "./SystemCaliberNotes";
 import { SystemRefreshBar, useRefreshCoordinator } from "./systemRefresh";
+import { beijingMinute } from "./systemHealth";
 import {
   failureRead,
   markSourcesLoading,
@@ -19,6 +23,23 @@ import {
 import "./health.css";
 
 type State = { k: "loading" } | { k: "empty" } | { k: "error"; requestId: string } | { k: "ready"; rows: ProbeRow[] };
+
+/** 骨架 health pane 的「维护操作」：五个写入口，全部是规划中占位（后端写接口未就绪）。 */
+const MAINTENANCE_ACTIONS = [
+  { label: "重启网关", tone: "danger" as const, note: "规划中：后端写接口未就绪" },
+  { label: "重建知识索引", tone: "plain" as const, note: "接口已存在，待适配租户/版本/审批后开放" },
+  { label: "创建检查点", tone: "plain" as const, note: "接口已存在，待适配租户/版本/审批后开放" },
+  { label: "检查更新", tone: "plain" as const, note: "版本更新读口未接入，本页不提供检查" },
+  { label: "清理归档数据", tone: "danger" as const, note: "规划中：后端写接口未就绪" },
+];
+
+/** 骨架 health pane 的「钩子」：四个运行钩子，启停状态没有读口。 */
+const RUNTIME_HOOKS = [
+  { name: "before_run", note: "注入预算与权限检查" },
+  { name: "after_step", note: "写步骤时间线" },
+  { name: "on_failure", note: "决定回退或报错" },
+  { name: "on_approval", note: "审批通过后恢复运行" },
+];
 
 function fixtureState(value: FixtureState | null): State | null {
   if (value === "loading") return { k: "loading" };
@@ -100,8 +121,32 @@ function Metric({ label, value, reason, testid }: { label: string; value: string
   );
 }
 
+/** 一格读数：11px 标签 + 大字 + 一行副行。缺读口时值就是「—」，副行给缺口原因。 */
+function Kpi({
+  label,
+  value,
+  detail,
+  tone,
+  testid,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+  tone?: "ok" | "warn" | "bad";
+  testid: string;
+}) {
+  return (
+    <div className="hlt5-kpi">
+      <span className="hlt5-kpi-k">{label}</span>
+      <b className={`hlt5-kpi-v${tone ? ` is-${tone}` : ""}`} data-testid={testid}>{value}</b>
+      <span className="hlt5-kpi-d" title={detail}>{detail}</span>
+    </div>
+  );
+}
+
 export function HealthPage() {
   const [state, setState] = useState<State>({ k: "loading" });
+  const [kpi, setKpi] = useState<HealthKpi>(EMPTY_KPI);
   const refresh = useRefreshCoordinator(2);
   const forced = currentFixtureState();
   const preview = fixtureView<State | null>(forced ?? "ready", {
@@ -155,6 +200,10 @@ export function HealthPage() {
           });
         }
       });
+      // 顶部四格复用 runtime 那条探针已经拿到的 payload：本页的请求笔数不变。
+      const runtimeIndex = PROBE_DEFINITIONS.findIndex((probe) => probe.id === "runtime");
+      const runtimeResult = runtimeIndex >= 0 ? settled[runtimeIndex] : undefined;
+      setKpi(runtimeResult?.status === "fulfilled" ? readHealthKpi(runtimeResult.value) : EMPTY_KPI);
       const returnedAt = Date.now();
       const rows = PROBE_DEFINITIONS.map((probe, index) => probeResult(probe.id, settled[index] as PromiseSettledResult<unknown>, returnedAt));
       const allDown = settled.every((result) => result.status === "rejected" && result.reason instanceof ApiError && result.reason.status === 0);
@@ -177,13 +226,20 @@ export function HealthPage() {
     refresh.start();
   };
   const counts = view.k === "ready" ? summarize(view.rows) : { healthy: 0, error: 0, unknown: 0 };
+  const total = view.k === "ready" ? view.rows.length : PROBE_DEFINITIONS.length + 1;
+  const updatedAt = beijingMinute(kpi.asOf);
+
+  // 副行只说这一屏真的数出来的东西：探针条数、三种结论的分布、刷新方式。
+  const subline = view.k === "ready"
+    ? `${total} 个探测项 · ${counts.healthy} 正常 · ${counts.error} 异常 · ${counts.unknown} 未知 · 手点刷新`
+    : `${PROBE_DEFINITIONS.length} 个探测项 · 结论读取中 · 手点刷新`;
 
   return (
     <section className="hlt5-page" data-testid="hlt5-page">
       <header className="hlt5-head">
         <div className="min-w-0">
-          <h1 className="font-mondwest text-xl">系统健康</h1>
-          <p className="mt-1 text-sm text-white/55">实例活着吗</p>
+          <h2 className="hlt5-title" data-testid="hlt5-title">系统健康</h2>
+          <p className="hlt5-sub" data-testid="hlt5-sub">{subline}</p>
           <p className="hlt5-counts" data-testid="hlt5-counts">
             <span>正常 {counts.healthy}</span><span>异常 {counts.error}</span><span>未知 {counts.unknown}</span>
           </p>
@@ -191,25 +247,103 @@ export function HealthPage() {
         <SystemRefreshBar coordinator={refresh} disabled={forced !== null} />
       </header>
 
-      <SystemHealthSurface preview={forced && forced !== "ready" ? forced : null} onRetry={retry} refreshTick={refresh.tick} onRefreshResult={refresh.finish} hideRefresh />
-
-      <PumpHeartbeat preview={forced && forced !== "ready" ? forced : null} refreshTick={refresh.tick} />
-
-      <div className="hlt5-owner">
-        <span>运维负责人</span><span>处理异常探针</span>
+      <div className="hlt5-kpis" data-testid="hlt5-kpis">
+        <Kpi
+          label="网关"
+          testid="hlt5-kpi-gateway"
+          value={kpi.gateway ?? "—"}
+          tone={kpi.gateway === "在线" ? "ok" : kpi.gateway === null ? undefined : "warn"}
+          detail={kpi.gatewayDetail ?? "上游没给网关状态字"}
+        />
+        <Kpi
+          label="运行中"
+          testid="hlt5-kpi-agents"
+          value={kpi.agents === null ? "—" : String(kpi.agents)}
+          detail={kpi.agents === null ? "上游没给活跃运行数" : "进程内活跃运行 · 不含排期"}
+        />
+        <Kpi
+          label="内存"
+          testid="hlt5-kpi-memory"
+          value={kpi.memoryPercent === null ? "—" : `${kpi.memoryPercent}%`}
+          detail={
+            kpi.memoryPercent === null
+              ? "缺读口：运行时没回内存读数"
+              : `已用 ${kpi.memoryUsedMb ?? "—"} MB · 上限 ${kpi.memoryTotalMb ?? "—"} MB`
+          }
+        />
+        <Kpi
+          label="更新"
+          testid="hlt5-kpi-update"
+          value="—"
+          detail="缺读口：版本更新检查未接入"
+        />
       </div>
 
+      <p className="hlt5-caliber" data-testid="hlt5-caliber">
+        范围 本次读取 · 更新 {updatedAt ?? "—"} · 对象 {total} 个探测项 · 口径 探针=一次 HTTP 往返，
+        延迟按浏览器侧计时，缺值显示「—」不补
+      </p>
+
+      <ConsoleCard
+        label="服务"
+        action={<span className="hlt5-card-action">探测项 {total} · 手点刷新</span>}
+        flush
+      >
+        <SystemHealthSurface preview={forced && forced !== "ready" ? forced : null} onRetry={retry} refreshTick={refresh.tick} onRefreshResult={refresh.finish} hideRefresh />
+      </ConsoleCard>
+
+      <div className="hlt5-split">
+        <ConsoleCard label="维护操作" action={<span className="hlt5-card-action">全部需管理员 · 二次确认</span>}>
+          <div className="hlt5-ops">
+            {MAINTENANCE_ACTIONS.map((action) => (
+              <Button
+                key={action.label}
+                size="sm"
+                outlined
+                data-planned={action.note}
+                aria-disabled="true"
+                title={action.note}
+                onClick={(event) => event.preventDefault()}
+              >
+                {action.label}
+              </Button>
+            ))}
+          </div>
+          <div className="hlt5-divider" />
+          <p className="hlt5-gap" data-testid="hlt5-ops-gap">
+            缺读口：5 个维护写入口都还没有接通，按钮是占位。重启会中断进行中的运行，建议先暂停排期。
+          </p>
+        </ConsoleCard>
+
+        <ConsoleCard label="钩子" action={<span className="hlt5-card-action">{RUNTIME_HOOKS.length} 个 · 启停状态无读口</span>}>
+          <ul className="hlt5-hooks">
+            {RUNTIME_HOOKS.map((hook) => (
+              <li key={hook.name} className="hlt5-hook">
+                <span className="hlt5-hook-id">{hook.name}</span>
+                <span className="hlt5-hook-note" title={hook.note}>{hook.note}</span>
+                <Pill tone="mut" dot={false}>—</Pill>
+              </li>
+            ))}
+          </ul>
+          <div className="hlt5-divider" />
+          <p className="hlt5-gap" data-testid="hlt5-hooks-gap">
+            缺读口：钩子注册表没有读口，四项的启用/停用状态无法读出，所以状态列是「—」。
+          </p>
+        </ConsoleCard>
+      </div>
+
+      <ConsoleCard label="探针明细" action={<span className="hlt5-card-action">每条探针一行 · 手点刷新</span>} flush>
       {view.k === "loading" ? (
-        <Card><CardContent className="space-y-3 p-4" data-testid="hlt5-loading" aria-busy="true">
+        <div className="hlt5-panel space-y-3" data-testid="hlt5-loading" aria-busy="true">
           <p className="text-sm text-white/55">正在检查服务…</p>
           {[1, 2, 3, 4].map((row) => <div key={row} className="hlt5-skeleton" />)}
-        </CardContent></Card>
+        </div>
       ) : view.k === "empty" ? (
-        <Card><CardContent className="py-10 text-center" data-testid="hlt5-empty">
+        <div className="hlt5-panel hlt5-panel--center" data-testid="hlt5-empty">
           <p className="text-sm text-white/80">探针未接入</p><p className="mt-2 text-xs text-white/50">请看接入说明。</p>
-        </CardContent></Card>
+        </div>
       ) : view.k === "error" ? (
-        <Card><CardContent className="flex flex-col items-center gap-3 py-10 text-center" data-testid="hlt5-error" role="alert">
+        <div className="hlt5-panel hlt5-panel--center flex flex-col items-center gap-3" data-testid="hlt5-error" role="alert">
           <p className="text-sm text-white/80">所有探针均未收到响应</p>
           {view.requestId.startsWith("—") ? (
             <p className="text-xs text-white/40">请求编号：未提供（这次没有收到可记录的请求编号）</p>
@@ -217,9 +351,9 @@ export function HealthPage() {
             <RowRequestId id={view.requestId} />
           )}
           <Button size="sm" outlined onClick={retry} data-testid="hlt5-retry">重试</Button>
-        </CardContent></Card>
+        </div>
       ) : (
-        <Card><CardContent className="p-0" data-testid="hlt5-list">
+        <div data-testid="hlt5-list">
           {view.rows.map((row) => (
             <article key={row.id} title={row.detail ?? undefined} className="hlt5-row" data-testid={`hlt5-row-${row.id}`}>
               <div className="hlt5-main">
@@ -239,8 +373,19 @@ export function HealthPage() {
             </article>
           ))}
           <p className="hlt5-foot" data-testid="hlt5-foot">字段缺失显示「—」，原因在悬停说明里；不用浏览器时间补齐，也不把未知当成功。</p>
-        </CardContent></Card>
+        </div>
       )}
+        <div className="hlt5-card-foot">
+          口径：探针只回答「这一次 HTTP 能不能打通」，不上报服务内部评分；检查点与更新两格另有读口缺口。
+        </div>
+      </ConsoleCard>
+
+      <PumpHeartbeat preview={forced && forced !== "ready" ? forced : null} refreshTick={refresh.tick} />
+
+      <div className="hlt5-owner">
+        <span>运维负责人</span><span>处理异常探针</span>
+      </div>
+
       <SourceMatrix />
       <SystemCaliberNotes />
     </section>

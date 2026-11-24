@@ -1,0 +1,174 @@
+/* 骨架 version pane 形制（ver5）：h2 标题 + 副行 + 卡式分区 + 只读表。
+   字号/间距/颜色只走 tokens.css 的 -ls 令牌与 --ok/--warn/--bad/--info。 */
+.ver5-page {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--space-ls-3);
+}
+
+.ver5-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-ls-3);
+}
+
+.ver5-title {
+  margin: 0;
+  font-size: var(--font-size-ls-4);
+  line-height: var(--line-height-ls-2);
+  font-weight: var(--font-weight-ls-medium);
+  color: var(--color-text-ls);
+}
+
+.ver5-sub {
+  margin: var(--space-ls-1) 0 0;
+  font-size: var(--font-size-ls-1);
+  line-height: var(--line-height-ls-2);
+  color: var(--color-text-muted-ls);
+}
+
+.ver5-caliber {
+  margin: 0;
+  font-size: var(--font-size-ls-1);
+  line-height: var(--line-height-ls-2);
+  color: var(--color-text-subtle-ls);
+}
+
+.ver5-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-ls-2);
+  min-width: 0;
+}
+
+.ver5-card { min-width: 0; }
+
+.ver5-card-action {
+  font-size: var(--font-size-ls-1);
+  color: var(--color-text-subtle-ls);
+}
+
+.ver5-card-foot {
+  padding: var(--space-ls-2) var(--space-ls-3);
+  border-top: var(--border-ls-1);
+  font-size: var(--font-size-ls-1);
+  line-height: var(--line-height-ls-2);
+  color: var(--color-text-subtle-ls);
+}
+
+.ver5-now {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-ls-2);
+}
+
+.ver5-now-version {
+  font-family: var(--font-family-mono-ls);
+  font-size: var(--font-size-ls-5);
+  line-height: var(--line-height-ls-1);
+  color: var(--color-text-ls);
+}
+
+.ver5-divider {
+  height: 1px;
+  margin: var(--space-ls-3) 0;
+  background: var(--color-border-subtle-ls);
+}
+
+.ver5-kv {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--space-ls-1) var(--space-ls-3);
+  margin: 0;
+  font-size: var(--font-size-ls-1);
+  color: var(--color-text-ls);
+}
+
+.ver5-kv dt { color: var(--color-text-subtle-ls); }
+.ver5-kv dd { margin: 0; word-break: break-word; }
+
+.ver5-gap {
+  margin: var(--space-ls-2) 0 0;
+  font-size: var(--font-size-ls-1);
+  line-height: var(--line-height-ls-2);
+  color: var(--color-text-subtle-ls);
+}
+
+.ver5-prose {
+  margin: 0;
+  font-size: var(--font-size-ls-1);
+  line-height: 1.65;
+  color: var(--color-text-muted-ls);
+}
+
+.ver5-ops {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-ls-2);
+  margin-top: var(--space-ls-3);
+}
+
+.ver5-planned {
+  border: var(--border-ls-1);
+  border-radius: var(--radius-ls-1);
+  padding: var(--space-ls-1) var(--space-ls-2);
+  background: transparent;
+  color: var(--color-text-muted-ls);
+  font-size: var(--font-size-ls-1);
+  cursor: not-allowed;
+  opacity: var(--opacity-disabled-ls);
+}
+
+.ver5-tw { min-width: 0; overflow-x: auto; }
+
+.ver5-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-ls-1);
+}
+
+.ver5-table thead th {
+  padding: var(--space-ls-2) var(--space-ls-3);
+  border-bottom: var(--border-ls-1);
+  font-weight: var(--font-weight-ls-regular);
+  color: var(--color-text-subtle-ls);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.ver5-gap-cell {
+  padding: var(--space-ls-3);
+  line-height: var(--line-height-ls-2);
+  color: var(--color-text-muted-ls);
+}
+
+.ver5-h3 {
+  margin: 0;
+  font-size: var(--font-size-ls-2);
+  font-weight: var(--font-weight-ls-medium);
+  color: var(--color-text-ls);
+}
+
+.ver5-row-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-ls-2);
+  margin-bottom: var(--space-ls-2);
+}
+
+@media (max-width: 900px) {
+  .ver5-pair { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 720px) {
+  .ver5-hide-sm { display: none; }
+}
+.ver5-health-inner { padding: var(--space-ls-3); }

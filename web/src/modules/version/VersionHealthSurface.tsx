@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Badge, Button, Card, CardContent } from "@nous-research/ui";
+import { Badge, Button } from "@nous-research/ui";
 import { copyTextToClipboard } from "@/lib/clipboard";
 import { fetchJsonStrict } from "../models/fetchJson";
 import { versionCopyText } from "./versionCopy";
@@ -177,8 +177,8 @@ export function VersionHealthSurface({ preview = null, refreshTick = 0, onRefres
   };
 
   return (
-    <Card data-testid="ver5-page">
-      <CardContent className="space-y-3 p-4">
+    <div className="ver5-health-body" data-testid="ver5-page">
+      <div className="ver5-health-inner space-y-3">
         <div className="flex min-w-0 flex-wrap items-baseline justify-between gap-2">
           <h2 className="text-sm font-medium text-white/85">组件版本与健康</h2>
           <div className="flex min-w-0 flex-wrap items-center gap-2">
@@ -264,7 +264,7 @@ export function VersionHealthSurface({ preview = null, refreshTick = 0, onRefres
           </div>
         )}
         <p className="text-xs text-white/40">版本/构建标识优先取健康读口，与 /system 同源同字段；健康无组件行时才回退版本读口。缺失显示「—」，不补 0，也不编造版本号。</p>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

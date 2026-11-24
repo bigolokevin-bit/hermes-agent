@@ -33,6 +33,7 @@
  */
 import "./audit-375-a11y.css";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { ConsoleCard } from "@/components/console/ConsoleCard";
 import { useLocation, useNavigate, useSearchParams } from "react-router";
 import { ArrowLeft, Download, ReceiptText, RefreshCw, ShieldCheck } from "lucide-react";
 
@@ -1603,6 +1604,14 @@ function AuditEventsSurface(): ReactNode {
         </div>
       </div>
 
+      {/* 骨架 events pane 的副行：窗口、屏上行数、可查询与关联口径，一句说完；
+          留存策略没有读口，就地声明，不给假数字。 */}
+      <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="aud5-sub">
+        {windowLabel} · 已显示 {listedRows.length} 条
+        {list.total === null ? "" : ` · 命中 ${list.total} 条`}
+        {` · 事件可查询 · 关联 Run/审批 · ${"留存策略未接入"}`}
+      </p>
+
       <div className="flex min-w-0 flex-wrap items-center gap-2" data-testid="aud5-export-bar">
         <Button
           size="sm"
@@ -1768,6 +1777,10 @@ function AuditEventsSurface(): ReactNode {
           four things: asking, the real counts, 本环境未启用 + why + where, or a
           plain failure. A 404 route answers 「本环境未启用」, never a generic
           error — see the copy in copy.ts. */}
+      <ConsoleCard
+        label="链完整性"
+        action={<span className="text-[0.6875rem] text-muted-foreground">SHA-256 逐条串联 · 本段窗口</span>}
+      >
       {(() => {
         if (verify.phase === "loading") {
           return <LoadingPanel testId="aud01-verify-loading" />;
@@ -1875,8 +1888,13 @@ function AuditEventsSurface(): ReactNode {
         }
         return null;
       })()}
+        <p className="mt-2 min-w-0 break-words text-[0.6875rem] text-muted-foreground" data-testid="aud5-chain-gap">
+          口径：校验结果只覆盖这一段窗口；留存策略与外部锚定都没有读口，本页不声明到期清理与每日锚定已经生效。
+        </p>
+      </ConsoleCard>
 
       <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]">
+        <ConsoleCard label="审计事件" action={<span className="text-[0.6875rem] text-muted-foreground">只追加写入 · 时间为北京时间</span>} flush>
         <section className="flex min-w-0 flex-col gap-2" aria-label="审计事件列表">
           {customInvalid ? (
             <p className="min-w-0 break-words text-xs text-warning" data-testid="aud01-custom-hint">
@@ -2150,6 +2168,10 @@ function AuditEventsSurface(): ReactNode {
             </>
           ) : null}
         </section>
+        <p className="border-t border-white/10 px-3 py-2 text-[0.6875rem] text-muted-foreground" data-testid="aud5-retention-gap">
+          缺读口：留存策略与归档没有读口，本页不显示到期时间与清理计划；账本只追加，不做物理删。
+        </p>
+        </ConsoleCard>
 
         <aside className="flex min-w-0 flex-col gap-3 lg:sticky lg:top-4 lg:self-start" aria-label="事件详情">
           {backExit}

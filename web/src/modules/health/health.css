@@ -912,3 +912,194 @@
   outline: 2px solid var(--color-ring);
   outline-offset: 2px;
 }
+
+/* ---------------------------------------------------------------- *
+ * 骨架 health pane 形制（sysS）：KPI 四格 / 口径行 / 卡式分区。
+ * 字号/间距一律走 tokens.css 的 -ls 令牌（本目录参与全仓字阶棘轮门，
+ * 新写字面量字号会推高基线），颜色只用 -ls 语义名，写死 hex 一律不许。
+ * ---------------------------------------------------------------- */
+.hlt5-title {
+  margin: 0;
+  font-size: var(--font-size-ls-4);
+  line-height: var(--line-height-ls-2);
+  font-weight: var(--font-weight-ls-medium);
+  color: var(--color-text-ls);
+}
+
+.hlt5-sub {
+  margin: var(--space-ls-1) 0 0;
+  font-size: var(--font-size-ls-1);
+  line-height: var(--line-height-ls-2);
+  color: var(--color-text-muted-ls);
+}
+
+.hlt5-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-ls-2);
+}
+
+.hlt5-kpi {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-ls-2) var(--space-ls-3);
+  border: var(--border-ls-1);
+  border-radius: var(--radius-ls-1);
+  background: var(--color-surface-ls);
+}
+
+.hlt5-kpi-k {
+  font-size: var(--font-size-ls-1);
+  line-height: var(--line-height-ls-1);
+  color: var(--color-text-subtle-ls);
+}
+
+.hlt5-kpi-v {
+  font-family: var(--font-family-mono-ls);
+  font-size: var(--font-size-ls-5);
+  line-height: var(--line-height-ls-1);
+  font-variant-numeric: var(--tabular-ls);
+  color: var(--color-text-ls);
+}
+
+.hlt5-kpi-v.is-ok { color: var(--color-success-ls); }
+.hlt5-kpi-v.is-warn { color: var(--color-warning-ls); }
+.hlt5-kpi-v.is-bad { color: var(--color-danger-ls); }
+
+.hlt5-kpi-d {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: var(--font-size-ls-1);
+  line-height: var(--line-height-ls-2);
+  color: var(--color-text-muted-ls);
+}
+
+.hlt5-caliber {
+  margin: 0;
+  font-size: var(--font-size-ls-1);
+  line-height: var(--line-height-ls-2);
+  color: var(--color-text-subtle-ls);
+}
+
+.hlt5-card { min-width: 0; }
+
+.hlt5-card-action {
+  font-size: var(--font-size-ls-1);
+  color: var(--color-text-subtle-ls);
+}
+
+.hlt5-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: var(--space-ls-2);
+  min-width: 0;
+}
+
+.hlt5-ops {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-ls-2);
+}
+
+.hlt5-divider {
+  height: 1px;
+  margin: var(--space-ls-3) 0 var(--space-ls-2);
+  background: var(--color-border-subtle-ls);
+}
+
+.hlt5-gap {
+  margin: 0;
+  font-size: var(--font-size-ls-1);
+  line-height: var(--line-height-ls-2);
+  color: var(--color-text-subtle-ls);
+}
+
+.hlt5-hooks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-ls-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hlt5-hook {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-ls-1) var(--space-ls-2);
+}
+
+.hlt5-hook-id {
+  font-family: var(--font-family-mono-ls);
+  font-size: var(--font-size-ls-1);
+  color: var(--color-text-ls);
+}
+
+.hlt5-hook-note {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--font-size-ls-1);
+  color: var(--color-text-muted-ls);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hlt5-card-foot {
+  padding: var(--space-ls-2) var(--space-ls-3);
+  border-top: var(--border-ls-1);
+  font-size: var(--font-size-ls-1);
+  line-height: var(--line-height-ls-2);
+  color: var(--color-text-subtle-ls);
+}
+
+/* 服务表的「说明」列：版本标识 + 最近检查时刻 + 复制，压成一行窄读。 */
+.sys-note-line {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-ls-2);
+}
+
+.sys-note-line > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .hlt5-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .hlt5-split { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 720px) {
+  /* 骨架把端口/重启两列标 hide-sm：窄屏收起，避免 375 横向溢出。 */
+  .sys-hide-sm { display: none; }
+  /* 粘在右缘的说明列只留复制动作，读数列让位给横滚。 */
+  .sys-note-line > span { display: none; }
+}
+
+/* 服务卡与探针明细：内容直接在 ConsoleCard 里，不再套第二层描边。 */
+.sys3-inner { padding: var(--space-ls-3); }
+.hlt5-panel { padding: var(--space-ls-3); }
+.hlt5-panel--center { align-items: center; text-align: center; }
+
+/* 服务表列宽：延迟/端口/重启是窄读数，说明列留够放版本与时刻，避免破折号悬在空白正中。 */
+.sys3-table th:nth-child(2), .sys3-table td:nth-child(2) { width: 92px; }
+.sys3-table th:nth-child(3), .sys3-table td:nth-child(3) { width: 88px; }
+.sys3-table th:nth-child(4), .sys3-table td:nth-child(4) { width: 72px; }
+.sys3-table th:nth-child(5), .sys3-table td:nth-child(5) { width: 72px; }
+.sys3-table th:nth-child(6), .sys3-table td:nth-child(6) { width: 220px; }
+
+.sys-note-line { justify-content: flex-end; white-space: nowrap; }
+.sys-note-line > span { white-space: nowrap; }
+
+@media (max-width: 720px) {
+  .sys3-table th:nth-child(6), .sys3-table td:nth-child(6) { width: auto; }
+}
