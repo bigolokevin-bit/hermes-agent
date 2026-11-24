@@ -49,3 +49,12 @@
 - 换基：git merge FETCH_HEAD（DU-08/SE-05 与 modules/overview 零交集，diff 实据为空，零冲突）→ 终 tip 2d23a79e8d3303e5cb25a991af50de6626112310，ls-remote 输出行核验 B=0。
 - 换基后门禁：全量 vitest 541 文件 / 4162 过 | 1 跳 exit 0；模块 52/52；e1Contract 本树判读 SKIPPED-NOT-DEPLOYED（dist 残留已 rm）。
 - task-lane：OM-15 与 OM-13 均 DELIVERED tip 2d23a79e8d…，写后复读核验（OM-13 行 branch/worktree 字段仍指旧死栈，报 L0 清理）。
+
+## OM-14 验收清单（响应式总闸复验，2026-11-24，基于现脸 db793b7b10）
+
+- 测试面计数闸：`ls src/modules/overview/*.test.* | wc -l` = **7**（≥6 ✓）；`vitest run src/modules/overview --reporter=json` numPassedTests=**52**、numFailedTests=**0**（≥30 全绿 ✓）。
+- assert-375（harness 脸 9131 承载载体 OverviewPage，auth-state cookie 域 127.0.0.1 注入核验）：`ASSERT375 routes=2 pass=2 fail=0 notMeasured=0`；#/overview 行 PASS，violOutsideShell=**0**，mainTextLen=705，fullPage 375×1781（>812 闸满足）。
+- 375 单列：≤560 断点 .ov5-kpis 单列（OM-03 既有），KpiCard stamp 行在逐元素判据下零溢出。
+- 1440 截图入库：docs/_artifacts/OM-14-resp/shots/om14-overview-1440.png（拍摄时健康卡 DOM=「健康检查（服务探针）GET /api/hermes-summary正常本页六路读数全部就绪（本页读数合成状态，不等于服务健康）数据截至 2026-11-24 08:06 · 来源 服务探针」）；375 台账 docs/_artifacts/OM-14-resp/375/（两 png + summary json）。
+- 轻微遗留（沿 observer 判定，不阻塞）：趋势柱贴容器左右缘、来源长串中文中间换行——跨页家族遗留另卡治理。
+
