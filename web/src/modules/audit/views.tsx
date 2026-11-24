@@ -25,7 +25,7 @@ import {
   joinTitles,
   truncatedView,
 } from "./truncation";
-import { AuditResourceCell, AuditResourceLink, CopyValue, DetailCopy, DeniedPanel, ErrorPanel, LoadingPanel, PermalinkCopy, SummaryCopy, TechnicalDisclosure } from "./states";
+import { AuditContextChains, AuditResourceCell, AuditResourceLink, CopyValue, DetailCopy, DeniedPanel, ErrorPanel, LoadingPanel, PermalinkCopy, SummaryCopy, TechnicalDisclosure } from "./states";
 import { copyLinkGate } from "./auditGates";
 import type { FailureCopy } from "./copy";
 import { summaryFromDetail, summaryFromRow } from "./summary";
@@ -467,15 +467,20 @@ export function AuditEventDetailBody({
         </Section>
       ) : null}
 
-      {detail.links.length ? (
-        <Section title="关联">
+      {/* AU-01: the 关联 section always answers — three context chains up front
+       * (link / 说而不链 / 无关联 per contextLinks.ts), then the plain 关联行
+       * exactly as before. An event without links no longer hides the question;
+       * 「无关联」 is itself the honest answer. */}
+      <Section title="关联">
+        <AuditContextChains actor={detail.actor} links={detail.links} />
+        {detail.links.length ? (
           <dl className="flex min-w-0 flex-wrap gap-x-5 gap-y-1 text-xs">
             {detail.links.map((link) => (
               <Field key={`${link.noun}-${link.label}`} label={link.noun} value={link.label} title={link.raw ?? undefined} />
             ))}
           </dl>
-        </Section>
-      ) : null}
+        ) : null}
+      </Section>
 
       <Section title="完整性">
         {detail.integrity.present ? (

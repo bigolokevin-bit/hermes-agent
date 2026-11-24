@@ -56,3 +56,9 @@
 - 页面小修（OverviewPage.tsx Blockers）：新增 allBlockSourcesReady 与 rowsSuppressed 门；空态只在三路全 ready 且非 recentRuns-loading 时出现；否则写「阻塞读数还没有全部到位，这里不写「没有」。」（data-testid=ov6-blockers-reading）。错误线仍为 ≥1 error iff。
 - 新增 overview.blockers.test.tsx 11 例锁：真值表（全 ready 无错误线；每腿单独 error 与三路皆 error 均有错误线且无空态）、loading 不写「没有」、href 三类逐一点名、recentRuns loading 无残影（步骤④）、overSLA（task.dueAt/approval.expiresAt 过期 true）与 key 唯一、失败运行合成一条分组行、渲染 ≤3 条。
 - 门禁：模块 vitest 8 文件 63/63 全绿（52+11）；vite build EXIT=0（dist 残留即 rm，防 e1Contract 环境红）。
+## OM-11 采集时刻纪律·跨页 parity 腿补测（2026-11-24，基现脸 db793b7b10）
+
+- 现状核验：sourceStamp/AsofLine(R41 取最新)/Freshness 与「never client clock」纪律已在现脸；缺口＝overview 侧无独立 as-of 测试件（metrics 侧有 asof.parity.test.ts）。
+- 新增 overview.asof.test.tsx 6 例：①系统时钟拨前 24h 屏上时刻逐字不变（假时钟反证）；②R41 多源只挂最大分钟（12:24 胜 12:20/12:21）；③跨页 parity——sourceStamp(ready{asOf}).shown 与 metrics asOfText(iso) 字节相等，缺值双页同写「—」；④⑤⑥ready/loading/error 三态 ov6-asof 永不缺席，loading/error 值「采集时刻 —（北京时间）」且 title 给原因。
+- DoD 实测：grep -n "new Date()" OverviewPage.tsx | grep -v setTimeout | wc -l = 0；模块 vitest 8 文件 58/58；vite build EXIT=0（dist 残留即 rm）。
+- 步骤④ once-live 抽核（脸 9131，真 BFF）：屏 ASOF_LINE=「采集时刻 北京时间 2026-11-24 08:21 · 每卡来源见卡内标注」= 本批真响应 asOf 最大值 → OM11_PARITY_OK；证据 docs/_artifacts/OM-11-asof-parity/parity.json + om11-asof-1440.png。

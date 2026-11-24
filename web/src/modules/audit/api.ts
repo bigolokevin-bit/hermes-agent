@@ -184,9 +184,14 @@ export async function fetchDetail(id: string): Promise<AuditDetail | null> {
 /**
  * Runs the window verify. A payload that is not shaped like an answer is a
  * failure, not a green result: the caller gets `null` and says so.
+ * AU-05：透传 `signal`——大窗校验由调用方挂超时/取消闸，请求本体不变。
  */
-export async function fetchVerify(from: string | null, to: string | null): Promise<VerifyResult | null> {
-  const payload = await fetchJSON<unknown>(verifyUrl(from, to));
+export async function fetchVerify(
+  from: string | null,
+  to: string | null,
+  init?: { signal?: AbortSignal },
+): Promise<VerifyResult | null> {
+  const payload = await fetchJSON<unknown>(verifyUrl(from, to), init);
   return verifyResultFrom(payload);
 }
 

@@ -31,6 +31,7 @@
  * `?state=` — every list/detail state below comes from a real read, so there is
  * no fixture badge to mistake for an answer.
  */
+import "./audit-375-a11y.css";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router";
 import { ArrowLeft, Download, ReceiptText, RefreshCw, ShieldCheck } from "lucide-react";
@@ -39,7 +40,8 @@ import { Button } from "@nous-research/ui/ui/components/button";
 import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 import { Spinner } from "@nous-research/ui/ui/components/spinner";
 
-import { AuditFilterChips, AuditUrlFilterChips, DeniedPanel, DetailCopy, EmptyPanel, ErrorPanel, FilterSummaryCopy, InlineFailure, LoadingPanel, RequestIdLine, TechnicalDisclosure, VerifyUnavailablePanel } from "./states";
+import { AuditFilterChips, AuditUrlFilterChips, DeniedPanel, DetailCopy, EmptyPanel, ErrorPanel, FilterSummaryCopy, InlineFailure, LoadingPanel, RequestIdLine, ServerExportControl, TechnicalDisclosure, VerifyUnavailablePanel } from "./states";
+import { useServerExport } from "./useServerExport";
 import { AuditEventDetailBody, AuditEventRowCard, VerifyResultBody, AuditRowPreview, AuditTypeSummary } from "./views";
 import RetentionModulePage from "./RetentionModulePage";
 import { useAuditDetail, useAuditList, useAuditVerify } from "./useAuditData";
@@ -889,6 +891,10 @@ function AuditEventsSurface(): ReactNode {
   // The window check is a read the person asks for; it never runs on load and
   // it is not driven by `?state=` (that repro belongs to the aud03 pane).
   const verify = useAuditVerify(null);
+  // AU-02: server-side export of the WHOLE window (A5 create → A6 poll → signed
+  // download). Independent leg: it neither blocks nor is blocked by the two
+  // on-screen quick exports, and it asks nothing on load.
+  const serverExport = useServerExport();
 
   // aud9: the two handle filters only have real values to offer from what this
   // page actually read back — there is no operator or resource directory, so
@@ -1632,6 +1638,10 @@ function AuditEventsSurface(): ReactNode {
         <span className="min-w-0 basis-full break-words text-xs text-muted-foreground" data-testid="audI-export-scope">
           导出的就是屏上这一份：{eventType ? `只含「${eventTypeLabel}」这一类` : "当前时间窗与筛选下的全部类型"}，共 {listedRows.length} 行，与上面「已显示」和类型分布的计数同一个集合；文件名带齐时间窗、操作者、资源、动作与行数，时间为北京时间到分。
         </span>
+        {/* AU-02: the whole-window server export joins the bar as its own row —
+            a different set (window vs. screen), different mechanics (job vs.
+            bytes now), said in different words. */}
+        <ServerExportControl api={serverExport} filters={filters} gate={gates.exportServer} />
       </div>
 
       {/* audD: the distribution is the filter. Picking a bucket writes the

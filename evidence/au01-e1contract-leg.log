@@ -1,0 +1,27 @@
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - `__dirname` (vitest.config.ts:17:25). Use `import.meta.dirname` instead
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+ RUN  v4.1.12 /Users/kevin_studio/Projects/tasks/AU-01-run/web
+HOOK_A collapsedHex=0 files=3 hits=0
+HOOK_B labelStructuralCount=1 (runs card field label, narrow tier)
+HOOK_C staleNameHits=0 innerPanels=4 innerNames=[空间台账/数据接入/检索/运行事件引用]
+PORT=9122 DISK_ENTRY=assets/index-Ba7hC9Wo.js SERVED_ENTRY=assets/index-CtA6doEj.js (dist=/Users/kevin_studio/Projects/tasks/AU-01-run/hermes_cli/web_dist/index.html)
+ ❯ src/shell/e1Contract.test.ts (7 tests | 1 failed) 8ms
+     × verifies the acceptance face when both sides exist, skips not-deployed otherwise 5ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/shell/e1Contract.test.ts > E1 取证自报: 端口 + entry 文件名（L0 硬规矩） > verifies the acceptance face when both sides exist, skips not-deployed otherwise
+AssertionError: served entry drifted from the dist on disk: expected 'assets/index-CtA6doEj.js' to be 'assets/index-Ba7hC9Wo.js' // Object.is equality
+Expected: "assets/index-Ba7hC9Wo.js"
+Received: "assets/index-CtA6doEj.js"
+ ❯ src/shell/e1Contract.test.ts:205:66
+    203|     // 静态服务按请求直读 dist ⇒ 可达时下发值必须等于盘上值；背离=陈旧脸缺陷。
+    204|     // served 为 NO-ENTRY-REF（200 但给不出 hash 引用）同样是红，不静默放行。
+    205|     expect(served, "served entry drifted from the dist on disk").toBe(…
+       |                                                                  ^
+    206|     emit(`VERDICT=VERIFIED PORT=${PORT} ENTRY=${diskEntry}`);
+    207|   });
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+ Test Files  1 failed (1)
+      Tests  1 failed | 6 passed (7)
+   Start at  08:32:01
+   Duration  116ms (transform 30ms, setup 0ms, import 53ms, tests 8ms, environment 0ms)

@@ -33,13 +33,21 @@ import type { Gate } from "./auditGates";
 import { FILTER_SUMMARY_COPY_LABEL } from "./filterSummary";
 import { AUDIT_RESOURCE_NO_LINK_TEXT, resourceLinkOf } from "./resourceLinks";
 import {
+  AUDIT_CHAIN_NO_PAGE_TEXT,
+  AUDIT_CHAIN_UNRELATED_TEXT,
+  auditChainsOf,
+  type AuditChain,
+} from "./contextLinks";
+import {
   DETAIL_COPY_DISABLED_TITLE,
   DETAIL_COPY_LABEL,
   auditCopyText,
   type CopyableEvent,
 } from "./detailCopy";
 import { AUDJ_TIME_MISSING } from "./timeActor";
-import type { ResourceView } from "./model";
+import type { AuditLink, Person, ResourceView } from "./model";
+import type { ListFilters } from "./api";
+import type { ServerExportApi } from "./useServerExport";
 import type { AuditChip } from "./filterChips";
 
 /**
@@ -82,6 +90,189 @@ export function AuditResourceLink({ resource }: { resource: ResourceView }): Rea
     <span className={shell} data-testid="aud-resource-nolink" title={link.title}>
       {AUDIT_RESOURCE_NO_LINK_TEXT}
     </span>
+  );
+}
+
+/**
+ * AU-01 — the three context chains of a record (谁 / 哪次运行 / 哪次判定),
+ * decided by the ONE table in contextLinks.ts and rendered here for the detail
+ * pane. Same doctrine as the resource link: a real page plus a real id is a
+ * real anchor; a value with no page is said, not linked; a missing value says
+ * 「无关联」 — the ledger is not guilty of an association it never sent.
+ */
+const CHAIN_ROWS: readonly { key: string; noun: string }[] = [
+  { key: "actor", noun: "谁" },
+  { key: "run", noun: "哪次运行" },
+  { key: "decision", noun: "哪次判定" },
+];
+
+export function AuditContextChains({
+  actor,
+  links,
+}: {
+  actor: Person;
+  links: readonly AuditLink[];
+}): ReactNode {
+  const chains = auditChainsOf(actor, links);
+  const shell =
+    "flex min-w-0 items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 text-xs text-muted-foreground";
+  const anchor =
+    "min-w-0 max-w-full break-words rounded-md border border-border bg-card px-2 py-1 text-xs underline underline-offset-2";
+  return (
+    <p className="flex min-w-0 flex-wrap items-center gap-1.5 text-xs" data-testid="aud3-chains">
+      {CHAIN_ROWS.map(({ key, noun }) => {
+        const chain = chains[key as keyof typeof chains] as AuditChain;
+        if (chain.kind === "link") {
+          return (
+            <a
+              key={key}
+              href={chain.href}
+              target="_blank"
+              rel="noreferrer noopener"
+              className={anchor}
+              data-testid={`aud3-chain-${key}`}
+              data-aud-chain-kind="link"
+              title={chain.title}
+            >
+              {noun}：{chain.label}
+            </a>
+          );
+        }
+        if (chain.kind === "no-page") {
+          return (
+            <span
+              key={key}
+              className={shell}
+              data-testid={`aud3-chain-${key}`}
+              data-aud-chain-kind="no-page"
+              title={chain.title}
+            >
+              {noun}：{chain.label}（{AUDIT_CHAIN_NO_PAGE_TEXT}）
+            </span>
+          );
+        }
+        return (
+          <span
+            key={key}
+            className={shell}
+            data-testid={`aud3-chain-${key}`}
+            data-aud-chain-kind="unrelated"
+            title={chain.title}
+          >
+            {noun}：{AUDIT_CHAIN_UNRELATED_TEXT}
+          </span>
+        );
+      })}
+    </p>
+  );
+}
+
+/**
+ * AU-02 — 「服务器导出」control: the address window's async server-side export,
+ * living beside (never merged into) the two on-screen quick exports. Semantics
+ * are kept deliberately disjoint: these buttons export different sets — the
+ * screen's loaded rows vs. the whole window on the server — and the words say
+ * which, so one can never be mistaken for the other.
+ *
+ * States and their discipline:
+ *  - creating/polling: elapsed honest sentence + 取消跟踪 (cancels only this
+ *    page's tracking — the job's fate upstream is not inferred, AU-05 同词);
+ *  - ready: a real download anchor for the gzip file, expiry spoken when the
+ *    service sent one, truncated flag spoken when rows were cut at the cap;
+ *  - failed: the code's own 人话 with a copyable 请求编号 (403/429/503 families
+ *    — role refused / daily cap / export not enabled — each says what to do
+ *    next, never a silent gray button);
+ *  - slow: the poll budget ran out — still 进行中, not failed; 再查一次 re-arms
+ *    a fresh budget for the SAME job (no second create, the idempotency key
+ *    stays with the job).
+ */
+export function ServerExportControl({
+  api,
+  filters,
+  gate,
+}: {
+  api: ServerExportApi;
+  filters: ListFilters;
+  gate: Gate;
+}): ReactNode {
+  const busy = api.phase === "creating" || api.phase === "polling";
+  const clickTitle = !gate.enabled
+    ? gate.title
+    : busy
+      ? "这一单还在飞：等它落定或先取消跟踪，本页不叠发第二单。"
+      : gate.title;
+  return (
+    <div className="flex min-w-0 flex-wrap items-center gap-2" data-testid="aud5-server-export-row">
+      <Button
+        size="sm"
+        outlined
+        onClick={() => api.start(filters)}
+        disabled={!gate.enabled || busy}
+        aria-disabled={!gate.enabled || busy}
+        title={clickTitle}
+        data-testid="aud5-server-export"
+        prefix={<Filter className="h-3.5 w-3.5" />}
+      >
+        服务器导出（整窗）
+      </Button>
+      {api.phase === "idle" || api.phase === "canceled" ? (
+        api.phase === "canceled" ? (
+          <span className="min-w-0 break-words text-xs text-muted-foreground" data-testid="aud5-server-export-state">
+            已取消跟踪。这不是一单失败：服务端可能仍在生成，这一页不再替它数时间；回来点「再查一次」可续上同一单。
+          </span>
+        ) : null
+      ) : busy ? (
+        <span className="flex min-w-0 flex-wrap items-center gap-1.5 text-xs text-muted-foreground" data-testid="aud5-server-export-state">
+          {api.phase === "creating" ? "正在向服务端建这一窗的导出单…" : api.job
+            ? `导出单 ${api.job.exportId} 进行中（服务不回进度，这里不编完成度）。` : "导出作业已受理，等待进度回答…"}
+          <Button size="sm" outlined onClick={api.cancel} data-testid="aud5-server-export-cancel" title="只停本页跟踪；服务端作业不受影响，稍后可再查同一单">
+            取消跟踪
+          </Button>
+        </span>
+      ) : api.phase === "ready" ? (
+        <span className="flex min-w-0 flex-wrap items-center gap-1.5 text-xs" data-testid="aud5-server-export-state">
+          {api.downloadHref ? (
+            <a
+              href={api.downloadHref}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="min-w-0 break-words rounded-md border border-border bg-card px-2 py-1 text-xs underline underline-offset-2"
+              data-testid="aud5-server-export-download"
+              title={api.job?.expiresAt ? `服务端签名的下载直链，${api.job.expiresAt} 后失效；文件为 gzip 压缩的 JSONL` : "服务端签名的下载直链；文件为 gzip 压缩的 JSONL"}
+            >
+              下载导出文件（gzip）
+            </a>
+          ) : (
+            <span className="min-w-0 break-words text-xs text-warning" data-testid="aud5-server-export-nolink">
+              服务端说这一单已完成，但没有带回可用的下载直链（或直链形状不认识）。引用作业编号反馈。
+            </span>
+          )}
+          {api.job?.expiresAt ? (
+            <span className="min-w-0 break-words text-xs text-muted-foreground" data-testid="aud5-server-export-expiry">
+              直链有效至 {api.job.expiresAt}
+            </span>
+          ) : null}
+          {api.job?.truncated ? (
+            <span className="min-w-0 break-words text-xs text-warning" data-testid="aud5-server-export-truncated">
+              这份文件在服务端行数上限处截断——它不是全窗；需要更小的窗再导一单。
+            </span>
+          ) : null}
+        </span>
+      ) : api.phase === "slow" ? (
+        <span className="flex min-w-0 flex-wrap items-center gap-1.5 text-xs text-muted-foreground" data-testid="aud5-server-export-state">
+          {api.job ? `这一单（${api.job.exportId}）仍在服务端进行。` : "这一单仍在服务端进行。"}
+          本页已停止自动刷新——稍后点一下继续看，或先去做别的。
+          <Button size="sm" outlined onClick={api.recheck} data-testid="aud5-server-export-recheck" title="对同一单续一轮新的查看预算；不会重复建单">
+            再查一次
+          </Button>
+        </span>
+      ) : api.failure ? (
+        <span className="flex min-w-0 basis-full flex-col gap-1 text-xs" data-testid="aud5-server-export-state">
+          <span className="min-w-0 break-words text-warning" data-testid="aud5-server-export-fail">{api.failure.text}</span>
+          <span className="min-w-0 break-words text-muted-foreground" data-testid="aud5-server-export-rid">{requestIdLine(api.failure.requestId)}</span>
+        </span>
+      ) : null}
+    </div>
   );
 }
 

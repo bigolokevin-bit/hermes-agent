@@ -5,6 +5,7 @@ import { ApiError } from "@/lib/api-error";
 import { currentFixtureState, fixtureView, type FixtureState } from "../../shell/fixtures";
 import { PILOT_ROW, PROBE_DEFINITIONS, probeResult, summarize, type ProbeRow, type ProbeStatus } from "./health";
 import { SystemHealthSurface } from "./SystemHealthSurface";
+import { PumpHeartbeat } from "./PumpHeartbeat";
 import { SourceMatrix } from "./SourceMatrix";
 import { SystemCaliberNotes } from "./SystemCaliberNotes";
 import { SystemRefreshBar, useRefreshCoordinator } from "./systemRefresh";
@@ -191,6 +192,8 @@ export function HealthPage() {
       </header>
 
       <SystemHealthSurface preview={forced && forced !== "ready" ? forced : null} onRetry={retry} refreshTick={refresh.tick} onRefreshResult={refresh.finish} hideRefresh />
+
+      <PumpHeartbeat preview={forced && forced !== "ready" ? forced : null} refreshTick={refresh.tick} />
 
       <div className="hlt5-owner">
         <span>运维负责人</span><span>处理异常探针</span>

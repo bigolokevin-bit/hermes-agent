@@ -39,7 +39,14 @@ import { DeniedPanel, EmptyPanel, ErrorPanel, InlineFailure, LoadingPanel, Reque
 import { APPROVAL_RID_FALLBACK } from "./stateCopy";
 import { useApprovalDetail, useApprovalsList, type ForcedState } from "./useApprovalsData";
 import { actionGates, announcement, crossPageLoadHint } from "./gates";
-import { DECISION_GATE, missingHashReasonFor } from "./writeGate";
+import {
+  ACTION_HASH_MISMATCH_REASON,
+  DECISION_GATE,
+  hashConsistency,
+  hashConsistencyNote,
+  invalidShapeReasonFor,
+  missingHashReasonFor,
+} from "./writeGate";
 import { WriteGateChip } from "./WriteGateChip";
 import { QueueSummaryBar, denominatorReadout } from "./QueueSummaryBar";
 import { clearFilterParams, hasActiveFilters, resetTitle } from "./FilterReset";
@@ -662,6 +669,47 @@ export function ApprovalsPendingModulePage(): ReactNode {
             {missingHashReasonFor(detail.detail.actionHash)}
           </p>
         ) : null}
+        {/* AP-05 锚定腿的后两档：指纹「存在但核验不了」与「与票面记录对不上」都
+            ⇒保守禁用并给原因。判据源与上一句同一个键族，比对输入只认详情
+            decisions[] 真带回的指纹值；本服务不记录票面指纹 ⇒ 一致性给「比对不可用」
+            信息句，不声称一致、也不据此禁用（不推断、不画假匹配）。 */}
+        {invalidShapeReasonFor(detail.detail.actionHash) ? (
+          <p
+            className="max-w-prose min-w-0 break-words text-xs text-warning"
+            data-testid="apr5-actions-hash-invalid-note"
+            title="判据源：详情响应的 actionHash/action_hash/argsDigest 一族键；认得的形制只有 sha256 十六进制摘要、sha256: 前缀摘要与 th_ 截断摘要三种（现网 16 行实测），其余一律按无法核验处理。"
+          >
+            {invalidShapeReasonFor(detail.detail.actionHash)}
+          </p>
+        ) : null}
+        {(() => {
+          const consistency = hashConsistency(
+            detail.detail.actionHash,
+            detail.detail.decisions.map((entry) => entry.actionHash),
+          );
+          if (consistency.state === "mismatch") {
+            return (
+              <p
+                className="max-w-prose min-w-0 break-words text-xs text-warning"
+                data-testid="apr5-actions-hash-mismatch-note"
+                title="判据源：详情 decisions[] 各票面自带的指纹族值；逐字比对，任一对不上即按不一致处理。"
+              >
+                {ACTION_HASH_MISMATCH_REASON}
+              </p>
+            );
+          }
+          const note = hashConsistencyNote(consistency);
+          if (note === "") return null;
+          return (
+            <p
+              className="max-w-prose min-w-0 break-words text-xs text-muted-foreground"
+              data-testid="apr5-actions-hash-compare-note"
+              title="判据源：详情 decisions[] 各票面自带的指纹族值。本服务实测不在票面记录指纹（16 行 7 张真票 key-set 恒为 userId/verdict/decidedAt/comment）⇒ 比对做不了；做不了不等于核对通过。"
+            >
+              {note}
+            </p>
+          );
+        })()}
       </div>
     ) : (
       <p className="min-w-0 break-words border-t border-border pt-3 text-xs text-muted-foreground">
