@@ -1,36 +1,675 @@
-/*
- * Matrix 375 density contract (READY-BACKLOG: 能力矩阵 375 版式 —— 列头冻结 +
- * 横向滚动容器，不用整页横滚).
+/* 「能力与权限」矩阵（/employees?tab=matrix）形制。
  *
- * The grid is wider than a phone on purpose: each capability cell needs room to
- * read. So the page itself must never slide sideways — the shell `.mtx5-scroll`
- * owns the horizontal movement, and the identity track `.mtx5-pin` stays glued to
- * its left edge so a row is still recognisable at the far right of the scroll.
+ * 骨架 console-v4-skeleton.html 2315–2385 的三张卡：按员工覆盖 / 按资源覆盖 /
+ * 清点与口径。只消费 tokens.css 的 -ls 语义层；不新增令牌、不写裸 hex。
  *
- * matrix.css.test.ts pins these declarations: restyling is fine, dropping the pin
- * or moving the scroll onto the page is not.
+ * 375 版式契约（沿用 R272 并扩展）：表格比手机宽是有意的，横滚只发生在卡内的
+ * `.mtx5-scroll` 壳里；身份列 `.mtx5-pin` 粘在左缘，滚到最右也知道这行是谁。
+ * 页面本身绝不横滚。
  */
 
-/* Only the shell scrolls sideways; the document stays viewport-wide. */
+.mtx-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-ls-2);
+  min-width: 0;
+}
+
+/* ---- 页头：标题（h2）+ 副行 + 右端读取时刻与刷新 ---- */
+.mtx-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-ls-3);
+  min-width: 0;
+}
+
+.mtx-head__text {
+  min-width: 0;
+}
+
+.mtx-title {
+  margin: 0;
+  font-size: var(--font-size-ls-4);
+  font-weight: var(--font-weight-ls-medium);
+  line-height: var(--line-height-ls-2);
+  color: var(--color-text-ls);
+}
+
+.mtx-sub {
+  margin: 2px 0 0;
+  font-size: var(--font-size-ls-1);
+  line-height: var(--line-height-ls-2);
+  color: var(--color-text-subtle-ls);
+}
+
+.mtx-num {
+  font-family: var(--font-family-mono-ls);
+  font-weight: var(--font-weight-ls-medium);
+  font-variant-numeric: var(--tabular-ls);
+  color: var(--color-text-ls);
+}
+
+.mtx-sep {
+  padding: 0 var(--space-ls-1);
+  color: var(--color-text-faint-ls);
+}
+
+.mtx-acts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-ls-2);
+  min-width: 0;
+}
+
+.mtx-read {
+  font-family: var(--font-family-mono-ls);
+  font-size: 11px;
+  font-variant-numeric: var(--tabular-ls);
+  color: var(--color-text-subtle-ls);
+  white-space: nowrap;
+}
+
+.mtx-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: var(--control-h-inline-ls);
+  padding: 0 var(--space-ls-2);
+  border: var(--border-strong-ls);
+  border-radius: var(--radius-ls-1);
+  background: transparent;
+  color: var(--color-text-ls);
+  font-family: var(--font-family-sans-ls);
+  font-size: var(--font-size-ls-1);
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.mtx-btn:hover {
+  background: color-mix(in srgb, var(--color-text-ls) 6%, transparent);
+}
+
+.mtx-btn:focus-visible {
+  outline: var(--focus-ring-ls);
+  outline-offset: var(--focus-ring-offset-ls);
+}
+
+.mtx-btn__icon {
+  width: 12px;
+  height: 12px;
+}
+
+/* ---- 卡内 filterbar：一行，不自带边框（骨架 filterbar 在卡内顶部） ---- */
+.mtx-filterbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-ls-2);
+  min-width: 0;
+  padding: 8px var(--space-ls-3);
+}
+
+.mtx-search {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex: 1 1 200px;
+  max-width: 300px;
+  min-width: 0;
+}
+
+.mtx-search__icon {
+  position: absolute;
+  left: 7px;
+  width: 12px;
+  height: 12px;
+  color: var(--color-text-faint-ls);
+  pointer-events: none;
+}
+
+.mtx-input,
+.mtx-select {
+  height: var(--control-h-inline-ls);
+  min-width: 0;
+  border: var(--border-strong-ls);
+  border-radius: var(--radius-ls-1);
+  background: var(--color-sunken-ls);
+  color: var(--color-text-ls);
+  font-family: var(--font-family-sans-ls);
+  font-size: var(--font-size-ls-1);
+}
+
+.mtx-input {
+  flex: 1 1 auto;
+  width: 100%;
+  padding: 0 var(--space-ls-2) 0 23px;
+}
+
+.mtx-input::placeholder {
+  color: var(--color-text-faint-ls);
+}
+
+.mtx-select {
+  padding: 0 var(--space-ls-2);
+}
+
+.mtx-input:focus-visible,
+.mtx-select:focus-visible {
+  outline: var(--focus-ring-ls);
+  outline-offset: var(--focus-ring-offset-ls);
+}
+
+.mtx-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--color-text-subtle-ls);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.mtx-switch.is-off {
+  cursor: not-allowed;
+  opacity: var(--opacity-disabled-ls);
+}
+
+.mtx-switch input {
+  margin: 0;
+}
+
+.mtx-grow {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.mtx-meta {
+  font-family: var(--font-family-mono-ls);
+  font-size: 11px;
+  font-variant-numeric: var(--tabular-ls);
+  color: var(--color-text-subtle-ls);
+  white-space: nowrap;
+}
+
+/* ---- 资源类型分段（role=group：模块内不排 tablist） ---- */
+.mtx-seg {
+  display: inline-flex;
+  align-items: stretch;
+  border: var(--border-strong-ls);
+  border-radius: var(--radius-ls-1);
+  overflow: hidden;
+}
+
+.mtx-seg button {
+  height: var(--control-h-inline-ls);
+  padding: 0 var(--space-ls-2);
+  border: 0;
+  border-right: var(--border-ls-1);
+  background: transparent;
+  color: var(--color-text-subtle-ls);
+  font-family: var(--font-family-sans-ls);
+  font-size: var(--font-size-ls-1);
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.mtx-seg button:last-child {
+  border-right: 0;
+}
+
+.mtx-seg button.is-on {
+  background: color-mix(in srgb, var(--color-text-ls) 10%, transparent);
+  color: var(--color-text-ls);
+}
+
+.mtx-seg button:focus-visible {
+  outline: var(--focus-ring-ls);
+  outline-offset: calc(-1 * var(--focus-ring-offset-ls));
+}
+
+/* ---- 表：40px 行，列名 11px，数字等宽右对齐 ---- */
+.mtx-tw {
+  min-width: 0;
+  overflow-x: auto;
+}
+
+/* 375：卡壳横滚，页面不横滚（matrix.css.test.ts 钉住这一条与左缘粘贴）。 */
 .mtx5-scroll {
   overflow-x: auto;
 }
 
-/*
- * The identity column stays put while the cells slide under it. The opaque
- * background is what keeps the moving cells from showing through, and it is the
- * same theme token the metrics table uses (.metW-table), so both tables move
- * together when the theme changes.
- */
+.mtx-table {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: collapse;
+}
+
+.mtx-table th {
+  height: 26px;
+  max-width: 160px;
+  padding: 0 var(--space-ls-3);
+  border-bottom: var(--border-ls-1);
+  font-family: var(--font-family-sans-ls);
+  font-size: 11px;
+  font-weight: var(--font-weight-ls-regular);
+  line-height: 1.2;
+  color: var(--color-text-subtle-ls);
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mtx-table td {
+  height: var(--table-row-h-ls);
+  padding: 0 var(--space-ls-3);
+  border-bottom: var(--border-ls-1);
+  font-size: var(--font-size-ls-1);
+  line-height: var(--line-height-ls-1);
+  color: var(--color-text-ls);
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.mtx-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.mtx-table tbody tr:hover td {
+  background: color-mix(in srgb, var(--color-text-ls) 3.5%, transparent);
+}
+
+/* 身份列粘在卡壳左缘；实底防滑动单元格透出。 */
 .mtx5-pin {
   position: sticky;
   left: 0;
   z-index: 1;
-  background: var(--color-card);
+  background: var(--color-surface-ls);
 }
 
-/* Where the sticky header row crosses the sticky identity track, that cell sits
-   above both axes so neither one cuts into it. */
-.mtx5-head .mtx5-pin {
-  z-index: 2;
+.mtx-table tbody tr:hover .mtx5-pin {
+  background: color-mix(in srgb, var(--color-text-ls) 3.5%, var(--color-surface-ls));
+}
+
+.mtx-th-who {
+  width: 240px;
+}
+
+.mtx-td-who {
+  max-width: 260px;
+  white-space: normal;
+}
+
+.mtx-td-name {
+  max-width: 220px;
+}
+
+/* 资源表：员工列窄而等宽，名字在列头里省略，全名进 title。
+ * 骨架 table.t 是 width:100%，余量由各列分摊；员工列给 76px 下限，
+ * 375 时靠卡内横滚出图。 */
+.mtx-col-emp {
+  min-width: 76px;
+  max-width: 110px;
+  text-align: center;
+}
+
+.mtx-table--people th:last-child,
+.mtx-table--people td:last-child {
+  width: 100%;
+}
+
+.mtx-th-meta {
+  padding-left: 4px;
+  font-size: 10px;
+  color: var(--color-text-faint-ls);
+}
+
+/* 员工列头：名字限宽省略（全名进 title），短码跟在后面；375 才不会把
+ * 第一个员工列撑到整屏。 */
+.mtx-emp-label {
+  display: inline-block;
+  max-width: 76px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: bottom;
+}
+
+.mtx-right {
+  text-align: right;
+}
+
+.mtx-center {
+  text-align: center;
+}
+
+.mtx-mono {
+  font-family: var(--font-family-mono-ls);
+  font-variant-numeric: var(--tabular-ls);
+  color: var(--color-text-muted-ls);
+}
+
+.mtx-dash {
+  font-family: var(--font-family-mono-ls);
+  color: var(--color-text-faint-ls);
+}
+
+/* ---- 员工格：30px 头像 + 姓名 + 工号短码 ---- */
+.mtx-who {
+  display: flex;
+  align-items: center;
+  gap: var(--space-ls-2);
+  min-width: 0;
+  text-decoration: none;
+  color: inherit;
+}
+
+.mtx-who:hover .mtx-who__name {
+  text-decoration: underline;
+}
+
+.mtx-ava {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border: var(--border-ls-1);
+  border-radius: var(--radius-ls-1);
+  background: color-mix(in srgb, var(--color-text-ls) 6%, transparent);
+  font-size: 11px;
+  line-height: 1;
+  color: var(--color-text-muted-ls);
+}
+
+.mtx-who__text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.mtx-who__name {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-text-ls);
+}
+
+.mtx-who__sub {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-family-mono-ls);
+  font-size: 10px;
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+  color: var(--color-text-faint-ls);
+}
+
+/* 生命周期圆点：只在员工格内做真读数提示，不占列。 */
+.mtx-dot {
+  display: inline-block;
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-text-faint-ls);
+}
+
+.mtx-dot.tone-ok {
+  background: var(--color-success-ls);
+}
+
+.mtx-dot.tone-warn {
+  background: var(--color-warning-ls);
+}
+
+.mtx-dot.tone-bad {
+  background: var(--color-danger-ls);
+}
+
+.mtx-dot.tone-info {
+  background: var(--color-info-ls);
+}
+
+.mtx-dot.tone-mut {
+  background: var(--color-text-faint-ls);
+}
+
+/* ---- 单元格：chips / ● / 空 / 状态 ---- */
+.mtx-chips {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 320px;
+  overflow: hidden;
+}
+
+.mtx-more {
+  font-family: var(--font-family-mono-ls);
+  font-size: 10px;
+  color: var(--color-text-subtle-ls);
+  white-space: nowrap;
+}
+
+.mtx-mark {
+  display: inline-block;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--color-text-ls);
+}
+
+/* 未挂载＝读口已回的空集：留白，不画任何符号（不拿 0/○ 冒充）。 */
+.mtx-mark-empty {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+}
+
+.mtx-state {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 6px;
+  border: 1px solid var(--color-border-subtle-ls);
+  border-radius: 3px;
+  font-family: var(--font-family-mono-ls);
+  font-size: 10px;
+  line-height: 16px;
+  white-space: nowrap;
+  color: var(--color-text-subtle-ls);
+}
+
+.mtx-state.tone-ok {
+  color: var(--color-success-ls);
+  border-color: color-mix(in srgb, var(--color-success-ls) 32%, transparent);
+  background: color-mix(in srgb, var(--color-success-ls) 7%, transparent);
+}
+
+.mtx-state.tone-warn {
+  color: var(--color-warning-ls);
+  border-color: color-mix(in srgb, var(--color-warning-ls) 32%, transparent);
+  background: color-mix(in srgb, var(--color-warning-ls) 7%, transparent);
+}
+
+.mtx-state.tone-bad {
+  color: var(--color-danger-ls);
+  border-color: color-mix(in srgb, var(--color-danger-ls) 34%, transparent);
+  background: color-mix(in srgb, var(--color-danger-ls) 7%, transparent);
+}
+
+.mtx-state.is-dashed {
+  border-style: dashed;
+  background: transparent;
+}
+
+.mtx-res-name {
+  display: block;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--color-text-ls);
+}
+
+/* ---- 缺行 / 空态 / 骨架 ---- */
+/* 空表说明：真零走中性底，缺读口才用警示底（0 不是问题，读不到才是）。 */
+.mtx-blank {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-ls-3);
+  border-top: var(--border-ls-1);
+  min-height: 56px;
+  box-sizing: border-box;
+  background: color-mix(in srgb, var(--color-text-ls) 3%, transparent);
+}
+
+.mtx-blank.tone-gap {
+  background: color-mix(in srgb, var(--color-warning-ls) 4%, transparent);
+}
+
+.mtx-blank b {
+  font-weight: var(--font-weight-ls-medium);
+  font-size: var(--font-size-ls-2);
+  line-height: var(--line-height-ls-2);
+  color: var(--color-text-ls);
+}
+
+.mtx-blank span {
+  font-size: var(--font-size-ls-1);
+  line-height: var(--line-height-ls-2);
+  color: var(--color-text-muted-ls);
+}
+
+.mtx-gap-row td {
+  height: auto;
+  padding: var(--space-ls-3);
+  white-space: normal;
+  background: color-mix(in srgb, var(--color-warning-ls) 4%, transparent);
+}
+
+.mtx-gap-row b {
+  display: block;
+  font-weight: var(--font-weight-ls-medium);
+  font-size: var(--font-size-ls-2);
+  line-height: var(--line-height-ls-2);
+  color: var(--color-text-ls);
+}
+
+.mtx-gap-row span {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--font-size-ls-1);
+  line-height: var(--line-height-ls-2);
+  color: var(--color-text-muted-ls);
+}
+
+.mtx-linkbtn {
+  margin-top: var(--space-ls-2);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-text-ls);
+  font-family: var(--font-family-sans-ls);
+  font-size: var(--font-size-ls-1);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.mtx-linkbtn:focus-visible {
+  outline: var(--focus-ring-ls);
+  outline-offset: var(--focus-ring-offset-ls);
+}
+
+.mtx-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-ls-2);
+  padding: var(--space-ls-3);
+}
+
+.mtx-skeleton span {
+  display: block;
+  height: 28px;
+  border-radius: var(--radius-ls-1);
+  background: color-mix(in srgb, var(--color-text-ls) 6%, transparent);
+}
+
+/* ---- 卡底缺读口（11px，一行）与卡三清点行 ---- */
+.mtx-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px var(--space-ls-2);
+  margin: 0;
+  padding: 6px var(--space-ls-3) 8px;
+  border-top: var(--border-ls-1);
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--color-text-subtle-ls);
+}
+
+.mtx-note__tag {
+  font-family: var(--font-family-mono-ls);
+  letter-spacing: 0.06em;
+  color: var(--color-warning-ls);
+}
+
+.mtx-nummeta {
+  margin: 0;
+  padding: 2px var(--space-ls-1);
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--color-text-subtle-ls);
+}
+
+.mtx-nummeta b {
+  font-family: var(--font-family-mono-ls);
+  font-variant-numeric: var(--tabular-ls);
+  font-weight: var(--font-weight-ls-medium);
+  color: var(--color-text-ls);
+}
+
+.mtx-nummeta__k {
+  margin-right: 6px;
+  font-family: var(--font-family-mono-ls);
+  letter-spacing: 0.06em;
+  color: var(--color-text-faint-ls);
+}
+
+/* ---- 375：列宽收窄，页面不横滚 ---- */
+@media (max-width: 760px) {
+  .mtx-head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-ls-2);
+  }
+
+  .mtx-acts {
+    justify-content: flex-start;
+  }
+
+  .mtx-th-who {
+    width: 200px;
+  }
+
+  .mtx-td-who {
+    max-width: 200px;
+  }
+
+  .mtx-chips {
+    max-width: 200px;
+  }
+
+  .mtx-read {
+    white-space: normal;
+  }
 }

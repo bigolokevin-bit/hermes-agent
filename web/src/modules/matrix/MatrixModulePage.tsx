@@ -1,418 +1,531 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
+import { RefreshCw, Search } from "lucide-react";
 
-import { RequestIdCopy } from "@/components/RequestIdCopy";
-import { Inbox, LayoutGrid, RefreshCw, ShieldAlert, TriangleAlert, Users } from "lucide-react";
-import { Badge, Button, Card, CardContent } from "@nous-research/ui";
-
-import { fetchJSON } from "@/lib/api";
-import { ApiError } from "@/lib/api-error";
+import { Chip } from "@/components/console/Chip";
+import { ConsoleCard } from "@/components/console/ConsoleCard";
 
 import {
-  buildMatrixView,
-  MATRIX_FIXTURE,
-  readMatrixPayload,
-  type MatrixCellState,
-  type MatrixPayload,
-  type MatrixView,
+  DASH,
+  fmtStamp,
+  GAP_FILTER_TITLE,
+  lifecycleTone,
+  missingPorts,
+  PEOPLE_PIN_LABEL,
+  peopleColumns,
+  peopleOf,
+  RESOURCE_KINDS,
+  resourceHead,
+  buildPeopleRows,
+  buildResourceView,
+  type MatrixCell,
+  type PortNote,
+  type Ports,
+  type Read,
+  type ResourceKind,
+  type ResourceView,
 } from "./matrix";
+import { useMatrixPorts } from "./matrix.ports";
 
 import "./matrix.css";
 
-type Phase = "loading" | "ready" | "empty" | "error" | "denied";
+/**
+ * 「能力与权限」矩阵（/employees?tab=matrix）。
+ *
+ * 骨架 2315–2385 的三张卡在这里同屏落地：
+ *   ① 按员工覆盖 —— 行＝员工（30px 头像 + 姓名 + 工号短码），列＝骨架原列名；
+ *   ② 按资源覆盖 —— 行＝技能/服务/空间，列＝员工，●/空；
+ *   ③ 清点与口径 —— 一行 11px，真读数 + 缺读口声明。
+ *
+ * 两条硬规则贯穿全页：
+ *   - 没有读口的列/格**不进版面**，而不是满列「—」冒充查过；
+ *   - 全页只有外壳一个 h1，本模块标题是 h2；模块内零 role="tablist"
+ *     （资源类型分段是 role="group" 的普通按钮）。
+ */
 
-const FORCED = new Set(["loading", "empty", "error", "denied"]);
+const STATUS_FILTERS = [
+  { value: "", label: "全部状态" },
+  { value: "ok", label: "在岗" },
+  { value: "warn", label: "受限" },
+  { value: "mut", label: "停用" },
+] as const;
 
-function fmtStamp(iso: string | null): string {
-  if (!iso) return "—";
-  const ms = Date.parse(iso);
-  if (Number.isNaN(ms)) return "—";
-  return new Intl.DateTimeFormat("sv-SE", {
-    timeZone: "Asia/Shanghai",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(new Date(ms));
+const KIND_NOUN: Record<ResourceKind, string> = {
+  skill: "技能",
+  tool: "工具与接口",
+  kb: "知识空间",
+};
+
+function asOfOf(read: Read<unknown>): string | null {
+  return read.k === "ready" || read.k === "empty" || read.k === "missing" ? read.asOf : null;
 }
 
-/** Three cell states, three shapes; unknown is never drawn as "denied". */
-function CellPill({ state }: { state: MatrixCellState }) {
-  if (state === "granted") {
+/** 卡三的计数口径：ready 出条数，empty 出真零，其余出「—」（缺读口已单独声明）。 */
+function countLabel(read: Read<unknown>): string {
+  if (read.k === "ready" && Array.isArray(read.data)) return String(read.data.length);
+  if (read.k === "empty") return "0";
+  if (read.k === "loading") return "读取中";
+  return DASH;
+}
+
+function renderCell(cell: MatrixCell | undefined) {
+  if (!cell) return null;
+  if (cell.k === "text") {
+    return <span className={cell.mono ? "mtx-mono" : undefined}>{cell.text}</span>;
+  }
+  if (cell.k === "dash") {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] text-emerald-300">
-        <span aria-hidden="true">●</span>已授权
+      <span className="mtx-dash" title={cell.title}>
+        {DASH}
       </span>
     );
   }
-  if (state === "denied") {
+  if (cell.k === "chips") {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-white/5 px-2 py-0.5 text-[11px] text-white/45">
-        <span aria-hidden="true">○</span>未授权
+      <span className="mtx-chips" title={cell.title}>
+        {cell.chips.map((chip) => (
+          <Chip key={chip.title} title={chip.title}>
+            {chip.label}
+          </Chip>
+        ))}
+        {cell.more > 0 ? <span className="mtx-more">+{cell.more}</span> : null}
       </span>
+    );
+  }
+  if (cell.k === "mark") {
+    return cell.hit ? (
+      <span className="mtx-mark" title={cell.title} aria-label="已挂载">
+        ●
+      </span>
+    ) : (
+      <span className="mtx-mark-empty" title={cell.title} aria-hidden="true" />
     );
   }
   return (
-    <span
-      className="inline-flex items-center gap-1 rounded-full border border-dashed border-white/25 px-2 py-0.5 text-[11px] text-white/60"
-      data-gap="1"
-      title="GAP：后端没有给出这一格，按「待核实」显示，不猜授权"
-    >
-      <span aria-hidden="true">?</span>待核实
-      <span className="rounded-sm bg-white/10 px-1 text-[9px] tracking-wide text-white/50">GAP</span>
+    <span className={`mtx-state tone-${cell.tone}${cell.dashed ? " is-dashed" : ""}`} title={cell.title}>
+      {cell.text}
     </span>
   );
 }
 
+/** 卡底一行 11px「缺读口：…」；全绿时不渲染。 */
+function MissingLine({ notes, testId }: { notes: PortNote[]; testId: string }) {
+  if (notes.length === 0) return null;
+  return (
+    <p className="mtx-note" data-testid={testId}>
+      <span className="mtx-note__tag">缺读口</span>
+      {notes.map((note) => (
+        <span key={note.label} title={note.title ?? undefined}>
+          {note.label}：{note.note}
+        </span>
+      ))}
+    </p>
+  );
+}
+
+function resourceEmptyText(
+  view: ResourceView,
+  kind: ResourceKind,
+): { text: string; note: string; tone: "zero" | "gap" } {
+  const noun = KIND_NOUN[kind];
+  if (view.kindRead.k === "empty") {
+    return {
+      text: `${noun}读到真零：这个租户还没有登记${noun}，也没有任何员工挂载。`,
+      note: "空集是真零，不是读取失败；行列保留，等有登记再回来看。",
+      tone: "zero",
+    };
+  }
+  if (view.kindRead.k === "missing") {
+    return {
+      text: `${noun}这一项本次没有读口：${view.kindRead.note}。`,
+      note: "不补 0，也不摆示例行。",
+      tone: "gap",
+    };
+  }
+  if (view.kindRead.k === "error") {
+    return {
+      text: `${noun}这一项本次没有读到：${view.kindRead.note}。`,
+      note: "刷新可以再试一次。",
+      tone: "gap",
+    };
+  }
+  return { text: `这个租户还没有${noun}条目。`, note: "", tone: "zero" };
+}
+
+function peopleEmptyText(ports: Ports, peopleCount: number): { text: string; note: string } {
+  if (ports.matrix.k === "missing" || ports.roster.k === "missing") {
+    return {
+      text: "名单这一项没有读口，这一卡此刻摆不出员工行。",
+      note: "矩阵与员工名单两条腿都没有回数：不补 0，也不摆示例行。",
+    };
+  }
+  if (ports.matrix.k === "error" || ports.roster.k === "error") {
+    return { text: "名单这一项此刻没有读到。", note: "刷新可以再试一次；这次读取没有改动任何东西。" };
+  }
+  if (peopleCount === 0) {
+    return { text: "名单读到真零：这个租户还没有数字员工。", note: "空集是读到的真零，不是读取失败。" };
+  }
+  return { text: "该筛选下没有员工。", note: "清掉状态筛选或搜索关键字再看。" };
+}
+
 export function MatrixModulePage() {
   const [params, setParams] = useSearchParams();
-  const view: MatrixView = params.get("view") === "resource" ? "resource" : "people";
-  const forced = params.get("state");
-  const [phase, setPhase] = useState<Phase>("loading");
-  const [payload, setPayload] = useState<MatrixPayload | null>(null);
-  const [errorNote, setErrorNote] = useState<{ requestId: string | null; detail: string } | null>(null);
-  const [token, setToken] = useState(0);
+  const kind: ResourceKind =
+    params.get("res") === "tool" ? "tool" : params.get("res") === "kb" ? "kb" : "skill";
+  const { ports, reload } = useMatrixPorts();
+  const [query, setQuery] = useState("");
+  const [status, setStatus] = useState("");
 
-  useEffect(() => {
-    if (forced && FORCED.has(forced)) {
-      setPhase(forced as Phase);
-      setErrorNote(forced === "error" ? { requestId: params.get("rid"), detail: "读取没有成功" } : null);
-      return;
-    }
-    let live = true;
-    setPhase("loading");
-    setErrorNote(null);
-    // reuse: /v1/matrix/employees
-    fetchJSON<unknown>("/agent-api/api/matrix")
-      .then((body) => {
-        if (!live) return;
-        const next = readMatrixPayload(body);
-        setPayload(next);
-        setPhase(next.employees.length && next.capabilities.length ? "ready" : "empty");
-      })
-      .catch((error: unknown) => {
-        if (!live) return;
-        const status = error instanceof ApiError ? error.status : 0;
-        const requestId = error instanceof ApiError ? (error.requestId ?? null) : null;
-        if (status === 404 || status === 0) {
-          // PRD §12 固定门（matrix 车道 docs/_artifacts/matrix/DONE.md:6）。
-          // /api/matrix 没接上（404）或连不上（status 0）时，主任务「看组织级
-          // 覆盖缺口」必须在当前构建里可达可审，所以这里加载 MATRIX_FIXTURE，
-          // 并由版面自己说清它是样例：「示例数据」角标、根节点
-          // data-fixture="1"、mtx5-fixture-note 全部只由 payload.origin 派生，
-          // 没有任何硬编码角标；失败那次读取的请求编号仍如实上屏（不暗示取到
-          // 过真数据），样例永不覆盖已到达的真数据（这条分支只在 catch 里）。
-          // 摘角标必须走真门，三条判据逐条可在代码/测试里核对：
-          //   (a) 任何 200 且能被 readMatrixPayload 解析的返回都被盖上
-          //       origin:'matrix'（matrix.ts:153），角标／说明条／data-fixture
-          //       随即自动消失，UI 一行都不用改——DONE.md:49
-          //       「删掉 fixture 兜底分支即可」说的就是这一条；
-          //   (b) 403 绝不走这里：权限缺失不是「没接入」，不许用样例冒充；
-          //   (c) 角标只有 payload.origin 这一个来源（本文件 :141/:157/:164）。
-          setPayload(MATRIX_FIXTURE);
-          setPhase("ready");
-          setErrorNote({
-            requestId,
-            detail:
-              status === 404
-                ? "后台还没有提供这份矩阵（接口未接入）"
-                : "这份矩阵暂时连不上（网络或网关没有应答）",
-          });
-          return;
-        }
-        if (status === 403) {
-          setPhase("denied");
-          setErrorNote({ requestId, detail: "当前账号没有查看这份矩阵的权限" });
-          return;
-        }
-        setPhase("error");
-        setErrorNote({
-          requestId,
-          detail: error instanceof ApiError ? error.message : "读取没有成功，稍后再试一次",
-        });
-      });
-    return () => {
-      live = false;
-    };
-  }, [forced, params, token]);
+  const { people } = peopleOf(ports);
+  // 逐条落位：卡一只等名单那两条腿，卡二只等本档资源那条腿。
+  const peopleLoading = ports.matrix.k === "loading" && ports.roster.k === "loading";
+  const activeCount = people.filter((person) => person.lifecycle === "active").length;
 
-  const data = useMemo(
-    () => (payload ? buildMatrixView(payload, view) : { columns: [], rows: [] }),
-    [payload, view],
+  const columns = useMemo(() => peopleColumns(ports), [ports]);
+  const rows = useMemo(() => buildPeopleRows(ports), [ports]);
+  const view = useMemo(() => buildResourceView(ports, kind), [ports, kind]);
+
+  const needle = query.trim().toLowerCase();
+  const visiblePeople = useMemo(
+    () =>
+      rows.filter((row) => {
+        if (status && lifecycleTone(row.lifecycle) !== status) return false;
+        return !needle || row.haystack.includes(needle);
+      }),
+    [rows, status, needle],
+  );
+  const visibleResources = useMemo(
+    () => view.rows.filter((row) => !needle || row.haystack.includes(needle)),
+    [view.rows, needle],
   );
 
-  // 2026-11-24 收口：视角切换从 `role="tablist"` 降级成普通 <nav> 链接。
-  // 全站唯一一排 tab 归外壳（shell/console.tsx 的 ConsoleTabStrip）；模块内
-  // 再排一排会让每页出现两个 tablist（用户实机投诉「两排 tab」）。视角本来
-  // 就是 ?view= 地址，换成真链接后语义与原状态完全一致，且可直开/可分享。
-  const viewSearch = (next: MatrixView): string => {
-    const search = new URLSearchParams(params);
-    if (next === "people") search.delete("view");
-    else search.set("view", next);
-    const qs = search.toString();
-    return qs ? `?${qs}` : "";
-  };
+  const asOf = asOfOf(ports.matrix) ?? asOfOf(ports.skills) ?? asOfOf(ports.spaces);
+  const missing = missingPorts(ports);
+  const gapNotes = missingPorts(ports, ["matrix", "employees"]);
+  const kindNotes = missingPorts(
+    ports,
+    kind === "skill" ? ["skills"] : kind === "tool" ? ["tools"] : ["spaces"],
+  );
 
-  const retry = () => {
+  const chooseKind = (next: ResourceKind) => {
     const search = new URLSearchParams(params);
-    search.delete("state");
-    search.delete("rid");
+    search.set("tab", "matrix");
+    if (next === "skill") search.delete("res");
+    else search.set("res", next);
     setParams(search, { replace: true });
-    setToken((n) => n + 1);
   };
 
-  const origin = payload?.origin ?? "matrix";
-  const counts = useMemo(() => {
-    let granted = 0;
-    let denied = 0;
-    let unknown = 0;
-    for (const row of data.rows) {
-      for (const cell of row.cells) {
-        if (cell.state === "granted") granted += 1;
-        else if (cell.state === "denied") denied += 1;
-        else unknown += 1;
-      }
-    }
-    return { granted, denied, unknown };
-  }, [data.rows]);
+  const clearFilters = () => {
+    setQuery("");
+    setStatus("");
+  };
 
-  // 换真门三判据写成面上可读的标记，取证不必再从文案倒推：
-  //   data-door         这张表是哪条路来的（fixture-preview / live / no-payload）；
-  //   data-state        面上是哪一态（loading / ready / empty / error / denied）；
-  //   data-badge-source 角标凭什么出现，只有 payload.origin 这一个来源。
-  // 三个值全部由 payload / phase 派生，没有一处写死；真数据到达时它们自己翻回去。
+  const peopleEmpty = peopleEmptyText(ports, people.length);
+  const resourceEmpty = resourceEmptyText(view, kind);
+  const head = resourceHead(kind, view.columns, view.dropColumns);
+  const empOrder = new Map<string, number>(view.columns.map((column, index) => [`emp:${column.key}`, index]));
+
   return (
-    <section
-      className="space-y-4"
-      data-testid="mtx5-module"
-      data-fixture={origin === "fixture" ? "1" : undefined}
-      data-door={payload?.origin === "fixture" ? "fixture-preview" : payload ? "live" : "no-payload"}
-      data-state={phase}
-      data-badge-source={origin === "fixture" ? "payload.origin" : undefined}
-    >
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="font-mondwest text-xl">能力与权限矩阵</h2>
-          <p className="mt-1 text-sm text-white/55">谁被授了什么、谁还没有，放在同一张表里看；点一行或一列换视角。</p>
+    <section className="mtx-page" data-testid="mtx-page" data-state={peopleLoading ? "loading" : "ready"}>
+      <div className="mtx-head">
+        <div className="mtx-head__text">
+          <h2 className="mtx-title">能力与权限</h2>
+          <p className="mtx-sub" data-testid="mtx-sub">
+            <b className="mtx-num">{people.length}</b> 名数字员工
+            <span className="mtx-sep" aria-hidden="true">
+              ·
+            </span>
+            <b className="mtx-num">{activeCount}</b> 在岗
+            <span className="mtx-sep" aria-hidden="true">
+              ·
+            </span>
+            按员工或按资源看覆盖
+          </p>
         </div>
-        <div className="flex items-center gap-2">
-          {origin === "fixture" ? <Badge tone="warning">示例数据</Badge> : null}
-          <Button size="sm" outlined onClick={retry} data-testid="mtx5-refresh">
-            <RefreshCw className="mr-1 size-3.5" aria-hidden="true" />
-            重新读取
-          </Button>
+        <div className="mtx-acts">
+          <span className="mtx-read" title="取六条读口里最近的一次读取时刻">
+            读取于 {fmtStamp(asOf)}
+          </span>
+          <button type="button" className="mtx-btn" onClick={reload} data-testid="mtx-refresh">
+            <RefreshCw className="mtx-btn__icon" aria-hidden="true" />
+            刷新
+          </button>
         </div>
       </div>
 
-      <Card>
-        <CardContent className="space-y-3 p-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <nav className="flex items-center gap-1 rounded-lg border border-white/10 p-1" aria-label="视角">
-              <Link
-                to={{ search: viewSearch("people") }}
-                aria-current={view === "people" ? "page" : undefined}
-                className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs no-underline ${
-                  view === "people" ? "bg-white/10 text-white" : "text-white/55 hover:text-white/80"
-                }`}
-                data-testid="mtx5-view-people"
-              >
-                <Users className="size-3.5" aria-hidden="true" />
-                按员工
-              </Link>
-              <Link
-                to={{ search: viewSearch("resource") }}
-                aria-current={view === "resource" ? "page" : undefined}
-                className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs no-underline ${
-                  view === "resource" ? "bg-white/10 text-white" : "text-white/55 hover:text-white/80"
-                }`}
-                data-testid="mtx5-view-resource"
-              >
-                <LayoutGrid className="size-3.5" aria-hidden="true" />
-                按能力
-              </Link>
-            </nav>
-            {phase === "ready" ? (
-              <p className="flex min-w-0 flex-wrap gap-x-2 text-xs text-white/45" data-testid="mtx5-summary">
-                <span>员工 {payload?.employees.length ?? 0}</span>
-                <span aria-hidden>·</span>
-                <span>在岗 {payload ? payload.employees.filter((e) => e.lifecycle === "active").length : 0}</span>
-                <span aria-hidden>·</span>
-                <span title="风险数据源尚未接入，这里不做猜测。">有风险 —</span>
-                <span aria-hidden>·</span>
-                <span>技能引用 {counts.granted + counts.denied + counts.unknown}</span>
-                <span aria-hidden>·</span>
-                <span title="运行统计源尚未接入，接入后此栏自动显示真数。">今日运行 —</span>
-                <span aria-hidden>·</span>
-                <span>已授权 {counts.granted} / 未授权 {counts.denied} / 待核实 {counts.unknown}</span>
-                <span>读取于 {fmtStamp(payload?.asOf ?? null)}</span>
-              </p>
-            ) : null}
+      {/* ① 按员工覆盖 ------------------------------------------------ */}
+      <ConsoleCard label="按员工覆盖" action={<span>行＝员工 · 列＝骨架原列名</span>} flush data-testid="mtx-people-card">
+        <div className="mtx-filterbar">
+          <label className="mtx-search">
+            <Search className="mtx-search__icon" aria-hidden="true" />
+            <input
+              type="search"
+              className="mtx-input"
+              aria-label="搜索员工、技能、工具、知识空间"
+              placeholder="搜索员工、技能、工具、知识空间"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              data-testid="mtx-search"
+            />
+          </label>
+          <select
+            className="mtx-select"
+            aria-label="状态"
+            value={status}
+            onChange={(event) => setStatus(event.target.value)}
+            data-testid="mtx-status"
+          >
+            {STATUS_FILTERS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <label className="mtx-switch is-off" title={GAP_FILTER_TITLE}>
+            <input type="checkbox" disabled aria-label="只看有缺口" data-testid="mtx-gap-only" />
+            只看有缺口
+          </label>
+          <span className="mtx-grow" />
+          <span className="mtx-meta" data-testid="mtx-people-meta">
+            {visiblePeople.length} / {rows.length} 人 · 按已挂技能数升序
+          </span>
+        </div>
+
+        {peopleLoading ? (
+          <div className="mtx-skeleton" aria-busy="true" aria-label="读取中" data-testid="mtx-loading">
+            <span />
+            <span />
+            <span />
           </div>
-
-          {origin === "fixture" && phase === "ready" ? (
-            <div className="space-y-1" data-testid="mtx5-fixture-block">
-              <p className="rounded-lg border border-amber-400/25 bg-amber-400/10 px-3 py-2 text-xs text-amber-200" data-testid="mtx5-fixture-note">
-                真实矩阵接口还没接上，这张表用示例数据确认版面；接上后同一张表直接显示真实授权，「待核实」表示后端没有给出这一格。
-              </p>
-              {/* 三类不可用状态的文案各自可审：404（接口未接入）与连不上
-                  走这条样例门，403 走 mtx5-denied，其余走 mtx5-error。这里
-                  把到底哪一种失败写在面上，并保留那一次读取的请求编号。 */}
-              <p className="px-3 text-xs text-white/45" data-testid="mtx5-fixture-reason">
-                这次真实读取：{errorNote?.detail ?? "没有可用的应答"}
-                {" · "}
-                <RequestIdCopy
-                  requestId={errorNote?.requestId}
-                  fallback="本次请求未记录编号，可复制时间与操作路径反馈"
-                />
-              </p>
-            </div>
-          ) : null}
-
-          {phase === "loading" ? (
-            <div className="space-y-2 py-6" data-testid="mtx5-loading" aria-busy="true">
-              <div className="h-4 w-40 animate-pulse rounded bg-white/10" />
-              <div className="h-9 w-full rounded bg-white/5" />
-              <div className="h-9 w-full rounded bg-white/5" />
-              <div className="h-9 w-full rounded bg-white/5" />
-              <p className="text-xs text-white/45">正在读取矩阵…</p>
-            </div>
-          ) : null}
-
-          {/* UI-B 空态组合：留白按令牌（py-10=40px 违规→space-8）；层级=标题抬到
-            * 15px 台阶（字号是本设计系统唯一可靠杠杆，Mondwest 只注册 400 face）；
-            * 单一主操作=「刷新」（工单口径）——空表根因可能是读取时机，刷新直连
-            * 重试链路；「回员工列表」降为次级文字出口（去高亮下划线观感，仍可达）。 */}
-          {phase === "empty" ? (
-            <div
-              className="flex min-w-0 flex-col items-center gap-[var(--space-2)] px-[var(--space-4)] py-[var(--space-8)] text-center"
-              data-testid="mtx5-empty"
-            >
-              <Inbox className="size-8 text-white/35" aria-hidden="true" />
-              <p className="text-base font-medium text-white/80">还没有可展示的矩阵</p>
-              <p className="max-w-prose text-sm text-white/50">
-                要么还没有员工被授过能力，要么后端只返回了空表。先去员工页确认在岗员工，再回来查看。
-              </p>
-              <div
-                className="flex flex-wrap items-center justify-center gap-[var(--space-2)] pt-[var(--space-2)]"
-                data-testid="mtx5-empty-actions"
-              >
-                <Button size="sm" onClick={retry} data-testid="mtx5-empty-retry" prefix={<RefreshCw className="mr-1 size-3.5" aria-hidden="true" />}>
-                  刷新
-                </Button>
-              </div>
-              <Link className="text-xs text-white/45 hover:text-white/70" to="/employees">
-                回员工列表
-              </Link>
-            </div>
-          ) : null}
-
-          {phase === "denied" ? (
-            <div className="flex flex-col items-center gap-2 py-10 text-center" data-testid="mtx5-denied">
-              <ShieldAlert className="size-8 text-amber-300/80" aria-hidden="true" />
-              <p className="text-sm text-white/80">你看不到这份矩阵</p>
-              {/* 接口未接入与连不上不再落到这里（它们走样例门 +
-                  mtx5-fixture-reason），所以这句话只说权限这一类。 */}
-              <p className="max-w-md text-xs text-white/50">
-                你的账号还没有查看这份矩阵的权限；需要看谁被授了什么，请找管理员开通后再刷新。
-              </p>
-              <p className="text-xs text-white/40">
-                <RequestIdCopy requestId={errorNote?.requestId} fallback="本次请求未记录编号，可复制时间与操作路径反馈" />
-              </p>
-              <Button size="sm" outlined onClick={retry} data-testid="mtx5-denied-retry">
-                刷新试试
-              </Button>
-            </div>
-          ) : null}
-
-          {/* UI-B 错误态组合：标题抬 15px 台阶（文案逐字=测试锁）；说明句与 rid 行
-            * （可见可复制）原样保留=既有达标实测复核；技术句 errorNote.detail
-            * （原本完全不上屏）收进「详情」折叠=主可见层以下；重试去 outlined=
-            * 卡内唯一实心主操作。与空态锚互斥=phase 单值枚举 by construction。 */}
-          {phase === "error" ? (
-            <div
-              className="flex min-w-0 flex-col items-center gap-[var(--space-2)] px-[var(--space-4)] py-[var(--space-6)] text-center"
-              data-testid="mtx5-error"
-            >
-              <TriangleAlert className="size-8 text-rose-300/80" aria-hidden="true" />
-              <p className="text-base font-medium text-white/80">这份矩阵没能读出来</p>
-              {/* 设计车道 ①：401 不再自绘「需要登录」专属卡（含 auth-reload-exit 出口）。
-                  全站只有顶部一条 SessionExpiredBanner 说「会话已过期」（lib/session-expiry
-                  置位），同一状态不再同屏双播。 */}
-              <p className="max-w-prose text-sm text-white/50">
-                刚才的读取没有改动任何东西，可以重试一次。
-              </p>
-              <p className="text-xs text-white/40">
-                <RequestIdCopy requestId={errorNote?.requestId} fallback="本次请求未记录编号，可复制时间与操作路径反馈" />
-              </p>
-              {!/需要登录|登录状态已失效/.test(errorNote?.detail ?? "") ? (
-                <details className="max-w-prose text-xs text-white/45" data-testid="mtx5-error-details">
-                  <summary className="cursor-pointer select-none">详情</summary>
-                  <p className="mt-1 break-words">{errorNote?.detail}</p>
-                </details>
-              ) : null}
-              <Button size="sm" onClick={retry} data-testid="mtx5-error-retry">
-                重试
-              </Button>
-            </div>
-          ) : null}
-
-          {phase === "ready" ? (
-            <div className="overflow-x-auto" data-testid="mtx5-scroll">
-              <div className="min-w-[720px]">
-                <div
-                  className="mtx5-head grid items-center gap-2 border-b border-white/10 pb-2 text-[11px] text-white/40"
-                  data-testid="mtx5-head"
-                  style={{ gridTemplateColumns: `minmax(180px, 1.4fr) repeat(${data.columns.length}, minmax(96px, 1fr))` }}
-                >
-                  <span className="mtx5-pin">{view === "people" ? "员工" : "能力"}</span>
-                  {data.columns.map((column) => (
-                    <span key={column.key} className="truncate" title={column.rawTitle ?? undefined} data-testid={`mtx5-col-${column.key}`}>
-                      {column.label}
-                      {column.meta ? <span className="ml-1 normal-case text-white/30">{column.meta}</span> : null}
-                    </span>
-                  ))}
-                </div>
-                <ul className="divide-y divide-white/5" data-testid="mtx5-table">
-                  {data.rows.map((row) => (
-                    <li
-                      key={row.key}
-                      className="grid items-center gap-2 py-2"
-                      style={{ gridTemplateColumns: `minmax(180px, 1.4fr) repeat(${data.columns.length}, minmax(96px, 1fr))` }}
-                      data-testid={`mtx5-row-${row.key}`}
+        ) : (
+          <div className="mtx-tw mtx5-scroll" data-testid="mtx-people-scroll">
+            <table className="mtx-table mtx-table--people">
+              <thead>
+                <tr>
+                  <th scope="col" className="mtx5-pin mtx-th-who">
+                    {PEOPLE_PIN_LABEL}
+                  </th>
+                  {columns.map((column) => (
+                    <th
+                      key={column.key}
+                      scope="col"
+                      className={column.right ? "mtx-right" : undefined}
+                      data-testid={`mtx-col-${column.key}`}
                     >
-                      <span className="min-w-0 mtx5-pin">
-                        // R273 (READY-BACKLOG console-ui2 16:17): the row owner is the exit.
-                        // The page still writes nothing -- the cells stay pills -- but the
-                        // 「去员工详情页」 instruction became a link instead of a sentence.
-                        <Link
-                          className="block truncate text-sm text-white/85 hover:underline"
-                          title={row.rawTitle ?? undefined}
-                          data-testid={`mtx5-owner-${row.key}`}
-                          to={view === "people" ? `/employees/${encodeURIComponent(row.key)}` : "/capabilities"}
-                        >
-                          {row.label}
-                        </Link>
-                        <span className="block truncate text-xs text-white/40">{row.meta || "—"}</span>
-                      </span>
-                      {row.cells.map((cell) => (
-                        <span key={cell.key} className="justify-self-start" data-testid={`mtx5-cell-${row.key}-${cell.key}`}>
-                          <CellPill state={cell.state} />
-                        </span>
-                      ))}
-                    </li>
+                      {column.label}
+                    </th>
                   ))}
-                </ul>
-              </div>
-            </div>
-          ) : null}
-        </CardContent>
-      </Card>
+                </tr>
+              </thead>
+              <tbody>
+                {visiblePeople.length === 0 ? (
+                  <tr className="mtx-gap-row">
+                    <td colSpan={columns.length + 1} data-testid="mtx-people-empty">
+                      <b>{peopleEmpty.text}</b>
+                      <span>{peopleEmpty.note}</span>
+                      {rows.length > 0 ? (
+                        <button type="button" className="mtx-linkbtn" onClick={clearFilters} data-testid="mtx-clear-filters">
+                          清除筛选
+                        </button>
+                      ) : null}
+                    </td>
+                  </tr>
+                ) : (
+                  visiblePeople.map((row) => (
+                    <tr key={row.key} data-testid={`mtx-row-${row.key}`}>
+                      <td className="mtx5-pin mtx-td-who">
+                        <Link
+                          className="mtx-who"
+                          to={`/employees/${encodeURIComponent(row.key)}`}
+                          title={row.rowTitle}
+                          data-testid={`mtx-owner-${row.key}`}
+                        >
+                          <span className="mtx-ava" aria-hidden="true">
+                            {row.initials}
+                          </span>
+                          <span className="mtx-who__text">
+                            <span className="mtx-who__name">
+                              <span
+                                className={`mtx-dot tone-${row.lifecycleToneValue}`}
+                                title={row.lifecycleText}
+                                aria-hidden="true"
+                              />
+                              {row.name}
+                            </span>
+                            <span className="mtx-who__sub">{row.sub}</span>
+                          </span>
+                        </Link>
+                      </td>
+                      {columns.map((column) => (
+                        <td key={column.key} className={column.right ? "mtx-right" : undefined}>
+                          {renderCell(row.cells[column.key])}
+                        </td>
+                      ))}
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <MissingLine notes={gapNotes} testId="mtx-people-note" />
+      </ConsoleCard>
 
-      <p className="text-xs text-white/40">
-        矩阵只读：这里不改授权。行首的名字就是入口——员工视角点进那位员工的详情页，资源视角点进能力页；这一页只负责把「谁有什么」摊开看。
+      {/* ② 按资源覆盖 ------------------------------------------------ */}
+      <ConsoleCard
+        label="按资源覆盖"
+        action={<span>行＝资源 · 列＝员工 · ● 已挂载</span>}
+        flush
+        data-testid="mtx-resource-card"
+      >
+        <div className="mtx-filterbar">
+          <span className="mtx-seg" role="group" aria-label="资源类型">
+            {RESOURCE_KINDS.map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                className={kind === option.id ? "is-on" : undefined}
+                aria-pressed={kind === option.id}
+                onClick={() => chooseKind(option.id)}
+                data-testid={`mtx-kind-${option.id}`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </span>
+          <span className="mtx-grow" />
+          <span className="mtx-meta" data-testid="mtx-res-meta">
+            {visibleResources.length} 项 · 覆盖分母 {view.denominator} 在岗 · 列 {view.columns.length}/{view.totalPeople}
+          </span>
+        </div>
+
+        {view.kindRead.k === "loading" ? (
+          <div className="mtx-skeleton" aria-busy="true" aria-label="读取中" data-testid="mtx-res-loading">
+            <span />
+            <span />
+            <span />
+          </div>
+        ) : (
+          <div className="mtx-tw mtx5-scroll" data-testid="mtx-resource-scroll">
+            <table className={`mtx-table mtx-table--res mtx-table--${kind}`}>
+              <thead>
+                <tr>
+                  {head.map((def, index) => (
+                    <th
+                      key={def.key}
+                      scope="col"
+                      className={[index === 0 ? "mtx5-pin" : "", def.right ? "mtx-right" : "", def.key.startsWith("emp:") ? "mtx-col-emp" : ""]
+                        .filter(Boolean)
+                        .join(" ") || undefined}
+                      title={def.meta}
+                      data-testid={`mtx-reshead-${def.key}`}
+                    >
+                      {def.key.startsWith("emp:") ? (
+                        <>
+                          <span className="mtx-emp-label">{def.label}</span>
+                          <span className="mtx-th-meta">{def.meta}</span>
+                        </>
+                      ) : (
+                        <>
+                          {def.label}
+                          {def.meta ? <span className="mtx-th-meta">{def.meta}</span> : null}
+                        </>
+                      )}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {visibleResources.length === 0 ? null : (
+                  visibleResources.map((row) => {
+                    const cellOf = (key: string): MatrixCell | undefined => {
+                      if (key === "name") return row.name;
+                      if (key === "count") return row.count;
+                      if (key === "state") return row.state;
+                      if (key.startsWith("emp:")) {
+                        const order = empOrder.get(key);
+                        return order === undefined ? undefined : row.hits[order];
+                      }
+                      return row.extras[key];
+                    };
+                    return (
+                      <tr key={row.key} data-testid={`mtx-resrow-${row.key}`}>
+                        {head.map((def, index) => {
+                          const cell = cellOf(def.key);
+                          return (
+                            <td
+                              key={def.key}
+                              className={[
+                                index === 0 ? "mtx5-pin mtx-td-name" : "",
+                                def.right ? "mtx-right" : "",
+                              ]
+                                .filter(Boolean)
+                                .join(" ") || undefined}
+                            >
+                              {def.key === "name" && cell?.k === "text" ? (
+                                <span className="mtx-res-name" title={cell.title}>
+                                  {cell.text}
+                                </span>
+                              ) : (
+                                renderCell(cell)
+                              )}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {view.kindRead.k !== "loading" && visibleResources.length === 0 ? (
+          <div
+            className={`mtx-blank tone-${needle && view.rows.length > 0 ? "zero" : resourceEmpty.tone}`}
+            data-testid="mtx-resource-empty"
+          >
+            <b>{needle && view.rows.length > 0 ? "该搜索下没有资源。" : resourceEmpty.text}</b>
+            <span>{needle && view.rows.length > 0 ? "清掉搜索关键字再看。" : resourceEmpty.note}</span>
+          </div>
+        ) : null}
+        <MissingLine notes={kindNotes} testId="mtx-resource-note" />
+      </ConsoleCard>
+
+      {/* ③ 清点与口径 ------------------------------------------------ */}
+      <p className="mtx-nummeta" data-testid="mtx-summary">
+        <span className="mtx-nummeta__k">清点</span>
+        员工 <b>{people.length}</b>
+        <span className="mtx-sep" aria-hidden="true">
+          ·
+        </span>
+        在岗 <b>{activeCount}</b>
+        <span className="mtx-sep" aria-hidden="true">
+          ·
+        </span>
+        技能登记 <b>{countLabel(ports.skills)}</b>
+        <span className="mtx-sep" aria-hidden="true">
+          ·
+        </span>
+        知识空间 <b>{countLabel(ports.spaces)}</b>
+        <span className="mtx-sep" aria-hidden="true">
+          ·
+        </span>
+        覆盖分母只算在岗；零覆盖走灰虚线（业务下限没有读口，不判红）
+        <span className="mtx-sep" aria-hidden="true">
+          ·
+        </span>
+        {missing.length > 0 ? (
+          <span data-testid="mtx-missing-summary">缺读口：{missing.map((note) => note.label).join("、")}</span>
+        ) : (
+          <span>六条读口本次都在</span>
+        )}
+        <span className="mtx-sep" aria-hidden="true">
+          ·
+        </span>
+        读取于 {fmtStamp(asOf)}
       </p>
+
     </section>
   );
 }

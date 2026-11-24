@@ -1,13 +1,11 @@
 /**
- * R272 (READY-BACKLOG: 能力矩阵 375 版式 — 列头冻结 + 横向滚动容器，不用整页横滚).
+ * 「能力与权限」矩阵的 375 / 密度契约（纯样式断言，不改产品码）。
  *
- * The pin is a contract, not a style preference: the grid is deliberately wider
- * than a phone, so if the identity column stops sticking, a reader at 375 scrolls
- * sideways and loses track of whose row every cell belongs to. And if the scroll
- * ever moves from the shell onto the page, the whole console starts sliding.
+ * 表格比手机宽是有意的（每列都要读得清），但页面本身绝不横滚：
+ * 横滚只发生在卡内 `.mtx5-scroll` 壳里，身份列 `.mtx5-pin` 粘在卡壳左缘。
+ * 行高走 40px 令牌档（36–40 契约的上沿），数字等宽由 .mtx-mono 承担。
  *
- * The assertions read declarations rather than pixels: changing a value is fine,
- * dropping a tier is not.
+ * 断言读的是「声明」而不是像素：换值可以，撤档不行。
  */
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -15,8 +13,7 @@ import { describe, expect, it } from "vitest";
 
 const css = readFileSync(fileURLToPath(new URL("./matrix.css", import.meta.url)), "utf8");
 
-/** Every rule in this file starts at column 0, so the newline anchors the selector
- * and `.mtx5-pin` never matches inside `.mtx5-head .mtx5-pin`. */
+/** 每条规则都从行首开始，所以换行锚定选择器，`.mtx5-pin` 不会命中更长的选择器。 */
 function declsOf(selector: string): string {
   const at = css.indexOf(`\n${selector} {`);
   expect(at, `matrix.css must keep the ${selector} rule`).toBeGreaterThan(-1);
@@ -25,31 +22,35 @@ function declsOf(selector: string): string {
   return css.slice(open + 1, close);
 }
 
-function zIndexOf(selector: string): number {
-  const raw = declsOf(selector).match(/z-index:\s*(\d+)/)?.[1];
-  expect(raw, `${selector} must declare a z-index`).toBeDefined();
-  return Number(raw);
-}
-
-describe("matrix.css — R272 375 layout contract", () => {
-  it("keeps the sideways scroll inside the shell", () => {
+describe("matrix.css — 375 横滚与行高契约", () => {
+  it("横向滚动留在卡壳里（页面不整页横滚）", () => {
     expect(declsOf(".mtx5-scroll")).toContain("overflow-x: auto");
   });
 
-  it("pins the identity track to the shell's left edge", () => {
+  it("身份列粘在卡壳左缘且是不透明底（滑动单元格不会透出）", () => {
     const pin = declsOf(".mtx5-pin");
     expect(pin).toContain("position: sticky");
     expect(pin).toContain("left: 0");
-    // opaque, otherwise sliding cells show straight through the pinned column
-    expect(pin).toContain("background: var(--color-card)");
+    expect(pin).toContain("background: var(--color-surface-ls)");
   });
 
-  it("stacks the two sticky axes so the crossing cell wins", () => {
-    expect(zIndexOf(".mtx5-head .mtx5-pin")).toBeGreaterThan(zIndexOf(".mtx5-pin"));
-  });
-
-  it("pins by rule instead of by a fixed width", () => {
-    // a hardcoded width breaks the moment a name is longer than the guess
+  it("粘贴靠规则而不是写死宽度", () => {
     expect(css).not.toMatch(/\n\.mtx5-pin \{[^}]*width:/);
+  });
+
+  it("行高走 40px 令牌档（36–40 契约），不写裸像素", () => {
+    const td = declsOf(".mtx-table td");
+    expect(td).toContain("height: var(--table-row-h-ls)");
+    expect(td).not.toMatch(/height:\s*\d+px/);
+  });
+
+  it("表格撑满卡宽但允许内容更宽（min-width:100% + max-content）", () => {
+    const table = declsOf(".mtx-table");
+    expect(table).toContain("width: max-content");
+    expect(table).toContain("min-width: 100%");
+  });
+
+  it("数字列等宽：.mtx-mono 声明 tabular-nums", () => {
+    expect(declsOf(".mtx-mono")).toContain("font-variant-numeric: var(--tabular-ls)");
   });
 });
