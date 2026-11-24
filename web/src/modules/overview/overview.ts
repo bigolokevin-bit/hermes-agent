@@ -164,9 +164,14 @@ function dayKeyOf(ms: number): string {
 }
 
 /**
- * 近 N 天逐日点位：把读口返回的桶铺到「日格」上，没有桶的那一天是 null
+ * 近 N 天逐日点位：把读口返回的桶铺到「日格」上，没有桶的那一天默认是 null
  * （缺读数），既不是 0，也不是被跳过的一格。窗口末端优先用响应自带的 `to`；
  * 测试/旧响应没有 `to` 时以最后一个桶为末端，且不回填第一个桶之前的日子。
+ *
+ * 唯一的「缺日＝真 0」豁免：响应同时给 `totals.runs`，且窗口内每个桶都有读数、
+ * 各桶之和恰等于 totals。此时未返回的日子按算术闭合可证为 0（不是猜），
+ * 卡面必须把这条推导写在脚注里。桶本身 `runs: null`（上游明说没有读数）
+ * 永不进这个分支，仍按缺读数断开。
  */
 export function trendWindow(stats: RunStatsBody | null, days = 14): TrendPoint[] {
   const buckets = Array.isArray(stats?.buckets) ? stats.buckets : [];
@@ -204,6 +209,22 @@ export function trendWindow(stats: RunStatsBody | null, days = 14): TrendPoint[]
       failed: hit ? hit.failed : null,
     };
   });
+}
+
+/**
+ * 合计闭合证明：窗口内每个桶都有读数且各桶之和恰等于 `totals.runs` 时，
+ * 未返回的日子按算术可证为 0。返回可证为 0 的缺日数；不可证返回 0。
+ * 明确 `runs: null` 的桶不是「缺日」，永不进这个证明（缺读数就是缺读数）。
+ */
+export function provenZeroFill(stats: RunStatsBody | null, points: TrendPoint[]): number {
+  const totals = num(stats?.totals?.runs);
+  if (totals === null || points.length === 0) return 0;
+  const known = points.filter((p) => p.runs !== null);
+  if (known.length === 0) return 0;
+  const missing = points.length - known.length;
+  if (missing === 0) return 0;
+  const sum = known.reduce((n, p) => n + (p.runs as number), 0);
+  return sum === totals ? missing : 0;
 }
 
 export interface DayActivityCellView {

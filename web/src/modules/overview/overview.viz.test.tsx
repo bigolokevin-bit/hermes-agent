@@ -110,9 +110,10 @@ describe('OM-17 视觉层：火花／点阵／趋势／热力', () => {
     for (const label of yLabels) expect(Number.isInteger(Number(label))).toBe(true);
     // 折线按缺读数断开：第 1 天单独一段、第 3–4 天一段。
     expect(svg?.querySelectorAll('.ov5-trend-line')).toHaveLength(2);
-    expect(svg?.querySelectorAll('.ov5-trend-area')).toHaveLength(2);
-    // 跨缺读数的一段用虚线连接（不把插值冒充实测）。
-    expect(svg?.querySelectorAll('.ov5-trend-connector')).toHaveLength(1);
+    // 骨架形制：只画实测折线，不画面积楔形；跨缺读数不再画插值虚线
+    // （虚线会被读成「贴 0 的实测线」），缺日只留底部断口标记。
+    expect(svg?.querySelectorAll('.ov5-trend-area')).toHaveLength(0);
+    expect(svg?.querySelectorAll('.ov5-trend-connector')).toHaveLength(0);
     expect(svg?.querySelectorAll('.ov5-trend-pt')).toHaveLength(3);
     expect(svg?.querySelectorAll('.ov5-trend-void')).toHaveLength(1);
     // 悬停列仍逐桶 4 列（不画柱，只做命中层）。

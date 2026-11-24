@@ -6,6 +6,8 @@
  */
 import { fetchJSON } from '@/lib/api';
 import { BFF } from '../duty/api';
+import { beijingDayWindow } from '../duty/format';
+import type { RunStatsBody } from '../duty/types';
 
 export interface HermesSummaryBody {
   schema?: string | null;
@@ -62,4 +64,22 @@ export function fetchHealthSources(): Promise<HealthSourcesBody> {
 
 export function fetchOverviewSummary(): Promise<OverviewSummaryBody> {
   return fetchJSON<OverviewSummaryBody>(`${BFF}/overview/summary`);
+}
+
+/**
+ * 趋势块专用读口：`/api/run-stats` 按北京日窗返回逐日桶 + totals。
+ * 与 workbench/timeseries 的差别只有一个：这里保留 totals，于是「未返回的日子」
+ * 可以用「各桶之和＝totals」算术闭合证明为 0（provenZeroFill），不必把折线
+ * 画成一串虚线断口；证不出来（缺 totals / 桶无读数）就仍按缺读数断开。
+ */
+export function fetchTrendRuns(days: number): Promise<RunStatsBody> {
+  const win = beijingDayWindow();
+  const dayStart = Date.parse(win.from);
+  const span = Math.max(0, Math.trunc(days) - 1) * 24 * 3600 * 1000;
+  const q = new URLSearchParams({
+    from: new Date(dayStart - span).toISOString(),
+    to: win.to,
+    bucket: 'day',
+  });
+  return fetchJSON<RunStatsBody>(`${BFF}/run-stats?${q.toString()}`);
 }

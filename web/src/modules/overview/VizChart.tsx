@@ -133,19 +133,18 @@ export interface TrendGeometry {
 }
 
 /**
- * 整数档 y 轴（0 / 20 / 40 / 60 这类）：峰值 44 → 60，步长 20；
- * 峰值 8 → 10，步长 5。刻度从顶到底，末位必是 0。
+ * 三档整数 y 轴（骨架形制 60 / 30 / 0）：按峰值反算一次步长，再抬到
+ * 「步长的整数倍」为顶值。峰值 44 或 58 → 顶 60（步长 20），中线 30；
+ * 峰值 8 → 顶 10（步长 5），中线 5；峰值 13 → 顶 16，中线 8。
+ * 步长只从 niceCeil 的 1/2/5×10^k 阶梯取，顶值再校正成偶数，中线必为整数。
  */
 export function niceTicks(peak: number): { top: number; step: number; values: number[] } {
   const v = Math.max(1, peak);
-  const rough = v / 2;
-  const mag = Math.pow(10, Math.floor(Math.log10(rough)));
-  const norm = rough / mag;
-  const rawStep = (norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10) * mag;
-  const step = Math.max(1, Math.round(rawStep));
+  // 目标三档：粗步长取峰值的三分之一，向上落到 nice 阶梯。
+  const step = Math.max(1, Math.round(niceCeil(v / 3)));
   let top = Math.ceil(v / step) * step;
-  // 三档刻度 60/30/0：把顶值抬到偶数，中线才是整数。
-  if (top % 2 !== 0) top += 1;
+  // 中线必须是整数：顶值取偶（步长为偶时加一步，奇时加一）。
+  if (top % 2 !== 0) top += step % 2 === 0 ? step : 1;
   if (top < 2) top = 2;
   return { top, step, values: [top, top / 2, 0] };
 }

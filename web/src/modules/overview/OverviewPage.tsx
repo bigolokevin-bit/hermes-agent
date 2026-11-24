@@ -17,6 +17,7 @@ import {
   dayActivity,
   monthQuota,
   overviewSummaryText,
+  provenZeroFill,
   sourceStamp,
   trendWindow,
   OVERVIEW_GAP,
@@ -26,6 +27,7 @@ import {
   fetchHealthSources,
   fetchHermesSummary,
   fetchOverviewSummary,
+  fetchTrendRuns,
   type HealthSourcesBody,
   type HermesSummaryBody,
   type OverviewSummaryBody,
@@ -46,6 +48,41 @@ const RUN_STATUS_LABEL: Record<string, string> = {
   failed: '失败',
   running: '运行中',
 };
+
+/** 运行耗时：亚秒级如实写「<1s」，不把 8ms 洗成 0s，也不编造分钟数。 */
+function shortDuration(start?: string, end?: string): string {
+  if (!start) return '—';
+  const a = Date.parse(start);
+  if (!Number.isFinite(a)) return '—';
+  if (!end) return duration(start, undefined);
+  const b = Date.parse(end);
+  if (!Number.isFinite(b) || b < a) return '—';
+  return b - a < 1000 ? '<1s' : duration(start, end);
+}
+
+/** 等待时长人话：分/h/d 三档，只用上游给的时刻，不读页面时钟猜数据时刻。 */
+function ageText(since?: string): string {
+  if (!since) return '—';
+  const a = Date.parse(since);
+  if (!Number.isFinite(a)) return '—';
+  const min = Math.max(0, Math.floor((Date.now() - a) / 60000));
+  if (min < 60) return `${min}m`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `${h}h ${min % 60}m`;
+  return `${Math.floor(h / 24)}d ${h % 24}h`;
+}
+
+/** 逐员工成本账本求和；任一行缺金额就整笔返回 null（不给部分和冒充合计）。 */
+function sumCost(items: Array<{ costUsd?: number | null }> | undefined): number | null {
+  if (!Array.isArray(items) || items.length === 0) return null;
+  let total = 0;
+  for (const row of items) {
+    const n = num(row.costUsd);
+    if (n === null) return null;
+    total += n;
+  }
+  return total;
+}
 
 /* ============================================================================
  * 页内图标基元：内联 <svg><path/></svg>，几何 24×24，描边 1.8，
@@ -217,25 +254,6 @@ function IconServer({ className }: IconProps) {
   );
 }
 
-function IconSend({ className }: IconProps) {
-  return (
-    <svg {...ICON_BASE} className={className}>
-      <path d="M21 3.6 10.4 14.2" />
-      <path d="M21 3.6 14.3 21l-3.9-6.8L3.6 10.3Z" />
-    </svg>
-  );
-}
-
-function IconBook({ className }: IconProps) {
-  return (
-    <svg {...ICON_BASE} className={className}>
-      <path d="M4 5.2A2 2 0 0 1 6 3.2h13.4v17.6H6a2 2 0 0 0-2 2Z" />
-      <path d="M4 5.2v15.6" />
-      <path d="M8.4 7.6h7" />
-    </svg>
-  );
-}
-
 function IconSearch({ className }: IconProps) {
   return (
     <svg {...ICON_BASE} className={className}>
@@ -251,16 +269,6 @@ function IconDownload({ className }: IconProps) {
       <path d="M12 3.6v11.2" />
       <path d="m7.4 10.4 4.6 4.6 4.6-4.6" />
       <path d="M4.4 19.6h15.2" />
-    </svg>
-  );
-}
-
-function IconRocket({ className }: IconProps) {
-  return (
-    <svg {...ICON_BASE} className={className}>
-      <path d="M12 3.2c3.4 1.6 5.4 5 5.4 8.6 0 2.6-1 4.9-2.8 6.6H9.4A9.6 9.6 0 0 1 6.6 11.8c0-3.6 2-7 5.4-8.6Z" />
-      <circle cx="12" cy="9.4" r="1.8" />
-      <path d="M8.4 18.4c-.8 1.2-1 2.4-1 2.4s1.4-.2 2.6-1M15.6 18.4c.8 1.2 1 2.4 1 2.4s-1.4-.2-2.6-1" />
     </svg>
   );
 }
@@ -436,6 +444,7 @@ function KpiCard({
   meta,
   value,
   unit,
+  note,
   foot,
   stamps,
   testid,
@@ -451,6 +460,8 @@ function KpiCard({
   meta?: ReactNode;
   value: ReactNode;
   unit?: ReactNode;
+  /** 主数字位右侧 11px 旁注：无值时就写缺哪个读口，巨数字位不塌。 */
+  note?: ReactNode;
   foot?: ReactNode;
   stamps: StampSource[];
   testid: string;
@@ -484,6 +495,7 @@ function KpiCard({
         <div className="ov5-kr">
           <div className="ov5-kpi-value">{value}</div>
           {unit ? <em className="ov5-unit">{unit}</em> : null}
+          {note ? <span className="ov5-kpi-note">{note}</span> : null}
           {viz ? <span className="ov5-kpi-viz">{viz}</span> : null}
         </div>
         {foot ? <p className="ov5-kpi-foot">{foot}</p> : null}
@@ -545,6 +557,9 @@ function ReadyCard({
   const pct = (n: number | null | undefined) =>
     n === null || n === undefined || !denom ? null : Math.round((n / denom) * 1000) / 10;
   const unknownGates = readiness.gates.filter((gate) => gate.state === 'unknown');
+  const unknownNames = unknownGates
+    .map((gate) => (gate.name === '引用' ? '引用门' : gate.name))
+    .join('、');
   const v3Known = readiness.gates.find((gate) => gate.key === 'V3')?.state !== 'unknown';
   const coverageReady = [
     data.employees.k === 'ready',
@@ -558,13 +573,35 @@ function ReadyCard({
     ...(kpis.atRisk === null ? [{ label: '风险口径', reason: '风险矩阵' }] : []),
   ];
   const statusTone = gapList.length === 0 && unknownGates.length === 0 ? 'ok' : 'unknown';
-
+  // 交集句常驻：有 confirmed 说人数；没有就把「哪一门没有读口」写明白，不留空 callout。
+  const callout =
+    readiness.confirmed !== null ? (
+      <>
+        <b>四门交集 {readiness.confirmed} 人可上岗</b>
+        <span className="ov5-hsep">·</span>
+        {readiness.netNote}
+      </>
+    ) : (
+      <>
+        <b>四门交集暂不给</b>
+        <span className="ov5-hsep">·</span>
+        {unknownGates.length > 0
+          ? `${unknownNames} 无读口，交集人数不能确认`
+          : '各门读数未齐，交集人数不能确认'}
+        {readiness.narrowest ? `；最窄门「${readiness.narrowest.name}」已拦 ${readiness.narrowest.fail} 人` : ''}
+      </>
+    );
   return (
     <KpiCard
       title="可上岗"
       meta={`${dashed(denom)} 名 · 四门取交集`}
       value={readiness.confirmed === null ? <UnknownValue /> : readiness.confirmed}
       unit={`/ ${denom === null ? '—' : denom} 可上岗`}
+      note={
+        readiness.confirmed === null
+          ? `${unknownNames || '引用门'} 无读口 · 交集暂不给`
+          : undefined
+      }
       status={{
         tone: statusTone,
         title: `数据源 ${coverageReady}/5${gapList.length > 0 ? ` · 缺：${gapList.map((gap) => gap.label).join('、')}` : ''}`,
@@ -572,8 +609,7 @@ function ReadyCard({
       gaps={gapList}
       foot={
         <>
-          受限 <b>{dashed(buckets?.failing)}</b>：{restricted} · 在岗 <b>{dashed(kpis.active)}</b> · 有风险{' '}
-          <b>{dashed(kpis.atRisk)}</b>
+          在岗 <b>{dashed(kpis.active)}</b> · 有风险 <b>{dashed(kpis.atRisk)}</b> · 今日 00:00 起
         </>
       }
       stamps={[
@@ -589,6 +625,9 @@ function ReadyCard({
       onRetry={onRetry}
       icon={<IconUsers className="ov5-i ov5-i-13" />}
     >
+      <p className="ov5-hsay">
+        受限 <b>{dashed(buckets?.failing)}</b>：{restricted}
+      </p>
       <div className="ov5-gline">
         <span>各门独立通过</span>
         <span>/ {dashed(denom)} 人</span>
@@ -613,34 +652,35 @@ function ReadyCard({
           );
         })}
       </div>
-      {readiness.confirmed !== null ? (
-        <div className="ov5-hnarrow">
-          <b>四门交集 {readiness.confirmed} 人可上岗</b>
-          <span className="ov5-hsep">·</span>
-          {readiness.netNote}
-        </div>
-      ) : null}
+      <div className="ov5-hnarrow">{callout}</div>
       <div className="ov5-stack">
-        <svg className="ov5-stack-svg" viewBox="0 0 100 6" preserveAspectRatio="none" role="img" aria-label="可上岗 / 受限 / 未知占比">
+        <svg className="ov5-stack-svg" viewBox="0 0 100 10" preserveAspectRatio="none" role="img" aria-label="可上岗 / 受限 / 未知占比">
+          <rect className="track" x={0} y={0} width={100} height={10} rx={3} />
           {buckets === null ? (
-            <rect className="unknown" x={0} y={0} width={100} height={6} />
+            <rect className="unknown" x={0} y={0} width={100} height={10} rx={3} />
           ) : (
             <>
-              <rect className="ok" x={0} y={0} width={pct(buckets.confirmed) ?? 0} height={6} />
-              <rect
-                className="bad"
-                x={pct(buckets.confirmed) ?? 0}
-                y={0}
-                width={pct(buckets.failing) ?? 0}
-                height={6}
-              />
-              <rect
-                className="unknown"
-                x={(pct(buckets.confirmed) ?? 0) + (pct(buckets.failing) ?? 0)}
-                y={0}
-                width={pct(buckets.pending) ?? 0}
-                height={6}
-              />
+              {pct(buckets.confirmed) ? (
+                <rect className="ok" x={0} y={0} width={pct(buckets.confirmed) as number} height={10} />
+              ) : null}
+              {pct(buckets.failing) ? (
+                <rect
+                  className="bad"
+                  x={pct(buckets.confirmed) ?? 0}
+                  y={0}
+                  width={pct(buckets.failing) as number}
+                  height={10}
+                />
+              ) : null}
+              {pct(buckets.pending) ? (
+                <rect
+                  className="unknown"
+                  x={(pct(buckets.confirmed) ?? 0) + (pct(buckets.failing) ?? 0)}
+                  y={0}
+                  width={pct(buckets.pending) as number}
+                  height={10}
+                />
+              ) : null}
             </>
           )}
         </svg>
@@ -715,23 +755,23 @@ function TodayRunsCard({
         {rows.length > 0 ? (
           rows.map((run) => <RunRowLine key={run.runId} run={run} />)
         ) : (
-          <>
-            <p className="ov5-empty-line">
+          <div className="ov5-hrow ov5-emptyrow">
+            <span className="ov5-ht">
               {data.todayRuns.k === 'error'
                 ? '运行记录没有读出来（见上方重试）'
                 : data.todayRuns.k === 'loading'
                   ? '正在读今日运行记录…'
                   : '今天没有在跑或失败的 run'}
-            </p>
-            {data.todayRuns.k === 'ready' ? (
-              <>
-                <div className="ov5-skelrow"><span className="ov5-skelbar" /></div>
-                <div className="ov5-skelrow"><span className="ov5-skelbar" /></div>
-              </>
-            ) : null}
-          </>
+            </span>
+            <span className="ov5-hm">00:00 起</span>
+          </div>
         )}
       </div>
+      <p className="ov5-kpi-foot">
+        {data.todayStats.k === 'ready' && data.todayRuns.k === 'ready' && kpis.runs === 0
+          ? '今日 00:00 起无运行 · 读口 运行统计 已接（真零，非占位）'
+          : '在跑＝当前有活动 Run；失败＝今日终态失败的 Run'}
+      </p>
     </KpiCard>
   );
 }
@@ -759,7 +799,7 @@ function CostCard({
   data,
   kpis,
   matrix,
-  monthUsd,
+  monthActual,
   liveCostUsd,
   coveredRows,
   onRetry,
@@ -767,7 +807,7 @@ function CostCard({
   data: DutyData;
   kpis: ReturnType<typeof buildKpis>;
   matrix: Loadable<MatrixBody>;
-  monthUsd: number | null;
+  monthActual: number | null;
   liveCostUsd: number | null;
   coveredRows: number | null;
   onRetry: () => void;
@@ -777,9 +817,14 @@ function CostCard({
   const displayCost = kpis.costUsd ?? liveCostUsd;
   const caliber =
     kpis.costUsd !== null ? '今日账本' : liveCostUsd !== null ? '运行统计口径' : '今日成本';
+  // 本月实扣：月账本自身逐员工相加（日账本缺人不连坐月口径）。
+  const monthShare =
+    monthActual !== null && monthActual > 0 && displayCost !== null
+      ? Math.round((displayCost / monthActual) * 1000) / 10
+      : null;
   const gaps: KpiGap[] = [
     { label: '日上限合计', reason: '预算日上限读口' },
-    ...(monthUsd === null
+    ...(monthActual === null
       ? [{ label: '本月实扣', reason: covered > 0 ? `月账本覆盖（${covered} 人缺账本）` : '月账本' }]
       : []),
     { label: '预估月底', reason: '月底预测读口' },
@@ -795,7 +840,8 @@ function CostCard({
       title="今日成本"
       meta={<Link to="/overview?tab=usage">成本账本 →</Link>}
       value={displayCost === null ? <UnknownValue /> : usd(displayCost)}
-      unit={`${caliber} · 月配额 ${quota === null ? '—' : usd(quota)}`}
+      unit={quota === null ? '月配额 —' : `/ ${usd(quota)} 月配额`}
+      note={displayCost === null ? '日账本/运行统计 均未返回' : undefined}
       status={{
         tone: gaps.length === 0 ? 'ok' : 'unknown',
         title: `数据源 ${coverageReady}/5${gaps.length > 0 ? ` · 缺：${gaps.map((gap) => gap.label).join('、')}` : ''}`,
@@ -803,7 +849,7 @@ function CostCard({
       gaps={gaps}
       foot={
         <>
-          月配额 <b>{quota === null ? '—' : usd(quota)}</b> ·{' '}
+          {caliber} · 月配额 <b>{quota === null ? '—' : usd(quota)}</b> ·{' '}
           {covered > 0 ? `${covered} 人缺账本` : '逐员工相加'}
         </>
       }
@@ -816,18 +862,27 @@ function CostCard({
       onRetry={onRetry}
       icon={<IconCoins className="ov5-i ov5-i-13" />}
     >
+      {/* 骨架 3 行 × 2 组子读数；缺的读数只留「—」在值位，缺什么收进卡底折叠。 */}
       <div className="ov5-hlist">
         <div className="ov5-hrow">
-          <span className="ov5-ht">账本覆盖</span>
-          <span className="ov5-hm">
-            {coveredRows === null ? '—' : `${coveredRows}/${kpis.total ?? '—'}`} 员工
+          <span className="ov5-ht">
+            日上限合计 <b title="预算日上限读口未接入">—</b> · 月配额合计{' '}
+            <b>{quota === null ? '—' : usd(quota)}</b>
           </span>
+          <span className="ov5-hm">日/月分别相加</span>
         </div>
         <div className="ov5-hrow">
-          <span className="ov5-ht">今日成本来源</span>
-          <span className="ov5-hm">
-            {kpis.costUsd !== null ? '成本账本' : liveCostUsd !== null ? '运行统计' : '—'}
+          <span className="ov5-ht">
+            本月实扣 <b>{monthActual === null ? '—' : usd(monthActual)}</b> · 今日占月{' '}
+            <b>{monthShare === null ? '—' : `${monthShare}%`}</b>
           </span>
+          <span className="ov5-hm">逐员工相加</span>
+        </div>
+        <div className="ov5-hrow">
+          <span className="ov5-ht">
+            预估月底 <b title="月底预测读口未接入">—</b> · 浪费 <b title="失败/重试分类读口未接入">—</b>
+          </span>
+          <span className="ov5-hm">{coveredRows === null ? '覆盖 —' : `覆盖 ${coveredRows}/${kpis.total ?? '—'}`}</span>
         </div>
       </div>
     </KpiCard>
@@ -847,6 +902,8 @@ function ChainStrip({
   pendingLoading,
   gateway,
   gatewayLoading,
+  platformsOnline,
+  platformsTotal,
   liveCostUsd,
   costLoading,
 }: {
@@ -857,6 +914,8 @@ function ChainStrip({
   pendingLoading: boolean;
   gateway: string | null;
   gatewayLoading: boolean;
+  platformsOnline: number | null;
+  platformsTotal: number | null;
   liveCostUsd: number | null;
   costLoading: boolean;
 }) {
@@ -873,10 +932,7 @@ function ChainStrip({
         to="/approvals"
         title={`待批 ${pending ?? '未接入'} · 草稿 / 校验失败 / 发布超时：发布链读口未接入`}
       >
-        <span className="ov5-cs-k">
-          <IconRocket className="ov5-i ov5-i-13" />
-          发布
-        </span>
+        <span className="ov5-cs-k">发布</span>
         <span className="ov5-cs-v">
           {pending === null ? (
             <span className="ov5-cs-na">{pendingLoading ? '读取中' : '未接入'}</span>
@@ -885,18 +941,16 @@ function ChainStrip({
               <b>{pending}</b> 待批
             </>
           )}
+          <span className="ov5-cs-na"> · 草稿/校验失败/超时 未接入</span>
         </span>
         <span className="ov5-cs-go">→</span>
       </Link>
       <Link
         className="ov5-cs"
         to="/capabilities?tab=channels"
-        title={`${gatewayText} · 成功率 / 拒绝数 / 回执 P95：出站链读口未接入`}
+        title={`${gatewayText} · 成功率 / 拒绝数 / 回执 P95：出站链读口未接入 · 平台 ${platformsOnline ?? '—'}/${platformsTotal ?? '—'} 在线`}
       >
-        <span className="ov5-cs-k">
-          <IconSend className="ov5-i ov5-i-13" />
-          出站
-        </span>
+        <span className="ov5-cs-k">出站</span>
         <span className="ov5-cs-v">
           {gateway === null ? (
             <span className="ov5-cs-na">{gatewayLoading ? '读取中' : '未接入'}</span>
@@ -906,6 +960,10 @@ function ChainStrip({
               {gatewayText}
             </>
           )}
+          <span className="ov5-cs-na">
+            {' '}
+            · 平台 {platformsOnline === null || platformsTotal === null ? '—' : `${platformsOnline}/${platformsTotal}`} 在线
+          </span>
         </span>
         <span className="ov5-cs-go">→</span>
       </Link>
@@ -914,18 +972,16 @@ function ChainStrip({
         to="/overview?tab=usage"
         title={`实扣 ${actual === null ? '未接入' : usd(actual)}（${kpis.costUsd !== null ? '成本账本' : '运行统计口径'}）· 覆盖 ${covered ?? '未接入'}/${kpis.total ?? '未接入'} 员工 · 月配额 ${quota === null ? '未接入' : usd(quota)} · 估算 / 对账未接入`}
       >
-        <span className="ov5-cs-k">
-          <IconBook className="ov5-i ov5-i-13" />
-          账本
-        </span>
+        <span className="ov5-cs-k">账本</span>
         <span className="ov5-cs-v">
+          实扣{' '}
           {actual === null ? (
             <span className="ov5-cs-na">{costLoading ? '读取中' : '未接入'}</span>
           ) : (
-            <>
-              实扣 <b>{usd(actual)}</b>
-            </>
-          )}
+            <b>{usd(actual)}</b>
+          )}{' '}
+          · 覆盖 <b>{covered === null ? '—' : `${covered}/${kpis.total ?? '—'}`}</b> · 月配额{' '}
+          <b>{quota === null ? '—' : usd(quota)}</b>
         </span>
         <span className="ov5-cs-go">→</span>
       </Link>
@@ -936,14 +992,35 @@ function ChainStrip({
 /* ============================================================================
  * 近 14 天：大字（总次数 · 峰值）+ 200–240px 卡片内的柱图 + 峰值标注 + 脚注
  * ========================================================================== */
-function Trend({ stats, label = '近 14 天', days = 14, onRetry }: { stats: Loadable<RunStatsBody>; label?: string; days?: number; onRetry: () => void }) {
-  const points = stats.k === 'ready' ? trendWindow(stats.data, days) : [];
+function Trend({
+  stats,
+  trend,
+  label = '近 14 天',
+  days = 14,
+  onRetry,
+}: {
+  stats: Loadable<RunStatsBody>;
+  /** 首选读口（overview 自己的 run-stats 腿，带 totals，可做合计闭合证明）。 */
+  trend?: Loadable<RunStatsBody>;
+  label?: string;
+  days?: number;
+  onRetry: () => void;
+}) {
+  // 首选腿有桶才用；空/失败时回落到 duty 的 workbench timeseries（同形制）。
+  const source: Loadable<RunStatsBody> =
+    trend && trend.k === 'ready' && (trend.data.buckets?.length ?? 0) > 0 ? trend : stats;
+  const rawPoints = source.k === 'ready' ? trendWindow(source.data, days) : [];
+  const provenZero = source.k === 'ready' ? provenZeroFill(source.data, rawPoints) : 0;
+  // 只有算术闭合证得出来的缺日才补 0；其余仍是 null（缺读数）。
+  const points = provenZero > 0
+    ? rawPoints.map((point) => (point.runs === null ? { ...point, runs: 0 } : point))
+    : rawPoints;
   const allMissing = points.length > 0 && points.every((p) => p.runs === null);
   const allZero = points.length > 0 && points.every((p) => p.runs === 0);
   const max = Math.max(1, ...points.map((p) => p.runs ?? 0));
   const [chartRef, width] = useMeasuredWidth(720);
   const [hovered, setHovered] = useState<number | null>(null);
-  const draw = stats.k === 'ready' && points.length > 0 && !allZero && !allMissing;
+  const draw = source.k === 'ready' && points.length > 0 && !allZero && !allMissing;
   const geo = draw ? trendGeometry(width, points) : null;
   const lastWithRuns = points.reduce((best, p, i) => (p.runs !== null ? i : best), -1);
   const activeIndex = hovered !== null && hovered < points.length ? hovered : lastWithRuns;
@@ -953,6 +1030,8 @@ function Trend({ stats, label = '近 14 天', days = 14, onRetry }: { stats: Loa
   const missingDays = points.length - known.length;
   const avg = known.length > 0 ? Math.round((total / known.length) * 10) / 10 : null;
   const peak = geo?.peakAt ?? null;
+  const failedTotal =
+    geo?.failedTotal ?? (source.k === 'ready' ? num(source.data.totals?.failed) : null);
   return (
     <Card className="ov5-block ov5-trend" data-testid="ov6-trend" data-duty-testid="duty-trend">
       <CardContent className="ov5-block-bd">
@@ -963,13 +1042,13 @@ function Trend({ stats, label = '近 14 天', days = 14, onRetry }: { stats: Loa
           </h2>
           <Source>运行统计</Source>
         </div>
-        {stats.k === 'loading' ? (
+        {source.k === 'loading' ? (
           <div className="ov5-skeleton" aria-busy="true" aria-label="趋势加载中"><span /><span /><span /></div>
-        ) : stats.k === 'error' ? (
+        ) : source.k === 'error' ? (
           <div className="ov5-inline-error" role="alert">
             <IconAlert className="ov5-i ov5-i-16" />
             <span>趋势数据没有读出来。</span>
-            <RequestId id={stats.requestId} />
+            <RequestId id={source.requestId} />
             <Button size="sm" outlined onClick={onRetry} data-testid="ov6-trend-retry">重试</Button>
           </div>
         ) : points.length === 0 || allZero ? (
@@ -990,9 +1069,14 @@ function Trend({ stats, label = '近 14 天', days = 14, onRetry }: { stats: Loa
               <em>次 · 峰值 {peak ? peak.value : '无'}</em>
             </div>
             <p className="ov5-hsay">
-              日均 <b>{avg === null ? '待核实' : avg}</b> 次 · 失败{' '}
-              <b>{geo.failedTotal === null ? '待核实' : geo.failedTotal}</b> · 缺读数 <b>{missingDays}</b> 天
-              {peak ? <span className="ov5-hsay-peak"><IconTrendUp className="ov5-i ov5-i-13" />峰值点标注</span> : null}
+              日均 <b>{avg === null ? '待核实' : avg}</b> 次 · 失败 <b>{failedTotal === null ? '待核实' : failedTotal}</b> ·{' '}
+              {missingDays > 0 ? <>缺读数 <b>{missingDays}</b> 天</> : <>缺日按合计闭合补 0 <b>{provenZero}</b> 天</>}
+              {peak ? (
+                <span className="ov5-hsay-peak">
+                  <IconTrendUp className="ov5-i ov5-i-13" />
+                  峰值 {peak.value}
+                </span>
+              ) : null}
             </p>
             <div className="ov5-chart" ref={chartRef}>
               <svg
@@ -1000,7 +1084,7 @@ function Trend({ stats, label = '近 14 天', days = 14, onRetry }: { stats: Loa
                 viewBox={`0 0 ${geo.w} ${geo.h}`}
                 height={TREND_H}
                 role="img"
-                aria-label={`${label}运行趋势：合计 ${total} 次，峰值 ${peak ? peak.value : '无'} 次，失败 ${geo.failedTotal === null ? '待核实' : geo.failedTotal} 次，缺读数 ${missingDays} 天`}
+                aria-label={`${label}运行趋势：合计 ${total} 次，峰值 ${peak ? peak.value : '无'} 次，失败 ${failedTotal === null ? '待核实' : failedTotal} 次，缺读数 ${missingDays} 天`}
               >
                 {geo.ticks.map((tick) => (
                   <g key={`t${tick.label}-${tick.y}`}>
@@ -1024,13 +1108,7 @@ function Trend({ stats, label = '近 14 天', days = 14, onRetry }: { stats: Loa
                   ) : null,
                 )}
                 {geo.segments.map((segment, index) => (
-                  <g key={`seg${index}`}>
-                    <path className="ov5-trend-area" d={segment.area} />
-                    <path className="ov5-trend-line" d={segment.line} />
-                  </g>
-                ))}
-                {geo.connectors.map((connector, index) => (
-                  <path key={`conn${index}`} className="ov5-trend-connector" d={connector.line} />
+                  <path key={`seg${index}`} className="ov5-trend-line" d={segment.line} />
                 ))}
                 {geo.points.map((point) => (
                   <circle key={`pt${point.index}`} className="ov5-trend-pt" cx={point.x} cy={point.y} r={1.6} />
@@ -1048,9 +1126,20 @@ function Trend({ stats, label = '近 14 天', days = 14, onRetry }: { stats: Loa
                       className="ov5-peak-dot"
                       cx={geo.columns[geo.peakAt.index].cx}
                       cy={geo.columns[geo.peakAt.index].y ?? TREND_PAD.t}
-                      r={2.4}
+                      r={2.6}
                     />
-                    <text className="ov5-axis-lbl ov5-peak-lbl" x={geo.columns[geo.peakAt.index].cx} y={TREND_PAD.t - 11} textAnchor="middle">
+                    <text
+                      className="ov5-axis-lbl ov5-peak-lbl"
+                      x={
+                        geo.columns[geo.peakAt.index].cx > geo.w - 64
+                          ? geo.columns[geo.peakAt.index].cx - 6
+                          : geo.columns[geo.peakAt.index].cx + 6
+                      }
+                      y={(geo.columns[geo.peakAt.index].y ?? TREND_PAD.t) - 6}
+                      textAnchor={
+                        geo.columns[geo.peakAt.index].cx > geo.w - 64 ? 'end' : 'start'
+                      }
+                    >
                       峰值 {geo.peakAt.value}
                     </text>
                   </g>
@@ -1093,8 +1182,10 @@ function Trend({ stats, label = '近 14 天', days = 14, onRetry }: { stats: Loa
                 ) : null}
               </div>
             </div>
-            <BlockFoot items={[{ source: '运行统计', state: stats }]} testid="ov6-trend-stamp">
-              折线＝当日运行次数；失败次数在悬停说明里；缺读数的日画斜线断口，不折 0。
+            <BlockFoot items={[{ source: '运行统计', state: source }]} testid="ov6-trend-stamp">
+              {provenZero > 0
+                ? `折线＝当日运行次数；未返回的 ${provenZero} 天由「各桶之和＝合计 ${total}」算术闭合推得 0，非估数；失败次数在悬停说明里。`
+                : '折线＝当日运行次数；失败次数在悬停说明里；缺读数只断口，不折 0。'}
             </BlockFoot>
           </>
         ) : null}
@@ -1259,7 +1350,6 @@ function Blockers({
           <span className="ov5-stat">客户端 <b>未接入</b></span>
           <span className="ov5-stat">队列 <b>{queueLoading && pending === null ? '读取中' : pending ?? '未接入'}</b></span>
         </div>
-        <Freshness items={blockSources} testid="ov6-blockers-stamp" />
         {rows.length === 0 ? (
           <div className="ov5-skelrow">
             <span className="ov5-skelbar" />
@@ -1267,16 +1357,42 @@ function Blockers({
           </div>
         ) : (
           <ul className="ov5-rows ov5-rows-blocker">
-            {rows.map((row) => (
-              <li key={`${row.responsibleModule}-${row.object}`} className="ov5-blkrow">
-                <Badge tone={row.overSLA ? 'destructive' : 'warning'}>{row.responsibleModule}</Badge>
-                <span className="ov5-bmain">
-                  <span className="ov5-bline1">{row.object} · {row.reason}</span>
-                  <span className="ov5-bline2">责任 {row.responsibleModule} · 下一步 {row.nextAction}</span>
-                </span>
-                {row.href ? <Link className="ov5-hgo" to={row.href}>去处理</Link> : null}
-              </li>
-            ))}
+            {rows.map((row) => {
+              // 骨架三态：失败 / 超时 / 滞后（审批未过期时写「待批」，不冒充超时）。
+              const tag =
+                row.responsibleModule === '运行'
+                  ? '失败'
+                  : row.responsibleModule === '审批'
+                    ? row.overSLA
+                      ? '超时'
+                      : '待批'
+                    : row.overSLA
+                      ? '超时'
+                      : '滞后';
+              const impact =
+                row.responsibleModule === '运行'
+                  ? 'SLA'
+                  : row.responsibleModule === '审批'
+                    ? '上岗率'
+                    : row.responsibleModule === '任务'
+                      ? '派工'
+                      : '引用门';
+              return (
+                <li key={`${row.responsibleModule}-${row.object}`} className="ov5-blkrow">
+                  <Badge tone={tag === '失败' ? 'destructive' : 'warning'}>{tag}</Badge>
+                  <span className="ov5-bmain">
+                    <span className="ov5-bline1">
+                      {row.object}
+                      {row.waitingSince ? ` · 等待 ${ageText(row.waitingSince)}` : ` · ${row.reason}`}
+                    </span>
+                    <span className="ov5-bline2">
+                      责任 {row.responsibleModule} · 下一步 {row.nextAction} · 影响 {impact}
+                    </span>
+                  </span>
+                  {row.href ? <Link className="ov5-hgo" to={row.href}>去处理</Link> : null}
+                </li>
+              );
+            })}
           </ul>
         )}
         {unavailable ? (
@@ -1286,7 +1402,9 @@ function Blockers({
             <Button size="sm" outlined onClick={onRetry} data-testid="ov6-blockers-retry">重试</Button>
           </div>
         ) : null}
-        <p className="ov5-block-foot ov5-blk-foot">失败运行按一组计；任务与审批每条各一行。</p>
+        <BlockFoot items={blockSources} testid="ov6-blockers-stamp">
+          失败运行按一组计；任务与审批每条各一行，缺源不补齐。
+        </BlockFoot>
       </CardContent>
     </Card>
   );
@@ -1309,31 +1427,37 @@ function PendingCard({ data, onRetry }: { data: DutyData; onRetry: () => void })
           </h2>
           <Link to="/approvals">查看全部{pending === null ? '' : ` (${pending})`} →</Link>
         </div>
-        {rows.length === 0 ? (
-          <div className="ov5-empty-line">
-            <IconInbox className="ov5-i ov5-i-16" />
-            <span>{data.approvals.k === 'error' ? '审批列表没有读出来（见上方重试）' : '今天没有待你处理的审批。'}</span>
-          </div>
-        ) : (
-          <ul className="ov5-rows">
-            {rows.map((row) => (
-              <li key={row.approvalId}>
+        <div className="ov5-hlist">
+          {rows.length === 0 ? (
+            <div className="ov5-hrow ov5-emptyrow">
+              <span className="ov5-ht">
+                {data.approvals.k === 'error'
+                  ? '审批列表没有读出来（见上方重试）'
+                  : '今天没有待你处理的审批'}
+              </span>
+              <span className="ov5-hm">{pending === null ? '—' : `${pending} 待批`}</span>
+            </div>
+          ) : (
+            rows.map((row) => (
+              <div className="ov5-hrow" key={row.approvalId}>
                 <span className="ov5-ht" title={row.title ?? row.approvalId}>
                   {row.title ?? '未命名审批'}
                 </span>
-                <span className="ov5-hm">{row.createdAt ? beijing(row.createdAt).slice(11) : '无'}</span>
-              </li>
-            ))}
-          </ul>
-        )}
+                <span className="ov5-hm">
+                  {ageText(row.createdAt)}
+                </span>
+              </div>
+            ))
+          )}
+        </div>
         <div className="ov5-pending-foot" data-testid="ov6-kpi-pending" data-duty-testid="duty-kpi-pending">
           <span className="ov5-pending-count">
-            待批{' '}
+            其中待批{' '}
             <span className={pending !== null && pending > 0 ? 'ov5-kpi-value ov5-count-warn' : 'ov5-kpi-value'}>
               {pending === null ? '—' : pending}
             </span>
           </span>
-          <span>最早 {first?.createdAt ? beijing(first.createdAt) : '无'}</span>
+          <span>最早 {first?.createdAt ? beijing(first.createdAt) : '—'}</span>
           <IssueRows issues={issue} onRetry={onRetry} testid="ov6-kpi-pending" />
           <Freshness items={[{ source: '审批统计', state: data.approvalStats }]} testid="ov6-kpi-pending-stamp" />
         </div>
@@ -1344,6 +1468,12 @@ function PendingCard({ data, onRetry }: { data: DutyData; onRetry: () => void })
 
 function RecentActivity({ data, onRetry }: { data: DutyData; onRetry: () => void }) {
   const runs = data.recentRuns;
+  const names = new Map<string, string>();
+  if (data.employees.k === 'ready') {
+    for (const emp of data.employees.data) {
+      if (emp.employeeId && emp.name) names.set(emp.employeeId, emp.name);
+    }
+  }
   return (
     <Card className="ov5-block" data-testid="ov6-activity" data-duty-testid="duty-activity">
       <CardContent className="ov5-block-bd">
@@ -1375,34 +1505,41 @@ function RecentActivity({ data, onRetry }: { data: DutyData; onRetry: () => void
             </Link>
           </div>
         ) : (
-          <ul className="ov5-rows">
-            {runs.data.slice(0, 3).map((run) => (
-              <li key={run.runId} data-testid="ov6-activity-row">
-                <Link to={`/runs/${encodeURIComponent(run.runId)}`} title={run.runId}>
-                  {shortId(run.runId)}
-                </Link>
-                <span
-                  className={`ov5-runstate ${
-                    run.status === 'failed'
-                      ? 'failed'
-                      : run.status === 'completed'
-                        ? 'success'
-                        : run.status === 'running'
-                          ? 'running'
-                          : 'unknown'
-                  }`}
-                  // OM-07 状态四词表封闭：成功/失败/运行中/—；未知原值不进徽标文本，落 title 供核对。
-                  title={run.status && !['failed', 'completed', 'running'].includes(run.status) ? `上游状态：${run.status}` : undefined}
-                >
-                  {run.status === 'failed' ? '失败' : run.status === 'completed' ? '成功' : run.status === 'running' ? '运行中' : '—'}
-                </span>
-                <span className="ov5-mono">{beijing(run.startedAt)}</span>
-                <span className="ov5-hm">{duration(run.startedAt, run.endedAt)}</span>
-              </li>
-            ))}
-          </ul>
+          <div className="ov5-hlist">
+            {runs.data.slice(0, 3).map((run) => {
+              const name = run.employeeId ? names.get(run.employeeId) : undefined;
+              return (
+                <div className="ov5-hrow" key={run.runId} data-testid="ov6-activity-row">
+                  <Link
+                    className="ov5-ht"
+                    to={`/runs/${encodeURIComponent(run.runId)}`}
+                    title={`${run.runId}${run.startedAt ? ` · 开始 ${beijing(run.startedAt)}（北京时间）` : ''}`}
+                  >
+                    {shortId(run.runId)}
+                    {name ? ` · ${name}` : ''}
+                  </Link>
+                  <span
+                    className={`ov5-runstate ${
+                      run.status === 'failed'
+                        ? 'failed'
+                        : run.status === 'completed'
+                          ? 'success'
+                          : run.status === 'running'
+                            ? 'running'
+                            : 'unknown'
+                    }`}
+                    // OM-07 状态四词表封闭：成功/失败/运行中/—；未知原值不进徽标文本，落 title 供核对。
+                    title={run.status && !['failed', 'completed', 'running'].includes(run.status) ? `上游状态：${run.status}` : undefined}
+                  >
+                    {run.status === 'failed' ? '失败' : run.status === 'completed' ? '成功' : run.status === 'running' ? '运行中' : '—'}
+                  </span>
+                  <span className="ov5-hm">{shortDuration(run.startedAt, run.endedAt)}</span>
+                </div>
+              );
+            })}
+          </div>
         )}
-        <p className="ov5-block-foot">最近 3 次 · 详情在运行记录。</p>
+        <p className="ov5-block-foot">最近 3 次 · 耗时取 startedAt→endedAt（亚秒写 &lt;1s）· 详情在运行记录。</p>
       </CardContent>
     </Card>
   );
@@ -1414,6 +1551,7 @@ export function OverviewView({
   probe,
   health,
   summary,
+  trend,
   loading,
   onRetry,
   rangeId = DEFAULT_DUTY_RANGE,
@@ -1428,6 +1566,8 @@ export function OverviewView({
   health?: Loadable<HealthSourcesBody>;
   /** /overview/summary：BFF 聚合的今日成本（运行统计口径）兜底主数字。 */
   summary?: Loadable<OverviewSummaryBody>;
+  /** 趋势首选读口（本模块 run-stats 腿，带 totals）；空/失败回落 duty 的 stats14。 */
+  trend?: Loadable<RunStatsBody>;
   loading: boolean;
   onRetry: () => void;
   /** OM-04：?range= 四档窗口；onRange 缺席时（夹具直渲染）不画分段控件。 */
@@ -1451,6 +1591,11 @@ export function OverviewView({
     matrix,
   });
   const costView = buildCost(budgetDay, budgetMonth, kpis.total);
+  // 月实扣只认月账本自身；日账本没读到时整卡成本口径不上屏（不让月数字孤立显眼）。
+  const monthActual =
+    data.budgetDay.k === 'ready' && budgetMonth
+      ? sumCost(budgetMonth.items as Array<{ costUsd?: number | null }> | undefined)
+      : null;
   const liveCostUsd =
     summary?.k === 'ready' ? num(summary.data.todayCostUsd?.value) : null;
   // 单卡不再画无轴火花小图：14 天趋势只由下方的 Trend 块承担，避免「图坏了」的观感。
@@ -1492,6 +1637,21 @@ export function OverviewView({
     probeGateway && typeof probeGateway.status === 'string' && probeGateway.status
       ? probeGateway.status
       : null;
+  // 平台在线数只为出站条的第二组读数，来源就是同一份探针回包。
+  const platformStates =
+    probeGateway && probeGateway.platforms && typeof probeGateway.platforms === 'object'
+      ? Object.values(probeGateway.platforms as Record<string, unknown>)
+      : null;
+  const platformsTotal = platformStates ? platformStates.length : null;
+  const platformsOnline = platformStates
+    ? platformStates.filter((row) => {
+        return (
+          typeof row === 'object' &&
+          row !== null &&
+          (row as { state?: unknown }).state === 'connected'
+        );
+      }).length
+    : null;
   const probeForStamp: Loadable<unknown> =
     probeState.k === 'ready' ? { k: 'ready', data: { asOf: probeUpdatedAt } } : (probeState as Loadable<unknown>);
   const probeText = probeStatus
@@ -1721,7 +1881,7 @@ export function OverviewView({
           data={data}
           kpis={kpis}
           matrix={matrix}
-          monthUsd={costView.monthUsd}
+          monthActual={monthActual}
           liveCostUsd={liveCostUsd}
           coveredRows={costView.covered}
           onRetry={onRetry}
@@ -1736,12 +1896,14 @@ export function OverviewView({
         pendingLoading={data.approvalStats.k === 'loading'}
         gateway={probeStatus}
         gatewayLoading={probeState.k === 'loading'}
+        platformsOnline={platformsOnline}
+        platformsTotal={platformsTotal}
         liveCostUsd={liveCostUsd}
         costLoading={data.budgetDay.k === 'loading' || summary?.k === 'loading'}
       />
 
       <div className="ov5-homegrid r2">
-        <Trend stats={data.stats14} label={range.label} days={range.days} onRetry={onRetry} />
+        <Trend stats={data.stats14} trend={trend} label={range.label} days={range.days} onRetry={onRetry} />
         <HourActivity activity={data.activity} label={range.label} onRetry={onRetry} />
       </div>
 
@@ -1794,11 +1956,22 @@ function LiveOverview({ rangeId, onRange, rangeInvalid }: { rangeId: DutyRangeId
   // 阻塞条服务数 + 今日成本兜底：都走 BFF 现成端点，取不到就写未接入。
   const [health, setHealth] = useState<Loadable<HealthSourcesBody>>({ k: 'loading' });
   const [summary, setSummary] = useState<Loadable<OverviewSummaryBody>>({ k: 'loading' });
+  // 趋势首选腿：run-stats 带 totals，缺日可做合计闭合证明；失败则回落 stats14。
+  const [trend, setTrend] = useState<Loadable<RunStatsBody>>({ k: 'loading' });
 
   const loadMatrix = useCallback(() => {
     setMatrix({ k: 'loading' });
     void load(fetchMatrix).then(setMatrix);
   }, []);
+
+  const loadTrend = useCallback(() => {
+    setTrend({ k: 'loading' });
+    void load(() => fetchTrendRuns(dutyRange(rangeId).days)).then(setTrend);
+  }, [rangeId]);
+
+  useEffect(() => {
+    loadTrend();
+  }, [loadTrend]);
 
   const loadProbe = useCallback(() => {
     setProbe({ k: 'loading' });
@@ -1820,15 +1993,17 @@ function LiveOverview({ rangeId, onRange, rangeInvalid }: { rangeId: DutyRangeId
     loadProbe();
     loadHealth();
     loadSummary();
-  }, [loadMatrix, loadProbe, loadHealth, loadSummary]);
+    loadTrend();
+  }, [loadMatrix, loadProbe, loadHealth, loadSummary, loadTrend]);
 
   const retry = useCallback(() => {
     loadMatrix();
     loadProbe();
     loadHealth();
     loadSummary();
+    loadTrend();
     reload();
-  }, [loadMatrix, loadProbe, loadHealth, loadSummary, reload]);
+  }, [loadMatrix, loadProbe, loadHealth, loadSummary, loadTrend, reload]);
 
   const hasError =
     matrix.k === 'error' ||
@@ -1853,6 +2028,7 @@ function LiveOverview({ rangeId, onRange, rangeInvalid }: { rangeId: DutyRangeId
       probe={probe}
       health={health}
       summary={summary}
+      trend={trend}
       loading={loading}
       onRetry={retry}
       rangeId={rangeId}
