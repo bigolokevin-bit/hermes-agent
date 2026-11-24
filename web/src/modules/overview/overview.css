@@ -427,3 +427,14 @@ section.ov5-page > textarea[data-testid="ov6-summary-fallback"] {
   background: var(--color-background, #fff);
   color: var(--color-foreground);
 }
+
+/* OM-18 趋势分页与缺失图例；OM-19 状态点。dot 只走 data-appearance 形制，禁 bg-*-900 类硬色（T2D 纪律）。 */
+.ov5-legend { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 8px; font-size: var(--font-size-1); color: var(--color-text-muted); }
+.ov5-legend-item { display: inline-flex; align-items: center; gap: 6px; }
+.ov5-pager { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.ov5-pager [data-testid="ov6-trend-pager-page"] { font-size: var(--font-size-1); color: var(--color-text-muted); }
+.ov5-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; background: var(--fg-2); flex: none; }
+.ov5-dot[data-appearance="value"] { background: var(--ok); }
+.ov5-dot[data-appearance="success"] { background: var(--ok); }
+.ov5-dot[data-appearance="attention"] { background: var(--warn); }
+.ov5-dot[data-appearance="missing"] { background: transparent; border: 1.5px dashed var(--fg-2); }

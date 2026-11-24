@@ -75,17 +75,45 @@ function view(specs: BucketSpec[], days: 7 | 14 | 30 = 14) {
 }
 
 describe('OM-06 趋势柱与读口逐桶对齐', () => {
-  it('12 桶含 2 个 null：柱子总数 12，is-missing 恰 2，缺桶 title 说「未返回」', async () => {
+  /** OM-18 分页形制：先回到第 1 页，再逐页收集（保持桶序）。 */
+  async function collectBars(): Promise<Element[]> {
+    const prev = container.querySelector(
+      '[data-testid="ov6-trend-pager-prev"]',
+    ) as HTMLButtonElement | null;
+    if (prev) {
+      while (!prev.disabled) {
+        await act(async () => {
+          prev.click();
+        });
+      }
+    }
+    const seen: Element[] = [];
+    for (let guard = 0; guard < 12; guard += 1) {
+      seen.push(...Array.from(container.querySelectorAll('.ov5-bar')));
+      const next = container.querySelector(
+        '[data-testid="ov6-trend-pager-next"]',
+      ) as HTMLButtonElement | null;
+      if (!next || next.disabled) break;
+      await act(async () => {
+        next.click();
+      });
+    }
+    return seen;
+  }
+
+  it('12 桶含 2 个 null：逐页共 12 根、is-missing 恰 2，缺桶 title 说「未返回」且不画内芯', async () => {
     const specs: BucketSpec[] = Array.from({ length: 12 }, (_, i) =>
       i === 3 || i === 9 ? { runs: null } : { runs: i + 1, failed: 0 },
     );
     await render(view(specs));
-    const bars = container.querySelectorAll('.ov5-bar');
+    // OM-18：默认最后一页（最新 5 天），分页控件在场。
+    expect(container.querySelector('[data-testid="ov6-trend-pager"]')).toBeTruthy();
+    const bars = await collectBars();
     expect(bars.length).toBe(12);
-    const missing = container.querySelectorAll('.ov5-bar.is-missing');
+    const missing = bars.filter((b) => b.classList.contains('is-missing'));
     expect(missing.length).toBe(2);
     // 缺桶不画内芯柱（不以 0 高柱冒充「没有」，也不以缺值冒充 0 次运行）。
-    for (const m of Array.from(missing)) {
+    for (const m of missing) {
       expect(m.querySelector('.ov5-bar-track i')).toBeNull();
       expect(m.getAttribute('title')).toContain('未返回');
     }
@@ -93,6 +121,39 @@ describe('OM-06 趋势柱与读口逐桶对齐', () => {
     expect(bars[3].classList.contains('is-missing')).toBe(true);
     expect(bars[9].classList.contains('is-missing')).toBe(true);
     expect(bars[4].classList.contains('is-missing')).toBe(false);
+  });
+
+  it('缺桶进「缺失」图例：当页缺桶日期列名，无缺桶页写「本页没有」，且不进柱体文本假 0', async () => {
+    const specs: BucketSpec[] = Array.from({ length: 12 }, (_, i) =>
+      i === 3 || i === 9 ? { runs: null } : { runs: i + 1, failed: 0 },
+    );
+    await render(view(specs));
+    // 12 桶 → 3 页；默认停在最后一页（桶 10-11 就绪）→ 当页「本页没有」。
+    const legend = container.querySelector('[data-testid="ov6-trend-legend-missing"]');
+    expect(legend?.textContent).toContain('缺失');
+    expect(legend?.textContent).toContain('本页没有');
+    expect(container.querySelector('[data-testid="ov6-trend"]')?.textContent).not.toMatch(/缺失[：:].*0/);
+    // 翻回第 2 页（桶 5-9）：缺桶 index 9 → 标签 11/10（zh 斜杠形制） 上图例。
+    await act(async () => {
+      (container.querySelector('[data-testid="ov6-trend-pager-prev"]') as HTMLButtonElement).click();
+    });
+    expect(container.querySelector('[data-testid="ov6-trend-legend-missing"]')?.textContent).toContain('11/10');
+    // 再翻第 1 页（桶 0-4）：缺桶 index 3 → 11/04。
+    await act(async () => {
+      (container.querySelector('[data-testid="ov6-trend-pager-prev"]') as HTMLButtonElement).click();
+    });
+    // 现在第 1 页（桶 0-4）缺桶 index 3 → 11/04 在图例。
+    expect(container.querySelector('[data-testid="ov6-trend-legend-missing"]')?.textContent).toContain('11/04');
+    // 全就绪窗：图例存在且写「本页没有」。
+    await act(async () => {
+      root.unmount();
+    });
+    container.remove();
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    root = createRoot(container);
+    await render(view(Array.from({ length: 6 }, (_, i) => ({ runs: i + 1 }))));
+    expect(container.querySelector('[data-testid="ov6-trend-legend-missing"]')?.textContent).toContain('本页没有');
   });
 
   it('悬停 title 含「失败 n」，失败数不进柱高（只进说明）', async () => {
@@ -108,13 +169,16 @@ describe('OM-06 趋势柱与读口逐桶对齐', () => {
     expect(trendText).toContain('失败次数在悬停说明里');
   });
 
-  it('全 null 桶：不画骨架（bars=0），空态说「没有返回」而不是「还没有运行记录」', async () => {
-    await render(view(Array.from({ length: 5 }, () => ({ runs: null }))));
+  it('全 null 桶：不画骨架（bars=0）也不出 0，空态说「没有返回」而不是「还没有运行记录」，且不分页', async () => {
+    await render(view(Array.from({ length: 14 }, () => ({ runs: null }))));
     expect(container.querySelectorAll('.ov5-bar').length).toBe(0);
     expect(container.querySelector('[data-testid="ov6-trend-missing"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="ov6-trend-pager"]')).toBeNull();
+    expect(container.querySelector('[data-testid="ov6-trend-legend"]')).toBeNull();
     const trendText = container.querySelector('[data-testid="ov6-trend"]')?.textContent ?? '';
     expect(trendText).toContain('没有返回');
     expect(trendText).not.toContain('还没有运行记录');
+    expect(trendText).not.toContain(' 0 ');
   });
 
   it('全 0 桶（真零）：bars=0，走「还没有运行记录」空态，不以 4px  stub 冒充读数', async () => {
@@ -125,10 +189,10 @@ describe('OM-06 趋势柱与读口逐桶对齐', () => {
     expect(container.querySelector('[data-testid="ov6-trend-missing"]')).toBeNull();
   });
 
-  it('桶上限随档位：30 桶输入 → 30d 画 30 根、14d 画 14 根、7d 画 7 根', async () => {
+  it('桶上限随档位（OM-18 分页后逐页计数）：30 桶输入 → 30d 共 30 根、14d 共 14 根、7d 共 7 根', async () => {
     const specs: BucketSpec[] = Array.from({ length: 30 }, (_, i) => ({ runs: i + 1 }));
     await render(view(specs, 30));
-    expect(container.querySelectorAll('.ov5-bar').length).toBe(30);
+    expect((await collectBars()).length).toBe(30);
     await act(async () => {
       root.unmount();
     });
@@ -137,7 +201,7 @@ describe('OM-06 趋势柱与读口逐桶对齐', () => {
     document.body.appendChild(container);
     root = createRoot(container);
     await render(view(specs, 14));
-    expect(container.querySelectorAll('.ov5-bar').length).toBe(14);
+    expect((await collectBars()).length).toBe(14);
     await act(async () => {
       root.unmount();
     });
@@ -146,7 +210,7 @@ describe('OM-06 趋势柱与读口逐桶对齐', () => {
     document.body.appendChild(container);
     root = createRoot(container);
     await render(view(specs, 7));
-    expect(container.querySelectorAll('.ov5-bar').length).toBe(7);
+    expect((await collectBars()).length).toBe(7);
   });
 
   it('除零防线与混合窗：0/正数/null 混排不崩，柱高全是合法百分比（无 NaN）', async () => {

@@ -56,3 +56,12 @@
 - 新增 overview.asof.test.tsx 6 例：①系统时钟拨前 24h 屏上时刻逐字不变（假时钟反证）；②R41 多源只挂最大分钟（12:24 胜 12:20/12:21）；③跨页 parity——sourceStamp(ready{asOf}).shown 与 metrics asOfText(iso) 字节相等，缺值双页同写「—」；④⑤⑥ready/loading/error 三态 ov6-asof 永不缺席，loading/error 值「采集时刻 —（北京时间）」且 title 给原因。
 - DoD 实测：grep -n "new Date()" OverviewPage.tsx | grep -v setTimeout | wc -l = 0；模块 vitest 8 文件 58/58；vite build EXIT=0（dist 残留即 rm）。
 - 步骤④ once-live 抽核（脸 9131，真 BFF）：屏 ASOF_LINE=「采集时刻 北京时间 2026-11-24 08:21 · 每卡来源见卡内标注」= 本批真响应 asOf 最大值 → OM11_PARITY_OK；证据 docs/_artifacts/OM-11-asof-parity/parity.json + om11-asof-1440.png。
+
+## OM-18 趋势缺桶分页（T2D 件1，2026-11-24，基线 4a9e5d2732）
+
+- 分页：每页 5 柱（TREND_PAGE_SIZE），默认停在最新页；页控件 ov6-trend-pager（prev/next 边界置灰）+ ov6-trend-pager-page「第 x / y 页」；趋势 aria-label 带页码。
+- 「缺失」图例：ov6-trend-legend，每页列出缺桶日期（zh 斜杠标签形制，如 11/10），当页无缺桶写「缺失：本页没有」；缺桶不进柱体文本、不吐假 0。
+- 全桶 null：ov6-trend-missing 空态句保留，不画柱、不分页、不出图例（钉测 14 桶全 null 例：bars=0 且无 ov6-trend-pager/ov6-trend-legend，无「 0 」）。
+- 分页后钉测同步改形制：trend/window 用 collectBars 逐页收集（7d 共 7 根/2 页、14d 共 14 根/3 页、30d 共 30 根/6 页；12 桶含 2 null 逐桶对齐 is-missing 与 title「未返回」不变）。
+- 测试：vitest run src/modules/overview → **8 文件 59 passed / 59**（face 58 + 图例 1）；`node_modules/.bin/vite build` EXIT=0，随后 rm -rf hermes_cli/web_dist（e1Contract 残留坑）。
+- DoD 口径：bg-*-900 在本模块 css 中仅出现在禁令注释行「禁 bg-*-900 类硬色（T2D 纪律）」，类选择器零使用；dot 一律 data-appearance（value/success/attention/missing）走 --ok/--warn 令牌；字号走 var(--font-size-1) 守 font-scale 棘轮。

@@ -156,10 +156,39 @@ describe('OM-04 趋势桶数与空态句随窗', () => {
     } as unknown as DutyData;
   }
 
-  it('trendPoints 按档位天数收口：30 桶输入 → 7d 画 7 根、14d 画 14 根', async () => {
+  /** OM-18 分页形制：先回到第 1 页，再逐页翻到底，按页内顺序收集所有柱子。 */
+  async function collectBars(): Promise<Element[]> {
+    const prev = container.querySelector(
+      '[data-testid="ov6-trend-pager-prev"]',
+    ) as HTMLButtonElement | null;
+    if (prev) {
+      while (!prev.disabled) {
+        await act(async () => {
+          prev.click();
+        });
+      }
+    }
+    const seen: Element[] = [];
+    for (let guard = 0; guard < 12; guard += 1) {
+      seen.push(...Array.from(container.querySelectorAll('.ov5-bar')));
+      const next = container.querySelector(
+        '[data-testid="ov6-trend-pager-next"]',
+      ) as HTMLButtonElement | null;
+      if (!next || next.disabled) break;
+      await act(async () => {
+        next.click();
+      });
+    }
+    return seen;
+  }
+
+  it('trendPoints 按档位天数收口（OM-18 分页后逐页计数）：30 桶输入 → 7d 共 7 根/2 页、14d 共 14 根/3 页', async () => {
     const data = fixtureWithBuckets(30);
     await render(<OverviewView data={data} matrix={ready({ items: [] })} loading={false} onRetry={() => {}} rangeId="7d" />);
-    expect(container.querySelectorAll('.ov5-bar').length).toBe(7);
+    // 默认停在最新一页：7 桶 = 2 页，末页只剩 2 根。
+    expect(container.querySelectorAll('.ov5-bar').length).toBe(2);
+    expect(container.querySelector('[data-testid="ov6-trend-pager-page"]')?.textContent).toContain('第 2 / 2 页');
+    expect((await collectBars()).length).toBe(7);
     await act(async () => {
       root.unmount();
     });
@@ -168,7 +197,8 @@ describe('OM-04 趋势桶数与空态句随窗', () => {
     document.body.appendChild(container);
     root = createRoot(container);
     await render(<OverviewView data={data} matrix={ready({ items: [] })} loading={false} onRetry={() => {}} rangeId="14d" />);
-    expect(container.querySelectorAll('.ov5-bar').length).toBe(14);
+    expect(container.querySelector('[data-testid="ov6-trend-pager-page"]')?.textContent).toContain('第 3 / 3 页');
+    expect((await collectBars()).length).toBe(14);
   });
 
   it('空窗时提示句随窗：30d 档说「近 30 天还没有运行记录」', async () => {

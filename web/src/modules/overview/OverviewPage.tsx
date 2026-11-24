@@ -154,6 +154,9 @@ function KpiCard({
   );
 }
 
+/** OM-18（T2D 件1）：趋势每页 5 柱；缺桶进「缺失」图例，不画柱体也不以 0 冒充。 */
+const TREND_PAGE_SIZE = 5;
+
 function Trend({ stats, label = '近 14 天', days = 14, onRetry }: { stats: Loadable<RunStatsBody>; label?: string; days?: number; onRetry: () => void }) {
   const points = stats.k === 'ready' ? trendPoints(stats.data, days) : [];
   // OM-06 数据契约：全缺桶（未返回）与全真零各走各的空态文案，都不画骨架/4px 柱；
@@ -161,6 +164,13 @@ function Trend({ stats, label = '近 14 天', days = 14, onRetry }: { stats: Loa
   const allMissing = points.length > 0 && points.every((p) => p.runs === null);
   const allZero = points.length > 0 && points.every((p) => p.runs === 0);
   const max = Math.max(1, ...points.map((p) => p.runs ?? 0));
+  // OM-18 分页：页数按窗口派生；用户翻页后若窗口变化越界，钳回最后一页（默认最新 5 天）。
+  const pageCount = Math.max(1, Math.ceil(points.length / TREND_PAGE_SIZE));
+  const [pendingPage, setPendingPage] = useState<number | null>(null);
+  const lastPage = pageCount - 1;
+  const page = Math.min(pendingPage ?? lastPage, lastPage);
+  const visible = points.slice(page * TREND_PAGE_SIZE, page * TREND_PAGE_SIZE + TREND_PAGE_SIZE);
+  const missingInView = visible.filter((p) => p.runs === null);
   return (
     <Card className="ov5-block" data-testid="ov6-trend" data-duty-testid="duty-trend">
       <CardContent className="ov5-block-bd">
@@ -188,8 +198,8 @@ function Trend({ stats, label = '近 14 天', days = 14, onRetry }: { stats: Loa
           </div>
         ) : (
           <>
-            <div className="ov5-bars" role="img" aria-label={`${label}运行趋势`}>
-              {points.map((point) => (
+            <div className="ov5-bars" role="img" aria-label={`${label}运行趋势（第 ${page + 1} 页，共 ${pageCount} 页）`}>
+              {visible.map((point) => (
                 <div
                   className={point.runs === null ? 'ov5-bar is-missing' : 'ov5-bar'}
                   key={point.label}
@@ -208,7 +218,40 @@ function Trend({ stats, label = '近 14 天', days = 14, onRetry }: { stats: Loa
                 </div>
               ))}
             </div>
-            <p className="ov5-block-foot">柱高表示当日运行次数；失败次数在悬停说明里，不与单价相乘。</p>
+            {/* OM-18 缺失图例：缺桶逐页如实列出，不以 0 冒充，也不静默吞掉。 */}
+            <div className="ov5-legend" data-testid="ov6-trend-legend">
+              <span className="ov5-legend-item">
+                <span className="ov5-dot" data-appearance="value" aria-hidden /> 有读数
+              </span>
+              <span className="ov5-legend-item" data-testid="ov6-trend-legend-missing">
+                <span className="ov5-dot" data-appearance="missing" aria-hidden /> 缺失
+                {missingInView.length > 0 ? `：${missingInView.map((p) => p.label).join('、')}` : '：本页没有'}
+              </span>
+            </div>
+            {pageCount > 1 ? (
+              <div className="ov5-pager" data-testid="ov6-trend-pager">
+                <Button
+                  size="sm"
+                  outlined
+                  data-testid="ov6-trend-pager-prev"
+                  disabled={page === 0}
+                  onClick={() => setPendingPage(Math.max(0, page - 1))}
+                >
+                  上一页
+                </Button>
+                <span data-testid="ov6-trend-pager-page">第 {page + 1} / {pageCount} 页</span>
+                <Button
+                  size="sm"
+                  outlined
+                  data-testid="ov6-trend-pager-next"
+                  disabled={page === lastPage}
+                  onClick={() => setPendingPage(Math.min(lastPage, page + 1))}
+                >
+                  下一页
+                </Button>
+              </div>
+            ) : null}
+            <p className="ov5-block-foot">每页 {TREND_PAGE_SIZE} 根柱；柱高表示当日运行次数（按全窗峰值归一），失败次数在悬停说明里，不与单价相乘。</p>
           </>
         )}
       </CardContent>
