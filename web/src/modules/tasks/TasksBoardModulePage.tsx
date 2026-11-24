@@ -495,6 +495,13 @@ export function TasksBoardModulePage() {
     [board.rows],
   );
 
+  // 破折号治理（2026-11-24）：成本整列无读口时不渲染该列，缺失只在卡底点名一次。
+  // 有回传的行照常显示金额；没有回传的行不摆「—」占位，也不按 0 计。
+  const costCoverage = useMemo(() => {
+    const priced = board.rows.filter((row) => typeof row.cost === "number" && Number.isFinite(row.cost)).length;
+    return { any: priced > 0, missing: board.rows.length - priced, total: board.rows.length };
+  }, [board.rows]);
+
   // QA V4-R4 条目1: 取数失败或还在加载时，汇总不给硬零——只有请求成功且
   // 数据确为空才允许显示 0。
   const countsUnknown = board.phase === "loading" || board.phase === "error" || board.phase === "denied";
@@ -834,7 +841,10 @@ export function TasksBoardModulePage() {
                 <div className="console-board__head">
                   <h2 className="console-board__title">{COLUMN_LABEL[status]}</h2>
                   {rows.length === 0 ? (
-                    <span className="console-board__count" title="这一列当前是空的；空列不计数为 0">—</span>
+                    // 列读成功、真没有行：这是挣来的 0，不写成缺数符号。
+                    <span className="console-board__count ui-c-num" title="这一列为空是真读数：本页确实没有该状态的任务">
+                      0
+                    </span>
                   ) : (
                     <span className="console-board__count" title="排序：优先级（高→低），同级按更新时间（新→旧）">
                       {rows.length} 条（本页已加载）
@@ -864,7 +874,10 @@ export function TasksBoardModulePage() {
                           <Pill tone={tone} dot={false} title={`优先级：${priority.text}`}>{priority.text}</Pill>
                         </div>
                         <div className="console-board__foot">
-                          <span>{`更新 ${beijing(row.updatedAt)} · 成本 ${money(row.cost)}`}</span>
+                          <span>
+                            {`更新 ${beijing(row.updatedAt)}`}
+                            {costCoverage.any && typeof row.cost === "number" ? ` · 成本 ${money(row.cost)}` : ""}
+                          </span>
                         </div>
                         {row.progressNote ? (
                           <div className="console-board__foot">
@@ -890,11 +903,21 @@ export function TasksBoardModulePage() {
       ) : null}
 
       {!panelActive && boardReady ? (
-        <ConsoleCard>
+        <ConsoleCard
+          note="拖动排序未启用；看板顺序按任务状态由后端决定"
+          availability={[
+            costCoverage.any
+              ? {
+                  label: "任务成本",
+                  reason: `${costCoverage.missing} 条没有回传成本；缺的不按 0 计，也不在卡面摆占位符`,
+                }
+              : { label: "任务成本", reason: "任务读口这次没有回传成本；有回传的行会自动恢复显示，缺的不按 0 计" },
+            { label: "今日目标数", reason: "没有读口返回每日完成目标；这里不再列没有来源的目标对比" },
+          ]}
+        >
           <div className="console-toolbar console-sub" data-testid="tsk4-board-foot">
-            <span>拖动排序未启用；看板顺序按任务状态由后端决定</span>
+            <span className="console-mono">今日完成 {todayDone}</span>
             <span className="console-grow" />
-            <span className="console-mono">今日完成 {todayDone} / 目标 —</span>
             <span className="console-mono">本页 {visibleRows.length} 条</span>
           </div>
         </ConsoleCard>

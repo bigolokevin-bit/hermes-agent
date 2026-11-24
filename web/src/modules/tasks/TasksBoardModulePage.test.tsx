@@ -108,10 +108,16 @@ describe("TasksBoardModulePage", () => {
     expect(container.textContent).not.toContain("emp_1a2b3c4d");
     expect(container.textContent).not.toContain("human:7");
     expect(container.textContent).not.toContain("HTTP");
-    // T14 R2: 更新时间（BJT 到分）与成本列，缺失为「—」。
+    // T14 R2 + 破折号治理（2026-11-24）：有回传的行显示金额，没回传的行不摆
+    // 占位符；缺失只在卡底「数据可用性」点名一次，正文不再出现「成本 —」。
     expect(container.textContent).toContain("更新 2026-11-18 10:00");
     expect(container.textContent).toContain("成本 $12.34");
-    expect(container.textContent).toContain("成本 —");
+    expect(container.textContent).not.toContain("成本 —");
+    const costNote = [...container.querySelectorAll(".console-card__availability-label")].find(
+      (el) => el.textContent === "任务成本",
+    );
+    expect(costNote, "卡底点名任务成本缺失").toBeTruthy();
+    expect(costNote?.parentElement?.textContent ?? "").toContain("3 条没有回传成本");
   });
 
   it("maps unknown statuses to 待核实 and never invents money", async () => {

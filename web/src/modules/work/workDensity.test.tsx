@@ -166,4 +166,54 @@ describe("/work 信息密度契约", () => {
     // 读不到统计时数字是「—」（本用例给了真读数，先不出现 0 冒充）
     expect(host.querySelector('[data-testid="run5-counts"]')?.textContent ?? "").toContain("本页 1 次");
   });
+
+  it("破折号治理：整列没有任务关联时收起「任务」列，卡底只点名一次", async () => {
+    api.fetchJSON.mockImplementation(async (url: string) => {
+      const href = String(url);
+      if (href.includes("/api/runs")) {
+        return {
+          items: [
+            { ...listBody().items[0], taskId: undefined },
+            { ...listBody().items[0], runId: "rn_01M7W7WKRVS0J06HVXZD4N7MNQ", taskId: undefined },
+          ],
+          nextCursor: null,
+        };
+      }
+      if (href.includes("/api/run-stats")) return { buckets: [], totals: null };
+      return { items: [] };
+    });
+    const host = await render("/work?tab=runs", createElement(RunsModulePage));
+    await waitFor(() => host.querySelector('[data-testid="run5-row-0"]') !== null, "rows painted");
+
+    // 表还在、其余列名序不动——只是整列缺读口的「任务」列不渲染，行内不摆占位符。
+    expect(host.querySelector('[data-testid="run5-table"]')).not.toBeNull();
+    expect(host.querySelector('[data-testid="run5-head"]')).not.toBeNull();
+    expect(host.querySelector('[data-testid="run5-row-0-task"]')).toBeNull();
+    expect(host.querySelector('[data-testid="run5-row-1-task"]')).toBeNull();
+    const avail = host.querySelector('[data-testid="run5-table"] .console-card__availability');
+    expect(avail, "卡底数据可用性点名任务列").toBeTruthy();
+    expect(avail?.textContent ?? "").toContain("任务列");
+  });
+
+  it("破折号治理：任务面成本整列无回传时不摆占位符，卡底点名一次", async () => {
+    api.fetchJSON.mockImplementation(async (url: string) => {
+      const href = String(url);
+      if (href.includes("/api/tasks")) {
+        return { items: TASKS.map((row) => ({ ...row, cost: undefined })), nextCursor: null };
+      }
+      if (href.includes("/api/matrix")) return { items: [] };
+      return { items: [] };
+    });
+    const host = await render("/work", createElement(TasksBoardModulePage));
+    await waitFor(() => host.querySelector('[data-testid="tsk4-columns"]') !== null, "board painted");
+
+    expect(host.textContent ?? "").not.toContain("成本 —");
+    const foot = host.querySelector('[data-testid="tsk4-board-foot"]');
+    expect(foot, "页脚不再列没有来源的目标对比").toBeTruthy();
+    expect(foot?.textContent ?? "").not.toContain("目标");
+    const avail = host.querySelector(".console-card__availability");
+    expect(avail, "卡底数据可用性点名成本与目标").toBeTruthy();
+    expect(avail?.textContent ?? "").toContain("任务成本");
+    expect(avail?.textContent ?? "").toContain("今日目标数");
+  });
 });

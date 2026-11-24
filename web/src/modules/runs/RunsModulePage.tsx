@@ -338,8 +338,12 @@ function RunPreviewPanel({ row, names, index }: { row: RunRow; names: Map<string
 
 // 骨架 t-runs 的列序：运行 | 员工 | 任务 | 开始 | 耗时 | 成本 | 状态 | 操作。
 // 行壳仍是 li[role=group]（键盘游标与展开逻辑不动），只是网格更紧。
-const GRID =
+// 破折号治理（2026-11-24）：整页没有一行带回任务关联时不渲染「任务」列
+// （列轨同步收起），缺读口在卡底「数据可用性」点名一次，卡面不再铺 30 个占位符。
+const GRID_WITH_TASK =
   "grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,0.85fr)] gap-x-3 gap-y-1 sm:grid-cols-[minmax(0,0.7fr)_minmax(0,1fr)_minmax(0,0.55fr)_minmax(0,0.66fr)_minmax(0,0.46fr)_minmax(0,0.66fr)_minmax(0,0.58fr)_auto]";
+const GRID_NO_TASK =
+  "grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,0.85fr)] gap-x-3 gap-y-1 sm:grid-cols-[minmax(0,0.7fr)_minmax(0,1fr)_minmax(0,0.66fr)_minmax(0,0.46fr)_minmax(0,0.66fr)_minmax(0,0.58fr)_auto]";
 
 function RunListCopy({
   rows,
@@ -570,6 +574,7 @@ function ListRows({
   selectedId,
   cursorRunId,
   onCursorChange,
+  taskColumn,
 }: {
   /**
    * Backlog runs-16: which run holds the single tab stop. The parent remembers
@@ -595,7 +600,10 @@ function ListRows({
    */
   hrefOf: (runId: string) => string;
   previewGate: ListGate;
+  /** 整页读口有没有带回任务关联：没有就不渲染「任务」列，卡底点名一次。 */
+  taskColumn: boolean;
 }): ReactNode {
+  const grid = taskColumn ? GRID_WITH_TASK : GRID_NO_TASK;
   const [openId, setOpenId] = useState<string | null>(null);
   const toggleRefs = useRef(new Map<string, HTMLButtonElement>());
   // Roving tabindex: exactly one row is in the tab order, arrows move focus
@@ -626,27 +634,35 @@ function ListRows({
     else toggleRefs.current.get(rowId)?.focus();
   }, [rows]);
   return (
-    <Card className="min-w-0 border-border bg-card" data-testid="run5-table">
-      <CardContent className="p-0">
-        <div className={`hidden ${GRID} console-grid-head sm:grid`} data-testid="run5-head">
-          <span className="console-grid-head__cell">运行</span>
-          <span className="console-grid-head__cell">员工</span>
-          <span className="console-grid-head__cell">任务</span>
-          <span className="console-grid-head__cell console-grid-head__cell--right">
-            <SortHeader label="开始" sortKey="started" active={sortKey} dir={sortDir} onSort={onSort} disabled={sortDisabled} />
-          </span>
-          <span className="console-grid-head__cell console-grid-head__cell--right">
-            <SortHeader label="耗时" sortKey="elapsed" active={sortKey} dir={sortDir} onSort={onSort} disabled={sortDisabled} />
-          </span>
-          <span className="console-grid-head__cell console-grid-head__cell--right">
-            <SortHeader label="成本" sortKey="cost" active={sortKey} dir={sortDir} onSort={onSort} disabled={sortDisabled} />
-          </span>
-          <span className="console-grid-head__cell">
-            <SortHeader label="状态" sortKey="status" active={sortKey} dir={sortDir} onSort={onSort} disabled={sortDisabled} />
-          </span>
-          <span aria-hidden="true"></span>
-        </div>
-        <ul className="min-w-0">
+    <ConsoleCard
+      flush
+      data-testid="run5-table"
+      note="只读列表 · 行尾「查看」是真链接，可复制或新开标签 · 不发起、不取消；重试入口在只读环境下为禁用态"
+      availability={
+        taskColumn
+          ? undefined
+          : [{ label: "任务列", reason: "这一页读到的运行没有带回任务关联；任何一行带回了，这一列会自动恢复显示" }]
+      }
+    >
+      <div className={`hidden ${grid} console-grid-head sm:grid`} data-testid="run5-head">
+        <span className="console-grid-head__cell">运行</span>
+        <span className="console-grid-head__cell">员工</span>
+        {taskColumn ? <span className="console-grid-head__cell">任务</span> : null}
+        <span className="console-grid-head__cell console-grid-head__cell--right">
+          <SortHeader label="开始" sortKey="started" active={sortKey} dir={sortDir} onSort={onSort} disabled={sortDisabled} />
+        </span>
+        <span className="console-grid-head__cell console-grid-head__cell--right">
+          <SortHeader label="耗时" sortKey="elapsed" active={sortKey} dir={sortDir} onSort={onSort} disabled={sortDisabled} />
+        </span>
+        <span className="console-grid-head__cell console-grid-head__cell--right">
+          <SortHeader label="成本" sortKey="cost" active={sortKey} dir={sortDir} onSort={onSort} disabled={sortDisabled} />
+        </span>
+        <span className="console-grid-head__cell">
+          <SortHeader label="状态" sortKey="status" active={sortKey} dir={sortDir} onSort={onSort} disabled={sortDisabled} />
+        </span>
+        <span aria-hidden="true"></span>
+      </div>
+      <ul className="min-w-0">
           {rows.map((row, index) => {
             const start = beijingMinute(row.startedAt);
             const elapsed = elapsedMinute(row.startedAt, row.endedAt);
@@ -699,7 +715,7 @@ function ListRows({
                   }
                 }}
               >
-                <div className={GRID}>
+                <div className={grid}>
                 <CardField label="运行" labelTestId={`run5-fieldlabel-code-${index}`}>
                   <RunCodeCell row={row} testId={`${base}-code`} />
                 </CardField>
@@ -716,13 +732,15 @@ function ListRows({
                     {employeeLabel(row.employeeId, names)}
                   </span>
                 </CardField>
-                <span
-                  className="hidden min-w-0 truncate text-xs text-muted-foreground sm:block"
-                  data-testid={`${base}-task`}
-                  title={row.taskId ?? "这条运行没有关联任务"}
-                >
-                  {taskLabel(row.taskId)}
-                </span>
+                {taskColumn ? (
+                  <span
+                    className="hidden min-w-0 truncate text-xs text-muted-foreground sm:block"
+                    data-testid={`${base}-task`}
+                    title={row.taskId ?? "这条运行没有关联任务"}
+                  >
+                    {taskLabel(row.taskId)}
+                  </span>
+                ) : null}
                 <CardField label="开始" labelTestId={`run5-fieldlabel-start-${index}`}>
                   <span className="min-w-0 break-words" data-testid={`${base}-start`} title={row.startedAt ?? undefined}>
                     {start.text ?? <Dashed reason={start.reason} />}
@@ -783,11 +801,7 @@ function ListRows({
             );
           })}
         </ul>
-        <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 border-t border-border px-4 py-2 text-xs text-muted-foreground" data-testid="run5-foot">
-          <span>只读列表 · 行尾「查看」是真链接，可复制或新开标签 · 不发起、不取消；重试入口在只读环境下为禁用态</span>
-        </div>
-      </CardContent>
-    </Card>
+    </ConsoleCard>
   );
 }
 
@@ -1093,7 +1107,11 @@ function RunMixCard({
   })();
 
   return (
-    <ConsoleCard label="运行构成" action={<span className="console-mono">{sinceLabel(sinceKey)}</span>}>
+    <ConsoleCard
+      label="运行构成"
+      action={<span className="console-mono">{sinceLabel(sinceKey)}</span>}
+      availability={[{ label: "平均耗时", reason: "统计读口只回 P95，不回平均耗时；这里不拿别的数顶替" }]}
+    >
       {stats.phase === "loading" ? (
         <p className="console-sub">正在读取运行统计…</p>
       ) : totals === null ? (
@@ -1118,19 +1136,15 @@ function RunMixCard({
           <div className="console-divider" />
           <dl className="console-kv">
             <dt>成功率</dt>
-            <dd className="console-mono">
+            <dd className="console-mono" title="统计读口没有回成功率时留空号，不把读不到当成 0">
               {totals.successRate === null ? "—" : `${Math.round(totals.successRate * 100)}%`}
             </dd>
             <dt>P95 耗时</dt>
             <dd className="console-mono" title="统计读口的 p95，单位毫秒">
               {totals.p95 === null ? "—" : `${totals.p95} ms`}
             </dd>
-            <dt>平均耗时</dt>
-            <dd className="console-mono" title="统计读口不返平均耗时，这里不拿别的数顶替">
-              —
-            </dd>
             <dt>今日成本</dt>
-            <dd className="console-mono">
+            <dd className="console-mono" title="今日成本取统计的今日分桶；没有分桶就留空号">
               {stats.todayCostUsd === null ? "—" : usd(stats.todayCostUsd)}
             </dd>
             <dt>失败主因</dt>
@@ -1352,6 +1366,8 @@ export function RunsModulePage() {
         taskLabel(row.taskId).toLowerCase().includes(needle),
     );
   }, [sortedRows, runQuery, names]);
+  // 破折号治理：只有整页一行的任务关联都没有时才收列；有一行带回就照常渲染该列。
+  const taskColumn = useMemo(() => rows.some((row) => Boolean(row.taskId)), [rows]);
   // 「失败详情」卡取本页最近一次的失败行；没有失败就明说没有。
   const failedRow = useMemo(() => {
     const failed = rows.filter((row) => row.status === "failed");
@@ -1737,9 +1753,8 @@ export function RunsModulePage() {
             </span>
           ) : null}
         </p>
-        <span data-testid="run-asof-line">
+        <span data-testid="run-asof-line" title="采集时刻只在上游回答里给了才显示；没给就留空号，不拿本机时间顶替">
           采集时刻 <span data-testid="run-asof" title={asof.title}>{asof.text}</span>
-          （上游给了才显示；没给就是「—」，不拿本机时间顶替）
         </span>
       </div>
 
@@ -1789,6 +1804,7 @@ export function RunsModulePage() {
           key={sinceKey}
           cursorRunId={runCursor}
           onCursorChange={setRunCursor}
+          taskColumn={taskColumn}
           rows={shownRows}
           names={names}
           hrefOf={hrefOf}
