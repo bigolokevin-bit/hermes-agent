@@ -365,6 +365,14 @@ export interface SpaceRow {
   statusReason: string | null;
   failure: string | null;
   failureRaw: string | null;
+  /**
+   * 一句话说明：上游给了描述就用描述；只有授权/读取失败时，用失败原因的人话。
+   * 骨架的瓦片把这一段放在名称下面，缺读口时不占位、不编样例句。
+   */
+  note: string | null;
+  noteRaw: string | null;
+  /** 这一行是否因为上游未核实（例如授权服务不可用）而读不到字段。 */
+  blocked: boolean;
 }
 
 /** One reference to a document: a search hit or a citation. Both are drawn by the same
@@ -1395,6 +1403,21 @@ function spaceSourceOf(row: Rec): {
   return { source: "—", sourceRaw: null, sourceReason: "上游没有说明这个空间的内容从哪里来" };
 }
 
+/**
+ * 一个空间「为什么读不到字段」的人话。只认上游给的原话，不做推测；
+ * 认不出的技术串返回 null（原文仍进 title），免得把英文栈信息当正文。
+ */
+function spaceNoteOf(raw: string | null): string | null {
+  if (!raw) return null;
+  if (/authorization service unavailable/i.test(raw)) return "授权服务不可用";
+  if (/unauthorized|forbidden|permission denied|access denied/i.test(raw)) return "没有读取这个空间的权限";
+  if (/timeout|timed out|deadline exceeded/i.test(raw)) return "上游读取超时";
+  const technical =
+    /[A-Z]{4,}_|[A-Z]{4,}\d|https?:\/\/|:[0-9]{2,5}\b|\b(50[0-9]|40[0-9])\b|\/[a-z0-9_.-]+\/[a-z0-9_.-]+/i.test(raw) ||
+    raw.length > 96;
+  return technical ? null : raw;
+}
+
 function spaceOf(row: Rec): SpaceRow {
   const id = pickString(row.spaceId, row.space_id, row.knowledgeId, row.knowledge_id, row.id) ?? "";
   const name = pickString(row.name, row.spaceName, row.space_name, row.title, row.displayName, row.display_name);
@@ -1419,6 +1442,10 @@ function spaceOf(row: Rec): SpaceRow {
   const source = spaceSourceOf(row);
   const moment = syncMomentOf(row);
   const at = updatedText(moment.atRaw).value; // R75 单点（spaceOf）
+  const description = pickString(row.description, row.summary, row.desc);
+  const detailRaw = pickString(row.failureDetail, row.failure_detail, row.unverifiedReason, row.unverified_reason);
+  const detailNote = spaceNoteOf(detailRaw);
+  const blocked = detailRaw !== null || (statusRaw ?? "").toLowerCase() === "unverified";
   const extras: string[] = [];
   if (docs === null && chunks !== null) extras.push(`分块 ${chunks.toLocaleString("zh-CN")} 段`);
   if (docs === null && bytes !== null) {
@@ -1443,6 +1470,9 @@ function spaceOf(row: Rec): SpaceRow {
     statusRaw,
     statusReason: statusRaw ? null : "上游没有给出空间状态",
     ...failure,
+    note: description ?? detailNote,
+    noteRaw: description ?? detailRaw,
+    blocked,
   };
 }
 

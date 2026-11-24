@@ -10,6 +10,11 @@
  * DOM 纪律（多个既有护栏依赖的读法）：标题钮的 parentElement 的
  * lastElementChild 必须是状态徽标——所以徽标最后挂载、用 grid-column
  * 归到「结果」列；预览与隐藏字段 dl 都在它之前。
+ *
+ * 2026-11-24 卡式密度车道：同一行壳新增 `variant="queue"`（待办队列六列
+ * 事项|类型|发起|等待|风险|操作）。它只换轨道映射与两列新读数（类型／等待／
+ * 风险），字段、缺值口径、testid 与键盘契约一律不动——两页同值（R218）因此
+ * 天然成立：同一份 DOM，差别只在哪些列上屏。
  */
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ChevronRight } from "lucide-react";
@@ -22,6 +27,7 @@ import { Pill } from "@/components/console/Pill";
 import { APPROVAL_RID_MISSING, FIELD_MISSING_SENTENCE } from "./stateCopy";
 import { humanizeHandles, money, type ApprovalRow } from "./model";
 import { truncateDisplay } from "./views";
+import { WaitCell } from "./PendingReadouts";
 
 const MISSING_AMOUNT = "服务未提供该数值";
 
@@ -94,6 +100,18 @@ const TONE: Record<string, "ok" | "warn" | "bad" | "info" | "mut"> = {
   outline: "mut",
 };
 
+/** 行壳形态：ledger＝历史账本八列，queue＝待办队列六列（骨架列名逐字一致）。 */
+export type LedgerRowVariant = "ledger" | "queue";
+
+/** 批量 P0 的行级勾选（仅待办面传入，与旧行卡同形）。 */
+export interface LedgerRowSelection {
+  checked: boolean;
+  disabled: boolean;
+  disabledReason: string | null;
+  testId: string;
+  onToggle: (checked: boolean) => void;
+}
+
 export function ApprovalLedgerRow({
   row,
   selected,
@@ -105,6 +123,8 @@ export function ApprovalLedgerRow({
   onActivate,
   onNavKey,
   onClosePreview,
+  variant = "ledger",
+  selection,
 }: {
   row: ApprovalRow;
   selected: boolean;
@@ -116,7 +136,10 @@ export function ApprovalLedgerRow({
   onActivate: () => void;
   onNavKey: (action: "ArrowUp" | "ArrowDown" | "Home" | "End", fromKey: string) => void;
   onClosePreview: () => void;
+  variant?: LedgerRowVariant;
+  selection?: LedgerRowSelection;
 }): ReactNode {
+  const queue = variant === "queue";
   const toggleRef = useRef<HTMLButtonElement | null>(null);
   const closeRefocus = (): void => {
     if (previewOpen) onTogglePreview();
@@ -134,7 +157,7 @@ export function ApprovalLedgerRow({
 
   return (
     <div
-      className={`apr5-lrow${selected ? " is-selected" : ""}`}
+      className={`apr5-lrow${queue ? " apr5-qrow" : ""}${selected ? " is-selected" : ""}`}
       data-testid={`apr5-row-${row.key}`}
       role="button"
       tabIndex={active ? 0 : -1}
@@ -169,6 +192,26 @@ export function ApprovalLedgerRow({
         <span className="sr-only">{row.clockLabel}</span>
         <LedgerTime iso={row.clockAt} testid={`apv-time-row-${row.key}`} />
       </span>
+
+      {selection ? (
+        <input
+          type="checkbox"
+          className="apr5-lrow__check"
+          data-testid={selection.testId}
+          checked={selection.checked}
+          disabled={selection.disabled}
+          title={selection.disabled ? (selection.disabledReason ?? undefined) : undefined}
+          aria-label={`批量选择：${row.title}`}
+          onClick={(event) => {
+            // 行主体是 role=button 的打开把手；勾选只改选择集，不开详情。
+            event.stopPropagation();
+          }}
+          onChange={(event) => {
+            event.stopPropagation();
+            selection.onToggle(event.target.checked);
+          }}
+        />
+      ) : null}
 
       <button
           ref={toggleRef}
@@ -220,7 +263,28 @@ export function ApprovalLedgerRow({
           ) : null}
         </button>
 
+      {queue ? (
+        <span
+          className="apr5-lrow__kind"
+          data-testid={`apr5-row-kind-${row.key}`}
+          title={row.changeKind.raw ?? "读口没有回传变更类型（changeKind/binding.changeKind）；屏上不推断。"}
+        >
+          {row.changeKind.label}
+        </span>
+      ) : null}
       <span className="apr5-lrow__who apr5-lrow__who--requester" title={row.requester.raw ?? undefined}>{row.requester.label}</span>
+      {queue ? (
+        <span className="apr5-lrow__wait">
+          <WaitCell iso={row.submittedAt} testid={`apr5-row-wait-${row.key}`} />
+        </span>
+      ) : null}
+      {queue ? (
+        <span className="apr5-lrow__risk">
+          <Pill tone={TONE[row.risk.tone] ?? "mut"} title={row.risk.raw ?? FIELD_MISSING_SENTENCE}>
+            {row.risk.label}
+          </Pill>
+        </span>
+      ) : null}
       <span className="apr5-lrow__who apr5-lrow__who--approver" title={row.approvers.raw ?? undefined}>{approverText}</span>
       <span className="apr5-lrow__dur" title={duration.title}>{duration.text}</span>
       <span className="apr5-lrow__ref" title={row.requestId ?? "读口未提供请求编号"}>

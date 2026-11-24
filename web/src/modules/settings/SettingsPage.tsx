@@ -216,7 +216,7 @@ export function SettingsPage() {
             value: "未接入（读口未注册，BFF 答 console.unknown_route）",
             // 术语纪律：屏上不写裸 HTTP 码，码只进 title（既有用例钉住）。
             note: "未注册（BFF 答 console.unknown_route），所以这里没有可改的开关；",
-            writable: "0（读口未接入，本页不放任何假开关）",
+            writable: "0（读口未注册，本页不放任何假开关）",
           }
         : {
             value: "已接入",
@@ -303,7 +303,7 @@ export function SettingsPage() {
         </dl>
 
         <p className="set5-facts-source" data-testid="set4-facts-source">
-          来源：GET /api/hermes-summary（runtime.hermes.summary.v1）。缺的值写「—」并给原因，不补 0、不估算。
+          来源：GET /api/hermes-summary（runtime.hermes.summary.v1）。缺的值按缺口标注并给原因，不补 0、不估算。
         </p>
         </div>
         <div className="set5-card-foot">
@@ -366,7 +366,7 @@ export function SettingsPage() {
 
           <ConsoleCard label="安全" action={<span className="set5-card-action">设计口径</span>}>
             <p className="set5-prose">
-              密钥不进入提示词、不写日志、不出现在前端响应里。任何「查看明文」的请求都应被拒绝——这是设计，不是权限不足。
+              密钥不进入提示词、不写日志、不出现在前端响应里。任何「查看明文」的请求都应被拒绝：这是设计，不是权限不足。
               轮换周期与提前提醒天数同样没有读口，不在本页编造。
             </p>
             <div className="set5-card-foot">口径：本页永不回显密钥值，也不提供查看明文的入口。</div>

@@ -13,6 +13,23 @@ import { Button } from "@nous-research/ui/ui/components/button";
 
 import { PanelExits } from "./states";
 
+/**
+ * 骨架的「空表」不是居中小灰字：表头还在，行高、列轨照旧，只是没有数据行。
+ * 这里给一条与队列表头同轨的灰色骨架行（列数对齐、零文字、零数据），
+ * 让「现在没有」这件事以形制而不是以留白说话。aria-hidden：它不是读数，
+ * 不进气泡摘要，也不冒充任何缺口的「—」。
+ */
+export function LedgerGhostRow({ columns, testId = "apr5-ghost-row" }: { columns: number; testId?: string }): ReactNode {
+  return (
+    <div className="apr5-qghost" data-testid={testId} aria-hidden="true">
+      {Array.from({ length: columns }, (_, i) => (
+        // 第 0 轨是批量勾选槽（不是数据列），骨架行在这里不放灰条。
+        <span key={i} className="apr5-qghost__cell">{i === 0 ? null : <i />}</span>
+      ))}
+    </div>
+  );
+}
+
 export function LedgerEmpty({
   reason,
   nextStep,

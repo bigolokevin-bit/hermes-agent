@@ -459,13 +459,9 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     expect(attr("knw5-spaces", "data-len")).toBe("5");
     expect(container.querySelectorAll('[data-testid="knw5-spaces-row"]')).toHaveLength(5);
     const text = container.textContent ?? "";
-    for (const head of ["知识库", "可见范围", "文档", "向量", "命中率", "索引", "最近更新"]) expect(text).toContain(head);
+    for (const head of ["知识库", "可见范围", "文档", "索引", "最近更新"]) expect(text).toContain(head);
     expect(text).toContain("产品知识");
     expect(text).toContain("团队空间");
-    expect(byTestid("knw5-space-source")?.textContent ?? "").toBe("—");
-    expect((byTestid("knw5-space-source")?.closest("td")?.textContent ?? "").replace(/\s+/g, " ")).toContain(
-      "上游没有说明这个空间的内容从哪里来",
-    );
     expect(text).toContain("128 篇");
     expect(text).toContain("最近同步：2026-11-19 14:00");
     expect(text).toContain("已同步");
@@ -476,15 +472,19 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     expect(text).toContain("可用");
     expect(text).toContain("最近更新：2026-11-19 04:30");
     expect(text).toContain("同步中");
-    expect(text).toContain("上游没有给出这个空间有多少文档");
+    // 缺字段原因改走 title（正文只留一个「—」，整卡一处声明在卡底）。
+    const docsCells = [...container.querySelectorAll('[data-testid="knw5-space-docs"]')];
+    expect(docsCells.map((n) => n.getAttribute("title"))).toContain("上游没有给出这个空间有多少文档");
     expect(text).toContain("分块 320 段");
-    expect(text).toContain("上游没有给出时间");
+    const timeCells = [...container.querySelectorAll('[data-testid="knw5-space-time"]')];
+    expect(timeCells.map((n) => n.getAttribute("title")).join(" ")).toContain("上游未返回时间");
     expect(text).toContain("租户空间");
     // 状态认不出来就待核实，不猜。
     expect(text).toContain("待核实");
-    expect(text).toContain("上游没有给出空间状态");
+    const statusCells = [...container.querySelectorAll('[data-testid="knw5-space-status"]')];
+    expect(statusCells.map((n) => n.getAttribute("title"))).toContain("上游没有给出空间状态");
     // 缺名字的那一行也不放样例。
-    expect(text).toContain("上游没有给出这个空间叫什么");
+    expect(byTestid("knw5-space-name")?.getAttribute("title")).toContain("上游没有给出这个空间叫什么");
     // 原始值与英文状态词不上屏。
     for (const raw of ["space_123456789", "space_zero", "space_thin", "indexed", "indexing", "tenant"]) {
       expect(text, raw).not.toContain(raw);
@@ -537,14 +537,11 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     // 有标识的空间行是真实可聚焦链接，点进去就是这个空间的文档列表
     const link0 = rows[0]?.querySelector('[data-testid="kn-space-open"]') as HTMLAnchorElement | null;
     expect(link0?.getAttribute("href")).toContain("space=sp_hr");
-    expect(cell(0, "knw5-space-source")).toBe("SharePoint · 集团人事库");
     expect(cell(0, "knw5-space-docs")).toBe("1,240 篇");
     expect(cell(0, "knw5-space-time")).toContain("最近同步：2026-11-19 14:20");
     expect(cell(0, "knw5-space-status")).toContain("已同步");
-    expect(cell(1, "knw5-space-source")).toBe("对象存储");
     expect(cell(1, "knw5-space-docs")).toBe("0 篇");            // 真 0
     expect(cell(1, "knw5-space-status")).toContain("可用");
-    expect(cell(2, "knw5-space-source")).toContain("mirror.example.com");
     expect(cell(2, "knw5-space-status")).toContain("待核实");   // 认不出的值不猜
 
     // 失败：原因直出；只有分块数时不冒充文档数
@@ -555,7 +552,6 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
 
     // 全缺的一条：逐项说缺，绝不借别条或别端点的数字
     expect(cell(4, "knw5-space-name")).toBe("—");
-    expect(cell(4, "knw5-space-source")).toBe("—");
     expect(cell(4, "knw5-space-docs")).toBe("—");
     expect(cell(4, "knw5-space-time")).toBe("—");
     expect(cell(4, "knw5-space-status")).toContain("待核实");

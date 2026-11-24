@@ -80,6 +80,38 @@ function RowDetail({ row }: { row: SystemHealthRow }) {
   );
 }
 
+/** 版本标识从表格正文移到卡底：只列真有标识的行，其余折成一句汇总结论。 */
+function VersionFoot({ rows }: { rows: SystemHealthRow[] }) {
+  const known = rows.filter((row) => row.version !== null);
+  const missing = rows.length - known.length;
+  return (
+    <div className="sys3-versions" data-testid="sys3-versions">
+      <span className="sys3-versions-label">版本标识</span>
+      {known.map((row) => (
+        <span key={row.key} className="sys3-version-chip">
+          <span className="sys3-version-name">{row.name ?? row.key}</span>
+          <span
+            data-testid="sys3-version"
+            data-row-key={row.key}
+            title={[row.version, row.versionReason].filter(Boolean).join(" · ") || undefined}
+          >
+            <span className="sys15-trunc" data-testid="sys15-trunc-version">{row.version}</span>
+          </span>
+        </span>
+      ))}
+      {missing > 0 ? (
+        <span
+          className="sys3-versions-gap"
+          data-testid="sys3-version-count"
+          title="健康清单没有给出服务版本标识；不编造版本号"
+        >
+          另有 {missing} 个服务没有版本标识：健康清单不回版本号，本页不编造
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
 function tone(state: Sys3State): "success" | "warning" | "destructive" | "outline" {
   if (state === "正常") return "success";
   if (state === "降级") return "warning";
@@ -567,9 +599,6 @@ export function SystemHealthSurface({ preview = null, onRetry, refreshTick = 0, 
                         </td>
                         <td className="sys-row-copy-cell" data-testid="sys3-note">
                           <span className="sys-note-line">
-                            <span data-testid="sys3-version" title={[row.version, row.versionReason].filter(Boolean).join(" · ") || undefined}>
-                              <span className="sys15-trunc" data-testid="sys15-trunc-version">{row.version ?? "—"}</span>
-                            </span>
                             <span data-testid="sys3-checked" title={row.checkedReason ?? undefined}>{row.checkedAt ?? "—"}</span>
                             <button
                               type="button"
@@ -621,7 +650,8 @@ export function SystemHealthSurface({ preview = null, onRetry, refreshTick = 0, 
             ) : null}
             </>
             )}
-            <p className="sys3-foot">缺失值显示「—」，原因在悬停说明里；不用本机时钟补采集时刻，也不把未知当正常。</p>
+            <VersionFoot rows={state.read.rows} />
+            <p className="sys3-foot">缺失值按缺口标注，原因在悬停说明里；不用本机时钟补采集时刻，也不把未知当正常。</p>
           </>
         )}
       </div>

@@ -76,8 +76,13 @@ describe("SystemHealthSurface", () => {
     expect(text()).toContain("2026-11-19 23:17");
     expect(container.querySelector("[data-testid='sys3-overall']")?.textContent).toBe("正常");
     const runtime = container.querySelector("[data-testid='sys3-row-runtime']")!;
-    expect(runtime.querySelector("[data-testid='sys3-version']")?.textContent).toBe("—");
-    expect(runtime.querySelector("[data-testid='sys3-version']")?.getAttribute("title")).toContain("不编造版本号");
+    // 2026-11-24：版本标识从表格正文移到卡底（骨架 health pane 的「说明」列不再逐行挂版本）。
+    // 断言语义不变——「没有版本标识的行不得出现版本读数」；只是承接它的节点从行内换到卡底一句
+    // 汇总结论，行内因此不再逐行渲染一个「—」。
+    expect(runtime.querySelector("[data-testid='sys3-version']")).toBeNull();
+    const versionGap = container.querySelector("[data-testid='sys3-version-count']");
+    expect(versionGap?.textContent).toContain("没有版本标识");
+    expect(versionGap?.getAttribute("title")).toContain("不编造版本号");
     expect(runtime.querySelector("[data-testid='sys3-latency']")?.textContent).toBe("47 ms");
     const bisheng = container.querySelector("[data-testid='sys3-row-bisheng']")!;
     expect(bisheng.querySelector("[data-testid='sys3-latency']")?.textContent).toBe("—");

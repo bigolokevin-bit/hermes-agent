@@ -937,11 +937,9 @@ function SpaceTable({
           <tr>
             <th scope="col">知识库</th>
             <th scope="col">可见范围</th>
-            <th scope="col">文档</th>
-            <th scope="col">向量</th>
-            <th scope="col">命中率</th>
+            <th scope="col" className="num">文档</th>
             <th scope="col">索引</th>
-            <th scope="col">最近更新</th>
+            <th scope="col" className="num">最近更新</th>
           </tr>
         </thead>
         <tbody>
@@ -949,18 +947,20 @@ function SpaceTable({
             const rowKey = row.id !== "" ? row.id : `space-${index}`;
             const previewActive = !sdocOpen && previewKey === rowKey;
             const previewId = `kn-space-preview-${index}`;
+            const code = shortId(row.id);
+            // 名称缺失但标识在场：表格身份仍写「—」，短码只作行内预览的临时身份。
             const nameText =
-              row.nameReason === null
-                ? row.name
-                : shortId(row.id) !== null
-                  ? `空间 · ${shortId(row.id)}`
-                  : "该字段未返回";
+              row.nameReason === null ? row.name : code !== null ? `空间 · ${code}` : "该字段未返回";
             const nameTitle =
               row.nameReason === null
                 ? undefined
-                : shortId(row.id) !== null
+                : code !== null
                   ? row.id
                   : `空间名：${row.nameReason}`;
+            // 授权不可用的行：字段是「未核实」而不是「空」——一个词说清整行，不再逐格堆「—」。
+            const scopeCell = row.kind ?? (row.blocked ? "未核实" : "—");
+            const docsCell = row.docsReason !== null && row.blocked ? "未核实" : row.docs;
+            const atCell = row.atReason !== null && row.blocked ? "未核实" : updatedText(row.atRaw).value;
             return (
               <Fragment key={rowKey}>
                 <tr data-testid="knw5-spaces-row" data-active={index} data-preview={previewActive ? "1" : "0"} title={row.id || undefined}>
@@ -978,7 +978,7 @@ function SpaceTable({
                       </Link>
                     ) : (
                       <>
-                        <span className="knw5-name" data-testid="knw5-space-name">
+                        <span className="knw5-name" data-testid="knw5-space-name" title={nameTitle}>
                           <Highlight text={row.name} needle={needle} testid="kn9-mark-space" />
                         </span>
                         {/* R102：无标识行不给链接，只给这块文本；不写剪贴板、不造 id。 */}
@@ -987,6 +987,11 @@ function SpaceTable({
                         </span>
                       </>
                     )}
+                    {row.nameReason !== null && row.id !== "" ? (
+                      <span className="knw5-sub" data-testid="knw5-space-name-missing" title={nameTitle}>
+                        空间名未返回
+                      </span>
+                    ) : null}
                     <button
                       type="button"
                       className="kn-space-toggle"
@@ -1006,31 +1011,16 @@ function SpaceTable({
                     >
                       {previewActive ? "收起预览" : "预览"}
                     </button>
-                    <Reason>{row.nameReason}</Reason>
-                    {/* 来源保留为知识库名下的副行：骨架没有单列，读到的仍上屏。 */}
-                    <span className="knw5-sub" data-testid="knw5-space-source" title={row.sourceRaw ?? undefined}>
-                      {row.source}
+                  </td>
+                  <td data-label="可见范围">{scopeCell}</td>
+                  <td data-label="文档" className="num">
+                    <span data-testid="knw5-space-docs" title={row.docsReason ?? undefined}>
+                      {docsCell}
                     </span>
-                    <Reason>{row.sourceReason}</Reason>
-                  </td>
-                  <td data-label="可见范围">
-                    {row.kind ? (
-                      <span data-testid="knw5-space-scope" title={row.kindRaw ?? undefined}>
-                        {row.kind}
-                      </span>
-                    ) : (
-                      <span data-testid="knw5-space-scope">—</span>
-                    )}
-                  </td>
-                  <td data-label="文档">
-                    <span data-testid="knw5-space-docs">{row.docs}</span>
                     {row.docsExtra ? <span className="knw5-sub" data-testid="knw5-space-docs-extra">{row.docsExtra}</span> : null}
-                    <Reason>{row.docsReason}</Reason>
                   </td>
-                  <td data-label="向量">—</td>
-                  <td data-label="命中率">—</td>
                   <td data-label="索引">
-                    <span data-testid="knw5-space-status">
+                    <span data-testid="knw5-space-status" title={row.statusReason ?? undefined}>
                       <Badge
                         tone={
                           row.status === "已同步" || row.status === "可用"
@@ -1043,7 +1033,11 @@ function SpaceTable({
                         {row.status}
                       </Badge>
                     </span>
-                    <Reason>{row.statusReason}</Reason>
+                    {row.note !== null && row.nameReason !== null ? (
+                      <span className="knw5-sub" data-testid="knw5-space-note" title={row.noteRaw ?? undefined}>
+                        {row.note}
+                      </span>
+                    ) : null}
                     {row.failure ? (
                       <span className="knw5-sub" data-testid="knw5-space-failure" title={row.failureRaw ?? undefined}>
                         {row.failure}
@@ -1055,15 +1049,14 @@ function SpaceTable({
                       </span>
                     ) : null}
                   </td>
-                  <td data-label="最近更新">
+                  <td data-label="最近更新" className="num">
                     <span data-testid="knw5-space-time" title={updatedText(row.atRaw).title}>
-                      {row.timeLabel ? `${row.timeLabel}：${updatedText(row.atRaw).value}` : updatedText(row.atRaw).value}
+                      {row.timeLabel && row.atReason === null ? `${row.timeLabel}：${atCell}` : atCell}
                     </span>
-                    <Reason>{row.atReason}</Reason>
                   </td>
                 </tr>
                 <tr data-testid={`kn-space-preview-row-${index}`}>
-                  <td colSpan={7}>
+                  <td colSpan={5}>
                     {/* 容器常在（收起=hidden 不卸载）：aria-controls 永远指得到真节点。 */}
                     <dl
                       id={previewId}
@@ -1146,7 +1139,7 @@ function CardBlock({
   return (
     <section className="knv-card" data-testid={testid}>
       <header className="knv-card-hd">
-        <span className="knv-label">{label}</span>
+        <h2 className="knv-label">{label}</h2>
         {meta ? <span className="knv-meta">{meta}</span> : null}
       </header>
       {children ? <div className="knv-card-bd">{children}</div> : null}
@@ -1179,8 +1172,10 @@ function MissingCard({
   );
 }
 
-/** 空间 = 权限边界（骨架第二张空间表）：能读的照实写，读不到的列写「—」。 */
+/** 空间 = 权限边界（骨架第二张空间表）：能读的照实写，读不到的整行收成一句。 */
 function SpaceScopeTable({ rows }: { rows: SpaceRow[] }): ReactNode {
+  const verified = rows.filter((row) => !row.blocked);
+  const blocked = rows.filter((row) => row.blocked);
   return (
     <div className="knw5-scroll">
       <table className="knw5-table" data-testid="knv-space-scope-table">
@@ -1188,21 +1183,28 @@ function SpaceScopeTable({ rows }: { rows: SpaceRow[] }): ReactNode {
           <tr>
             <th scope="col">知识空间</th>
             <th scope="col">可见范围</th>
-            <th scope="col">文档</th>
-            <th scope="col">写入</th>
-            <th scope="col">引用</th>
+            <th scope="col" className="num">文档</th>
           </tr>
         </thead>
         <tbody>
-          {rows.map((row, index) => (
+          {verified.map((row, index) => (
             <tr key={row.id || `scope-${index}`} data-testid="knv-space-scope-row">
-              <td>{row.name}</td>
+              <td>
+                <span className="knw5-name" title={row.nameReason !== null ? row.id || undefined : undefined}>
+                  {row.nameReason === null ? row.name : shortId(row.id) !== null ? `空间 · ${shortId(row.id)}` : "—"}
+                </span>
+              </td>
               <td>{row.kind ?? "—"}</td>
               <td className="num">{row.docs}</td>
-              <td>—</td>
-              <td>—</td>
             </tr>
           ))}
+          {blocked.length > 0 ? (
+            <tr data-testid="knv-space-scope-blocked" data-count={blocked.length}>
+              <td colSpan={3} className="knw5-sub">
+                另有 {blocked.length} 个空间读不到：{blocked[0].note ?? "上游未核实"}，可见范围与文档数未核实。
+              </td>
+            </tr>
+          ) : null}
         </tbody>
       </table>
     </div>
@@ -1239,33 +1241,41 @@ function CitationTable({ rows }: { rows: CitationRow[] }): ReactNode {
   );
 }
 
-/** 空间概览瓦片：每个空间一块（名称 + 状态 / 文档与向量 / 命中率进度 / 时间）。 */
+/** 空间概览瓦片：每个空间一块（名称 + 状态 / 一句话说明 / 文档与范围 / 同步时间）。 */
 function SpaceTiles({ rows }: { rows: SpaceRow[] }): ReactNode {
   return (
     <div className="knv-grid knv-g4" data-testid="knv-space-tiles">
-      {rows.map((row, index) => (
-        <div className="knv-tile" key={row.id || `tile-${index}`} data-testid="knv-space-tile">
-          <div className="knv-tile-hd">
-            <span className="knv-tile-name">{row.name}</span>
-            <Badge
-              tone={row.status === "已同步" || row.status === "可用" ? "success" : row.status === "失败" ? "destructive" : "outline"}
-            >
-              {row.status}
-            </Badge>
+      {rows.map((row, index) => {
+        const name = row.nameReason === null ? row.name : shortId(row.id) !== null ? `空间 · ${shortId(row.id)}` : "空间";
+        const footLabel = row.timeLabel ?? "最近同步";
+        const footValue = row.atReason === null ? row.at : "时间未返回";
+        return (
+          <div className="knv-tile" key={row.id || `tile-${index}`} data-testid="knv-space-tile">
+            <div className="knv-tile-hd">
+              <span className="knv-tile-name" title={row.nameReason !== null ? row.id || undefined : undefined}>
+                {name}
+              </span>
+              <Badge
+                tone={row.status === "已同步" || row.status === "可用" ? "success" : row.status === "失败" ? "destructive" : "outline"}
+              >
+                {row.status}
+              </Badge>
+            </div>
+            {row.note !== null ? (
+              <p className="knv-tile-desc" title={row.noteRaw ?? undefined}>
+                {row.note}
+              </p>
+            ) : null}
+            <div className="knv-tile-val">
+              {row.blocked ? "范围与文档未核实" : `${row.docs}${row.kind ? ` · ${row.kind}` : ""}`}
+            </div>
+            <div className="knv-tile-foot">
+              <span>{footLabel}</span>
+              <b>{footValue}</b>
+            </div>
           </div>
-          <div className="knv-tile-val">
-            {row.docs} · 向量 —
-          </div>
-          {/* 命中率没有读口：条不填宽度，页脚把「—」说清，不画假比例。 */}
-          <div className="knv-bar" aria-hidden="true" data-missing="命中率">
-            <i style={{ width: "0%" }} />
-          </div>
-          <div className="knv-tile-foot">
-            <span>命中率 —</span>
-            <b>{row.at}</b>
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -1379,27 +1389,33 @@ function SpacesSurface({
     copyAct,
   );
 
-  // 副行读数只认读口真给的：文档数全读得到才合计，任何一行缺就写「—」；
-  // 向量与命中率今天没有读口，固定「—」——不拿样例百分比充数。
+  // 副行读数只认读口真给的：文档数按「读到的行」合计并点明可读行数；
+  // 向量与命中率今天没有读口，整列不渲染，只在卡底声明一次。
+  const readableRows = loaded.filter((row) => row.docsReason === null);
   const docsTotal = (() => {
-    if (surface.state.kind !== "ready" || loaded.length === 0) return null;
+    if (surface.state.kind !== "ready" || readableRows.length === 0) return null;
     let sum = 0;
-    for (const row of loaded) {
+    for (const row of readableRows) {
       const hit = /^([\d,]+)/.exec(row.docs);
       if (!hit) return null;
       sum += Number(hit[1].replace(/,/g, ""));
     }
     return sum;
   })();
-  // 裸 0 不上屏（本模块硬护栏）：没有空间时副行整条回到「—」，不写「0 个空间」。
+  const blockedRows = loaded.filter((row) => row.blocked).length;
+  // 裸 0 不上屏（本模块硬护栏）：没有空间时不写「0 个空间」，只照实说读口已响应。
   const headText =
-    surface.state.kind === "ready" && loaded.length > 0
-      ? `${loaded.length} 个空间 · ${docsTotal === null ? "篇数 —" : `${docsTotal.toLocaleString("zh-CN")} 篇`} · 向量 — · 命中率 —`
-      : "空间 — · 篇数 — · 向量 — · 命中率 —";
+    surface.state.kind === "ready"
+      ? loaded.length === 0
+        ? "空间读口已响应 · 没读到可列出的空间"
+        : `${loaded.length} 个空间 · 文档 ${docsTotal === null ? "未读全" : docsTotal.toLocaleString("zh-CN")} 篇 · 可读 ${readableRows.length} 个${
+            blockedRows > 0 ? ` · 未核实 ${blockedRows} 个` : ""
+          }`
+      : "空间读口正在读取";
   const headRight =
     surface.state.kind === "ready" && surface.state.value.stamp
       ? `读取于 ${updatedText(surface.state.value.stamp).value}`
-      : "读取于 —";
+      : undefined;
 
   return (
     <div className="knv-pane">
@@ -1485,7 +1501,12 @@ function SpacesSurface({
         render={(value) => (
           <div className="knv-pane">
             <SpaceTiles rows={loaded} />
-            <CardBlock label="库明细" meta={`共 ${loaded.length} 个空间`} testid="knv-spaces-detail">
+            <CardBlock
+              label="库明细"
+              meta={`共 ${loaded.length} 个空间 · 可读 ${readableRows.length} 个`}
+              testid="knv-spaces-detail"
+              foot="缺读口：向量、命中率"
+            >
               <SpaceTable
                 rows={value.rows}
                 spaceLink={spaceLink}
@@ -1510,7 +1531,7 @@ function SpacesSurface({
                 meta="knowledge 服务"
                 columns={["队列", "滞后", "重建耗时", "嵌入模型"]}
                 testid="knv-spaces-index"
-                reason="索引队列与嵌入模型的读口未接入；队列条不画比例。"
+                reason="索引队列与嵌入模型的读口没有接入；队列条不画比例。"
               />
             </div>
             <MissingCard
@@ -1518,7 +1539,7 @@ function SpacesSurface({
               meta="按未命中次数排序"
               columns={["文档名", "缺口", "建议动作", "预计耗时"]}
               testid="knv-spaces-gaps"
-              reason="补文档清单由未命中问题派生，同一个读口未接入。"
+              reason="补文档清单由未命中问题派生，同一个读口没有接入。"
             />
             <CardBlock
               label="知识空间 = 权限边界"
@@ -1551,7 +1572,6 @@ function SpacesSurface({
               />
               <MissingCard
                 label="待确认"
-                meta="—"
                 columns={["待确认项", "处理人"]}
                 testid="knv-spaces-pending"
               />
@@ -3657,23 +3677,28 @@ function SourcesPane({ nonce }: { nonce: string }): ReactNode {
   const okCount = rows.filter((row) => row.status === "已完成" || row.status === "正常" || row.status === "已同步").length;
   const warnRows = rows.filter((row) => row.status === "失败" || row.status === "部分完成" || /授权|过期/.test(row.failure ?? ""));
   const writeOnly = rows.filter((row) => /只写/.test(row.status)).length;
+  // 副行只写读到的数：读口没接通时直说数量读不到，不拿四个「—」占位。
   const head = ready
     ? `${rows.length} 个连接器 · ${okCount} 正常 · ${warnRows.length} 需重新授权 · ${writeOnly} 只写`
-    : "连接器 — · 正常 — · 需重新授权 — · 只写 —";
+    : "连接器读口没有接入 · 数量、同步与状态都读不到";
 
   return (
     <div className="knv-pane">
       <PaneSubline
         testid="knv-sources-sub"
         text={head}
-        right={stamp ? `读取于 ${updatedText(stamp).value}` : "读取于 —"}
+        right={stamp ? `读取于 ${updatedText(stamp).value}` : undefined}
       />
 
       <CardBlock
         label="连接器"
         meta="写入目标知识库"
         testid="knv-sources-connectors"
-        foot="缺读口：目标库、同步、操作"
+        foot={
+          ready
+            ? "缺读口：目标库、同步、操作"
+            : "缺读口：连接器、类型、目标库、同步、最近同步、本次条数、状态、操作"
+        }
       >
         <Surface
           testid="knw5-ingest-tasks"
@@ -3717,10 +3742,9 @@ function SourcesPane({ nonce }: { nonce: string }): ReactNode {
         ) : (
           <MissingCard
             label="问题"
-            meta="—"
             columns={["问题", "处理"]}
             testid="knv-sources-problems"
-            reason="连接器读口未接入，问题条数读不到；不写 0 条。"
+            reason="连接器读不到，问题条数也读不到；不写 0 条。"
           />
         )}
       </div>
@@ -3731,7 +3755,7 @@ function SourcesPane({ nonce }: { nonce: string }): ReactNode {
           meta="knowledge"
           columns={["待索引", "滞后", "重建耗时", "嵌入模型"]}
           testid="knv-sources-queue"
-          reason="入库状态读口未接入；队列条不画比例。"
+          reason="入库状态读口没有接入；队列条不画比例。"
         />
         <MissingCard
           label="切分"
@@ -3751,12 +3775,10 @@ function SourcesPane({ nonce }: { nonce: string }): ReactNode {
         <IngestStatusSurface nonce={nonce} />
       </CardBlock>
 
-      <details className="knv-details" data-testid="knv-sources-documents">
-        <summary>文档登记（读口原文）</summary>
-        <div className="knv-details-bd">
-          <IngestSurface nonce={nonce} title="文档登记" />
-        </div>
-      </details>
+      {/* 这一块的读口（/api/documents）今天接通：有真行就上屏，缺字段照实说缺。 */}
+      <CardBlock label="文档登记" meta="跨空间 · 读口原文" testid="knv-sources-documents">
+        <IngestSurface nonce={nonce} title="" />
+      </CardBlock>
     </div>
   );
 }
@@ -3892,33 +3914,21 @@ function EvidencePane({ nonce }: { nonce: string }): ReactNode {
       <PaneSubline
         testid="knv-evidence-sub"
         text="用于解释某次回答为什么引用了 / 没引用：先看检索诊断，再看引用记录"
-        right={stamp ? `读取于 ${updatedText(stamp).value}` : "读取于 —"}
+        right={stamp ? `读取于 ${updatedText(stamp).value}` : undefined}
       />
 
-      <div className="knv-grid knv-g4" data-testid="knv-evidence-kpis">
-        <div className="knv-kpi">
-          <span className="k">命中率</span>
-          <span className="v">—</span>
-          <span className="d">检索诊断读口未接入</span>
-        </div>
-        <div className="knv-kpi">
-          <span className="k">未命中</span>
-          <span className="v">—</span>
-          <span className="d">无答案与超时分开计</span>
-        </div>
-        <div className="knv-kpi">
-          <span className="k">零命中率</span>
-          <span className="v">—</span>
-          <span className="d">近 7 天 · 目标 &lt; 5%</span>
-        </div>
-        <div className="knv-kpi">
-          <span className="k">平均检索</span>
-          <span className="v">—</span>
-          <span className="d">P95 同时缺失</span>
-        </div>
-      </div>
+      {/* 检索诊断今天没有读口：四个空 KPI 只会在首屏摆四个「—」，
+          收成一张卡、一句缺读口声明；接上读口再按骨架铺回四个 KPI。 */}
+      <CardBlock
+        label="检索诊断"
+        meta="近 7 天"
+        testid="knv-evidence-diagnosis"
+        foot="缺读口：命中率、未命中、零命中率、平均检索"
+      >
+        <p className="knv-missing">检索诊断读口没有接入；这里不摆空 KPI，也不写 0 次查询。</p>
+      </CardBlock>
       <p className="knv-nummeta">
-        范围 近 7 天 · 更新 {stamp ? updatedText(stamp).value : "—"} · 口径 命中=至少 1 段超阈值；无答案与超时分开计
+        范围 近 7 天 · 更新 {stamp ? updatedText(stamp).value : "未读到"} · 口径 命中=至少 1 段超阈值；无答案与超时分开计
       </p>
 
       <div className="knv-hr">检索诊断</div>
@@ -3928,7 +3938,7 @@ function EvidencePane({ nonce }: { nonce: string }): ReactNode {
           meta="近 7 天 · 按次数"
           columns={["问题", "次数", "处理"]}
           testid="knv-evidence-zero-hit"
-          reason="零命中问题由检索诊断派生，读口未接入；不列问题，也不写 0 次。"
+          reason="零命中问题由检索诊断派生，读口没有接入；不列问题，也不写 0 次。"
         />
         <MissingCard
           label="检索参数"
@@ -3942,7 +3952,7 @@ function EvidencePane({ nonce }: { nonce: string }): ReactNode {
       <div className="knv-hr">引用记录</div>
       <CardBlock
         label="引用记录"
-        meta={ready ? `共 ${rows.length} 条` : "—"}
+        meta={ready ? `共 ${rows.length} 条` : "正在读取"}
         testid="knv-evidence-citations"
         foot="缺读口：引用策略是否强制执行"
       >
@@ -4398,7 +4408,7 @@ function containerQuery(key: string): HTMLElement | null {
       </div>
 
       <p className="knw5-note">
-        本页只读：数量、更新时间与状态都以真实接口为准；读不到时写「未接入」并说明原因，不以 0 或样例冒充。
+        本页只读：数量、更新时间与状态都以真实接口为准；读不到时照实说明原因，不以 0 或样例冒充。
         检索与引用只展示上游给出的原文位置，打不开时直接说明原因。
       </p>
       <Link className="knw5-link" to="/knowledge?tab=spaces&panel=evidence" data-testid="knw5-goto-evidence">

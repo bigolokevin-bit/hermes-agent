@@ -1497,8 +1497,10 @@
 }
 
 .knv-label {
+  margin: 0;
   color: var(--color-text-subtle-ls);
   font-size: var(--font-size-ls-1);
+  font-weight: var(--font-weight-ls-regular);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -1588,6 +1590,21 @@
   font-family: var(--font-family-mono-ls);
   font-size: var(--font-size-ls-1);
   font-variant-numeric: var(--tabular-ls);
+  overflow-wrap: anywhere;
+}
+
+/* 瓦片里的一句话说明：取描述或失败人话，最多两行，全文在 title。 */
+.knv-tile-desc {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  color: var(--color-text-muted-ls);
+  font-size: var(--font-size-ls-1);
+  line-height: var(--line-height-ls-2);
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 .knv-bar {

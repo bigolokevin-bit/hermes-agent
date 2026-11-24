@@ -1103,3 +1103,27 @@
 @media (max-width: 720px) {
   .sys3-table th:nth-child(5), .sys3-table td:nth-child(5) { width: auto; }
 }
+
+/* 版本标识挪到卡底：一行 chips，不再在表格正文里逐行占一格。 */
+.sys3-versions {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-ls-1) var(--space-ls-3);
+  margin-top: var(--space-ls-2);
+  font-size: var(--font-size-ls-1);
+  color: var(--color-text-muted-ls);
+}
+
+.sys3-versions-label { color: var(--color-text-subtle-ls); }
+
+.sys3-version-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-ls-1);
+}
+
+.sys3-version-name { color: var(--color-text-subtle-ls); }
+
+.sys3-versions-gap { color: var(--color-text-subtle-ls); }
