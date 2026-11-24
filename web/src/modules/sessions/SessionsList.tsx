@@ -21,11 +21,13 @@ import "./sessions.css";
 
 import {
   DEFAULT_SESSIONS_LIMIT,
+  fetchSessionDetail,
   fetchSessionsPage,
   filterSessionRows,
   formatMessageCount,
   formatSessionTime,
   shortSessionId,
+  type SessionDetailView,
   type SessionRow,
 } from "./sessionsApi";
 
@@ -80,6 +82,16 @@ export function SessionsList({ employeeId, pageSize = DEFAULT_SESSIONS_LIMIT }: 
   const [state, setState] = useState<ListState>(INITIAL);
   const [loadingMore, setLoadingMore] = useState(false);
   const [query, setQuery] = useState("");
+  /* SE-04：行内展开的会话详情（一次至多开一行；换行/收起即作废旧请求）。 */
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [detail, setDetail] = useState<{
+    phase: "loading" | "ready" | "error";
+    view: SessionDetailView | null;
+    message: string;
+    requestId: string | null;
+  } | null>(null);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const detailReq = useRef(0);
   const reqRef = useRef(0);
   const uid = useId();
   const filterId = `se6-filter-${uid}`;
@@ -132,11 +144,70 @@ export function SessionsList({ employeeId, pageSize = DEFAULT_SESSIONS_LIMIT }: 
     [employeeId, pageSize],
   );
 
+  /* SE-04：展开/收起某行的会话详情。同一时刻至多一行展开；再点同一行收起，
+     换行或收起都令在途详情作废（detailReq 序号守卫），与列表请求互不串台。 */
+  const toggleRow = useCallback(
+    (sessionId: string) => {
+      ++detailReq.current;
+      if (expandedId === sessionId) {
+        setExpandedId(null);
+        setDetail(null);
+        return;
+      }
+      setExpandedId(sessionId);
+      setCopiedKey(null);
+      setDetail({ phase: "loading", view: null, message: "", requestId: null });
+      const my = detailReq.current;
+      fetchSessionDetail(sessionId)
+        .then((view) => {
+          if (detailReq.current !== my) return;
+          setDetail({ phase: "ready", view, message: "", requestId: null });
+        })
+        .catch((error: unknown) => {
+          if (detailReq.current !== my) return;
+          const rid = error instanceof ApiError ? error.requestId ?? null : null;
+          const message =
+            error instanceof ApiError && error.status === 404
+              ? "该会话不存在或不可见：上游对「不存在」与「跨租户」回同一 404，本页不推断它到底存不存在。"
+              : error instanceof ApiError
+                ? `会话详情读取失败（${error.status}）。`
+                : "会话详情读取失败。";
+          setDetail({ phase: "error", view: null, message, requestId: rid });
+        });
+    },
+    [expandedId],
+  );
+
+  /* 复制消息的 requestId：剪贴板失败不弹假成功——把文本选区留在原地供手动复制。 */
+  const copyRequestId = useCallback(
+    (key: string, text: string, node: HTMLElement | null) => {
+      navigator.clipboard
+        ?.writeText(text)
+        .then(() => setCopiedKey(key))
+        .catch(() => {
+          setCopiedKey(`fail:${key}`);
+          try {
+            if (node) {
+              const range = document.createRange();
+              range.selectNodeContents(node);
+              const sel = window.getSelection();
+              sel?.removeAllRanges();
+              sel?.addRange(range);
+            }
+          } catch {
+            /* 选区失败也只影响便利，不影响诚实文案 */
+          }
+        });
+    },
+    [],
+  );
+
   useEffect(() => {
     load(null);
     return () => {
       // 卸载时让在途请求的回填失效，避免跨员工的迟到响应覆盖新状态。
       reqRef.current += 1;
+      detailReq.current += 1;
     };
   }, [load]);
 
@@ -242,7 +313,7 @@ export function SessionsList({ employeeId, pageSize = DEFAULT_SESSIONS_LIMIT }: 
             key={row.sessionId}
             role="listitem"
             data-testid={`se2-sessions-row-${index}`}
-            className="se6-sessions__row grid grid-cols-1 gap-1 px-4 py-3 md:grid-cols-[minmax(0,1.4fr)_minmax(0,0.7fr)_minmax(0,1fr)] md:items-center md:gap-2"
+            className="se6-sessions__row grid grid-cols-1 gap-1 px-4 py-3 md:grid-cols-[minmax(0,1.4fr)_minmax(0,0.7fr)_minmax(0,1fr)_auto] md:items-center md:gap-2"
           >
             <span
               className="min-w-0 truncate font-mono text-sm"
@@ -266,6 +337,113 @@ export function SessionsList({ employeeId, pageSize = DEFAULT_SESSIONS_LIMIT }: 
             >
               {formatSessionTime(row.updatedAt)}
             </span>
+            {/* SE-04：行内展开＝详情读口消费面（messages 的 requestId/引用） */}
+            <button
+              type="button"
+              className="se6-sessions__button justify-self-end rounded border border-white/15 px-3 py-1 text-xs text-white/80"
+              data-testid={`se4-expand-${index}`}
+              aria-expanded={expandedId === row.sessionId}
+              onClick={() => toggleRow(row.sessionId)}
+            >
+              {expandedId === row.sessionId ? "收起详情" : "查看详情"}
+            </button>
+            {expandedId === row.sessionId && detail ? (
+              <div
+                className="mt-2 w-full border-t border-white/10 pt-2 text-sm md:col-span-4"
+                data-testid={`se4-detail-${index}`}
+                role="group"
+                aria-label="会话详情消息"
+              >
+                {detail.phase === "loading" ? (
+                  <p className="text-white/60" data-testid="se4-detail-loading">
+                    正在读取该会话的消息…
+                  </p>
+                ) : null}
+                {detail.phase === "error" ? (
+                  <div data-testid="se4-detail-error">
+                    <p className="text-white/80">{detail.message}</p>
+                    {detail.requestId ? (
+                      <p className="font-mono text-xs text-white/40" data-testid="se4-detail-rid">
+                        请求编号 {detail.requestId}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
+                {detail.phase === "ready" && detail.view ? (
+                  <>
+                    <p className="text-xs text-white/45" data-testid="se4-detail-note">
+                      消息按上游给定顺序全量列出（无分页）；请求编号与引用逐条取上游原值，缺就是缺。
+                      {detail.view.messageCount !== null ? ` 上游报消息数 ${detail.view.messageCount}。` : " 上游没有回传消息数。"}
+                    </p>
+                    {detail.view.messages.length === 0 ? (
+                      <p className="text-white/60" data-testid="se4-detail-empty">
+                        这条会话里一条消息都没有。
+                      </p>
+                    ) : null}
+                    {detail.view.messages.map((msg, mi) => {
+                      const ridKey = `${row.sessionId}:${mi}`;
+                      const ridNode = `se4-msg-rid-${mi}`;
+                      return (
+                        <div
+                          key={`${msg.seq ?? "x"}-${mi}`}
+                          className="border-t border-white/5 py-2"
+                          data-testid={`se4-msg-${mi}`}
+                        >
+                          <p className="text-xs text-white/50">
+                            {msg.role === "user" ? "用户" : msg.role === "assistant" ? "助手" : "未知角色"}
+                            {msg.seq !== null ? ` · #${msg.seq}` : ""}
+                            {msg.createdAt ? ` · ${formatSessionTime(msg.createdAt)}` : ""}
+                          </p>
+                          <p className="mt-1 min-w-0 break-words text-white/85">
+                            {msg.content ?? "（上游没有回传内容）"}
+                          </p>
+                          {msg.requestId ? (
+                            <p className="mt-1 flex flex-wrap items-center gap-2">
+                              <span
+                                id={ridNode}
+                                className="font-mono text-xs text-white/40"
+                                data-testid={`se4-msg-rid-${mi}`}
+                              >
+                                请求编号 {msg.requestId}
+                              </span>
+                              <button
+                                type="button"
+                                className="se6-sessions__button rounded border border-white/15 px-2 py-1 text-xs text-white/70"
+                                data-testid={`se4-msg-rid-copy-${mi}`}
+                                onClick={() =>
+                                  copyRequestId(ridKey, msg.requestId ?? "", document.getElementById(ridNode))
+                                }
+                              >
+                                {copiedKey === ridKey
+                                  ? "已复制"
+                                  : copiedKey === `fail:${ridKey}`
+                                    ? "复制失败：文本已保留，可手动选取"
+                                    : "复制"}
+                              </button>
+                            </p>
+                          ) : (
+                            <p className="mt-1 text-xs text-white/40" data-testid={`se4-msg-norid-${mi}`}>
+                              请求编号 —（上游未回传）
+                            </p>
+                          )}
+                          {msg.role === "assistant" ? (
+                            msg.citations ? (
+                              <p className="mt-1 text-xs text-white/60" data-testid={`se4-msg-cites-${mi}`}>
+                                引用（{msg.citations.length}）：{msg.citations.join("、")}
+                              </p>
+                            ) : (
+                              <p className="mt-1 text-xs text-white/40" data-testid={`se4-msg-nocite-${mi}`}>
+                                这次回答没有带回引用。
+                              </p>
+                            )
+                          ) : null}
+                        </div>
+                      );
+                    })}
+                  </>
+                ) : null}
+              </div>
+            ) : null}
           </li>
         ))}
       </ul>
