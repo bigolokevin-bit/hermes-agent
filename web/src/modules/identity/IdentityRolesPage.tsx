@@ -359,7 +359,7 @@ export function IdentityRolesPage() {
                 count={`${members.length} 行`}
                 testId="identity-role-detail-card"
                 flush
-                note="部门范围取成员台账的部门字段；角色与最近操作没有上游读数，格内留破折号。"
+                note="部门范围取成员台账的部门字段，未填写即写「未填写」。"
                 availability={[
                   { label: "角色", reason: "成员台账未带角色字段，取不到成员的角色" },
                   { label: "最近操作", reason: "没有操作日志读口" },
@@ -425,7 +425,7 @@ export function IdentityRolesPage() {
                 count="成员归属"
                 testId="identity-role-roster-card"
                 flush
-                note="角色清单取成员台账的显式角色字段；范围没有读口。"
+                note="角色清单取成员台账的显式角色字段。"
                 availability={[{ label: "角色范围", reason: "角色的范围与门禁都没有上游读数" }]}
               >
                 <div className="id-tw">
