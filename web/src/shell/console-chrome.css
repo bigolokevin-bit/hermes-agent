@@ -77,3 +77,22 @@
   background: var(--color-surface-raised-ls);
   color: var(--color-text-ls);
 }
+
+/* ── 主区滚动盒（2026-11-24 二轮）─────────────────────────────────────────
+ * 此前 `main` 是 `flex-1`（= 1 1 0%）：内容短时把 flex 剩余高度整块占住，
+ * 页脚之下拉出一大片空底（1440×1400 档实测 306px）。改成 `0 1 auto` 后
+ * 同时满足两档：
+ *   内容短 ⇒ flex-basis:auto 按内容收口，不再长到视口高；
+ *   内容长（审计事件等 6000+ 字）⇒ 父级定高 + overflow-hidden，本件收缩到
+ *     可用高度，`overflow-y-auto` 照旧出滚动条。
+ * 只改生长行为，不动 contexts/ 的组件、不碰任何颜色/圆角；chat 档的
+ * `overflow-hidden` main 不匹配本选择器，行为不变。 */
+main[class*="overflow-y-auto"] {
+  flex: 0 1 auto;
+  /* 主区容器不着色、不描边、不圆角：骨架只有「底色 → 卡」两层，shell 内容列
+     不得再插一层「面板」。此处是防护性声明（现状实测本就没有），留着防止
+     主题变量把 --panel 注进内容列时多长出一层框。 */
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+}

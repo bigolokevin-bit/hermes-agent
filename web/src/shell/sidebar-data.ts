@@ -15,6 +15,10 @@
  * 今日上限（骨架的「今日全局上限」分母）在 BFF 没有真口径：dailyTokens 是
  * token 预算、不是美元上限。故 todayLimitUsd 恒为 null —— 侧栏据此只显示
  * 「今日 $X」，不编一个分母，也不画占比条。
+ *
+ * 时序（2026-11-24 二轮）：本树读口单次 0.6~9s（whoami 的 SWR 缓存已在
+ * v4_proxy 侧落下），所以两个 hook 的读口各自 Promise.allSettled 并发发起、
+ * 互不 await；读到之前徽标不画、额度块不画，绝不先画 0 或空壳。
  */
 import { useEffect, useState } from "react";
 import { fetchJSON } from "@/lib/api";
@@ -140,7 +144,8 @@ async function loadMonthlyQuota(): Promise<number | null> {
   return seen ? sum : null;
 }
 
-/** 侧栏徽标：只发 3 个读口，任一失败只影响自己那一枚。 */
+/** 侧栏徽标：3 个读口一次性并发发起，任一失败只影响自己那一枚；
+ * 读到之前保持 null（= 不画徽标），绝不先画 0。 */
 export function useSidebarBadges(): SidebarBadges {
   const [badges, setBadges] = useState<SidebarBadges>(NO_BADGES);
 
@@ -186,7 +191,8 @@ const NO_USAGE: SidebarUsage = {
   todayLimitUsd: null,
 };
 
-/** 侧栏底部额度块：今日 / 本月两条真读数 + 本月配额真读数。 */
+/** 侧栏底部额度块：今日 / 本月两条真读数 + 本月配额真读数，3 个读口并发；
+ * 读到之前保持 null（侧栏不画这一块，也不画空轨道）。 */
 export function useSidebarUsage(): SidebarUsage {
   const [usage, setUsage] = useState<SidebarUsage>(NO_USAGE);
 
@@ -202,12 +208,13 @@ export function useSidebarUsage(): SidebarUsage {
         loadMonthlyQuota(),
       ]);
       if (!alive) return;
-      setUsage({
+      const next: SidebarUsage = {
         todayCostUsd: todayCost.status === "fulfilled" ? todayCost.value : null,
         monthCostUsd: monthCost.status === "fulfilled" ? monthCost.value : null,
         monthQuotaUsd: quota.status === "fulfilled" ? quota.value : null,
         todayLimitUsd: null,
-      });
+      };
+      setUsage(next);
     };
     void settle();
     return () => {

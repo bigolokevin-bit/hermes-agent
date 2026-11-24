@@ -30,6 +30,13 @@ function toneOf(pct: number | null): string {
 
 export function SidebarUsage(): ReactNode {
   const usage = useSidebarUsage();
+  // 一条真读数都没有 ⇒ 整块不渲染。宁可侧栏底部少一块，也不留一条
+  // 无内容的空白壳（空轨道/空边框都不是数据，只是噪声）。
+  const hasAny =
+    usage.todayCostUsd !== null ||
+    usage.monthCostUsd !== null ||
+    usage.monthQuotaUsd !== null;
+  if (!hasAny) return null;
   const pct = percentOf(usage.monthCostUsd, usage.monthQuotaUsd);
 
   return (

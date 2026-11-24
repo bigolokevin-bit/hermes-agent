@@ -81,12 +81,15 @@ export function Auth5Session(): ReactNode {
     };
   }, []);
   if (who.k === "loading") {
+    // 未解析态不留空壳：只画骨架同款的缩写圆点 + 一条 11px 弱色读数语，
+    // 几何与账号芯片一致（不画边框、不画整块底色），解析到就原地换成真身份。
     return (
-      <div
-        className="mx-1 h-9 animate-pulse rounded-sm bg-white/5"
-        data-testid="auth5-widget"
-        aria-label="加载中"
-      />
+      <div className="sidebar-account" data-testid="auth5-widget" aria-busy="true">
+        <span className="sidebar-avatar is-pending" aria-hidden="true" />
+        <div className="sidebar-account-meta">
+          <span className="sidebar-account-sub">读取中…</span>
+        </div>
+      </div>
     );
   }
   if (who.k === "anon") {

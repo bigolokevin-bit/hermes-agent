@@ -1212,15 +1212,15 @@ export default function App() {
 
               <div
                 className={cn(
-                  "flex min-w-0 items-center gap-2",
+                  "flex min-w-0 items-baseline gap-3",
                   isDesktopCollapsed && "lg:hidden",
                 )}
               >
-                <span className="sidebar-version">
-                  {sidebarStatus?.version != null
-                    ? `v${sidebarStatus.version}`
-                    : "—"}
-                </span>
+                {/* 版本号只在真有读口回包时才占一格；读不到就整格不渲染，
+                  * 不再留一个没有语义的「—」。 */}
+                {sidebarStatus?.version != null && (
+                  <span className="sidebar-version">v{sidebarStatus.version}</span>
+                )}
                 <a
                   className="sidebar-org"
                   href="https://nousresearch.com"

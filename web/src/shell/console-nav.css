@@ -237,6 +237,17 @@
   min-width: 0;
 }
 
+/* 身份未解析：只留一颗虚线缩写圆点 + 「读取中…」，不画底色盒/边框盒。 */
+.sidebar-avatar.is-pending {
+  border-style: dashed;
+  border-color: var(--line);
+  background: transparent;
+}
+
+.sidebar-account:has(.sidebar-avatar.is-pending):hover {
+  background: none;
+}
+
 .sidebar-account-name {
   overflow: hidden;
   font-size: 12.5px;
