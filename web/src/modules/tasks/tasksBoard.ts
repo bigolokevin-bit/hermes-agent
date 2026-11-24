@@ -291,7 +291,8 @@ export function beijing(iso?: string): string {
 
 export function statusLabel(value: string): string {
   switch (value) {
-    case "open": return "待处理";
+    // 骨架看板把 status=open 这一档叫「待分配」；标签随骨架口径。
+    case "open": return "待分配";
     case "in_progress": return "进行中";
     case "blocked": return "阻塞";
     case "done": return "已完成";

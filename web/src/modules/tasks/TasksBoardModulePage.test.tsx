@@ -95,15 +95,22 @@ async function render(entry = "/work") {
 }
 
 describe("TasksBoardModulePage", () => {
-  it("renders five status columns with honest labels", async () => {
+  it("renders the three skeleton columns, with blocked and cancelled kept off-column", async () => {
     fetchJSON.mockImplementation((url: string) =>
       Promise.resolve(url.includes("/task-detail") ? resolveDetail() : url.includes("/api/matrix") ? resolveDirectory() : resolveBoard(url)),
     );
     await render();
-    for (const label of ["待处理", "进行中", "阻塞", "已完成", "已取消"]) {
-      expect(container.textContent).toContain(label);
+    for (const label of ["待分配", "进行中", "今日完成"]) {
+      expect(container.querySelector('[data-testid="tsk4-columns"]')?.textContent).toContain(label);
     }
-    expect(container.querySelectorAll('[data-testid^="tsk4-col-"]')).toHaveLength(5);
+    expect(container.querySelectorAll('[data-testid^="tsk4-col-"]')).toHaveLength(3);
+    // 阻塞不进列，走看板顶部告警带：N 项 + 前 3 条 + 查看全部。
+    const band = container.querySelector('[data-testid="tsk4-blocked-band"]');
+    expect(band?.textContent).toContain("1 项被阻塞");
+    expect(band?.textContent).toContain("素材去重");
+    expect(band?.querySelector('[data-testid="tsk4-blocked-all"]')?.getAttribute("href")).toContain("status=blocked");
+    // 已取消收进「今日完成」列脚注；今天没有已取消时不渲染脚注。
+    expect(container.querySelector('[data-testid="tsk4-cancelled-foot"]')).toBeNull();
     expect(container.textContent).toContain("小鲤 · 1A2B3C4D");
     expect(container.textContent).not.toContain("emp_1a2b3c4d");
     expect(container.textContent).not.toContain("human:7");
@@ -118,6 +125,36 @@ describe("TasksBoardModulePage", () => {
     );
     expect(costNote, "卡底点名任务成本缺失").toBeTruthy();
     expect(costNote?.parentElement?.textContent ?? "").toContain("3 条没有回传成本");
+  });
+
+  it("今日完成只收今天关闭的，已取消落成脚注不占列", async () => {
+    const today = new Date().toISOString();
+    const yesterday = new Date(Date.now() - 36 * 3600 * 1000).toISOString();
+    fetchJSON.mockImplementation((url: string) => {
+      if (url.includes("/api/matrix")) return Promise.resolve(resolveDirectory());
+      if (url.includes("/task-detail")) return Promise.resolve(resolveDetail());
+      const status = new URL(url, "http://x").searchParams.get("status") ?? "open";
+      if (status === "done") {
+        return Promise.resolve({
+          items: [
+            { taskId: "tk_done_today", title: "今天关的", status: "done", closedAt: today, updatedAt: today },
+            { taskId: "tk_done_old", title: "昨天关的", status: "done", closedAt: yesterday, updatedAt: yesterday },
+          ],
+        });
+      }
+      if (status === "cancelled") {
+        return Promise.resolve({ items: [{ taskId: "tk_cancel_1", title: "撤了", status: "cancelled" }] });
+      }
+      return Promise.resolve({ items: [] });
+    });
+    await render("/work");
+    await act(async () => {});
+    const doneCol = container.querySelector('[data-testid="tsk4-col-done_today"]');
+    expect(doneCol?.textContent).toContain("今天关的");
+    expect(doneCol?.textContent).not.toContain("昨天关的");
+    expect(container.querySelector('[data-testid="tsk4-cancelled-foot"]')?.textContent).toContain("另有 1 项已取消");
+    // 三列以外不许冒出第四列
+    expect(container.querySelectorAll('[data-testid^="tsk4-col-"]')).toHaveLength(3);
   });
 
   it("maps unknown statuses to 待核实 and never invents money", async () => {
@@ -209,9 +246,9 @@ describe("TasksBoardModulePage", () => {
     );
     await render();
     const text = container.textContent ?? "";
-    // 假零整改：失败时是「—」，不是「待处理 0 / 阻塞 0」；附原因行。
-    expect(text).toContain("待处理 — · 阻塞 —");
-    expect(text).not.toContain("待处理 0");
+    // 假零整改：失败时是「—」，不是「待分配 0 / 阻塞 0」；附原因行。
+    expect(text).toContain("待分配 — · 阻塞 —");
+    expect(text).not.toContain("待分配 0");
     expect(text).not.toContain("阻塞 0");
     // 设计车道⑤：主句只讲人话，「接口不可达 / 数字不作零处理」进「详情」折叠（默认关闭）。
     expect(text).toContain("暂时读不到任务数据，请稍后重试");
@@ -231,7 +268,7 @@ describe("TasksBoardModulePage", () => {
   it("a successful read with no tasks still shows zero, honestly", async () => {
     fetchJSON.mockImplementation(() => Promise.resolve({ items: [] }));
     await render();
-    expect(container.textContent).toContain("待处理 0 · 阻塞 0");
+    expect(container.textContent).toContain("待分配 0 · 阻塞 0");
     expect(container.querySelector('[data-testid="tsk4-empty"]')).toBeTruthy();
     expect(container.textContent).not.toContain("数字不作零处理");
     // 读取成功就没有「详情」折叠可展开。
@@ -297,8 +334,8 @@ describe("TasksBoardModulePage", () => {
     expect(urls.filter((u) => u.includes("api/matrix")).length).toBe(0);
     expect(urls).toHaveLength(5);
     for (const u of urls) expect(u).toContain("assignee=employee%3Aemp_1a2b3c4d");
-    expect(container.querySelectorAll('[data-testid^="tsk4-col-"]')).toHaveLength(5);
-    const openCol = container.querySelector('[data-testid="tsk4-col-open"]');
+    expect(container.querySelectorAll('[data-testid^="tsk4-col-"]')).toHaveLength(3);
+    const openCol = container.querySelector('[data-testid="tsk4-col-unassigned"]');
     expect(openCol?.textContent).toContain("1 条（本页已加载）");
     expect(container.querySelector('[data-testid="tsk4-card-tk_aff_1"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="tsk4-emptycol-in_progress"]')?.textContent).toContain("本列暂无任务");
@@ -327,7 +364,7 @@ describe("TasksBoardModulePage", () => {
     const ids = cards.map((c) => c.getAttribute("data-testid"));
     expect(ids[0]).toBe("tsk4-card-tk_high_new");
     expect(ids.indexOf("tsk4-card-tk_low_new")).toBeLessThan(ids.indexOf("tsk4-card-tk_low_old"));
-    expect(container.querySelector('[data-testid="tsk4-col-open"]')?.textContent).toContain("3 条（本页已加载）");
+    expect(container.querySelector('[data-testid="tsk4-col-unassigned"]')?.textContent).toContain("3 条（本页已加载）");
   });
 
   it("R41: the denied board keeps a copyable rid and a live retry (no dead controls)", async () => {

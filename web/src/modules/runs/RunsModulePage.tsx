@@ -1531,12 +1531,20 @@ export function RunsModulePage() {
             ? "读取成功，这个窗口没有运行"
             : "读取成功";
 
+  // 首屏只留一句口径（12px 弱色，表格上方一行）：其余解释都收进下面的「口径」折叠。
+  const asofKnown = asof.text !== "—";
+  const caliberLine = countsKnown
+    ? `${sinceLabel(sinceKey)} · 共 ${rows.length} 条运行 · 失败 ${failedCount}` +
+      `${phase === "ready" && cursor ? " · 还有更多" : ""}` +
+      `${asofKnown ? ` · 数据截至 ${asof.text}` : ""}`
+    : `${sinceLabel(sinceKey)} · ${statusLine}`;
+
   return (
     <div
       className="flex min-w-0 w-full max-w-full flex-col gap-3"
       data-testid="run5-page"
       data-page="runs"
-      data-fixture={forced ?? undefined}
+      data-state={forced ?? undefined}
     >
       {/* 骨架 filterbar：搜索 + 状态 + 时间 + 读取动作挤成一行；页头 H1 归外壳。 */}
       <ConsoleCard flush>
@@ -1711,47 +1719,57 @@ export function RunsModulePage() {
 
       {forced !== null ? <ReproNote state={forced} /> : null}
 
-      <div className="console-toolbar console-sub" data-testid="run5-meta">
-        <span data-testid="run5-status" aria-live="polite">{statusLine}</span>
-        <span
-          data-testid="run5-counts"
-          title={
-            countsKnown
-              ? "计数只统计这一页已加载的行，不是全量。"
-              : "读取成功之前不报计数：这里写「—」，不把读不到当成 0。"
-          }
-        >
-          {countsKnown
-            ? `本页 ${rows.length} 次 · 失败 ${failedCount} · 运行中 ${runningCount}`
-            : "本页 — 次 · 失败 — · 运行中 —"}
-          {phase === "ready" && cursor ? "；还有更多" : ""}
-          {unreadable > 0 && countsKnown ? `；另有 ${unreadable} 条未计入` : ""}
-        </span>
-        {countsKnown ? null : (
-          <details data-testid="run5-counts-detail">
-            <summary className="cursor-pointer">详情</summary>
-            <p className="mt-1">
-              读取没有成功之前数字不作零处理：这里写「—」，不按 0 算。
-              {failure?.requestId ? `请求编号：${failure.requestId}` : ""}
-            </p>
-          </details>
-        )}
-        <p data-testid="run-page-cap" title={pageCapTitle()}>
-          已加载 {countsKnown ? rows.length : "—"} 行（{pageCapText()}；复制与导出也只含这些行，不报全量）
-          {phase === "ready" && cursor ? (
-            <span className="ml-2" data-testid="run-page-cap-more">
-              {pageCapMoreText()}
-            </span>
-          ) : null}
+      {/* 骨架做法：表格上方只留一句口径；解释性散文收进「口径」折叠，不铺在首屏。 */}
+      <div className="console-toolbar" data-testid="run5-meta">
+        <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="run5-caliber">
+          {caliberLine}
         </p>
-        <span data-testid="run-asof-line" title="采集时刻只在上游回答里给了才显示；没给就留空号，不拿本机时间顶替">
-          采集时刻 <span data-testid="run-asof" title={asof.title}>{asof.text}</span>
-        </span>
+        <span className="console-grow" />
+        <details data-testid="run5-caliber-detail">
+          <summary className="cursor-pointer text-xs text-muted-foreground">口径</summary>
+          <div className="mt-1 space-y-1 text-xs text-muted-foreground">
+            <p>
+              <span data-testid="run5-status" aria-live="polite">{statusLine}</span>
+            </p>
+            <p>
+              <span
+                data-testid="run5-counts"
+                title={
+                  countsKnown
+                    ? "计数只统计这一页已加载的行，不是全量。"
+                    : "读取成功之前不报计数：这里写「—」，不把读不到当成 0。"
+                }
+              >
+                {countsKnown
+                  ? `本页 ${rows.length} 次 · 失败 ${failedCount} · 运行中 ${runningCount}`
+                  : "本页 — 次 · 失败 — · 运行中 —"}
+                {phase === "ready" && cursor ? "；还有更多" : ""}
+                {unreadable > 0 && countsKnown ? `；另有 ${unreadable} 条未计入` : ""}
+              </span>
+              {countsKnown ? null : (
+                <span data-testid="run5-counts-detail">
+                  {" "}读取没有成功之前数字不作零处理：这里写「—」，不按 0 算。
+                  {failure?.requestId ? `请求编号：${failure.requestId}` : ""}
+                </span>
+              )}
+            </p>
+            <p data-testid="run-page-cap" title={pageCapTitle()}>
+              已加载 {countsKnown ? rows.length : "—"} 行（{pageCapText()}；复制与导出也只含这些行，不报全量）
+              {phase === "ready" && cursor ? (
+                <span className="ml-2" data-testid="run-page-cap-more">
+                  {pageCapMoreText()}
+                </span>
+              ) : null}
+            </p>
+            <p data-testid="run-asof-line" title="采集时刻只在上游回答里给了才显示；没给就留空号，不拿本机时间顶替">
+              采集时刻 <span data-testid="run-asof" title={asof.title}>{asof.text}</span>
+            </p>
+          </div>
+        </details>
       </div>
 
-      <RunSourceBar source={source} />
-
       <span hidden data-testid="run-state" data-phase={phase} />
+
 
       {phase === "loading" ? <LoadingPanel fixture={forced ?? undefined} /> : null}
       {phase === "empty" ? (
@@ -2041,6 +2059,8 @@ export function RunsModulePage() {
       ) : null}
       {/* wave-125：复制/导出/链接是同一层级的次级动作，收进一条操作栏；
           375 档下不再各自占一条散行，主按钮仍只有页首「刷新」一个。 */}
+      <RunSourceBar source={source} />
+
       {forced === null && phase !== "loading" ? (
         <div
           className="flex min-w-0 flex-col gap-2 rounded-md border border-border bg-card p-2"

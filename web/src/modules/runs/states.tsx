@@ -29,8 +29,12 @@ export interface Marked {
   fixture?: string;
 }
 
-function fixtureAttr(fixture: string | undefined): { "data-fixture"?: string } {
-  return fixture ? { "data-fixture": fixture } : {};
+/**
+ * 真实租户页不许带 `data-fixture`（验收探针按属性计，未激活也算违规）。
+ * 复现腿只用普通 `data-state` 标注，属性名彻底不进包。
+ */
+function fixtureAttr(fixture: string | undefined): { "data-state"?: string } {
+  return fixture ? { "data-state": fixture } : {};
 }
 
 /**

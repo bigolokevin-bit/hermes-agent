@@ -138,7 +138,7 @@ describe("/work 信息密度契约", () => {
 
     expect(host.querySelectorAll('[role="tablist"]').length).toBe(0);
     expect(host.querySelectorAll(".console-board__card").length).toBe(2);
-    // 副行是真读数：N 个任务 · N 待处理 · N 进行中 · N 今日完成
+    // 副行是真读数：N 个任务 · N 待分配 · N 进行中 · N 今日完成
     const sub = host.querySelector('[data-testid="tsk4-sub"]')?.textContent ?? "";
     expect(sub).toContain("2 个任务");
     expect(sub).toContain("1 进行中");

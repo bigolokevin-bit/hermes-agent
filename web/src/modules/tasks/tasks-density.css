@@ -31,3 +31,77 @@
     font-variant-numeric: tabular-nums;
   }
 }
+
+/* 2026-11-24 评审：看板并回骨架三列（待分配/进行中/今日完成）。阻塞不占列——
+ * 顶部一条告警带承载「N 项被阻塞 + 前 3 条 + 查看全部」；已取消收进「今日完成」
+ * 列下方 11px 脚注。两者都不是新套框：只有左侧一条语义色竖线 + 面板底。 */
+[data-testid="tsk4-columns"].console-board {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 900px) {
+  [data-testid="tsk4-columns"].console-board {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.console-blocked {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border-subtle-ls);
+  border-left: 2px solid var(--color-warning-ls);
+  border-radius: var(--radius-ls-1);
+  background: color-mix(in srgb, var(--color-warning-ls) 5%, transparent);
+}
+
+.console-blocked__head {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--font-size-ls-1);
+  line-height: 1.4;
+  color: var(--color-warning-ls);
+}
+
+.console-blocked__more {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--color-text-muted-ls);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.console-blocked__more:hover { color: var(--color-text-ls); }
+
+.console-blocked__list {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 0 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--color-text-ls);
+}
+
+.console-blocked__list > li {
+  display: flex;
+  min-width: 0;
+  max-width: 100%;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.console-board__footnote {
+  margin: 0;
+  padding: 2px 2px 0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--color-text-faint-ls);
+}

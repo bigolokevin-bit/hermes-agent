@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router";
 import { RequestIdCopy } from "@/components/RequestIdCopy";
-import { AlertTriangle, Inbox, RefreshCw, ShieldAlert, X } from "lucide-react";
+import { AlertTriangle, Inbox, RefreshCw, ShieldAlert, TriangleAlert, X } from "lucide-react";
 
 import { Button } from "@nous-research/ui/ui/components/button";
 import { Card, CardContent } from "@nous-research/ui/ui/components/card";
@@ -42,13 +42,29 @@ import "./tasks-density.css";
 /** 组内排序键：优先级高→低，同级按更新时间新→旧；未知按最后。 */
 const PRIORITY_RANK: Record<string, number> = { high: 0, urgent: 0, normal: 1, low: 2 };
 
-const COLUMN_LABEL: Record<(typeof BOARD_STATUSES)[number], string> = {
-  open: "待处理",
+/** 骨架三列：待分配（后端 open）/ 进行中 / 今日完成（done 且北京今天关闭）。 */
+const BOARD_COLUMNS = ["unassigned", "in_progress", "done_today"] as const;
+type BoardColumn = (typeof BOARD_COLUMNS)[number];
+
+const COLUMN_LABEL: Record<BoardColumn, string> = {
+  unassigned: "待分配",
   in_progress: "进行中",
-  blocked: "阻塞",
-  done: "已完成",
-  cancelled: "已取消",
+  done_today: "今日完成",
 };
+
+/** 关闭时间落在北京时间今天：骨架「今日完成」的取数口径。 */
+function closedToday(row: TaskRow): boolean {
+  if (row.status !== "done" || !row.closedAt) return false;
+  const ms = Date.parse(row.closedAt);
+  if (!Number.isFinite(ms)) return false;
+  const fmt = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Shanghai",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  return fmt.format(new Date(ms)) === fmt.format(new Date());
+}
 
 /** 计划任务 = 来源不是人工（定时/系统）。来源没回传的行不猜，只留在「全部任务」里。 */
 function isScheduledRow(row: TaskRow): boolean {
@@ -88,9 +104,9 @@ const CONTACT_ADMIN_HREF = "mailto:workspace-admin@hermes.local?subject=Hermes%2
 /** QA V4-R4 条目5: 缺编号时给可执行的话术，不写「未提供」。 */
 function BoardSkeleton() {
   return (
-    <div className="grid min-w-0 gap-3 md:grid-cols-2 xl:grid-cols-5" data-testid="tsk4-loading" aria-busy="true">
-      {BOARD_STATUSES.map((status) => (
-        <Card key={status} className="min-w-0">
+    <div className="grid min-w-0 gap-3 md:grid-cols-3" data-testid="tsk4-loading" aria-busy="true">
+      {BOARD_COLUMNS.map((column) => (
+        <Card key={column} className="min-w-0">
           <CardContent className="space-y-3 p-4">
             <div className="h-4 w-20 animate-pulse rounded bg-muted" />
             {[0, 1].map((i) => (
@@ -465,10 +481,17 @@ export function TasksBoardModulePage() {
   }, [board.rows, board.nameMap, q, sourceFilter]);
 
   const grouped = useMemo(() => {
-    const map = new Map<string, TaskRow[]>();
-    for (const status of BOARD_STATUSES) map.set(status, []);
+    const map = new Map<BoardColumn, TaskRow[]>();
+    for (const column of BOARD_COLUMNS) map.set(column, []);
+    const inColumn = (row: TaskRow): BoardColumn | null => {
+      if (row.status === "open") return "unassigned";
+      if (row.status === "in_progress") return "in_progress";
+      if (row.status === "done" && closedToday(row)) return "done_today";
+      return null;
+    };
     for (const row of visibleRows) {
-      if (map.has(row.status)) map.get(row.status)!.push(row);
+      const column = inColumn(row);
+      if (column !== null) map.get(column)!.push(row);
     }
     for (const rows of map.values()) {
       rows.sort(
@@ -480,6 +503,23 @@ export function TasksBoardModulePage() {
     return map;
   }, [visibleRows]);
 
+  // 阻塞与已取消不在三列里，但不许丢：阻塞走看板顶部告警带，已取消进「今日完成」脚注。
+  const blockedRows = useMemo(
+    () =>
+      visibleRows
+        .filter((row) => row.status === "blocked")
+        .sort(
+          (a, b) =>
+            (PRIORITY_RANK[a.priority ?? ""] ?? 3) - (PRIORITY_RANK[b.priority ?? ""] ?? 3) ||
+            String(b.updatedAt ?? "").localeCompare(String(a.updatedAt ?? "")),
+        ),
+    [visibleRows],
+  );
+  const cancelledCount = useMemo(
+    () => visibleRows.filter((row) => row.status === "cancelled").length,
+    [visibleRows],
+  );
+
   const counts = useMemo(() => {
     const open = board.rows.filter((row) => row.status === "open").length;
     const blocked = board.rows.filter((row) => row.status === "blocked").length;
@@ -488,26 +528,7 @@ export function TasksBoardModulePage() {
   }, [board.rows]);
 
   // 今日完成按关闭时间落在北京时间今天算；没有关闭时间的不计，也不补数。
-  const todayDone = useMemo(() => {
-    const now = new Date();
-    const day = new Intl.DateTimeFormat("en-CA", {
-      timeZone: "Asia/Shanghai",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    }).format(now);
-    const fmt = new Intl.DateTimeFormat("en-CA", {
-      timeZone: "Asia/Shanghai",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    });
-    return board.rows.filter((row) => {
-      if (row.status !== "done" || !row.closedAt) return false;
-      const ms = Date.parse(row.closedAt);
-      return Number.isFinite(ms) && fmt.format(new Date(ms)) === day;
-    }).length;
-  }, [board.rows]);
+  const todayDone = useMemo(() => board.rows.filter(closedToday).length, [board.rows]);
 
   const scheduledCount = useMemo(
     () => board.rows.filter(isScheduledRow).length,
@@ -527,7 +548,7 @@ export function TasksBoardModulePage() {
   const countsUnreadable = board.phase === "error" || board.phase === "denied";
   const boardReady = board.phase === "ready" || board.phase === "empty";
   const subLine = boardReady
-    ? `${board.rows.length} 个任务 · ${counts.open} 待处理 · ${counts.inProgress} 进行中 · ${todayDone} 今日完成`
+    ? `${board.rows.length} 个任务 · ${counts.open} 待分配 · ${counts.inProgress} 进行中 · ${todayDone} 今日完成`
     : null;
 
   const retry = useCallback(() => {
@@ -660,7 +681,7 @@ export function TasksBoardModulePage() {
           </Button>
           <span className="console-grow" />
           <span className="console-sub console-mono" data-testid="status">
-            {countsUnknown ? "待处理 — · 阻塞 —" : `待处理 ${counts.open} · 阻塞 ${counts.blocked}`}
+            {countsUnknown ? "待分配 — · 阻塞 —" : `待分配 ${counts.open} · 阻塞 ${counts.blocked}`}
           </span>
           {countsUnreadable ? (
             <span data-testid="tasks-summary-caveat" className="console-sub">
@@ -852,65 +873,103 @@ export function TasksBoardModulePage() {
       ) : null}
 
       {!panelActive && sourceFilter === "all" && board.phase === "ready" ? (
-        <div className="console-board" data-testid="tsk4-columns">
-          {BOARD_STATUSES.map((status) => {
-            const rows = grouped.get(status) ?? [];
-            return (
-              <section key={status} className="console-board__col" data-testid={`tsk4-col-${status}`}>
-                <div className="console-board__head">
-                  <h2 className="console-board__title">{COLUMN_LABEL[status]}</h2>
+        <>
+          {/* 阻塞不占列，但也不许丢：顶部一条告警带，前 3 条 + 查看全部。 */}
+          {blockedRows.length > 0 ? (
+            <div className="console-blocked" data-testid="tsk4-blocked-band" role="status">
+              <div className="console-blocked__head">
+                <TriangleAlert className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                <b data-testid="tsk4-blocked-count">{blockedRows.length} 项被阻塞</b>
+                <span className="console-grow" />
+                <Link
+                  className="console-blocked__more"
+                  to="/work?status=blocked"
+                  data-testid="tsk4-blocked-all"
+                  title="按阻塞状态筛选任务；运行面没有阻塞这一档状态"
+                >
+                  查看全部
+                </Link>
+              </div>
+              <ul className="console-blocked__list">
+                {blockedRows.slice(0, 3).map((row) => (
+                  <li key={row.taskId} data-testid={`tsk4-blocked-item-${row.taskId}`}>
+                    <button type="button" className="min-w-0 truncate text-left hover:underline" onClick={() => openTask(row.taskId)}>
+                      {row.title}
+                    </button>
+                    <span className="text-muted-foreground">{actorLabel(row.assignee, board.nameMap)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
+          <div className="console-board" data-testid="tsk4-columns">
+            {BOARD_COLUMNS.map((column) => {
+              const rows = grouped.get(column) ?? [];
+              return (
+                <section key={column} className="console-board__col" data-testid={`tsk4-col-${column}`}>
+                  <div className="console-board__head">
+                    <h2 className="console-board__title">{COLUMN_LABEL[column]}</h2>
+                    {rows.length === 0 ? (
+                      // 列读成功、真没有行：这是挣来的 0，不写成缺数符号。
+                      <span className="console-board__count ui-c-num" title="这一列为空是真读数：本页确实没有落进这一列的任务">
+                        0
+                      </span>
+                    ) : (
+                      <span className="console-board__count" title="排序：优先级（高→低），同级按更新时间（新→旧）">
+                        {rows.length} 条（本页已加载）
+                      </span>
+                    )}
+                  </div>
                   {rows.length === 0 ? (
-                    // 列读成功、真没有行：这是挣来的 0，不写成缺数符号。
-                    <span className="console-board__count ui-c-num" title="这一列为空是真读数：本页确实没有该状态的任务">
-                      0
-                    </span>
+                    <p className="console-board__empty" data-testid={`tsk4-emptycol-${column}`}>
+                      {column === "done_today" ? "今天还没有完成的任务" : "本列暂无任务"}
+                      {fAssignee ? "（当前正按负责人筛选，清空筛选或换一位负责人可见更多）" : ""}
+                    </p>
                   ) : (
-                    <span className="console-board__count" title="排序：优先级（高→低），同级按更新时间（新→旧）">
-                      {rows.length} 条（本页已加载）
-                    </span>
-                  )}
-                </div>
-                {rows.length === 0 ? (
-                  <p className="console-board__empty" data-testid={`tsk4-emptycol-${status}`}>
-                    本列暂无任务{fAssignee ? "（当前正按负责人筛选，清空筛选或换一位负责人可见更多）" : ""}
-                  </p>
-                ) : (
-                  rows.map((row) => {
-                    const priority = priorityLabel(row.priority);
-                    const tone = priority.tone === "warning" ? "warn" : "mut";
-                    return (
-                      <button
-                        key={row.taskId}
-                        type="button"
-                        data-testid={`tsk4-card-${row.taskId}`}
-                        aria-label={`查看任务 ${row.title}`}
-                        className="console-board__card"
-                        onClick={() => openTask(row.taskId)}
-                      >
-                        <h3 className="console-board__name">{row.title}</h3>
-                        <div className="console-board__meta">
-                          <span className="truncate">{actorLabel(row.assignee, board.nameMap)}</span>
-                          <Pill tone={tone} dot={false} title={`优先级：${priority.text}`}>{priority.text}</Pill>
-                        </div>
-                        <div className="console-board__foot">
-                          <span>
-                            {`更新 ${beijing(row.updatedAt)}`}
-                            {costCoverage.any && typeof row.cost === "number" ? ` · 成本 ${money(row.cost)}` : ""}
-                          </span>
-                        </div>
-                        {row.progressNote ? (
-                          <div className="console-board__foot">
-                            <span title={row.progressNote}>{row.progressNote}</span>
+                    rows.map((row) => {
+                      const priority = priorityLabel(row.priority);
+                      const tone = priority.tone === "warning" ? "warn" : "mut";
+                      return (
+                        <button
+                          key={row.taskId}
+                          type="button"
+                          data-testid={`tsk4-card-${row.taskId}`}
+                          aria-label={`查看任务 ${row.title}`}
+                          className="console-board__card"
+                          onClick={() => openTask(row.taskId)}
+                        >
+                          <h3 className="console-board__name">{row.title}</h3>
+                          <div className="console-board__meta">
+                            <span className="truncate">{actorLabel(row.assignee, board.nameMap)}</span>
+                            <Pill tone={tone} dot={false} title={`优先级：${priority.text}`}>{priority.text}</Pill>
                           </div>
-                        ) : null}
-                      </button>
-                    );
-                  })
-                )}
-              </section>
-            );
-          })}
-        </div>
+                          <div className="console-board__foot">
+                            <span>
+                              {`更新 ${beijing(row.updatedAt)}`}
+                              {costCoverage.any && typeof row.cost === "number" ? ` · 成本 ${money(row.cost)}` : ""}
+                            </span>
+                          </div>
+                          {row.progressNote ? (
+                            <div className="console-board__foot">
+                              <span title={row.progressNote}>{row.progressNote}</span>
+                            </div>
+                          ) : null}
+                        </button>
+                      );
+                    })
+                  )}
+                  {/* 已取消不进列，收在「今日完成」列下方一行 11px 脚注，不许丢。 */}
+                  {column === "done_today" && cancelledCount > 0 ? (
+                    <p className="console-board__footnote" data-testid="tsk4-cancelled-foot">
+                      另有 {cancelledCount} 项已取消
+                    </p>
+                  ) : null}
+                </section>
+              );
+            })}
+          </div>
+        </>
       ) : null}
 
       {!panelActive && sourceFilter === "scheduled" && boardReady ? (

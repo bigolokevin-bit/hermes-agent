@@ -777,7 +777,7 @@ describe("R39 — the ?state= repro legs paint panels and ask for nothing", () =
   /** A panel reduced to its body: the mark and the request-id line come and go. */
   const bare = (markup: string): string =>
     markup
-      .replace(/ data-fixture="[^"]*"/g, "")
+      .replace(/ data-state="[^"]*"/g, "")
       .replace(/<p\b[^>]*data-testid="run5-denied-request-id"[\s\S]*?<\/p>/g, "");
 
   const STATES = ["loading", "empty", "error", "denied"] as const;
@@ -788,9 +788,10 @@ describe("R39 — the ?state= repro legs paint panels and ask for nothing", () =
     await waitFor(() => panelOf(state) !== null, state);
     expect(urls()).toHaveLength(0);
     // The mark: the root and the panel, and nothing else on the page.
-    expect(document.querySelector("[data-testid='run5-page']")?.getAttribute("data-fixture")).toBe(state);
-    expect(panelOf(state)?.getAttribute("data-fixture")).toBe(state);
-    expect(document.querySelectorAll("[data-fixture]").length).toBe(2);
+    expect(document.querySelector("[data-testid='run5-page']")?.getAttribute("data-state")).toBe(state);
+    expect(panelOf(state)?.getAttribute("data-state")).toBe(state);
+    // 真实租户页不带 data-fixture：标记只有一个属性名，探针按它计
+    expect(document.querySelectorAll("[data-fixture]").length).toBe(0);
     // The repro owns up to it on the surface.
     const note = document.querySelector("[data-testid='run5-forced-note']")?.textContent ?? "";
     expect(note).toContain(`?state=${state}`);
@@ -871,7 +872,7 @@ describe("R39 — the ?state= repro legs paint panels and ask for nothing", () =
     await waitFor(() => panelOf("denied") !== null, "denied repro");
     expect(urls()).toHaveLength(0);
     const repro = panelOf("denied")?.outerHTML ?? "";
-    expect(repro).toContain('data-fixture="denied"');
+    expect(repro).toContain('data-state="denied"');
     // Same panel, mark aside: the repro does not invent a different body.
     expect(bare(repro)).toBe(bare(forbidden));
   });
@@ -889,7 +890,7 @@ describe("R39 — the ?state= repro legs paint panels and ask for nothing", () =
     api.fetchJSON.mockImplementation(okList([RUN_A], { cursor: null }));
     await render("/runs");
     await waitFor(() => rowNodes() === 1, "ready rows");
-    expect(document.querySelector("[data-fixture]")).toBeNull();
+    expect(document.querySelector("[data-state]")).toBeNull();
     expect(document.querySelector("[data-testid='run5-forced-note']")).toBeNull();
     expect(urls().some((u) => u.startsWith("/agent-api/api/runs?"))).toBe(true);
     expect(document.querySelector("[data-testid='run5-counts']")?.textContent).toContain("本页 1 次");
@@ -901,8 +902,8 @@ describe("R39 — the ?state= repro legs paint panels and ask for nothing", () =
       api.fetchJSON.mockImplementation(okList([RUN_A]));
       await render(entry);
       await waitFor(() => rowNodes() === 1, `real read from ${entry}`);
-      expect(document.querySelector("[data-testid='run5-page']")?.hasAttribute("data-fixture")).toBe(false);
-      expect(document.querySelector("[data-fixture]")).toBeNull();
+      expect(document.querySelector("[data-testid='run5-page']")?.hasAttribute("data-state")).toBe(false);
+      expect(document.querySelector("[data-state]")).toBeNull();
       expect(urls().length).toBeGreaterThan(0);
     }
   });
