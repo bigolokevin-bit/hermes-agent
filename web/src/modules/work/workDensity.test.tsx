@@ -167,7 +167,7 @@ describe("/work 信息密度契约", () => {
     expect(host.querySelector('[data-testid="run5-counts"]')?.textContent ?? "").toContain("本页 1 次");
   });
 
-  it("破折号治理：整列没有任务关联时收起「任务」列，卡底只点名一次", async () => {
+  it("破折号治理：任务列恒在（骨架七列），缺关联的行格内留空、卡底只点名一次", async () => {
     api.fetchJSON.mockImplementation(async (url: string) => {
       const href = String(url);
       if (href.includes("/api/runs")) {
@@ -185,14 +185,55 @@ describe("/work 信息密度契约", () => {
     const host = await render("/work?tab=runs", createElement(RunsModulePage));
     await waitFor(() => host.querySelector('[data-testid="run5-row-0"]') !== null, "rows painted");
 
-    // 表还在、其余列名序不动——只是整列缺读口的「任务」列不渲染，行内不摆占位符。
+    // 骨架定义性列不因缺读口消失：表头仍在，行内该列也仍在（只是格内空着）。
     expect(host.querySelector('[data-testid="run5-table"]')).not.toBeNull();
     expect(host.querySelector('[data-testid="run5-head"]')).not.toBeNull();
-    expect(host.querySelector('[data-testid="run5-row-0-task"]')).toBeNull();
-    expect(host.querySelector('[data-testid="run5-row-1-task"]')).toBeNull();
+    const head = host.querySelector('[data-testid="run5-head"]')?.textContent ?? "";
+    expect(head).toContain("任务");
+    const cell = host.querySelector('[data-testid="run5-row-0-task"]');
+    expect(cell, "任务列结构保留").not.toBeNull();
+    expect(cell?.textContent ?? "", "缺值不摆占位符").toBe("");
+    expect(host.querySelector('[data-testid="run5-row-1-task"]')?.textContent ?? "").toBe("");
     const avail = host.querySelector('[data-testid="run5-table"] .console-card__availability');
     expect(avail, "卡底数据可用性点名任务列").toBeTruthy();
     expect(avail?.textContent ?? "").toContain("任务列");
+    // 一处声明就够了：这句只出现在卡底可用性里，不在每一行重复
+    expect((host.textContent ?? "").match(/没有回传任务关联/g) ?? []).toHaveLength(1);
+    expect(avail?.textContent ?? "").toContain("没有回传任务关联");
+  });
+
+  it("计划任务面：排期表七列照骨架立起，调度四列留空、卡底点名一次", async () => {
+    const host = await render("/work", createElement(TasksBoardModulePage));
+    await waitFor(() => host.querySelector('[data-testid="tsk4-columns"]') !== null, "board painted");
+
+    // chip 是来源筛选，不是页签
+    const chip = host.querySelector('[data-testid="tsk4-chip-scheduled"]');
+    expect(chip?.textContent ?? "").toContain("计划任务");
+    await act(async () => {
+      (chip as HTMLButtonElement).click();
+    });
+
+    expect(host.querySelector('[data-testid="tsk4-columns"]'), "切到排期时看板收起").toBeNull();
+    expect(host.querySelector('[data-testid="tsk4-schedule"]')).not.toBeNull();
+    const head = host.querySelector('[data-testid="tsk4-schedule-head"]')?.textContent ?? "";
+    for (const label of ["名称", "运行员工", "频率", "下次触发", "近 7 天", "上次", "操作"]) {
+      expect(head, `表头有「${label}」`).toContain(label);
+    }
+    // 表头里不许出现破折号
+    expect(head).not.toContain("—");
+    // 骨架定义性的调度列：格内空着，但行结构在
+    const row = host.querySelector('[data-testid^="tsk4-schedule-row-"]');
+    expect(row, "有来源=渠道/定时的任务就该出现一行").not.toBeNull();
+    const rowId = row?.getAttribute("data-testid")?.replace("tsk4-schedule-row-", "") ?? "";
+    expect(host.querySelector(`[data-testid="tsk4-schedule-name-${rowId}"]`)?.textContent ?? "").toContain("渠道 ROI");
+    for (const key of ["freq", "next", "week", "last"]) {
+      expect(host.querySelector(`[data-testid="tsk4-schedule-${key}-${rowId}-value"]`)?.textContent ?? "").toBe("");
+    }
+    const avail = host.querySelector('[data-testid="tsk4-schedule"] .console-card__availability');
+    expect(avail).toBeTruthy();
+    expect(avail?.textContent ?? "").toContain("频率 / 下次触发");
+    expect(avail?.textContent ?? "").toContain("近 7 天 / 上次");
+    expect(host.querySelectorAll('[role="tablist"]').length).toBe(0);
   });
 
   it("破折号治理：任务面成本整列无回传时不摆占位符，卡底点名一次", async () => {

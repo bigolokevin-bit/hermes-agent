@@ -5,7 +5,7 @@
  * no drag/transition call, so the board can never show a state the backend
  * did not confirm. Missing values render "—"; unknown states stay unknown.
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router";
 import { RequestIdCopy } from "@/components/RequestIdCopy";
 import { AlertTriangle, Inbox, RefreshCw, ShieldAlert, X } from "lucide-react";
@@ -49,6 +49,28 @@ const COLUMN_LABEL: Record<(typeof BOARD_STATUSES)[number], string> = {
   done: "已完成",
   cancelled: "已取消",
 };
+
+/** 计划任务 = 来源不是人工（定时/系统）。来源没回传的行不猜，只留在「全部任务」里。 */
+function isScheduledRow(row: TaskRow): boolean {
+  return Boolean(row.sourceKind && row.sourceKind !== "manual");
+}
+
+/**
+ * 骨架「排期」表七列：名称 | 运行员工 | 频率 | 下次触发 | 近 7 天 | 上次 | 操作。
+ * 列结构是骨架定义性的，缺读口只允许格内空着——所以这里不整列收、也不逐行写散文。
+ * 375 档照骨架 `.tw` 的做法：表本身横滚，列名一个不少，页面不横溢。
+ */
+const SCHEDULE_COLS =
+  "grid grid-cols-[minmax(0,1.7fr)_minmax(0,0.9fr)_minmax(0,0.9fr)_minmax(0,0.85fr)_minmax(0,0.6fr)_minmax(0,0.6fr)_minmax(0,0.5fr)] gap-x-3";
+
+/** 排期表格子：列名只在表头出现一次，格子只放值。 */
+function ScheduleCell({ testId, children }: { testId: string; children?: ReactNode }) {
+  return (
+    <div className="min-w-0 truncate" data-testid={testId}>
+      <span className="min-w-0" data-testid={`${testId}-value`}>{children}</span>
+    </div>
+  );
+}
 
 type DetailState =
   | { k: "idle" }
@@ -255,8 +277,9 @@ export function TasksBoardModulePage() {
   const [cursorStack, setCursorStack] = useState<string[]>([]);
   // 骨架 filterbar：搜索只筛这一页已经读到的行，不冒充服务端搜索。
   const [q, setQ] = useState("");
-  // 骨架来源 chip：全部任务 / 渠道任务（非人工来源）。
-  const [sourceFilter, setSourceFilter] = useState<"all" | "channel">("all");
+  // 骨架来源 chip：全部任务 / 计划任务（非人工来源）。计划任务不只筛看板，
+  // 还切到骨架的「排期」表（名称|运行员工|频率|下次触发|近 7 天|上次|操作）。
+  const [sourceFilter, setSourceFilter] = useState<"all" | "scheduled">("all");
 
   const patchParams = useCallback((next: Record<string, string | null>) => {
     const draft = new URLSearchParams(params);
@@ -432,8 +455,7 @@ export function TasksBoardModulePage() {
   const visibleRows = useMemo(() => {
     const needle = q.trim().toLowerCase();
     return board.rows.filter((row) => {
-      const isChannel = (row.sourceKind !== undefined && row.sourceKind !== "manual") || Boolean(row.sourceChannel);
-      if (sourceFilter === "channel" && !isChannel) return false;
+      if (sourceFilter === "scheduled" && !isScheduledRow(row)) return false;
       if (!needle) return true;
       return (
         row.title.toLowerCase().includes(needle) ||
@@ -487,11 +509,8 @@ export function TasksBoardModulePage() {
     }).length;
   }, [board.rows]);
 
-  const channelCount = useMemo(
-    () =>
-      board.rows.filter(
-        (row) => (row.sourceKind !== undefined && row.sourceKind !== "manual") || Boolean(row.sourceChannel),
-      ).length,
+  const scheduledCount = useMemo(
+    () => board.rows.filter(isScheduledRow).length,
     [board.rows],
   );
 
@@ -566,13 +585,13 @@ export function TasksBoardModulePage() {
         <button
           type="button"
           className="console-chip-btn"
-          aria-pressed={sourceFilter === "channel"}
-          data-testid="tsk4-chip-channel"
-          onClick={() => setSourceFilter("channel")}
+          aria-pressed={sourceFilter === "scheduled"}
+          data-testid="tsk4-chip-scheduled"
+          onClick={() => setSourceFilter("scheduled")}
         >
-          渠道任务 {boardReady ? channelCount : "—"}
+          计划任务 {boardReady ? scheduledCount : "—"}
         </button>
-        <span className="console-sub">来源是任务的一种筛选，不单独占一排页签</span>
+        <span className="console-sub">「计划任务」按任务来源筛选，切到排期表；不单独占一排页签</span>
       </div>
 
       {/* filterbar：状态与负责人是真参数；优先级服务端未开放，禁用并说明。 */}
@@ -832,7 +851,7 @@ export function TasksBoardModulePage() {
         </Card>
       ) : null}
 
-      {!panelActive && board.phase === "ready" ? (
+      {!panelActive && sourceFilter === "all" && board.phase === "ready" ? (
         <div className="console-board" data-testid="tsk4-columns">
           {BOARD_STATUSES.map((status) => {
             const rows = grouped.get(status) ?? [];
@@ -894,7 +913,87 @@ export function TasksBoardModulePage() {
         </div>
       ) : null}
 
-      {!panelActive && board.phase === "ready" && visibleRows.length === 0 ? (
+      {!panelActive && sourceFilter === "scheduled" && boardReady ? (
+        <ConsoleCard
+          flush
+          data-testid="tsk4-schedule"
+          note="排期是任务来源的一种筛选 · 表内只读；「暂停」等写操作等后端接口就绪"
+          availability={[
+            {
+              label: "频率 / 下次触发",
+              reason:
+                "任务读口只回标题、负责人、来源与状态，不回调度计划；这两列保留表头与行结构，格内留空，不拿别的字段顶替",
+            },
+            {
+              label: "近 7 天 / 上次",
+              reason: "没有按任务聚合的成功率与上次执行读口；要核这几列请到运行面按任务筛选看真实记录",
+            },
+          ]}
+        >
+          <div className="overflow-x-auto">
+            <div className="min-w-[620px]">
+              <div className={`${SCHEDULE_COLS} console-grid-head`} data-testid="tsk4-schedule-head">
+                <span className="console-grid-head__cell">名称</span>
+                <span className="console-grid-head__cell">运行员工</span>
+                <span className="console-grid-head__cell">频率</span>
+                <span className="console-grid-head__cell">下次触发</span>
+                <span className="console-grid-head__cell console-grid-head__cell--right">近 7 天</span>
+                <span className="console-grid-head__cell">上次</span>
+                <span className="console-grid-head__cell console-grid-head__cell--right">操作</span>
+              </div>
+              {visibleRows.length === 0 ? null : (
+                <ul className="min-w-0" data-testid="tsk4-schedule-rows">
+                  {visibleRows.map((row) => (
+                    <li
+                      key={row.taskId}
+                      className={`console-grid-row ${SCHEDULE_COLS} items-center px-3 py-2 text-sm`}
+                      data-testid={`tsk4-schedule-row-${row.taskId}`}
+                    >
+                      <ScheduleCell testId={`tsk4-schedule-name-${row.taskId}`}>
+                        <button
+                          type="button"
+                          className="min-w-0 truncate text-left hover:underline focus-visible:underline"
+                          onClick={() => openTask(row.taskId)}
+                        >
+                          {row.title}
+                        </button>
+                      </ScheduleCell>
+                      <ScheduleCell testId={`tsk4-schedule-owner-${row.taskId}`}>
+                        <span className="text-xs text-muted-foreground">{actorLabel(row.assignee, board.nameMap)}</span>
+                      </ScheduleCell>
+                      <ScheduleCell testId={`tsk4-schedule-freq-${row.taskId}`} />
+                      <ScheduleCell testId={`tsk4-schedule-next-${row.taskId}`} />
+                      <ScheduleCell testId={`tsk4-schedule-week-${row.taskId}`} />
+                      <ScheduleCell testId={`tsk4-schedule-last-${row.taskId}`} />
+                      <ScheduleCell testId={`tsk4-schedule-act-${row.taskId}`}>
+                        <button
+                          type="button"
+                          className="console-chip-btn"
+                          disabled
+                          aria-disabled="true"
+                          title="规划中：后端写接口未就绪"
+                          data-testid={`tsk4-schedule-pause-${row.taskId}`}
+                        >
+                          暂停
+                        </button>
+                      </ScheduleCell>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+          {visibleRows.length === 0 ? (
+            <p className="console-sub px-3 py-3" data-testid="tsk4-schedule-empty">
+              {board.rows.length === 0
+                ? "这一页还没有任务，排期表自然是空的。"
+                : "当前这一页没有来源=定时或系统的任务；任务来源不由前端改写，读到就会出现在这里。"}
+            </p>
+          ) : null}
+        </ConsoleCard>
+      ) : null}
+
+      {!panelActive && sourceFilter === "all" && board.phase === "ready" && visibleRows.length === 0 ? (
         <p className="console-sub" data-testid="tsk4-no-match">
           {board.rows.length === 0
             ? "看板这一页还没有任务。"
@@ -902,7 +1001,7 @@ export function TasksBoardModulePage() {
         </p>
       ) : null}
 
-      {!panelActive && boardReady ? (
+      {!panelActive && sourceFilter === "all" && boardReady ? (
         <ConsoleCard
           note="拖动排序未启用；看板顺序按任务状态由后端决定"
           availability={[

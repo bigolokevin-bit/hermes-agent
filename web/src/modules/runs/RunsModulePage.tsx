@@ -338,12 +338,10 @@ function RunPreviewPanel({ row, names, index }: { row: RunRow; names: Map<string
 
 // 骨架 t-runs 的列序：运行 | 员工 | 任务 | 开始 | 耗时 | 成本 | 状态 | 操作。
 // 行壳仍是 li[role=group]（键盘游标与展开逻辑不动），只是网格更紧。
-// 破折号治理（2026-11-24）：整页没有一行带回任务关联时不渲染「任务」列
-// （列轨同步收起），缺读口在卡底「数据可用性」点名一次，卡面不再铺 30 个占位符。
-const GRID_WITH_TASK =
+// 2026-11-24 评审口径：骨架定义性列必须保留结构，只允许格内值缺——「任务」
+// 列不再因为这一页没带回关联就整列收起；缺的值格内留空，卡底点名一次。
+const GRID_RUNS =
   "grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,0.85fr)] gap-x-3 gap-y-1 sm:grid-cols-[minmax(0,0.7fr)_minmax(0,1fr)_minmax(0,0.55fr)_minmax(0,0.66fr)_minmax(0,0.46fr)_minmax(0,0.66fr)_minmax(0,0.58fr)_auto]";
-const GRID_NO_TASK =
-  "grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,0.85fr)] gap-x-3 gap-y-1 sm:grid-cols-[minmax(0,0.7fr)_minmax(0,1fr)_minmax(0,0.66fr)_minmax(0,0.46fr)_minmax(0,0.66fr)_minmax(0,0.58fr)_auto]";
 
 function RunListCopy({
   rows,
@@ -574,7 +572,6 @@ function ListRows({
   selectedId,
   cursorRunId,
   onCursorChange,
-  taskColumn,
 }: {
   /**
    * Backlog runs-16: which run holds the single tab stop. The parent remembers
@@ -600,10 +597,10 @@ function ListRows({
    */
   hrefOf: (runId: string) => string;
   previewGate: ListGate;
-  /** 整页读口有没有带回任务关联：没有就不渲染「任务」列，卡底点名一次。 */
-  taskColumn: boolean;
 }): ReactNode {
-  const grid = taskColumn ? GRID_WITH_TASK : GRID_NO_TASK;
+  const grid = GRID_RUNS;
+  // 任务列恒在（骨架七列）。缺的只是格内值：留空不摆占位符，缺读口在卡底点名一次。
+  const missingTask = rows.filter((row) => !row.taskId).length;
   const [openId, setOpenId] = useState<string | null>(null);
   const toggleRefs = useRef(new Map<string, HTMLButtonElement>());
   // Roving tabindex: exactly one row is in the tab order, arrows move focus
@@ -639,15 +636,15 @@ function ListRows({
       data-testid="run5-table"
       note="只读列表 · 行尾「查看」是真链接，可复制或新开标签 · 不发起、不取消；重试入口在只读环境下为禁用态"
       availability={
-        taskColumn
-          ? undefined
-          : [{ label: "任务列", reason: "这一页读到的运行没有带回任务关联；任何一行带回了，这一列会自动恢复显示" }]
+        missingTask > 0
+          ? [{ label: "任务列", reason: `本页 ${missingTask} 条运行没有回传任务关联；格内留空，不代填、不猜，也不收起这一列` }]
+          : undefined
       }
     >
       <div className={`hidden ${grid} console-grid-head sm:grid`} data-testid="run5-head">
         <span className="console-grid-head__cell">运行</span>
         <span className="console-grid-head__cell">员工</span>
-        {taskColumn ? <span className="console-grid-head__cell">任务</span> : null}
+        <span className="console-grid-head__cell">任务</span>
         <span className="console-grid-head__cell console-grid-head__cell--right">
           <SortHeader label="开始" sortKey="started" active={sortKey} dir={sortDir} onSort={onSort} disabled={sortDisabled} />
         </span>
@@ -732,15 +729,13 @@ function ListRows({
                     {employeeLabel(row.employeeId, names)}
                   </span>
                 </CardField>
-                {taskColumn ? (
-                  <span
-                    className="hidden min-w-0 truncate text-xs text-muted-foreground sm:block"
-                    data-testid={`${base}-task`}
-                    title={row.taskId ?? "这条运行没有关联任务"}
-                  >
-                    {taskLabel(row.taskId)}
-                  </span>
-                ) : null}
+                <span
+                  className="hidden min-w-0 truncate text-xs text-muted-foreground sm:block"
+                  data-testid={`${base}-task`}
+                  title={row.taskId ?? "这条运行没有回传任务关联；格内留空，不代填"}
+                >
+                  {row.taskId ? taskLabel(row.taskId) : ""}
+                </span>
                 <CardField label="开始" labelTestId={`run5-fieldlabel-start-${index}`}>
                   <span className="min-w-0 break-words" data-testid={`${base}-start`} title={row.startedAt ?? undefined}>
                     {start.text ?? <Dashed reason={start.reason} />}
@@ -1366,8 +1361,6 @@ export function RunsModulePage() {
         taskLabel(row.taskId).toLowerCase().includes(needle),
     );
   }, [sortedRows, runQuery, names]);
-  // 破折号治理：只有整页一行的任务关联都没有时才收列；有一行带回就照常渲染该列。
-  const taskColumn = useMemo(() => rows.some((row) => Boolean(row.taskId)), [rows]);
   // 「失败详情」卡取本页最近一次的失败行；没有失败就明说没有。
   const failedRow = useMemo(() => {
     const failed = rows.filter((row) => row.status === "failed");
@@ -1729,12 +1722,10 @@ export function RunsModulePage() {
           }
         >
           {countsKnown
-            ? `本页 ${rows.length} 次 · 失败 ${failedCount} · 运行中 ${runningCount}（仅本页已加载，最多 ${PAGE_LIMIT} 条，不是全量统计）`
-            : "本页 — 次 · 失败 — · 运行中 —（暂时读不到运行数据，请稍后重试）"}
-          {phase === "ready" && cursor ? "；服务说这一页之外还有更多" : ""}
-          {unreadable > 0 && countsKnown
-            ? `；另有 ${unreadable} 条这次没有返回有效的运行编号，没有算在上面`
-            : ""}
+            ? `本页 ${rows.length} 次 · 失败 ${failedCount} · 运行中 ${runningCount}`
+            : "本页 — 次 · 失败 — · 运行中 —"}
+          {phase === "ready" && cursor ? "；还有更多" : ""}
+          {unreadable > 0 && countsKnown ? `；另有 ${unreadable} 条未计入` : ""}
         </span>
         {countsKnown ? null : (
           <details data-testid="run5-counts-detail">
@@ -1804,7 +1795,6 @@ export function RunsModulePage() {
           key={sinceKey}
           cursorRunId={runCursor}
           onCursorChange={setRunCursor}
-          taskColumn={taskColumn}
           rows={shownRows}
           names={names}
           hrefOf={hrefOf}
