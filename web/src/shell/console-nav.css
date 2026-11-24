@@ -185,6 +185,14 @@
   white-space: nowrap;
 }
 
+/* 未到数的读数语：11px 弱色，占位与真值同高，几何不跳。 */
+.sidebar-usage-pending {
+  font-family: var(--sans);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: var(--fg-4);
+}
+
 .sidebar-usage-bar {
   height: 4px;
   overflow: hidden;

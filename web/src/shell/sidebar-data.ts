@@ -182,6 +182,10 @@ export interface SidebarUsage {
   monthQuotaUsd: number | null;
   /** 今日全局上限：BFF 无真口径，恒 null（不画分母、不画占比条）。 */
   todayLimitUsd: number | null;
+  /** 今日那条读数是否已经落地：false = 仍在读（UI 显示「读取中…」而不是 —）。 */
+  todaySettled: boolean;
+  /** 本月两路读数是否都已落地（成本 + 配额各自 5s 量级，可能先后到）。 */
+  monthSettled: boolean;
 }
 
 const NO_USAGE: SidebarUsage = {
@@ -189,34 +193,54 @@ const NO_USAGE: SidebarUsage = {
   monthCostUsd: null,
   monthQuotaUsd: null,
   todayLimitUsd: null,
+  todaySettled: false,
+  monthSettled: false,
 };
 
-/** 侧栏底部额度块：今日 / 本月两条真读数 + 本月配额真读数，3 个读口并发；
- * 读到之前保持 null（侧栏不画这一块，也不画空轨道）。 */
+/** 侧栏底部额度块：今日 / 本月两条真读数 + 本月配额真读数。
+ *
+ * 三路读口一次并发发起，且**今日与本月分开落地**（run-stats 日窗 ~1.5s，
+ * matrix 配额 ~5s）：今日先到就先替换今日那一行，不陪着本月一起等。
+ * 落地前 settled=false —— 那是「还在读」，不是「没有」；两者在 UI 上分别是
+ * 「读取中…」与「—」，绝不用 — 冒充还没回来的数。 */
 export function useSidebarUsage(): SidebarUsage {
   const [usage, setUsage] = useState<SidebarUsage>(NO_USAGE);
 
   useEffect(() => {
     let alive = true;
-    const settle = async () => {
-      const today = beijingDate(0);
-      const tomorrow = beijingDate(1);
-      const monthStart = `${today.slice(0, 8)}01`;
-      const [todayCost, monthCost, quota] = await Promise.allSettled([
+    const today = beijingDate(0);
+    const tomorrow = beijingDate(1);
+    const monthStart = `${today.slice(0, 8)}01`;
+
+    const readToday = async () => {
+      const [todayCost] = await Promise.allSettled([
         loadWindowCost(today, tomorrow),
+      ]);
+      if (!alive) return;
+      setUsage((prev) => ({
+        ...prev,
+        todayCostUsd:
+          todayCost.status === "fulfilled" ? todayCost.value : null,
+        todaySettled: true,
+      }));
+    };
+
+    const readMonth = async () => {
+      const [monthCost, quota] = await Promise.allSettled([
         loadWindowCost(monthStart, tomorrow),
         loadMonthlyQuota(),
       ]);
       if (!alive) return;
-      const next: SidebarUsage = {
-        todayCostUsd: todayCost.status === "fulfilled" ? todayCost.value : null,
+      setUsage((prev) => ({
+        ...prev,
         monthCostUsd: monthCost.status === "fulfilled" ? monthCost.value : null,
         monthQuotaUsd: quota.status === "fulfilled" ? quota.value : null,
-        todayLimitUsd: null,
-      };
-      setUsage(next);
+        monthSettled: true,
+      }));
     };
-    void settle();
+
+    void readToday();
+    void readMonth();
     return () => {
       alive = false;
     };

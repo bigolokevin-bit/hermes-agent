@@ -49,7 +49,7 @@ export function Auth5Session({
     isSessionExpired,
   );
   const [who, setWho] = useState<
-    { k: "loading" } | { k: "anon" } | { k: "ok"; display: string; role: string; tenant: string }
+    { k: "loading" } | { k: "anon" } | { k: "ok"; display: string; role: string; tenant: string | null }
   >({ k: "loading" });
   useEffect(() => {
     let alive = true;
@@ -72,8 +72,11 @@ export function Auth5Session({
               typeof body.granted === "string" && body.granted.trim()
                 ? body.granted.trim()
                 : "—";
-            const tid = typeof body.tenant_id === "string" ? body.tenant_id.trim() : "";
-            const tenant = tid && !/^[a-z]+_[0-9A-Za-z]+$/.test(tid) ? tid : "—";
+            const tid =
+              typeof body.tenant_id === "string" ? body.tenant_id.trim() : "";
+            // 租户 ID 本身就是给人看的归属标识（t_seakoi_pilot），不再按
+            // 「像内部 id 就打成 —」的旧口径屏蔽；没有就是 null，整行不渲染。
+            const tenant = tid === "" ? null : tid;
             setWho({ k: "ok", display: disp, role, tenant });
             // UI-QA P1: whoami 2xx 是本页唯一的「已登录证据」。广播出去，让同栏
             // 身份件的不确定态即刻闭嘴——两者同屏自相矛盾（下方已显示 opsadmin
@@ -131,14 +134,15 @@ export function Auth5Session({
       </div>
     );
   }
+  // 骨架该位置是「租户 · 邮箱前缀」。这里用「租户 ID · 用户名首段」：
+  // 部署地址/端口/via bisheng 这类实现细节一律不上屏；租户取不到就整行不渲染。
+  const firstSegment = who.display.split(/[\s@·/]+/).filter(Boolean)[0] ?? "";
   const sub =
-    who.tenant !== "—"
-      ? who.tenant
-      : who.role !== "—"
-        ? who.role
-        : typeof window !== "undefined"
-          ? window.location.host
-          : "—";
+    who.tenant === null
+      ? null
+      : firstSegment === ""
+        ? who.tenant
+        : `${who.tenant} · ${firstSegment}`;
   // 骨架的账号行只有「头像 + 姓名 + 弱色行」；版本号与角色一起收进 title。
   const chipTitle = [
     who.display,
@@ -162,9 +166,15 @@ export function Auth5Session({
           <b className="sidebar-account-name" data-testid="auth5-display">
             {who.display}
           </b>
-          <span className="sidebar-account-sub" data-testid="auth5-tenant" title={sub}>
-            {sub}
-          </span>
+          {sub !== null && (
+            <span
+              className="sidebar-account-sub"
+              data-testid="auth5-tenant"
+              title={sub}
+            >
+              {sub}
+            </span>
+          )}
         </div>
         {trailing !== null && (
           <span className="sidebar-chip-actions">{trailing}</span>
@@ -190,7 +200,7 @@ export function Auth5Session({
       </div>
       {/* 芯片里压缩掉的两行仍在无障碍树里：读屏与验收读数都还能读到。 */}
       <span className="sr-only" data-testid="auth5-role">
-        角色：{who.role}；租户：{who.tenant}
+        角色：{who.role}；租户：{who.tenant ?? "—"}
       </span>
     </>
   );
