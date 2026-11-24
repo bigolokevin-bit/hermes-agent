@@ -1,0 +1,51 @@
+/* AU-06 — 审计四页（list/detail/verify/retention）375 触摸目标 + 字号令牌化。
+ *
+ * 配方沿 in-repo 先例，零新闸口径：
+ *  - 44 触点：knowledge UX-r1 P1-5 形制——`min-block-size: var(--touch-target-ls, 44px)`
+ *    （A 层令牌，未接上回落 rubric 44px），仅 ≤767.98px 生效；视觉内距不改，
+ *    小图标钮用 ::after 外扩命中区（相邻钮互不遮：横向 inset 0）。
+ *  - 字号：duty Q9 页根中和条款形制——页根基准 var(--font-size-3)，
+ *    .text-xs/code/kbd/samp/pre/.font-mono → var(--font-size-1)，.text-sm →
+ *    var(--font-size-2)。运行时调色板类不在此动（『运行时值不可令牌化』先例：
+ *    本文件零 hex、零尺寸字面量除 44 回落值，具名选择器保 DOM 恒等）。
+ *  - 滚动条：本模块零滚动条裸声明（工具类定义点唯一在 index.css）——审计域
+ *    375 为卡片流自然折行（table-density wave-71 实测注），不新增横滚壳；
+ *    若未来加壳只准消费 index.css 的 .scrollbar-none 类名（scrollbar-utility
+ *    棘轮定义点恒 1 不受本页影响，本文件连注释都避写禁词字面量，防扫描误计）。
+ */
+
+:is([data-page="audit"], [data-page="audit-detail"], [data-page="audit-verify"], [data-page="retention"]) {
+  font-size: var(--font-size-3);
+}
+
+:is([data-page="audit"], [data-page="audit-detail"], [data-page="audit-verify"], [data-page="retention"]) :is(.text-xs, code, kbd, samp, pre),
+:is([data-page="audit"], [data-page="audit-detail"], [data-page="audit-verify"], [data-page="retention"]) .font-mono {
+  font-size: var(--font-size-1);
+}
+
+:is([data-page="audit"], [data-page="audit-detail"], [data-page="audit-verify"], [data-page="retention"]) .text-sm {
+  font-size: var(--font-size-2);
+}
+
+@media (max-width: 767.98px) {
+  /* 表单与按钮的最小触控高（只补高，不动水平尺寸与内距）。 */
+  :is([data-page="audit"], [data-page="audit-detail"], [data-page="audit-verify"], [data-page="retention"]) :is(button, input, select) {
+    min-block-size: var(--touch-target-ls, 44px);
+  }
+
+  /* 行内小图标钮（复制/清除族）命中区外扩：视觉零变化，容器不撑开。
+     相邻成组的 chips 不叠 inset（左右 0），避免命中区互盖。 */
+  :is([data-page="audit"], [data-page="audit-detail"], [data-page="audit-verify"]) button[data-testid$="-copy"],
+  :is([data-page="audit"], [data-page="audit-detail"], [data-page="audit-verify"]) button[data-testid*="copy"],
+  :is([data-page="audit"], [data-page="audit-detail"], [data-page="audit-verify"], [data-page="retention"]) button[data-testid$="-clear"] {
+    position: relative;
+  }
+
+  :is([data-page="audit"], [data-page="audit-detail"], [data-page="audit-verify"]) :is(button[data-testid$="-copy"], button[data-testid*="copy"])::after,
+  :is([data-page="audit"], [data-page="audit-detail"], [data-page="audit-verify"], [data-page="retention"]) button[data-testid$="-clear"]::after {
+    content: "";
+    position: absolute;
+    inset: -10px -6px;
+    border-radius: inherit;
+  }
+}

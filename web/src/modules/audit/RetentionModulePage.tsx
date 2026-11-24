@@ -20,6 +20,7 @@
  * `console.unknown_route`), so the honest screen is 「未接入」 with its reason —
  * never a painted 保留天数 table.
  */
+import "./audit-375-a11y.css";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useSearchParams } from "react-router";
 import { CalendarClock, Database, Gauge, HardDrive, Inbox, RefreshCw, ShieldAlert, TriangleAlert } from "lucide-react";

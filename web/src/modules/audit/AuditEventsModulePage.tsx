@@ -31,6 +31,7 @@
  * `?state=` — every list/detail state below comes from a real read, so there is
  * no fixture badge to mistake for an answer.
  */
+import "./audit-375-a11y.css";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router";
 import { ArrowLeft, Download, ReceiptText, RefreshCw, ShieldCheck } from "lucide-react";
