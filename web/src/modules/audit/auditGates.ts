@@ -67,6 +67,8 @@ export interface AuditGates {
   exportCsv: Gate;
   /** 导出当前筛选 CSV（aud5 那一枚）。 */
   exportFiltered: Gate;
+  /** 服务器导出（AU-02：整窗异步建单；只吃地址窗，不吃屏上行数）。 */
+  exportServer: Gate;
   /** 复制当前筛选条件（audG）。 */
   copyFilter: Gate;
   /** audG 常驻件写在卡上的挂载规则一句话（同一个源）。 */
@@ -106,6 +108,20 @@ export function auditGatesOf(input: AuditGateInput): AuditGates {
   const exportFiltered: Gate = !hasRows
     ? { enabled: false, title: "当前筛选无事件可导出" }
     : { enabled: true, title: "导出当前筛选为 CSV（北京时间）" };
+
+  // AU-02: the server leg acts on the ADDRESS window, not on loaded rows — the
+  // whole point is the set bigger than the screen. Its only pre-condition is a
+  // complete window; denied/empty reads never disable it (an admin may export
+  // a range whose rows are not on screen, and a refused ledger still names a
+  // real window).
+  const exportServer: Gate = customInvalid
+    ? { enabled: false, title: "自定义时间窗还不完整，先定住起止时间才能向服务端发起整窗导出" }
+    : {
+        enabled: true,
+        title:
+          "由服务端按当前时间窗与筛选生成完整导出文件（异步建单，可离开本页再回来看结果）；" +
+          "与「导出当前筛选 CSV」的屏上快导互不相干",
+      };
 
   // audQ: the summary control's own sentences moved here — including the mount
   // rule the card prints — so there is exactly one copy of each.
@@ -165,6 +181,7 @@ export function auditGatesOf(input: AuditGateInput): AuditGates {
     phase,
     exportCsv,
     exportFiltered,
+    exportServer,
     copyFilter,
     copyFilterRule:
       "这个控件常驻。地址里带着任一读法（自定义区间、事件类型、操作者、资源、每页条数或页码）时就能复制；只有默认时间窗时它在这里但按不动，原因写在按钮上。",
@@ -218,6 +235,7 @@ export function gateMirror(gates: AuditGates): Record<string, string> {
     "data-aud-gates-phase": gates.phase,
     "data-aud-gates-export": flag(gates.exportCsv),
     "data-aud-gates-export-filtered": flag(gates.exportFiltered),
+    "data-aud-gates-export-server": flag(gates.exportServer),
     "data-aud-gates-copy-filter": flag(gates.copyFilter),
     "data-aud-gates-copy-link": flag(gates.copyLink),
     "data-aud-gates-toggle": flag(gates.toggle),
