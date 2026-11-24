@@ -71,7 +71,7 @@ function stubFetch() {
 const count = (needle: string) => urls.filter((u) => u.includes(needle)).length;
 
 describe('OM-04 ?range= 深链与标题随窗', () => {
-  it('?range=7d：趋势标题为「近 7 天」，卡内无「近 14 天」，且不请求活动腿', async () => {
+  it('?range=7d：趋势标题为「近 7 天」，卡内无「近 14 天」，活动腿按档位读一次', async () => {
     stubFetch();
     await render(<OverviewPage />, '/overview?range=7d');
     const trend = container.querySelector('[data-testid="ov6-trend"]')?.textContent ?? '';
@@ -80,11 +80,13 @@ describe('OM-04 ?range= 深链与标题随窗', () => {
     expect(container.querySelector('[data-testid="ov6-range-7d"]')?.getAttribute('aria-pressed')).toBe('true');
     expect(count('/workbench/timeseries')).toBe(1);
     expect(urls[urls.findIndex((u) => u.includes('/workbench/timeseries'))]).toContain('range=7d');
-    // 总览没有热力卡可渲染 → 活动腿一次都不读（OM-04④「不请求」裁定）。
-    expect(count('/run-activity')).toBe(0);
+    // 行为变更（OM-17 申报）：总览新增 7×24 活动热力 ⇒ 活动腿不再是「死腿」，
+    // 按档位读一次；7d 与 24h 同读 1 周（dutyRange.weeks）。
+    expect(count('/run-activity')).toBe(1);
+    expect(urls[urls.findIndex((u) => u.includes('/run-activity'))]).toContain('weeks=1');
   });
 
-  it('切窗只重读时间敏感腿：14d→30d 仅新增 timeseries 请求，无活动腿请求', async () => {
+  it('切窗只重读时间敏感腿：14d→30d 新增 timeseries 与活动腿（weeks=4），不重读员工腿', async () => {
     stubFetch();
     await render(<OverviewPage />, '/overview');
     expect(container.querySelector('[data-testid="ov6-trend"]')?.textContent).toContain('近 14 天运行趋势');
@@ -96,7 +98,11 @@ describe('OM-04 ?range= 深链与标题随窗', () => {
     await act(async () => {});
     const added = urls.slice(before);
     expect(added.some((u) => u.includes('/workbench/timeseries') && u.includes('range=30d'))).toBe(true);
-    expect(added.filter((u) => u.includes('/run-activity'))).toHaveLength(0);
+    // 行为变更（OM-17 申报）：热力窗口随档位走（14d=2 周 → 30d=4 周），故切窗重读一次活动腿；
+    // 非时间敏感的员工腿仍不重读。
+    const addedActivity = added.filter((u) => u.includes('/run-activity'));
+    expect(addedActivity).toHaveLength(1);
+    expect(addedActivity[0]).toContain('weeks=4');
     expect(added.filter((u) => u.includes('/employees')).length).toBe(0);
     expect(container.querySelector('[data-testid="ov6-trend"]')?.textContent).toContain('近 30 天运行趋势');
   });

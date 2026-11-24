@@ -166,3 +166,93 @@ export function filterSessionRows(
       (row.employeeId ? row.employeeId.toLowerCase().includes(needle) : false),
   );
 }
+
+/* ── SE-04：会话详情消费面（messages[].requestId + citations 展示） ────────
+ *
+ * 数据契约（services/runtime/CONSOLE-SESSIONS-SHAPE.md §3，只读核对，不改后端）：
+ *  - detail = session 形状 + messageCount + messages[]（seq ASC 全量，无分页）；
+ *  - 每条消息带 `requestId`（字符串；缺键=上游没给，上屏「—」，不编）；
+ *  - `citations` 键「有才出现」：仅 Hermes 真回非空列表时存在于 assistant 消息；
+ *    缺键/空数组/非列表/无 doc 字段一律视为「没有带回引用」——绝不拿 [] 冒充
+ *    「有引用但读不出」，也绝不拿空数组说成「0 条引用存在」；
+ *  - 跨租户与不存在逐字同体 404 `console_session.not_found`——前端不区分、
+ *    不推断存在性，如实说「不存在或不可见」。
+ *  - 顺序纪律同列表：上游给定（seq ASC），本模块不重排（牙齿例钉住）。
+ */
+
+export interface SessionMessageView {
+  seq: number | null;
+  role: "user" | "assistant" | null;
+  content: string | null;
+  requestId: string | null;
+  /** null＝上游没有带回引用（缺键/空/形状不认识）；非 null＝上游确实给了条目。 */
+  citations: string[] | null;
+  createdAt: string | null;
+}
+
+export interface SessionDetailView {
+  sessionId: string;
+  messageCount: number | null;
+  messages: SessionMessageView[];
+}
+
+export function sessionDetailUrl(sessionId: string): string {
+  return `${CONSOLE_SESSIONS_URL}/${encodeURIComponent(sessionId)}`;
+}
+
+/** citations「有才出现」解析：非空数组且至少读出一条可读文本才算存在。 */
+function readCitations(raw: unknown): string[] | null {
+  if (!Array.isArray(raw) || raw.length === 0) return null;
+  const out: string[] = [];
+  for (const item of raw) {
+    if (typeof item === "string" && item.trim()) {
+      out.push(item.trim());
+      continue;
+    }
+    if (item && typeof item === "object") {
+      const doc = (item as Record<string, unknown>).doc;
+      if (typeof doc === "string" && doc.trim()) out.push(doc.trim());
+    }
+  }
+  return out.length > 0 ? out : null;
+}
+
+export function parseSessionDetail(raw: unknown): SessionDetailView {
+  if (!raw || typeof raw !== "object") {
+    throw new Error("会话详情读口返回的不是对象载荷，无法识别形状。");
+  }
+  const record = raw as Record<string, unknown>;
+  const sessionId = optString(record.sessionId);
+  if (!sessionId) {
+    throw new Error("会话详情读口没有回传 sessionId，无法作为详情上屏。");
+  }
+  const messagesRaw = record.messages;
+  if (messagesRaw !== undefined && !Array.isArray(messagesRaw)) {
+    throw new Error("会话详情读口的 messages 不是数组，形状不认识。");
+  }
+  const messages: SessionMessageView[] = (messagesRaw ?? []).map((item: unknown) => {
+    if (!item || typeof item !== "object") {
+      throw new Error("会话详情里有一条消息不是对象，无法判断字段。");
+    }
+    const m = item as Record<string, unknown>;
+    const role = m.role === "user" || m.role === "assistant" ? m.role : null;
+    return {
+      seq: typeof m.seq === "number" && Number.isFinite(m.seq) ? m.seq : null,
+      role,
+      content: optString(m.content),
+      requestId: optString(m.requestId),
+      // user 行按契约永无 citations；真出现也不隐瞒，照读——上游违例时前端如实显示。
+      citations: readCitations(m.citations),
+      createdAt: optString(m.createdAt),
+    };
+  });
+  return { sessionId, messageCount: optCount(record.messageCount), messages };
+}
+
+export async function fetchSessionDetail(sessionId: string): Promise<SessionDetailView> {
+  if (!sessionId.trim()) {
+    throw new Error("缺少会话编号，无法读取详情。");
+  }
+  const body = await fetchJsonStrict(sessionDetailUrl(sessionId));
+  return parseSessionDetail(body);
+}

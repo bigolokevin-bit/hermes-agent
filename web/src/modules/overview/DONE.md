@@ -57,9 +57,67 @@
 - DoD 实测：grep -n "new Date()" OverviewPage.tsx | grep -v setTimeout | wc -l = 0；模块 vitest 8 文件 58/58；vite build EXIT=0（dist 残留即 rm）。
 - 步骤④ once-live 抽核（脸 9131，真 BFF）：屏 ASOF_LINE=「采集时刻 北京时间 2026-11-24 08:21 · 每卡来源见卡内标注」= 本批真响应 asOf 最大值 → OM11_PARITY_OK；证据 docs/_artifacts/OM-11-asof-parity/parity.json + om11-asof-1440.png。
 
-## OM-19 审批视角真零+tone（T2D 件2，2026-11-24，基线 4a9e5d2732）
-- 待审批卡 value 改挂 seg：真 0 → tone-success + dot data-appearance=success（不是裸 0）；有数 → tone-attention/attention；读取中/故障 → missing，绝不绿。
-- partial 明说覆盖：queueStats 透传 degraded（duty/types.ts +duty/workbench.ts 各 1 行，OM-04 跨面先例，登记写域含此两文件）；卡内注「上游降级 N 路（名单）；此数只覆盖已接通上游，BFF 未给上游总数。」——覆盖率分母 sources_total 现网无字段，不编造，记已知边界。
-- dot/seg 只用 var(--ok)/var(--warn)/var(--fg-2) 令牌，零 bg-*-900 硬色（测试钉类名）。
-- 坑在册：OverviewView 局部 approvalStats 是解包值（可 null），判态必须用 data.approvalStats，否则 .k TypeError 连带 asof/window 全面崩。
-- 门禁：模块 9 文件 64/64 绿；vite build EXIT=0，dist 残留已清（e1Contract 陷阱）。
+## OM-17 视觉层对齐（设计基线 ov01-target.html，2026-11-24）
+
+### ① 复刻台账：基线行号 ↔ 实现位置
+
+| 基线（`docs/product/design/console-v2/ov01-target.html`） | 本树实现 |
+| --- | --- |
+| L797–816 `spark()`：X 均分 / Y (lo,hi) 映射 / 面积收底边 / 末点 r=2.4 | `VizChart.tsx` `sparkGeometry()` + `OverviewPage.tsx` `<SparkArea>`（`viewBox 0 0 118 46`、pad=3、闭合 `Z`） |
+| L818–823 `dots()`：n=14、gap=w/(n+1)、cy=h/2、r=1.6 | `dotGeometry(14)` + `<NoTrendDots>`（含 `.ov5-sr`「无趋势源」） |
+| L876–893 `buildTrend()`：pl/pr/pt/pb=34/12/24/22、slot=iw/n、bw=min(16,slot-6)、4 条网格线、每 4 格 + 末格轴标签、rx=2 | `trendGeometry()` + `<Trend>` 内联 `<svg>`（y 轴 4 档、`niceCeil` 定标、峰值虚线 + 圆点） |
+| 基线 `#trendTip`（`role="status" aria-live="polite"`） | `<Trend>` 的 `.ov5-tip`，`data-testid="ov6-trend-tip"` |
+| L893–905 `buildHeat()`：7 行 × 24 列、行＝周一…周日、色阶 6 档 | `heatMatrix()` + `<Heat>` 内联 `<svg>`：168 个 `rect.ov5-heat-cell`、`.ov5-heat-lv0..lv5`、aria-label 带合计 |
+| 基线 `.kpi .kr` 值 + 118×46 火花/点阵槽位、`.dtl` delta、`.kn` 句 | `.ov5-kr` + `.ov5-kpi-viz`（375 档整行 34 高）、`.ov5-dtl`、`.ov5-kn` |
+| 基线 `.fresh` 采集时刻行、`.phead .seg` 三档 | `AsofLine` → `.ov5-fresh` + `IconClock`；`.ov5-seg` 档位钮（沿用 duty 四档语义） |
+| 基线 sprite `<use>` 页内微图标 | 页内 17 个内联 `<svg><path/></svg>` 基元（refresh/clock/arrow/alert/flat/trend-up/users/gauge/shield/pulse/coins/copy/check/inbox/activity/chart） |
+
+复刻 7 块 + 图标基元 1 组；判据④实测 `grep -c '<svg' OverviewPage.tsx` = **22**。
+
+### ② 替代件与理由（凡未照抄基线字面值的地方）
+
+1. **配色**：预览是紫 accent `#8176F7` + 近黑 `#0A0A0C` 的另一套基础；本树在令牌冻结线后不得增名，故移植结构角色、映射到既有名：
+   序列主色（`--chart-line/--spark-line/--spark-hi`）→ `var(--color-primary-ls)`；次级柱（`--chart-a/--spark-bar`）→ `color-mix(--color-text-ls 22~34%)`；网格/基线（`--chart-grid/spark-base`）→ `var(--color-border-subtle-ls)`；失败（`--chart-c/--danger`）→ `var(--color-danger-ls)`；空档（`--heat-0`）→ `var(--color-surface-raised-ls)`。
+2. **圆角**：预览 16/10/8 → 本树阶梯 12/8/4（`--radius-ls-3/2/1`），热力格 3 → 4。
+3. **字号**：预览 KPI 40 / h1 32 / micro 10.5 → 六档令牌 24 / 24 / 12；同时清掉本页原离阶字面量 9px、11px、`clamp(24px,3vw,34px)`（font-scale 棘轮只减不增）。
+4. **悬停读数条**：基线 `.ctip` 跟随光标（运行时坐标 ⇒ 必然内联 style），本树禁内联 style ⇒ 钉子图右上角，内容随悬停列更新（`role="status"` 语义不变）。
+5. **趋势 y 轴上限**：基线写死 15（当月实测），本树按真峰值 `niceCeil()` 定标（数据驱动，不写死）。
+6. **柱内分段**：基线是「成功/运行中未知/失败」三色堆叠；本树上游桶只有 `runs/failed/succeeded`，缺 `succeeded` 时不硬拆「成功」段（避免造数），只把失败作为柱内子段——总柱高仍＝`runs`，失败不叠加柱顶。
+7. **热力格尺寸**：28→26px（24 列 + 38px 行标签在卡宽内不溢出），内层 `min-width:520px` 保留基线式横滑。
+8. **图标件**：lucide 换成内联 `<svg>` 基元（判据④要求源码装载视觉层；既有测试只断言文本/href/徽标，不依赖 lucide 结构）。
+
+### ③ 诚实态边界（视觉层不得洗掉既有诚实线）
+
+- 五张 KPI 只有「今日运行」有真时间序列（`data.stats14` 桶）；其余四张走点阵 + 「无趋势源」，**不画假曲线**。
+- 趋势桶无读数：虚线框占位、`title` 明写「未返回」、不折 0；全缺 / 全真零仍走各自空态文案（原有断言逐字保留）。
+- 热力缺格：`rect.is-void` 虚线框，不当 0；整块无读数 → 「{label}没有运行活跃读数，热力不画空格」，不画 168 个空格。
+- 三处错误态保留 `ov5-inline-error` + 请求编号 + 重试（热力新增 `ov6-heat-retry`）；服务探针仍「未接」，不以本页读数冒充。
+- 不注入客户端时钟：「今日」高亮/虚线框未做（见 ④）。
+
+### ④ 未做项与需 L0 裁的口径
+
+- 预览 16px 圆角与紫 accent **未追**：属基础件（令牌冻结线后增名须 L0 裁决）。
+- 基线「本月成本与预算」块（30 格配额、of USD 20 占比、分员工条）未做：本页无月配额读数口径，硬画即造数。
+- 基线「今日」虚线框 / 焦点行未做：需要客户端时钟，与采集时刻纪律冲突。
+- **内联仍在 1 处**（明写，不算清偿）：`.ov5-bar-track i` 的 `style={{ height: N% }}`——既有形制、既有测试钉死 4%/100%，本次未新增任何内联 style（全仓双口径与基线持平）。
+
+### ⑤ 门禁读数
+
+- 模块：`node_modules/.bin/vitest run src/modules/overview` → 9 文件 / **64 passed（58 既有 + 6 新）**。
+- 基元：`vitest run src/components/ui` → 8 文件 / 36 passed（font-scale 与 token-source、inline-style 棘轮全绿）。
+- 全量：`vitest run` → 551 文件，**5 failed / 4265 passed**；红全在 `src/modules/audit`（`audit.time.window.parity.test.tsx` 等，与 overview 零 import、单独复跑同样红 ⇒ 本脸存量红，非本笔）。
+- IA：`node scripts/assert-ia.mjs --source=react` → `ok=true`，counts routes 51 / tabs 22 / chatHosts 1 / modules 8（未动路由表）。
+- `node scripts/lint-fake-success.mjs` → `ok: true`，violations `[]`。
+- `grep -n 'style={' overview/*.tsx` → 全形制 1 处（＝字面量 1 处），即上记既有站点。
+
+### ⑥ 行为变更申报（改了既有断言 2 条）
+
+- `overview.window.test.tsx`：原断言「总览无热力卡 ⇒ 活动腿一次都不读」与「切窗无活动腿请求」随 OM-17 新增 7×24 热力卡而失效。改为：①7d 下活动腿读 1 次且 `weeks=1`；②14d→30d 切窗重读活动腿 1 次且 `weeks=4`（热力窗口随档位走），员工腿仍不重读。两处断言上方逐条注明「行为变更（OM-17 申报）」，未删任何其它断言。
+- `LiveOverview` 的活动腿开关由 `{ activity: false }` 改为 `{ activity: true }`（写域仍在 overview，`useDutyData` 未改，DutyPage 默认档不受影响）。
+
+## OM-19 审批视角真零+tone（T2D 件2，2026-11-24）
+- 待审批卡 value 挂 seg：真 0 → tone-success + dot data-appearance=success；有数 → tone-attention；读取中/故障 → missing，绝不绿。
+- partial 明说覆盖：queueStats 透传 degraded（duty/types.ts + duty/workbench.ts 各 1 行，OM-04 跨面先例，登记写域含此两文件）；卡注「上游降级 N 路（名单）；此数只覆盖已接通上游，BFF 未给上游总数」——覆盖率分母 sources_total 现网无字段，不编造。
+- 换基说明：OM-17 视觉件已上脸，本件按参谋令让位先行，数据钩子重挂于视觉面之上（icon/viz/delta 形制保留）。
+- 坑在册：OverviewView 局部 approvalStats 是解包值（可 null），判态用 data.approvalStats。
+- 门禁：模块全绿（见提交注），vite build EXIT=0，dist 残留已清。
