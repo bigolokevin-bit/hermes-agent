@@ -6,9 +6,13 @@ import { Chip } from "@/components/console/Chip";
 import { ConsoleCard } from "@/components/console/ConsoleCard";
 
 import {
+  availabilityNote,
   DASH,
   fmtStamp,
+  GAP_CALIBER,
   GAP_FILTER_TITLE,
+  gateNotes,
+  gateTable,
   lifecycleTone,
   missingPorts,
   PEOPLE_PIN_LABEL,
@@ -33,12 +37,15 @@ import "./matrix.css";
  * 「能力与权限」矩阵（/employees?tab=matrix）。
  *
  * 骨架 2315–2385 的三张卡在这里同屏落地：
- *   ① 按员工覆盖 —— 行＝员工（30px 头像 + 姓名 + 工号短码），列＝骨架原列名；
+ *   ① 按员工覆盖 —— 行＝员工（30px 头像 + 姓名 + 工号短码），列＝员工 | 技能 |
+ *      四道门 V1 群@ / V2 ReBAC / V3 引用 / V6 审批（逐格点灯） | 缺口（未达/可判定）|
+ *      工具与接口 | 知识范围 | 部门；
  *   ② 按资源覆盖 —— 行＝技能/服务/空间，列＝员工，●/空；
- *   ③ 清点与口径 —— 一行 11px，真读数 + 缺读口声明。
+ *   ③ 清点与口径 —— 一行 11px，真读数 + 口径。
  *
  * 两条硬规则贯穿全页：
- *   - 没有读口的列/格**不进版面**，而不是满列「—」冒充查过；
+ *   - 结构列（四道门 / 缺口 / 工具 / 知识 / 部门）读不到值也保留列名，格内写
+ *     「未接 / 待核实 / —」，缺读口只在卡底声明一次；「技能」是数据列，没有读口才不渲染；
  *   - 全页只有外壳一个 h1，本模块标题是 h2；模块内零 role="tablist"
  *     （资源类型分段是 role="group" 的普通按钮）。
  */
@@ -99,6 +106,14 @@ function renderCell(cell: MatrixCell | undefined) {
       </span>
     ) : (
       <span className="mtx-mark-empty" title={cell.title} aria-hidden="true" />
+    );
+  }
+  if (cell.k === "gate") {
+    return (
+      <span className={`mtx-gate is-${cell.state}`} title={cell.title} data-gate={cell.state}>
+        <span className="mtx-gate__lamp" aria-hidden="true" />
+        {cell.text}
+      </span>
     );
   }
   return (
@@ -175,6 +190,7 @@ export function MatrixModulePage() {
   const { ports, reload } = useMatrixPorts();
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("");
+  const [dept, setDept] = useState("");
 
   const { people } = peopleOf(ports);
   // 逐条落位：卡一只等名单那两条腿，卡二只等本档资源那条腿。
@@ -182,17 +198,28 @@ export function MatrixModulePage() {
   const activeCount = people.filter((person) => person.lifecycle === "active").length;
 
   const columns = useMemo(() => peopleColumns(ports), [ports]);
-  const rows = useMemo(() => buildPeopleRows(ports), [ports]);
+  const gates = useMemo(() => gateTable(ports), [ports]);
+  const rows = useMemo(() => buildPeopleRows(ports, gates), [ports, gates]);
   const view = useMemo(() => buildResourceView(ports, kind), [ports, kind]);
+
+  // 部门筛选的选项只从台账真值出（不造「全部部门」以外的空桶）。
+  const deptOptions = useMemo(() => {
+    const seen = new Set<string>();
+    for (const row of rows) if (row.department) seen.add(row.department);
+    return [...seen].sort((a, b) => a.localeCompare(b, "zh-Hans-CN"));
+  }, [rows]);
+  const hasUnassigned = useMemo(() => rows.some((row) => !row.department), [rows]);
 
   const needle = query.trim().toLowerCase();
   const visiblePeople = useMemo(
     () =>
       rows.filter((row) => {
         if (status && lifecycleTone(row.lifecycle) !== status) return false;
+        if (dept === "__none__" && row.department) return false;
+        if (dept && dept !== "__none__" && row.department !== dept) return false;
         return !needle || row.haystack.includes(needle);
       }),
-    [rows, status, needle],
+    [rows, status, dept, needle],
   );
   const visibleResources = useMemo(
     () => view.rows.filter((row) => !needle || row.haystack.includes(needle)),
@@ -200,8 +227,9 @@ export function MatrixModulePage() {
   );
 
   const asOf = asOfOf(ports.matrix) ?? asOfOf(ports.skills) ?? asOfOf(ports.spaces);
-  const missing = missingPorts(ports);
   const gapNotes = missingPorts(ports, ["matrix", "employees"]);
+  const gatePortNotes = gateNotes(ports.gate);
+  const availability = availabilityNote(ports);
   const kindNotes = missingPorts(
     ports,
     kind === "skill" ? ["skills"] : kind === "tool" ? ["tools"] : ["spaces"],
@@ -218,6 +246,7 @@ export function MatrixModulePage() {
   const clearFilters = () => {
     setQuery("");
     setStatus("");
+    setDept("");
   };
 
   const peopleEmpty = peopleEmptyText(ports, people.length);
@@ -254,7 +283,12 @@ export function MatrixModulePage() {
       </div>
 
       {/* ① 按员工覆盖 ------------------------------------------------ */}
-      <ConsoleCard label="按员工覆盖" action={<span>行＝员工 · 列＝骨架原列名</span>} flush data-testid="mtx-people-card">
+      <ConsoleCard
+        label="按员工覆盖"
+        action={<span>四道门（V1·V2·V3·V6）逐格点灯 · 缺口取可判定门交集</span>}
+        flush
+        data-testid="mtx-people-card"
+      >
         <div className="mtx-filterbar">
           <label className="mtx-search">
             <Search className="mtx-search__icon" aria-hidden="true" />
@@ -268,6 +302,22 @@ export function MatrixModulePage() {
               data-testid="mtx-search"
             />
           </label>
+          <select
+            className="mtx-select"
+            aria-label="部门（本地过滤）"
+            title="部门取自员工台账，只在本页过滤，不发请求"
+            value={dept}
+            onChange={(event) => setDept(event.target.value)}
+            data-testid="mtx-dept"
+          >
+            <option value="">全部部门</option>
+            {deptOptions.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+            {hasUnassigned ? <option value="__none__">未登记部门</option> : null}
+          </select>
           <select
             className="mtx-select"
             aria-label="状态"
@@ -287,7 +337,7 @@ export function MatrixModulePage() {
           </label>
           <span className="mtx-grow" />
           <span className="mtx-meta" data-testid="mtx-people-meta">
-            {visiblePeople.length} / {rows.length} 人 · 按已挂技能数升序
+            {visiblePeople.length} / {rows.length} 人 · 部门本地过滤 · 缺口降序
           </span>
         </div>
 
@@ -368,7 +418,17 @@ export function MatrixModulePage() {
             </table>
           </div>
         )}
-        <MissingLine notes={gapNotes} testId="mtx-people-note" />
+        <MissingLine notes={[...gapNotes, ...gatePortNotes]} testId="mtx-people-note" />
+        {availability ? (
+          <p className="mtx-note" data-testid="mtx-availability">
+            <span className="mtx-note__tag">{availability.label}</span>
+            <span title={availability.title ?? undefined}>{availability.note}</span>
+          </p>
+        ) : null}
+        <p className="mtx-note" data-testid="mtx-gap-caliber">
+          <span className="mtx-note__tag">缺口口径</span>
+          <span>{GAP_CALIBER}</span>
+        </p>
       </ConsoleCard>
 
       {/* ② 按资源覆盖 ------------------------------------------------ */}
@@ -511,15 +571,11 @@ export function MatrixModulePage() {
         <span className="mtx-sep" aria-hidden="true">
           ·
         </span>
-        覆盖分母只算在岗；零覆盖走灰虚线（业务下限没有读口，不判红）
+        缺口交集 <b>{gates.gap.denom ?? "待核实"}</b> 可判定 / <b>{gates.gap.denom === null || gates.gap.pass === null ? "待核实" : gates.gap.denom - gates.gap.pass}</b> 未达
         <span className="mtx-sep" aria-hidden="true">
           ·
         </span>
-        {missing.length > 0 ? (
-          <span data-testid="mtx-missing-summary">缺读口：{missing.map((note) => note.label).join("、")}</span>
-        ) : (
-          <span>六条读口本次都在</span>
-        )}
+        四门证据覆盖 <b>{gates.coverage.covered}/{gates.coverage.requested}</b> 位员工
         <span className="mtx-sep" aria-hidden="true">
           ·
         </span>

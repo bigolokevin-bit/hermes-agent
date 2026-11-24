@@ -17,17 +17,26 @@ import { fetchJSON } from "@/lib/api";
 import {
   classifyRead,
   envelopeOf,
+  GATE_FANOUT_LIMIT,
+  GATE_PORTS,
   IDLE_PORTS,
   PORTS,
+  peopleOf,
+  readApprovalEvidence,
   readAsOf,
+  readConfigView,
   readCountedItems,
   readMatrixPayload,
   readRoster,
   readSkills,
   readSpaces,
+  readStations,
+  type GateEvidence,
   type Ports,
   type Read,
 } from "./matrix";
+
+import type { ApprovalEvidence, ConfigView, StationBinding } from "../duty/readiness";
 
 /** 读一条腿：200 交给解析器，非 2xx 走四态归档；解析器回 null ⇒ error（不猜）。 */
 export async function readLeg<T>(
@@ -72,6 +81,32 @@ export function portReads(): [PortsKey, Promise<Read<unknown>>][] {
   ];
 }
 
+/**
+ * 四道门证据：工位与有效配置按员工扇出（上限与 duty 的 32 一致），审批一次取全量。
+ * 每条腿各自归档：某位员工的工位没回，只让他这一门的 V1 记「待核实」，不连坐别人。
+ */
+export async function readGateEvidence(employeeIds: string[]): Promise<GateEvidence> {
+  const ids = employeeIds.slice(0, GATE_FANOUT_LIMIT);
+  const stations: Record<string, Read<StationBinding[]>> = {};
+  const configs: Record<string, Read<ConfigView>> = {};
+  await Promise.all(
+    ids.map(async (id) => {
+      const [stationRead, configRead] = await Promise.all([
+        readLeg<StationBinding[]>(GATE_PORTS.stations(id), readStations, (data) => data.length === 0),
+        readLeg<ConfigView>(GATE_PORTS.config(id), readConfigView, () => false),
+      ]);
+      stations[id] = stationRead;
+      configs[id] = configRead;
+    }),
+  );
+  const approvals = await readLeg<ApprovalEvidence[]>(
+    GATE_PORTS.approvals,
+    readApprovalEvidence,
+    (data) => data.length === 0,
+  );
+  return { k: "settled", stations, configs, approvals };
+}
+
 /** 一次读全（等所有腿都有结局）；页面本身走逐条落位，不等慢腿。 */
 export async function readPorts(): Promise<Ports> {
   const entries = portReads();
@@ -80,6 +115,7 @@ export async function readPorts(): Promise<Ports> {
   entries.forEach(([key], index) => {
     (ports as unknown as Record<PortsKey, Read<unknown>>)[key] = settled[index]!;
   });
+  ports.gate = await readGateEvidence(peopleOf(ports).people.map((person) => person.employeeId));
   return ports;
 }
 
@@ -99,6 +135,24 @@ export function useMatrixPorts(): { ports: Ports; reload: () => void } {
       alive = false;
     };
   }, [attempt]);
+
+  // 四道门证据要等名单落位才知道扇出给谁：名单一变（或刷新）就重取一次。
+  const { people } = peopleOf(ports);
+  const employeeIds = people.map((person) => person.employeeId).join(",");
+  const rosterSettled = ports.matrix.k !== "loading" || ports.roster.k !== "loading";
+
+  useEffect(() => {
+    if (!rosterSettled) return;
+    let alive = true;
+    const ids = employeeIds ? employeeIds.split(",") : [];
+    void readGateEvidence(ids).then((gate) => {
+      if (!alive) return;
+      setPorts((prev) => ({ ...prev, gate }));
+    });
+    return () => {
+      alive = false;
+    };
+  }, [attempt, rosterSettled, employeeIds]);
 
   // 重读先在事件里清空（effect 只负责订阅读口，不在体内同步 setState）。
   const reload = useCallback(() => {

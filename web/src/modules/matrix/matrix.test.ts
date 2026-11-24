@@ -14,17 +14,24 @@ import {
   classifyRead,
   DASH,
   envelopeOf,
+  GATE_PORTS,
+  gateTable,
+  IDLE_GATE,
   IDLE_PORTS,
   initials,
   missingPorts,
   peopleColumns,
+  readApprovalEvidence,
+  readConfigView,
   readMatrixPayload,
   readRoster,
   readSkills,
   readSpaces,
+  readStations,
   refLabel,
   resourceHead,
   shortCode,
+  type GateEvidence,
   type Ports,
   type Read,
 } from "./matrix";
@@ -43,6 +50,18 @@ function ports(overrides: Partial<Ports> = {}): Ports {
     tools: ready([]),
     mcp: ready([]),
     spaces: ready([]),
+    gate: { ...IDLE_GATE, k: "settled" },
+    ...overrides,
+  };
+}
+
+/** 四门证据桩：逐员工工位/有效配置 + 审批行，形状与 BFF 实测一致。 */
+function gate(overrides: Partial<GateEvidence> = {}): GateEvidence {
+  return {
+    k: "settled",
+    stations: {},
+    configs: {},
+    approvals: ready([]),
     ...overrides,
   };
 }
@@ -224,7 +243,7 @@ describe("shortCode / initials / refLabel", () => {
 });
 
 describe("peopleColumns / buildPeopleRows — 列的存在性由读口决定", () => {
-  it("只有技能回传时，只剩「技能」一列；四道门与缺口永不渲染", () => {
+  it("结构列永远保留：四道门四列 / 缺口 / 工具 / 知识 / 部门，值读不到也不删列", () => {
     const portsIn = ports({
       matrix: ready({
         people: readMatrixPayload({ items: [employee({ skillRefs: [], skillCount: 0 })] })!.people,
@@ -232,15 +251,40 @@ describe("peopleColumns / buildPeopleRows — 列的存在性由读口决定", (
         asOf: AS_OF,
       }),
     });
-    expect(peopleColumns(portsIn).map((column) => column.key)).toEqual(["skills"]);
+    expect(peopleColumns(portsIn).map((column) => column.key)).toEqual([
+      "skills",
+      "v1",
+      "v2",
+      "v3",
+      "v6",
+      "gap",
+      "tools",
+      "kb",
+      "dept",
+    ]);
   });
 
-  it("某一维只有一位员工回传，这一列就算有读口", () => {
-    const people = readMatrixPayload({
-      items: [employee({ employeeId: "emp_1" }), { employeeId: "emp_2", capabilities: { tools: ["tool:a"] } }],
-    })!.people;
+  it("矩阵没有部门字段时按 employeeId 从员工台账补部门真值（只补这一个字段）", () => {
+    const people = readMatrixPayload({ items: [employee({ employeeId: "emp_1", department: null })] })!.people;
+    expect(people[0]!.department).toBeNull();
+    const portsIn = ports({
+      matrix: ready({ people, budgets: new Map(), asOf: AS_OF }),
+      roster: ready([
+        { employeeId: "emp_1", name: "小鲤", title: null, department: "产品部", lifecycle: "active" },
+      ]),
+    });
+    const rows = buildPeopleRows(portsIn);
+    expect(rows[0]!.department).toBe("产品部");
+    if (rows[0]!.cells.dept?.k === "text") expect(rows[0]!.cells.dept.text).toBe("产品部");
+  });
+
+  it("部门是结构列：台账没有 department 时仍保留列，格内写「未登记」", () => {
+    const people = readMatrixPayload({ items: [employee({ employeeId: "emp_1" })] })!.people;
     const portsIn = ports({ matrix: ready({ people, budgets: new Map(), asOf: AS_OF }) });
-    expect(peopleColumns(portsIn).map((column) => column.key)).toEqual(["skills", "tools"]);
+    const rows = buildPeopleRows(portsIn);
+    expect(rows[0]!.department).toBeNull();
+    expect(rows[0]!.cells.dept?.k).toBe("text");
+    if (rows[0]!.cells.dept?.k === "text") expect(rows[0]!.cells.dept.text).toBe("未登记");
   });
 
   it("技能芯片最多 3 枚，其余进 +N；skillCount 是真读数", () => {
@@ -265,7 +309,7 @@ describe("peopleColumns / buildPeopleRows — 列的存在性由读口决定", (
     if (cell.k === "text") expect(cell.text).toBe("4 项");
   });
 
-  it("名单兜底：source 是 roster，技能格只有「—」（且该列不会因此进版面）", () => {
+  it("名单兜底：source 是 roster，技能格只有「—」（技能列不进版面，结构列照留）", () => {
     const portsIn = ports({
       matrix: { k: "missing", note: "没有读口", title: null, asOf: null },
       roster: ready([{ employeeId: "emp_9", name: "阿吉", title: null, department: null, lifecycle: "active" }]),
@@ -273,7 +317,16 @@ describe("peopleColumns / buildPeopleRows — 列的存在性由读口决定", (
     const rows = buildPeopleRows(portsIn);
     expect(rows[0]!.source).toBe("roster");
     expect(rows[0]!.cells.skills?.k).toBe("dash");
-    expect(peopleColumns(portsIn)).toEqual([]);
+    expect(peopleColumns(portsIn).map((column) => column.key)).toEqual([
+      "v1",
+      "v2",
+      "v3",
+      "v6",
+      "gap",
+      "tools",
+      "kb",
+      "dept",
+    ]);
   });
 });
 
@@ -398,5 +451,143 @@ describe("readSkills / readSpaces / readRoster — 清单形状", () => {
   it("roster 只取身份字段", () => {
     const roster = readRoster({ items: [{ employeeId: "emp_1", lifecycle_state: "active" }] });
     expect(roster?.[0]?.lifecycle).toBe("active");
+  });
+});
+
+describe("四道门 — 复用 duty/readiness 的 verdict，V3 整门「未接」", () => {
+  const people = readMatrixPayload({
+    items: [
+      employee({ employeeId: "emp_A", name: "小鲤" }),
+      employee({ employeeId: "emp_B", name: "小满" }),
+      employee({ employeeId: "emp_C", name: "阿吉" }),
+    ],
+  })!.people;
+  const FUTURE = new Date(Date.now() + 86_400_000).toISOString();
+
+  const evidence = gate({
+    stations: {
+      emp_A: ready([{ bindingType: "group", status: "active", channel: "feishu" }]),
+      emp_B: ready([{ bindingType: "dm", status: "active", channel: "feishu" }]),
+      emp_C: { k: "error", note: "工位读口本次没有读到", requestId: "rid-3" },
+    },
+    configs: {
+      emp_A: ready({ scopes: ["product_assistant"], grants: [{ expiresAt: FUTURE }], resolvedAt: AS_OF }),
+      emp_B: ready({ scopes: [], grants: [{ expiresAt: FUTURE }], resolvedAt: AS_OF }),
+      emp_C: { k: "missing", note: "有效配置读口尚未接线", title: "HTTP 404", asOf: null },
+    },
+    approvals: ready([
+      { subjectId: "emp_A", status: "approved", expiresAt: FUTURE, hasApprover: true },
+      { subjectId: "emp_B", status: "expired", expiresAt: AS_OF, hasApprover: true },
+    ]),
+  });
+
+  function tableWith(ev: GateEvidence) {
+    return gateTable(ports({ matrix: ready({ people, budgets: new Map(), asOf: AS_OF }), gate: ev }));
+  }
+
+  it("V1/V2/V6 逐员工点灯：pass / fail / 证据没回写待核实（不进分子分母）", () => {
+    const table = tableWith(evidence);
+    expect(table.entries.get("emp_A")).toEqual({ v1: "pass", v2: "pass", v6: "pass" });
+    expect(table.entries.get("emp_B")).toEqual({ v1: "fail", v2: "fail", v6: "fail" });
+    // emp_C 的工位腿 error、有效配置腿 missing ⇒ 两门 null；审批腿回了 ⇒ v6 有判定。
+    expect(table.entries.get("emp_C")).toEqual({ v1: null, v2: null, v6: "fail" });
+  });
+
+  it("缺口＝可判定门交集：未达 / 可判定只数三道门都给了判定的员工", () => {
+    const table = tableWith(evidence);
+    // emp_A 三门全过；emp_B 三门全不过；emp_C 两门没证据 ⇒ 不进分母。
+    expect(table.gap).toEqual({ pass: 1, denom: 2 });
+    expect(table.coverage).toEqual({ covered: 2, requested: 3 });
+  });
+
+  it("一格都没有可判定读数时给 null，不补 0", () => {
+    const table = tableWith(
+      gate({
+        stations: { emp_A: { k: "missing", note: "工位读口没有", title: null, asOf: null } },
+        configs: {},
+        approvals: { k: "missing", note: "审批读口没有", title: null, asOf: null },
+      }),
+    );
+    expect(table.gap).toEqual({ pass: null, denom: null });
+  });
+
+  it("V3 引用门整门无读口：每格写「未接」，不是「—」，也不计入交集", () => {
+    const rows = buildPeopleRows(
+      ports({ matrix: ready({ people, budgets: new Map(), asOf: AS_OF }), gate: evidence }),
+    );
+    for (const row of rows) {
+      const cell = row.cells.v3!;
+      expect(cell.k).toBe("gate");
+      if (cell.k === "gate") {
+        expect(cell.text).toBe("未接");
+        expect(cell.state).toBe("unwired");
+        expect(cell.title).toContain("V3");
+      }
+      expect(row.cells.gap?.k).toBe("text");
+      if (row.cells.gap?.k === "text") expect(row.cells.gap.text).toBe("1 / 2");
+    }
+  });
+
+  it("证据还在路上：缺口写「读取中」，不写 0", () => {
+    const table = tableWith({ ...IDLE_GATE });
+    expect(table.pending).toBe(true);
+    expect(table.gap).toEqual({ pass: null, denom: null });
+  });
+});
+
+describe("四门证据解析器 — 实测 BFF 形状", () => {
+  it("workstations 收 items[]；空集是真零（V1 可据此判未过）", () => {
+    expect(readStations({ items: [{ bindingType: "group", status: "active" }] })?.[0]).toMatchObject({
+      bindingType: "group",
+      status: "active",
+    });
+    expect(readStations({ items: [] })).toEqual([]);
+    expect(readStations({ nope: 1 })).toBeNull();
+  });
+
+  it("effective-config 取 version.knowledgeScopes 与 grants.expiresAt", () => {
+    const view = readConfigView({
+      version: { knowledgeScopes: ["a", "b"] },
+      grants: [{ expiresAt: "2026-12-31T00:00:00.000Z" }],
+      resolvedAt: AS_OF,
+    });
+    expect(view).toEqual({
+      scopes: ["a", "b"],
+      grants: [{ expiresAt: "2026-12-31T00:00:00.000Z" }],
+      resolvedAt: AS_OF,
+    });
+    expect(readConfigView({ employee: {} })).toBeNull();
+  });
+
+  it("approvals 只留数字员工的 message_send 决策", () => {
+    const rows = readApprovalEvidence({
+      items: [
+        {
+          status: "approved",
+          binding: { subjectType: "employee", subjectId: "emp_A", changeKind: "message_send" },
+          approvers: [{ userId: "human:1" }],
+          expiresAt: "2026-12-31T00:00:00.000Z",
+        },
+        {
+          status: "approved",
+          binding: { subjectType: "task", subjectId: "task_1", changeKind: "message_send" },
+          approvers: [],
+        },
+        {
+          status: "denied",
+          binding: { subjectType: "employee", subjectId: "emp_B", changeKind: "config_change" },
+          approvers: [],
+        },
+      ],
+    });
+    expect(rows).toEqual([
+      { subjectId: "emp_A", status: "approved", expiresAt: "2026-12-31T00:00:00.000Z", hasApprover: true },
+    ]);
+  });
+
+  it("四条门读口的地址都带 /agent-api 前缀", () => {
+    expect(GATE_PORTS.stations("emp_A")).toContain("/agent-api/api/workstations?id=emp_A");
+    expect(GATE_PORTS.config("emp_A")).toContain("/agent-api/api/effective-config?id=emp_A");
+    expect(GATE_PORTS.approvals).toBe("/agent-api/api/approvals?status=all&limit=100");
   });
 });

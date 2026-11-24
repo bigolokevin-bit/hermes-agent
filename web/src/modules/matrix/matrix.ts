@@ -15,9 +15,27 @@
  * missing 与 error 一律写成缺读口声明；只有 empty 才允许写 0。
  * 不补 0、不补百分比、不摆示例行：面上不许出现 data-fixture，也不许有样例数据。
  *
- * 列的存在性也由读口决定：某一维（工具与接口 / 知识范围 / 四道门 / 缺口）
- * 没有任何员工级读口回传时，整列不进版面——不拿满列「—」冒充「查过了」。
+ * 列的存在性口径（2026-11-24 第二轮修正）：四道门（V1 群@ / V2 ReBAC / V3 引用 /
+ * V6 审批）、缺口、工具与接口、知识范围、部门是**结构性列**，值读不到也保留列名，
+ * 格内写「未接 / 待核实 / —」并在卡底声明一次；只有「技能」是纯数据列，没有读口
+ * 时整列不渲染。列是结构，不因为值读不到就删列。
+ *
+ * 四道门的真值不在这里重写：verdict 复用 `modules/duty/readiness.ts` 的
+ * v1/v2/v6（V3 整门无读口，按 GATE_READ_PORTS 标注「未接」并排除出交集）。
  */
+
+import {
+  GATE_READ_PORTS,
+  intersection,
+  v1Verdict,
+  v2Verdict,
+  v6Verdict,
+  type ApprovalEvidence,
+  type ConfigView,
+  type GateVerdict,
+  type IntersectionResult,
+  type StationBinding,
+} from "../duty/readiness";
 
 // ---------------------------------------------------------------- 读口四态
 
@@ -163,6 +181,73 @@ export const PORT_LABELS: Record<PortKey, string> = {
   employees: "员工名单",
   spaces: "知识空间",
 };
+
+/**
+ * 四道门的逐员工证据读口（复用 duty/readiness.ts 的 verdict，不另起判据）。
+ * 工位与有效配置按员工扇出；审批一次取全量再按 subjectId 归位。
+ */
+export const GATE_PORTS = {
+  stations: (employeeId: string) => `/agent-api/api/workstations?id=${encodeURIComponent(employeeId)}`,
+  config: (employeeId: string) => `/agent-api/api/effective-config?id=${encodeURIComponent(employeeId)}`,
+  approvals: "/agent-api/api/approvals?status=all&limit=100",
+} as const;
+
+/** 与 duty 的 READINESS_FANOUT_LIMIT 同值：逐员工扇出上限，超出部分按待核实。 */
+export const GATE_FANOUT_LIMIT = 32;
+
+// ---------------------------------------------------------------- 四道门解析器
+
+/** `GET /api/workstations?id=…` → 工位行（V1 只用工位这一腿）。 */
+export function readStations(body: unknown): StationBinding[] | null {
+  const items = listOf(body);
+  if (items === null) return null;
+  const out: StationBinding[] = [];
+  for (const entry of items) {
+    if (!isRecord(entry)) continue;
+    out.push({
+      bindingType: pick(entry, ["bindingType", "binding_type"]) ?? undefined,
+      channel: pick(entry, ["channel"]) ?? undefined,
+      status: pick(entry, ["status"]) ?? undefined,
+    });
+  }
+  return out;
+}
+
+/** `GET /api/effective-config?id=…` → V2 需要的两腿 + 知识范围（version.knowledgeScopes）。 */
+export function readConfigView(body: unknown): ConfigView | null {
+  if (!isRecord(body) || !isRecord(body.version)) return null;
+  const version = body.version;
+  const scopes = Array.isArray(version.knowledgeScopes)
+    ? version.knowledgeScopes.filter((scope): scope is string => typeof scope === "string")
+    : [];
+  const grants = Array.isArray(body.grants)
+    ? body.grants.filter(isRecord).map((grant) => ({ expiresAt: str(grant.expiresAt) }))
+    : [];
+  return { scopes, grants, resolvedAt: str(body.resolvedAt) };
+}
+
+/** `GET /api/approvals?status=all` → 只留该员工 message_send 决策（V6 证据）。 */
+export function readApprovalEvidence(body: unknown): ApprovalEvidence[] | null {
+  const items = listOf(body);
+  if (items === null) return null;
+  const out: ApprovalEvidence[] = [];
+  for (const row of items) {
+    if (!isRecord(row) || !isRecord(row.binding)) continue;
+    const binding = row.binding;
+    if (str(binding.subjectType) !== "employee") continue;
+    const kind = str(binding.changeKind) ?? str(row.action) ?? "";
+    if (kind !== "message_send" && kind !== "message.send") continue;
+    const subjectId = str(binding.subjectId);
+    if (!subjectId) continue;
+    out.push({
+      subjectId,
+      status: str(row.status) ?? "",
+      expiresAt: str(row.expiresAt),
+      hasApprover: Array.isArray(row.approvers) && row.approvers.length > 0,
+    });
+  }
+  return out;
+}
 
 // ---------------------------------------------------------------- 解析器
 
@@ -455,12 +540,29 @@ export interface ColumnDef {
 /** 卡一 thead 原文：员工 / 技能 / 工具与接口 / 知识范围 / 四道门（V1·V2·V3·V6） / 缺口（未挂必挂技能） */
 export const PEOPLE_PIN_LABEL = "员工";
 
-export const PEOPLE_COLUMNS: readonly ColumnDef[] = [
-  { key: "skills", label: "技能" },
+/**
+ * 四道门展开成四列（工单 2026-11-24 第二轮）：V1 群@ / V2 ReBAC / V3 引用 / V6 审批。
+ * 列名逐字取工单原文；骨架的合并表头「四道门（V1·V2·V3·V6）」留在卡头说明里。
+ */
+export const GATE_COLUMNS: readonly ColumnDef[] = [
+  { key: "v1", label: "V1 群@" },
+  { key: "v2", label: "V2 ReBAC" },
+  { key: "v3", label: "V3 引用" },
+  { key: "v6", label: "V6 审批" },
+];
+
+/** 结构性列：读不到值也保留列头（列是结构，格内写状态并在卡底说明）。 */
+export const STRUCTURAL_COLUMNS: readonly ColumnDef[] = [
+  ...GATE_COLUMNS,
+  { key: "gap", label: "缺口（未达/可判定）", right: true },
   { key: "tools", label: "工具与接口" },
   { key: "kb", label: "知识范围" },
-  { key: "gates", label: "四道门（V1·V2·V3·V6）" },
-  { key: "gap", label: "缺口（未挂必挂技能）", right: true },
+  { key: "dept", label: "部门" },
+];
+
+export const PEOPLE_COLUMNS: readonly ColumnDef[] = [
+  { key: "skills", label: "技能" },
+  ...STRUCTURAL_COLUMNS,
 ];
 
 export type ResourceKind = "skill" | "tool" | "kb";
@@ -528,12 +630,28 @@ export type MatrixCell =
   | { k: "dash"; title: string }
   | { k: "chips"; chips: { label: string; title: string }[]; more: number; title: string }
   | { k: "mark"; hit: boolean; title: string }
+  | { k: "gate"; state: "pass" | "fail" | "pending" | "unwired"; text: string; title: string }
   | { k: "state"; tone: PillTone; text: string; title: string; dashed?: boolean };
 
 export const UNKNOWN_CELL_TITLE =
   "待核实：后端没有给出这一格，按「无读口」显示——不猜授权，也不写 0。";
 
 // ---------------------------------------------------------------- 一次读取的合集
+
+/** 四道门的证据合集：逐员工归档，谁没回就记在谁头上（不拿别人的判定顶替）。 */
+export interface GateEvidence {
+  k: "loading" | "settled";
+  stations: Record<string, Read<StationBinding[]>>;
+  configs: Record<string, Read<ConfigView>>;
+  approvals: Read<ApprovalEvidence[]>;
+}
+
+export const IDLE_GATE: GateEvidence = {
+  k: "loading",
+  stations: {},
+  configs: {},
+  approvals: { k: "loading" },
+};
 
 export interface Ports {
   matrix: Read<MatrixPayload>;
@@ -542,6 +660,7 @@ export interface Ports {
   tools: Read<unknown[]>;
   mcp: Read<unknown[]>;
   spaces: Read<SpaceItem[]>;
+  gate: GateEvidence;
 }
 
 export const IDLE_PORTS: Ports = {
@@ -551,11 +670,31 @@ export const IDLE_PORTS: Ports = {
   tools: { k: "loading" },
   mcp: { k: "loading" },
   spaces: { k: "loading" },
+  gate: IDLE_GATE,
 };
 
-/** 名单（矩阵优先，兜底次之）——卡一与卡二共用。 */
+/**
+ * 名单（矩阵优先，兜底次之）——卡一与卡二共用。
+ *
+ * 矩阵读口本身不带 department（实测 shape 只有 employeeId/name/title/lifecycle/
+ * skillRefs/budget），而员工台账 `/api/employees` 有：矩阵回了但部门为空的员工，
+ * 按 employeeId 从台账补部门真值（只补这一个字段，不借台账的身份/能力）。
+ */
 export function peopleOf(ports: Ports): { people: MatrixPerson[]; source: "matrix" | "roster" | null } {
-  if (ports.matrix.k === "ready") return { people: ports.matrix.data.people, source: "matrix" };
+  if (ports.matrix.k === "ready") {
+    const rosterDept = new Map<string, string>();
+    if (ports.roster.k === "ready") {
+      for (const person of ports.roster.data) {
+        if (person.department) rosterDept.set(person.employeeId, person.department);
+      }
+    }
+    const people = ports.matrix.data.people.map((person) =>
+      person.department === null && rosterDept.has(person.employeeId)
+        ? { ...person, department: rosterDept.get(person.employeeId)! }
+        : person,
+    );
+    return { people, source: "matrix" };
+  }
   if (ports.roster.k === "ready") {
     return {
       people: ports.roster.data.map((person) => ({
@@ -583,6 +722,260 @@ export function mountedIds(person: MatrixPerson, kind: ResourceKind): string[] |
   return kind === "tool" ? person.caps.tools : person.caps.knowledge;
 }
 
+// ---------------------------------------------------------------- 四道门（卡一）
+
+export interface GateEntry {
+  /** null = 该员工这一门的证据源没有回答（待核实，绝不进分子分母）。 */
+  v1: GateVerdict | null;
+  v2: GateVerdict | null;
+  v6: GateVerdict | null;
+}
+
+export interface GateTable {
+  /** 逐员工的 V1/V2/V6 判定（V3 整门无读口，不在这里）。 */
+  entries: Map<string, GateEntry>;
+  /** 可判定门（V1/V2/V6）的交集：未达＝可判定里未能全过，可判定＝三门都有答的员工。 */
+  gap: IntersectionResult;
+  /** 三门证据都回来的员工数 / 员工总数。 */
+  coverage: { covered: number; requested: number };
+  /** 逐员工证据是否还在路上。 */
+  pending: boolean;
+}
+
+/** 缺口口径的一句话（卡底只声明一次）：V3 不计入交集。 */
+export const GAP_CALIBER =
+  "缺口＝可判定门（V1 群@ / V2 ReBAC / V6 审批）取交集：未达是这些门未能全部通过的员工数，可判定是三道门都给出了判定的员工数；V3 引用门无读口，整门不计入。";
+
+/**
+ * 四道门的逐员工判定：verdict 全部复用 duty/readiness.ts，这里只负责归位与交集。
+ * 某位员工某条证据腿没有回数 ⇒ 该门记 null（待核实），既不算通过也不算未过。
+ */
+export function gateTable(ports: Ports, now: number = Date.now()): GateTable {
+  const { people } = peopleOf(ports);
+  const gate = ports.gate;
+  const entries = new Map<string, GateEntry>();
+  const verdictSets: (GateVerdict | null)[][] = [[], [], []];
+  const approvalsAnswered = gate.approvals.k === "ready" || gate.approvals.k === "empty";
+  const approvalRows = gate.approvals.k === "ready" ? gate.approvals.data : [];
+
+  for (const person of people) {
+    const stationRead = gate.stations[person.employeeId];
+    const configRead = gate.configs[person.employeeId];
+    const stations =
+      stationRead && stationRead.k === "ready"
+        ? stationRead.data
+        : stationRead && stationRead.k === "empty"
+          ? []
+          : null;
+    const v1 = stations === null ? null : v1Verdict(stations);
+    const v2 = configRead && configRead.k === "ready" ? v2Verdict(configRead.data, now) : null;
+    const v6 = approvalsAnswered ? v6Verdict(approvalRows, person.employeeId, now) : null;
+    entries.set(person.employeeId, { v1, v2, v6 });
+    verdictSets[0]!.push(v1);
+    verdictSets[1]!.push(v2);
+    verdictSets[2]!.push(v6);
+  }
+
+  const pending = gate.k === "loading";
+  const gap = pending ? { pass: null, denom: null } : intersection(verdictSets, people.length);
+  const covered = people.filter((person) => {
+    const entry = entries.get(person.employeeId);
+    return Boolean(entry && entry.v1 !== null && entry.v2 !== null && entry.v6 !== null);
+  }).length;
+
+  return { entries, gap, coverage: { covered, requested: people.length }, pending };
+}
+
+const VERDICT_TEXT: Record<GateVerdict, { state: "pass" | "fail" | "pending"; text: string }> = {
+  pass: { state: "pass", text: "通过" },
+  fail: { state: "fail", text: "未过" },
+  unknown: { state: "pending", text: "待核实" },
+};
+
+function gateCell(verdict: GateVerdict | null, basis: string, missingReason: string): MatrixCell {
+  if (verdict === null) {
+    return { k: "gate", state: "pending", text: "待核实", title: `${basis} 判定依据：${missingReason}` };
+  }
+  const shown = VERDICT_TEXT[verdict];
+  return { k: "gate", state: shown.state, text: shown.text, title: `${basis} 判定依据：${basisDetail(verdict)}` };
+}
+
+function basisDetail(verdict: GateVerdict): string {
+  if (verdict === "pass") return "证据齐且满足判据（通过）。";
+  if (verdict === "fail") return "证据齐但不满足判据（未过）。";
+  return "证据源回了但没有足够读数，按待核实计，不进缺口分子分母。";
+}
+
+/** V1 群@：工位里「群绑定 + active」这一腿（第二腿渠道事件读口有意不代理）。 */
+function v1Cell(entry: GateEntry, read: Read<StationBinding[]> | undefined): MatrixCell {
+  const basis = "V1 群@＝工位存在「群绑定 + active」；单腿口径（最近一次群内应答的第二腿读口有意不代理，本车道不补）。";
+  if (read && read.k === "ready") {
+    const groups = read.data.filter((station) => station.bindingType === "group");
+    const live = groups.filter((station) => station.status === "active").length;
+    return gateCell(entry.v1, `${basis} 工位 ${read.data.length} 条，群绑定 ${groups.length} 条、其中在用 ${live} 条。`, "");
+  }
+  if (read && read.k === "empty") {
+    return gateCell(entry.v1, `${basis} 工位读口回的是空集（真零）。`, "");
+  }
+  if (read && read.k === "loading") {
+    return gateCell(null, basis, "工位读口还在读取。");
+  }
+  return gateCell(
+    null,
+    basis,
+    read && (read.k === "missing" || read.k === "error") ? read.note : "工位读口没有回数。",
+  );
+}
+
+/** V2 ReBAC：有效配置里知识范围非空 ∧ 存在未过期授权。 */
+function v2Cell(entry: GateEntry, read: Read<ConfigView> | undefined): MatrixCell {
+  const basis = "V2 ReBAC＝有效配置里知识范围非空，且存在未过期的授权 grant。";
+  if (read && read.k === "ready") {
+    const alive = read.data.grants.filter((grant) => grant.expiresAt === null || Date.parse(grant.expiresAt) > Date.now()).length;
+    return gateCell(entry.v2, `${basis} 知识范围 ${read.data.scopes.length} 个，未过期授权 ${alive} 条。`, "");
+  }
+  if (read && read.k === "loading") return gateCell(null, basis, "有效配置读口还在读取。");
+  return gateCell(
+    null,
+    basis,
+    read && (read.k === "missing" || read.k === "error") ? read.note : "有效配置读口没有回数。",
+  );
+}
+
+/** V6 审批：该员工存在「message_send + 有审批人 + 已批准 + 未过期」。 */
+function v6Cell(entry: GateEntry, approvals: Read<ApprovalEvidence[]>): MatrixCell {
+  const basis = "V6 审批＝该员工有「message_send」决策且已由审批人批准、未过期。";
+  if (approvals.k === "ready" || approvals.k === "empty") {
+    const rows = approvals.k === "ready" ? approvals.data : [];
+    const total = rows.length;
+    return gateCell(entry.v6, `${basis} 全部决策行 ${total} 条（全量审批里属于数字员工 message_send 的部分）。`, "");
+  }
+  if (approvals.k === "loading") return gateCell(null, basis, "审批读口还在读取。");
+  return gateCell(null, basis, approvals.note);
+}
+
+/** V3 引用：整门无读口，格内写「未接」（不是「—」），列头保留。 */
+export function v3Cell(): MatrixCell {
+  return {
+    k: "gate",
+    state: "unwired",
+    text: "未接",
+    title: `V3 引用＝${GATE_READ_PORTS.V3.reason}；这一门给不出通过数，也不计入缺口。`,
+  };
+}
+
+/** 缺口格：未达 N / 可判定 M。判不出来时写「待核实」，不写 0。 */
+export function gapCell(table: GateTable): MatrixCell {
+  const unmet = table.gap.pass === null || table.gap.denom === null ? null : table.gap.denom - table.gap.pass;
+  if (unmet === null || table.gap.denom === null) {
+    return {
+      k: "text",
+      mono: true,
+      text: table.pending ? "读取中" : "待核实",
+      title: table.pending
+        ? "四道门的证据还在路上，交集分母未定。"
+        : `没有一道可判定门同时给出判定（证据覆盖 ${table.coverage.covered}/${table.coverage.requested} 位员工），交集给不出数。`,
+    };
+  }
+  return {
+    k: "text",
+    mono: true,
+    text: `${unmet} / ${table.gap.denom}`,
+    title: `${GAP_CALIBER} 本次：可判定 ${table.gap.denom} 人，未达 ${unmet} 人，三门全过 ${table.gap.pass ?? 0} 人；证据覆盖 ${table.coverage.covered}/${table.coverage.requested} 位员工。`,
+  };
+}
+
+/** 知识范围：员工级授权取自有效配置 version.knowledgeScopes；台账空间名用于换名。 */
+function knowledgeCell(person: MatrixPerson, read: Read<ConfigView> | undefined, names: Map<string, string>): MatrixCell {
+  const fromCaps = person.caps.knowledge;
+  if (read && read.k === "ready") {
+    const scopes = read.data.scopes;
+    if (scopes.length === 0) {
+      return {
+        k: "text",
+        text: "0 个",
+        mono: true,
+        title: "有效配置里的知识范围是空集（真零），不是读取失败。",
+      };
+    }
+    const chips = scopes.slice(0, 2).map((scope) => ({ label: names.get(scope) ?? scope, title: scope }));
+    return {
+      k: "chips",
+      chips,
+      more: Math.max(0, scopes.length - chips.length),
+      title: `知识范围 ${scopes.length} 个（员工级授权，取自有效配置）：${scopes.join("、")}`,
+    };
+  }
+  if (fromCaps !== null) return countOrDash(fromCaps, "知识范围", { k: "empty", asOf: null }, names);
+  if (read && read.k === "loading") return { k: "dash", title: "知识范围：员工级读口还在读取，这一格暂空，不代表 0。" };
+  return {
+    k: "dash",
+    title: `知识范围：员工级授权没有读到（${
+      read && (read.k === "missing" || read.k === "error") ? read.note : "有效配置读口没有回数"
+    }），这一格按「—」显示，不等于 0。`,
+  };
+}
+
+/** 工具与接口：员工级授权没有读口（/api/tools 上游不可达），格内「—」+ 卡底声明一次。 */
+function toolsCell(person: MatrixPerson, ports: Ports): MatrixCell {
+  if (person.caps.tools !== null) return countOrDash(person.caps.tools, "工具与接口", ports.tools, new Map());
+  return {
+    k: "dash",
+    title: "工具与接口：员工级授权没有读口，工具登记上游此刻不可达；这一格按「—」显示，不代表 0。",
+  };
+}
+
+function deptCell(department: string | null): MatrixCell {
+  if (!department) {
+    return { k: "text", text: "未登记", title: "员工台账里没有部门字段（null），按未登记显示，不猜。" };
+  }
+  return { k: "text", text: department, title: `部门：${department}（员工台账真值）` };
+}
+
+// ---------------------------------------------------------------- 卡底声明
+
+/** 四道门证据腿的缺读口（逐员工扇出失败也在这里说一次）。 */
+export function gateNotes(gate: GateEvidence): PortNote[] {
+  if (gate.k === "loading") return [];
+  const out: PortNote[] = [];
+  const scan = <T,>(label: string, reads: Read<T>[], single: boolean) => {
+    const total = reads.length;
+    const bad = reads.filter((read) => read.k === "missing" || read.k === "error");
+    if (bad.length === 0 || total === 0) return;
+    const first = bad[0]!;
+    const note = first.k === "missing" ? first.note : first.note;
+    const title = first.k === "missing" ? first.title : first.requestId ? `rid ${first.requestId}` : null;
+    out.push({
+      label,
+      note: single ? note : `${note}（${bad.length}/${total} 位员工的这一腿没有回数）`,
+      title,
+    });
+  };
+  scan("工位读口", Object.values(gate.stations), false);
+  scan("有效配置读口", Object.values(gate.configs), false);
+  scan("审批读口", [gate.approvals], true);
+  return out;
+}
+
+/**
+ * 卡底「可用性」声明：工具与 MCP 两条读口不可达时写一次，
+ * 说清这两列不出值、不代表 0。可达时返回 null（不造声明）。
+ */
+export function availabilityNote(ports: Ports): PortNote | null {
+  const toolsBad = ports.tools.k === "missing" || ports.tools.k === "error";
+  const mcpBad = ports.mcp.k === "missing" || ports.mcp.k === "error";
+  if (!toolsBad && !mcpBad) return null;
+  const reasons: string[] = [];
+  if (toolsBad) reasons.push("工具登记上游此刻不可达");
+  if (mcpBad) reasons.push("MCP 服务器读口尚未接线");
+  const who = toolsBad && mcpBad ? "工具与 MCP 读口不可达" : toolsBad ? "工具读口不可达" : "MCP 读口不可达";
+  return {
+    label: "可用性",
+    note: `${who}：${reasons.join("、")}；这两列不出值，也不代表 0。`,
+    title: null,
+  };
+}
+
 // ---------------------------------------------------------------- 卡一视图
 
 export interface PeopleRow {
@@ -593,6 +986,8 @@ export interface PeopleRow {
   initials: string;
   /** 第二行：工号短码（任务口径）+ 部门·岗位真读数。 */
   sub: string;
+  /** 部门台账真值（null = 台账没登记）：部门筛选与部门列共用。 */
+  department: string | null;
   lifecycle: string | null;
   lifecycleText: string;
   lifecycleToneValue: PillTone;
@@ -643,8 +1038,9 @@ function countOrDash(
  * 员工回传了，这一列才进版面；四道门与缺口没有读口，整列永不渲染。
  * 名单优先 `/api/matrix`，缺席时用 `/api/employees` 兜底（兜底只有身份）。
  */
-export function buildPeopleRows(ports: Ports): PeopleRow[] {
+export function buildPeopleRows(ports: Ports, table: GateTable = gateTable(ports)): PeopleRow[] {
   const names = skillNameMap(ports);
+  const spaceNames = spaceNameMap(ports);
   const { people, source } = peopleOf(ports);
 
   const rows: PeopleRow[] = people.map((person) => {
@@ -702,20 +1098,30 @@ export function buildPeopleRows(ports: Ports): PeopleRow[] {
       source === "roster" ? "名单来自员工名单兜底：矩阵读口本次未回" : null,
     ].filter((part): part is string => Boolean(part));
 
+    const entry = table.entries.get(person.employeeId) ?? { v1: null, v2: null, v6: null };
+    const configRead = ports.gate.configs[person.employeeId];
+
     return {
       key: person.employeeId,
       name,
       code,
       initials: initials(person.name, code),
       sub: deptRole ? `${code} · ${deptRole}` : code,
+      department: person.department,
       lifecycle: person.lifecycle,
       lifecycleText: lifecycleLabel(person.lifecycle),
       lifecycleToneValue: lifecycleTone(person.lifecycle),
       isActive: person.lifecycle === "active",
       cells: {
         skills: skillsCell,
-        tools: countOrDash(person.caps.tools, "工具与接口", ports.tools, new Map()),
-        kb: countOrDash(person.caps.knowledge, "知识范围", ports.spaces, new Map()),
+        v1: v1Cell(entry, ports.gate.stations[person.employeeId]),
+        v2: v2Cell(entry, configRead),
+        v3: v3Cell(),
+        v6: v6Cell(entry, ports.gate.approvals),
+        gap: gapCell(table),
+        tools: toolsCell(person, ports),
+        kb: knowledgeCell(person, configRead, spaceNames),
+        dept: deptCell(person.department),
       },
       skillsCount: declared ?? (refs ? refs.length : null),
       rowTitle: rowTitleParts.join(" · ") || name,
@@ -733,36 +1139,50 @@ export function buildPeopleRows(ports: Ports): PeopleRow[] {
     };
   });
 
-  // 骨架口径按缺口降序；缺口不成立时退成「已挂技能数升序 → 姓名」（meta 写明）。
+  // 骨架口径按缺口降序（未达多者在前）；交集给不出数时退成「已挂技能数升序 → 姓名」。
+  const unmetOf = (row: PeopleRow): number => {
+    const cell = row.cells.gap;
+    if (!cell || cell.k !== "text" || !/\d+\s*\/\s*\d+/.test(cell.text)) return -1;
+    return Number(cell.text.split("/")[0]!.trim()) || 0;
+  };
   rows.sort((a, b) => {
-    const an = a.skillsCount ?? -1;
-    const bn = b.skillsCount ?? -1;
-    if (an !== bn) return an - bn;
+    const an = unmetOf(a);
+    const bn = unmetOf(b);
+    if (an !== bn) return bn - an;
+    const as = a.skillsCount ?? -1;
+    const bs = b.skillsCount ?? -1;
+    if (as !== bs) return as - bs;
     return a.name.localeCompare(b.name, "zh-Hans-CN");
   });
   return rows;
 }
 
 /**
- * 卡一实际进版面的列：只保留**有读口数据**的那几维。
- * 四道门与缺口永远缺席（没有读口），所以整列不渲染，而不是满列「—」。
+ * 卡一进版面的列：结构列（四道门 / 缺口 / 工具 / 知识 / 部门）**永远保留**，
+ * 值读不到只影响格内状态与卡底声明；「技能」是纯数据列，没有任何员工回传才整列不渲染。
  */
 export function peopleColumns(ports: Ports): ColumnDef[] {
   const { people } = peopleOf(ports);
-  return PEOPLE_COLUMNS.filter((column) => {
-    if (column.key === "skills") {
-      return people.some((person) => person.skillCount !== null || person.caps.skills !== null);
-    }
-    if (column.key === "tools") return people.some((person) => person.caps.tools !== null);
-    if (column.key === "kb") return people.some((person) => person.caps.knowledge !== null);
-    return false;
-  });
+  const hasSkills = people.some((person) => person.skillCount !== null || person.caps.skills !== null);
+  return PEOPLE_COLUMNS.filter((column) => column.key !== "skills" || hasSkills);
 }
 
 function skillNameMap(ports: Ports): Map<string, string> {
   const map = new Map<string, string>();
   if (ports.skills.k === "ready") {
     for (const item of ports.skills.data) map.set(item.id, item.name);
+  }
+  return map;
+}
+
+/** 知识空间台账的名字（按 space id 与名字双向落位，供知识范围的芯片换名）。 */
+function spaceNameMap(ports: Ports): Map<string, string> {
+  const map = new Map<string, string>();
+  if (ports.spaces.k === "ready") {
+    for (const item of ports.spaces.data) {
+      map.set(item.id, item.name);
+      map.set(item.name, item.name);
+    }
   }
   return map;
 }

@@ -32,7 +32,16 @@ const URLS = {
   mcp: "/agent-api/api/mcp/servers",
   employees: "/agent-api/api/employees",
   spaces: "/agent-api/api/knowledge/spaces",
+  stations: "/agent-api/api/workstations",
+  config: "/agent-api/api/effective-config",
+  approvals: "/agent-api/api/approvals",
 } as const;
+
+/** 有效配置桩：知识范围两腿 + 一条不过期授权（V2 据此可判）。 */
+const CONFIG_STUB = {
+  version: { knowledgeScopes: ["product_assistant"] },
+  grants: [{ expiresAt: null }],
+};
 
 const AS_OF = "2026-11-24T08:30:00.000Z";
 
@@ -54,6 +63,7 @@ const PEOPLE = [
   person({
     employeeId: "emp_AAAABBBBCCCCDDDD",
     name: "小鲤",
+    department: "产品部",
     skillRefs: [
       { skillId: "skill:检索" },
       { skillId: "skill:写稿" },
@@ -63,8 +73,8 @@ const PEOPLE = [
     ],
     skillCount: 5,
   }),
-  person({ employeeId: "emp_1111222233334444", name: "小满", lifecycleState: "draft", skillCount: 0 }),
-  person({ employeeId: "emp_5555666677778888", name: "阿吉", lifecycleState: "active", skillCount: 0 }),
+  person({ employeeId: "emp_1111222233334444", name: "小满", department: "运营部", lifecycleState: "draft", skillCount: 0 }),
+  person({ employeeId: "emp_5555666677778888", name: "阿吉", department: "产品部", lifecycleState: "active", skillCount: 0 }),
 ];
 
 const SKILLS = [
@@ -95,12 +105,21 @@ function upstreamDown(): ApiError {
   });
 }
 
+/**
+ * 读口桩：键既可以是精确地址，也可以是带查询串的读口前缀
+ * （工位/有效配置是按员工扇出的，地址里带 ?id=…）。
+ */
 function respond(map: Record<string, unknown>) {
+  const entries = Object.entries(map).sort((a, b) => b[0].length - a[0].length);
   fetchJSON.mockImplementation((url: string) => {
-    if (url in map) {
-      const value = map[url];
+    const hit = entries.find(([key]) => url === key || url.startsWith(`${key}?`));
+    if (hit) {
+      const value = hit[1];
       return value instanceof ApiError ? Promise.reject(value) : Promise.resolve(value);
     }
+    if (url.startsWith(URLS.stations)) return Promise.resolve({ items: [] });
+    if (url.startsWith(URLS.config)) return Promise.resolve(CONFIG_STUB);
+    if (url.startsWith(URLS.approvals)) return Promise.resolve({ items: [] });
     return Promise.resolve({ items: [] });
   });
 }
@@ -154,17 +173,22 @@ afterEach(() => {
 });
 
 describe("读口接线", () => {
-  it("一次挂载读六条腿，地址与读口表一致", async () => {
+  it("先读六条台账腿，再按名单扇出四门证据（工位 / 有效配置 / 审批）", async () => {
     respond({
       [URLS.matrix]: matrixWith(),
       [URLS.skills]: { items: SKILLS, asOf: AS_OF },
       [URLS.spaces]: SPACES,
     });
     await renderPage();
-    const called = fetchJSON.mock.calls.map((call) => call[0]).sort();
-    expect(called).toEqual(
-      [URLS.matrix, URLS.skills, URLS.tools, URLS.mcp, URLS.employees, URLS.spaces].sort(),
-    );
+    const called = fetchJSON.mock.calls.map((call) => call[0] as string);
+    for (const url of [URLS.matrix, URLS.skills, URLS.tools, URLS.mcp, URLS.employees, URLS.spaces]) {
+      expect(called).toContain(url);
+    }
+    for (const id of ["emp_AAAABBBBCCCCDDDD", "emp_1111222233334444", "emp_5555666677778888"]) {
+      expect(called).toContain(`${URLS.stations}?id=${id}`);
+      expect(called).toContain(`${URLS.config}?id=${id}`);
+    }
+    expect(called).toContain(`${URLS.approvals}?status=all&limit=100`);
   });
 });
 
@@ -232,27 +256,99 @@ describe("卡一 · 按员工覆盖", () => {
   it("技能列出 chip：最多 3 枚 + 「+N」", async () => {
     await renderPage();
     const row = q('[data-testid="mtx-row-emp_AAAABBBBCCCCDDDD"]');
-    const chips = row!.querySelectorAll(".emp-chip");
-    expect(chips).toHaveLength(3);
-    expect(row!.querySelector(".mtx-more")?.textContent).toBe("+2");
+    const skillsCell = row!.querySelectorAll("td")[1]!;
+    expect(skillsCell.querySelectorAll(".emp-chip")).toHaveLength(3);
+    expect(skillsCell.querySelector(".mtx-more")?.textContent).toBe("+2");
   });
 
-  it("工具与接口 / 知识范围 / 四道门 / 缺口：员工级没有回传 ⇒ 整列不渲染", async () => {
+  it("结构列永远在版面：四道门四列 / 缺口 / 工具 / 知识 / 部门，值读不到也不删列", async () => {
     await renderPage();
     expect(q('[data-testid="mtx-col-skills"]')).not.toBeNull();
-    expect(q('[data-testid="mtx-col-tools"]')).toBeNull();
-    expect(q('[data-testid="mtx-col-kb"]')).toBeNull();
-    expect(q('[data-testid="mtx-col-gates"]')).toBeNull();
-    expect(q('[data-testid="mtx-col-gap"]')).toBeNull();
-    expect(text()).not.toContain("四道门");
-    expect(text()).not.toContain("缺口（未挂必挂技能）");
+    for (const key of ["v1", "v2", "v3", "v6", "gap", "tools", "kb", "dept"]) {
+      expect(q(`[data-testid="mtx-col-${key}"]`), `missing column ${key}`).not.toBeNull();
+    }
+    expect(text()).toContain("V1 群@");
+    expect(text()).toContain("V2 ReBAC");
+    expect(text()).toContain("V3 引用");
+    expect(text()).toContain("V6 审批");
+    expect(text()).toContain("缺口（未达/可判定）");
+  });
+
+  it("V3 引用门没有读口：每格写「未接」，列头保留，不是「—」", async () => {
+    await renderPage();
+    const row = q('[data-testid="mtx-row-emp_AAAABBBBCCCCDDDD"]');
+    const cells = row!.querySelectorAll('[data-gate="unwired"]');
+    expect(cells).toHaveLength(1);
+    expect(cells[0]!.textContent).toBe("未接");
+    expect(cells[0]!.getAttribute("title")).toContain("V3");
+  });
+
+  it("四道门逐格点灯：证据回通过 / 未过，证据没回写待核实", async () => {
+    respond({
+      [URLS.matrix]: matrixWith(),
+      [URLS.stations]: { items: [{ bindingType: "group", status: "active" }] },
+      [URLS.approvals]: {
+        items: [
+          {
+            status: "approved",
+            binding: { subjectType: "employee", subjectId: "emp_AAAABBBBCCCCDDDD", changeKind: "message_send" },
+            approvers: [{ userId: "human:1" }],
+            expiresAt: new Date(Date.now() + 86_400_000).toISOString(),
+          },
+        ],
+      },
+      [URLS.spaces]: SPACES,
+    });
+    await renderPage();
+    const row = q('[data-testid="mtx-row-emp_AAAABBBBCCCCDDDD"]')!;
+    expect(row.querySelectorAll('[data-gate="pass"]')).toHaveLength(3); // V1 / V2 / V6
+    expect(row.querySelector('[data-gate="pass"]')?.getAttribute("title")).toContain("判定依据");
+
+    // 阿吉的工位桩也是 group/active + 审批桩只批了小鲤 ⇒ V6 未过。
+    const other = q('[data-testid="mtx-row-emp_5555666677778888"]')!;
+    expect(other.querySelectorAll('[data-gate="fail"]')).toHaveLength(1);
+  });
+
+  it("缺口列写「未达 / 可判定」，口径只声明一次", async () => {
+    await renderPage();
+    for (const row of qa('[data-testid^="mtx-row-emp_"]')) {
+      const gap = row.querySelector("td:last-of-type");
+      expect(gap).not.toBeNull();
+    }
+    expect(text()).toMatch(/\d+ \/ \d+/);
+    expect(q('[data-testid="mtx-gap-caliber"]')?.textContent).toContain("V3");
+  });
+
+  it("部门筛选是本地过滤：选项来自台账，切部门只留该部门的人", async () => {
+    await renderPage();
+    const select = q('[data-testid="mtx-dept"]') as HTMLSelectElement;
+    const options = Array.from(select.options).map((option) => option.textContent);
+    expect(options).toContain("产品部");
+    expect(options).toContain("运营部");
+
+    await act(async () => {
+      select.value = "运营部";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    const rows = qa('[data-testid^="mtx-row-emp_"]');
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.getAttribute("data-testid")).toBe("mtx-row-emp_1111222233334444");
+    expect(q('[data-testid="mtx-people-meta"]')?.textContent).toContain("部门本地过滤");
+  });
+
+  it("卡底可用性声明一次：工具与 MCP 读口不可达", async () => {
+    await renderPage();
+    const note = q('[data-testid="mtx-availability"]');
+    expect(note?.textContent).toContain("工具与 MCP 读口不可达");
+    expect(text().match(/工具与 MCP 读口不可达/g)).toHaveLength(1);
   });
 
   it("技能引用是真零时写「0 项」，不是「—」", async () => {
     await renderPage();
-    const row = q('[data-testid="mtx-row-emp_1111222233334444"]');
-    expect(row!.textContent).toContain("0 项");
-    expect(row!.textContent).not.toContain("—");
+    const row = q('[data-testid="mtx-row-emp_1111222233334444"]')!;
+    const skillsCell = row.querySelectorAll("td")[1]!;
+    expect(skillsCell.textContent).toBe("0 项");
+    expect(skillsCell.textContent).not.toContain("—");
   });
 
   it("状态筛选是真参数：在岗只留 active，停用只留 draft", async () => {
@@ -433,21 +529,10 @@ describe("卡三 · 清点与口径", () => {
     expect(summary!.textContent).toContain("在岗");
     expect(summary!.textContent).toContain("技能登记");
     expect(summary!.textContent).toContain("2");
-    expect(q('[data-testid="mtx-missing-summary"]')?.textContent).toBe("缺读口：工具登记、MCP 服务器");
+    expect(summary!.textContent).toContain("缺口交集");
+    expect(summary!.textContent).toContain("四门证据覆盖");
     expect(summary!.textContent).toContain("读取于 2026-11-24 16:30");
-  });
-
-  it("六条读口都在时，卡三写「六条读口本次都在」，不列假缺项", async () => {
-    respond({
-      [URLS.matrix]: matrixWith(),
-      [URLS.skills]: { items: SKILLS, asOf: AS_OF },
-      [URLS.tools]: { items: [{ id: "tool:web.search" }] },
-      [URLS.mcp]: { items: [{ id: "mcp:files" }] },
-      [URLS.employees]: { items: [] },
-      [URLS.spaces]: SPACES,
-    });
-    await renderPage();
-    expect(q('[data-testid="mtx-missing-summary"]')).toBeNull();
-    expect(text()).toContain("六条读口本次都在");
+    // 缺读口只在卡底声明一次：清点行不再重复列缺项。
+    expect(summary!.textContent).not.toContain("工具登记");
   });
 });

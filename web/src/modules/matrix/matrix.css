@@ -511,6 +511,60 @@
   background: transparent;
 }
 
+/* ---- 四道门逐格点灯：灯点 + 状态词（通过 / 未过 / 待核实 / 未接） ---- */
+.mtx-gate {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-family-mono-ls);
+  font-size: 10px;
+  line-height: 16px;
+  white-space: nowrap;
+  color: var(--color-text-subtle-ls);
+}
+
+.mtx-gate__lamp {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-text-faint-ls);
+}
+
+.mtx-gate.is-pass {
+  color: var(--color-success-ls);
+}
+
+.mtx-gate.is-pass .mtx-gate__lamp {
+  background: var(--color-success-ls);
+}
+
+.mtx-gate.is-fail {
+  color: var(--color-danger-ls);
+}
+
+.mtx-gate.is-fail .mtx-gate__lamp {
+  background: var(--color-danger-ls);
+}
+
+.mtx-gate.is-pending {
+  color: var(--color-warning-ls);
+}
+
+.mtx-gate.is-pending .mtx-gate__lamp {
+  background: var(--color-warning-ls);
+}
+
+/* 未接＝整门没有读口：灯点留空心，不冒充「未过」。 */
+.mtx-gate.is-unwired {
+  color: var(--color-text-faint-ls);
+}
+
+.mtx-gate.is-unwired .mtx-gate__lamp {
+  background: transparent;
+  border: 1px solid var(--color-text-faint-ls);
+}
+
 .mtx-res-name {
   display: block;
   max-width: 220px;
