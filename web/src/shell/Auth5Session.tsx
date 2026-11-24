@@ -198,10 +198,14 @@ export function Auth5Session({
           <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
         </button>
       </div>
-      {/* 芯片里压缩掉的两行仍在无障碍树里：读屏与验收读数都还能读到。 */}
-      <span className="sr-only" data-testid="auth5-role">
-        角色：{who.role}；租户：{who.tenant ?? "—"}
-      </span>
+      {/* 芯片里压缩掉的两行仍在无障碍树里：读屏与验收读数都还能读到。
+          2026-11-24：未解析完成时不再渲染占位破折号（全站 22 页每页都会被
+          数出「角色：—；租户：—」两个假占位，把页面读作坏页）。 */}
+      {who.role && who.role !== "—" ? (
+        <span className="sr-only" data-testid="auth5-role">
+          角色：{who.role}；租户：{who.tenant ?? "未标注"}
+        </span>
+      ) : null}
     </>
   );
 }
