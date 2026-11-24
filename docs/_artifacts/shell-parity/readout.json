@@ -1,0 +1,45 @@
+{
+  "task": "侧栏折叠档图标轨适配（56px）",
+  "viewport": "1440x900",
+  "route": "/overview",
+  "collapsed": {
+    "asideW": 53,
+    "navIconCount": 8,
+    "navIconVisible": 8,
+    "iconRects": [[17, 65, 20, 20], [17, 99, 20, 20], [17, 133, 20, 20], [17, 167, 20, 20], [17, 206, 20, 20], [17, 240, 20, 20], [17, 279, 20, 20], [17, 318, 20, 20]],
+    "unselectedIconColor": "rgb(154, 164, 158) /* --fg-3 */",
+    "selected": {
+      "mod": "overview",
+      "class": "console-nav-link active",
+      "iconColor": "rgb(255, 230, 203) /* --fg */",
+      "borderLeft": "2px rgb(255, 230, 203) /* --fg */"
+    },
+    "titles": ["运营总览", "数字员工", "任务与运行", "审批与发布门", "人员与访问", "知识与数据", "能力与接入", "系统设置"],
+    "brandLetter": { "text": "S", "box": [20, 15, 11, 18] },
+    "identityDot": { "text": "OP", "title": "opsadmin", "box": [11, 795, 30, 30] },
+    "groupHeadsDisplay": ["none", "none", "none", "none"],
+    "badgesDisplay": ["none", "none", "none"],
+    "sectionSeparator": "1px rgba(255, 230, 203, 0.14) /* --line */",
+    "usageBlockBox": [0, 0, 0],
+    "ox": 0,
+    "scrollWidth": 1440,
+    "clientWidth": 1440
+  },
+  "reexpanded": {
+    "asideW": 208,
+    "brandTwoLine": "sekoiAgent OS",
+    "brandLetter": "absent",
+    "navIconVisible": 0,
+    "linkTexts": ["运营总览", "数字员工 3", "任务与运行 19", "审批与发布门 0", "人员与访问", "知识与数据", "能力与接入", "系统设置"],
+    "ox": 0
+  },
+  "drawer375": {
+    "asideW": 240,
+    "brandText": "sekoiAgent OS",
+    "brandLetter": "absent",
+    "navIconVisible": 0,
+    "linkTexts": ["运营总览", "数字员工 3", "任务与运行 19", "审批与发布门 0", "人员与访问", "知识与数据", "能力与接入", "系统设置"],
+    "ox": 0
+  },
+  "shots": ["collapsed-1440.png", "expanded-1440.png", "drawer-375.png"]
+}

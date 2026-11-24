@@ -46,6 +46,19 @@
   color: var(--fg);
 }
 
+/* 折叠档品牌：两行 sekoi / AGENT OS 收成居中的单字「S」（等宽 18px --fg），
+ * 不再留一个空描边框（用户实机投诉：收起后品牌整块消失、原位只剩空框）。 */
+.sidebar-brand-letter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--mono);
+  font-size: 18px;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  color: var(--fg);
+}
+
 /* ── 导航：分组 / 条目 / 徽标 ─────────────────────────────────────────── */
 .console-nav-section + .console-nav-section {
   margin-top: 2px;
@@ -139,7 +152,20 @@
   color: var(--warn);
 }
 
-/* 折叠档（lg:w-14）：只留引导条与行高，标签与徽标不参与裁剪。 */
+/* 折叠档（lg:w-14 / 56px 图标轨）：条目只留一枚 20px 图标。
+ *
+ * 2026-11-24：此前折叠档只是把文字 display:none 掉，8 个条目塌成一串
+ * 52×34 的空行（用户实机投诉「收起来以后没有任何适配」）。图标常驻 DOM、
+ * 默认不占位，切到折叠档才显形；分组标题、徽标在折叠档不占行高。
+ * 选中态：左侧 2px 实线（沿用 [aria-current="page"] 的 border-left-color）
+ * + 图标 --fg；未选与悬停分别是 --fg-3 / --fg。 */
+.console-nav-icon {
+  display: none;
+  flex: none;
+  width: 20px;
+  height: 20px;
+}
+
 @media (min-width: 1024px) {
   .console-nav.is-collapsed .console-nav-label,
   .console-nav.is-collapsed .console-nav-badge,
@@ -147,9 +173,30 @@
     display: none;
   }
 
+  .console-nav.is-collapsed .console-nav-icon {
+    display: block;
+  }
+
   .console-nav.is-collapsed .console-nav-link {
     justify-content: center;
     padding: 4px 0;
+    color: var(--fg-3);
+  }
+
+  .console-nav.is-collapsed .console-nav-link:hover {
+    color: var(--fg);
+  }
+
+  /* 选中项：图标必须 --fg，不能被上面那条 .is-collapsed .console-nav-link
+   * 的 --fg-3 覆盖（0,3,0 > 0,2,0，故这里显式再钉一次）。 */
+  .console-nav.is-collapsed .console-nav-link[aria-current="page"] {
+    color: var(--fg);
+  }
+
+  /* 折叠档没有分组标题，组间靠一条 1px --line 分隔（比展开档的 --line-3
+   * 略实一档，因为这里没有小标题可读，需要可见的层级线索）。 */
+  .console-nav.is-collapsed .console-nav-section + .console-nav-section {
+    border-top-color: var(--line);
   }
 }
 
@@ -247,6 +294,29 @@
 
 /* 身份未解析：只留一颗虚线缩写圆点 + 「读取中…」，不画底色盒/边框盒。 */
 .sidebar-avatar.is-pending {
+  border-style: dashed;
+  border-color: var(--line);
+  background: transparent;
+}
+
+/* 折叠档（56px 图标轨）的身份位：芯片整块收成一颗 30px 缩写圆点，
+ * 姓名/租户/额度数字在 53px 里读不了，一律不渲染（App 那侧 lg:hidden）。 */
+.sidebar-rail-identity {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--line-2);
+  border-radius: 50%;
+  background: rgba(255, 230, 203, 0.08);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--fg);
+}
+
+.sidebar-rail-identity.is-pending {
   border-style: dashed;
   border-color: var(--line);
   background: transparent;

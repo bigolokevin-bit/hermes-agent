@@ -252,6 +252,7 @@ import LoginPage from "@/pages/LoginPage";
 import { ParkedAwareSystem } from "@/shell/ParkedPage";
 import { NotWiredPage } from "@/shell/NotWiredPage";
 import { Auth5Session } from "@/shell/Auth5Session";
+import { SidebarRailIdentity } from "@/shell/SidebarRailIdentity";
 import { runsModulePageAvailable, useConsoleHashBridge } from "@/shell/bridge";
 import {
   readSidebarCollapsed,
@@ -1100,6 +1101,17 @@ export default function App() {
                 <X />
               </Button>
 
+              {/* 折叠档品牌：两行 sekoi / AGENT OS 收成单字 S，居中对齐 56px 轨，
+                  不留空描边框（2026-11-24，用户实机投诉）。 */}
+              {collapsed && (
+                <span
+                  className="sidebar-brand-letter hidden lg:inline-flex"
+                  aria-hidden="true"
+                >
+                  S
+                </span>
+              )}
+
               {/* n17 (UI-SHELL): the collapse control moved to the top bar
                  (shell/TopBar.tsx) — v2 §3 puts it first in the 56px row, and one
                  test id must not exist on two surfaces. */}
@@ -1170,6 +1182,7 @@ export default function App() {
               * 读口回包则进芯片 title（Auth5Session 的 version 入参）。 */}
             {isDesktopCollapsed && (
               <div className="sidebar-icon-rail hidden shrink-0 flex-col items-center gap-2 py-2 lg:flex">
+                <SidebarRailIdentity />
                 <ThemeSwitcher collapsed dropUp />
                 <SidebarLocaleButton />
               </div>

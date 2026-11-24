@@ -63,6 +63,7 @@ import {
 } from "./fixtures";
 import EmployeeDetailWorkbench from "../modules/employee-detail/EmployeeDetailWorkbench";
 import { useSidebarBadges, type SidebarBadges } from "./sidebar-data";
+import { CONSOLE_MODULE_ICONS } from "./ConsoleNavIcons";
 import { ConsoleButton } from "./ConsoleButton";
 import { StatePlaceholder } from "./StatePlaceholder";
 import "./console-nav.css";
@@ -782,14 +783,22 @@ export function ConsoleNav({
               {items.map((meta) => {
                 const badgeKey = BADGE_KEYS[meta.module];
                 const badge = badgeKey === undefined ? null : badges[badgeKey];
+                // 折叠档（is-collapsed / 56px 图标轨）：文字与徽标由 CSS 收掉，
+                // 条目只留一枚 20px 图标。图标常驻 DOM、默认 display:none，
+                // 因此展开档的几何与 DOM 顺序不变；折叠档靠 aria-label/title
+                // 补齐中文名，删掉文字也不丢可及名。
+                const Icon = CONSOLE_MODULE_ICONS[meta.module];
                 return (
                   <li key={meta.module}>
                     <NavLink
                       to={moduleDefaultPath(meta.module)}
                       onClick={onNavigate}
                       data-mod={meta.module}
+                      aria-label={collapsed ? meta.label : undefined}
+                      title={collapsed ? meta.label : undefined}
                       className="console-nav-link"
                     >
+                      <Icon className="console-nav-icon" aria-hidden="true" />
                       <span className="console-nav-label">{meta.label}</span>
                       {badge !== null && (
                         <span
