@@ -14,9 +14,9 @@
  */
 import { useEffect, useState, type ReactNode } from "react";
 
+import type { ApprovalStats } from "./api";
 import type { ApprovalRow } from "./model";
 import { epochOf, plainMinute } from "./RelativeTime";
-import { gateReason } from "./gates";
 import type { Phase } from "./useApprovalsData";
 
 /** SLA：超过 2 小时算「超时」（骨架副行「1 项超 2 小时」同一档）。 */
@@ -138,97 +138,101 @@ function Cell({
 /**
  * 页头等宽指标带：待批 / 超时 / 最早提交 / 近 7 天通过 / 驳回。
  *
- * scope=pending 的本页只读 status=pending 队列 ⇒「近 7 天通过 / 驳回」与这份
- * 结果不同源，按约定显「—」并在卡底「缺读口」段点名；scope=history 时按当前
- * 服务端 status 维度判定同源与否（单一状态只对自己那一档给数）。
+ * 2026-11-24 卡式密度第二轮：每个数都从它的真读口来——待批取
+ * `/api/approval-stats`（没有就用同一份待批队列数），超时与最早提交取队列
+ * 行，通过/驳回取无状态列表里 7 天内处理完成的行。**读不到的那一项整项不
+ * 进版面**：不摆「—」，不补 0，也不为凑数多发请求。
  */
 export function ApprovalMetricBand({
-  scope,
   phase,
-  rows,
-  status = null,
+  pendingRows,
+  allRows,
+  stats,
 }: {
-  scope: "pending" | "history";
   phase: Phase;
-  rows: readonly ApprovalRow[];
-  /** history 当前生效的服务端 status（null＝「全部」扇出腿）。 */
-  status?: string | null;
+  pendingRows: readonly ApprovalRow[];
+  allRows: readonly ApprovalRow[] | null;
+  stats: ApprovalStats | null;
 }): ReactNode {
   const now = useNowOnce();
-  const ready = phase === "ready";
-  const down = gateReason(phase);
-  const off = (action: string): string =>
-    ready ? action : `算不出：${down === "" ? "列表还没就绪" : down}；计数位不以 0 冒充读数。`;
-  const pendingScope = scope === "pending";
-  const covers = (value: "pending" | "approved" | "rejected"): boolean => {
-    if (pendingScope) return value === "pending";
-    return status === null || status.trim().toLowerCase() === "all" || status.trim().toLowerCase() === value;
-  };
-  const countBy = (value: "pending" | "approved" | "rejected"): number | null => {
-    if (!covers(value)) return null;
-    // 待批按 statusView 的 pending 判据数（读口给 awaiting/in_review 等别名时
-    // 也是待批）；通过/驳回沿用汇总条既有口径——比对服务端 status 原值。
-    return value === "pending"
-      ? rows.filter((row) => row.status.pending).length
-      : rows.filter((row) => row.status.raw?.trim().toLowerCase() === value).length;
+  const queueReady = phase === "ready" && now !== null;
+  const queueCount = phase === "ready" ? pendingRows.filter((row) => row.status.pending).length : null;
+  const pending = stats?.pending ?? queueCount;
+  const overdue = queueReady ? overdueCount(pendingRows, now) : null;
+  const earliest = queueReady ? earliestSubmitted(pendingRows) : null;
+  const approved = allRows !== null ? decidedWithin(allRows, "approved", now) : null;
+  const rejected = allRows !== null ? decidedWithin(allRows, "rejected", now) : null;
+
+  const cells: ReactNode[] = [];
+  const push = (key: string, node: ReactNode): void => {
+    if (cells.length > 0) {
+      cells.push(<span key={`${key}-sep`} className="apr5-band__sep" aria-hidden="true">·</span>);
+    }
+    cells.push(<span key={key} className="apr5-band__cellwrap">{node}</span>);
   };
 
-  const waiting = countBy("pending");
-  const overdue = covers("pending") ? overdueCount(rows, now) : null;
-  const earliest = covers("pending") ? earliestSubmitted(rows) : null;
-  const approved = covers("approved") ? decidedWithin(rows, "approved", now) : null;
-  const rejected = covers("rejected") ? decidedWithin(rows, "rejected", now) : null;
-
-  const missingCell = (
-    label: string,
-    testid: string,
-    value: number | null,
-    why: string,
-    tone?: "warn",
-  ): ReactNode =>
-    value === null || !ready ? (
-      <Cell testid={testid} label={label} value="—" title={ready ? why : off(why)} />
-    ) : (
-      <Cell testid={testid} label={label} value={String(value)} title={why} tone={value > 0 ? tone : undefined} />
+  if (pending !== null) {
+    push(
+      "pending",
+      <Cell
+        testid="apr5-band-pending"
+        label="待批"
+        value={String(pending)}
+        title="来自审批统计读口的待处理数；与下方待办队列同租户。"
+        tone={pending > 0 ? "warn" : undefined}
+      />,
     );
-
-  const pendingWhy = pendingScope
-    ? "本页只读 status=pending 队列，这一档与下方列表同源（按已加载行计，读口不给总数）。"
-    : status === null || status.trim().toLowerCase() === "all"
-      ? "「全部」是服务端按 8 个状态扇出合并的结果，这一档与下方列表同源（按已加载行计，不推算总数）。"
-      : `当前列表只包含「${status}」结果，待批数与这份结果不同源；切到「全部」后可见。`;
-  const overdueWhy =
-    "超过 2 小时未处理算超时，阈值在本模块只有一处（PendingReadouts.WAIT_SLA_MS）；按提交到此刻的等待时长计。";
-  const earliestWhy = "最早一条待批的提交时间（读口 createdAt 一族键）；没有待批行时不编时间。";
-  const approvedWhy = pendingScope
-    ? "缺读口：本页只取待处理队列，通过数需要另取 status=approved（本页不为此多发请求）。切到「历史决策」页签可看同源计数。"
-    : covers("approved")
-      ? "按已加载行里 7 天内处理完成的通过单计（读口不给总数，这不等于 7 天全量）。"
-      : `当前列表只包含「${status}」结果，通过数与这份结果不同源。`;
-  const rejectedWhy = pendingScope
-    ? "缺读口：本页只取待处理队列，驳回数需要另取 status=rejected（本页不为此多发请求）。切到「历史决策」页签可看同源计数。"
-    : covers("rejected")
-      ? "按已加载行里 7 天内处理完成的驳回单计（读口不给总数，这不等于 7 天全量）。"
-      : `当前列表只包含「${status}」结果，驳回数与这份结果不同源。`;
-
-  const earliestText = earliest === null ? "—" : plainMinute(earliest).slice(5);
-
-  return (
-    <div className="apr5-band" role="group" aria-label="审批读数（与列表同一请求，按已加载行计）" data-testid="apr5-metric-band">
-      {missingCell("待批", "apr5-band-pending", waiting, pendingWhy)}
-      <span className="apr5-band__sep" aria-hidden="true">·</span>
-      {missingCell("超时", "apr5-band-overdue", overdue, overdueWhy, "warn")}
-      <span className="apr5-band__sep" aria-hidden="true">·</span>
+  }
+  if (overdue !== null) {
+    push(
+      "overdue",
+      <Cell
+        testid="apr5-band-overdue"
+        label="超时"
+        value={String(overdue)}
+        title="超过 2 小时未处理算超时，阈值在本模块只有一处（PendingReadouts.WAIT_SLA_MS）。"
+        tone={overdue > 0 ? "warn" : undefined}
+      />,
+    );
+  }
+  if (earliest !== null) {
+    push(
+      "earliest",
       <Cell
         testid="apr5-band-earliest"
         label="最早提交"
-        value={earliestText}
-        title={earliest === null ? (ready ? earliestWhy : off(earliestWhy)) : `${earliestWhy} 绝对到分：${plainMinute(earliest)}`}
-      />
-      <span className="apr5-band__sep" aria-hidden="true">·</span>
-      {missingCell("近 7 天通过", "apr5-band-approved", approved, approvedWhy)}
-      <span className="apr5-band__sep" aria-hidden="true">·</span>
-      {missingCell("驳回", "apr5-band-rejected", rejected, rejectedWhy)}
+        value={plainMinute(earliest).slice(5, 16)}
+        title={`最早一条待批的提交时间：${plainMinute(earliest)}`}
+      />,
+    );
+  }
+  if (approved !== null) {
+    push(
+      "approved",
+      <Cell
+        testid="apr5-band-approved"
+        label="近 7 天通过"
+        value={String(approved)}
+        title="按无状态列表里 7 天内处理完成的通过单计；读口不给总数，这不等于 7 天全量。"
+      />,
+    );
+  }
+  if (rejected !== null) {
+    push(
+      "rejected",
+      <Cell
+        testid="apr5-band-rejected"
+        label="驳回"
+        value={String(rejected)}
+        title="按无状态列表里 7 天内处理完成的驳回单计；读口不给总数，这不等于 7 天全量。"
+      />,
+    );
+  }
+
+  if (cells.length === 0) return null;
+  return (
+    <div className="apr5-band" role="group" aria-label="审批读数（与列表同一租户，按已加载行计）" data-testid="apr5-metric-band">
+      {cells}
     </div>
   );
 }

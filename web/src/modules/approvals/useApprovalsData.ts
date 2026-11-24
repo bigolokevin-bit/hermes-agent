@@ -13,7 +13,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { failureInfo, fetchDetail, fetchList, isDenied } from "./api";
+import { failureInfo, fetchAllApprovals, fetchApprovalStats, fetchDetail, fetchList, isDenied, type ApprovalStats } from "./api";
 import { readFailure, type FailureCopy } from "./copy";
 import { APPROVAL_DENIED_BODY } from "./stateCopy";
 import type { ApprovalDetail, ApprovalRow } from "./model";
@@ -261,4 +261,58 @@ export function useApprovalDetail(id: string | null, forced: ForcedState): Detai
   }, [id, forced, load]);
 
   return { phase, detail, failure, forced: isForced, reload: load };
+}
+
+/* ------------------------------------------------------------------ *
+ * 骨架页头/右栏的只读总览腿（2026-11-24 卡式密度第二轮）。
+ *
+ * 两个既有读口各取一次：`/api/approval-stats`（待批/将到期）与无状态列表
+ * `/api/approvals`（近 7 天通过/驳回、今日办结、谁在等、近 7 天申请）。
+ * `?state=` 复现态一条都不发——复现不是服务的回答，免得把真读数混进
+ * 强制出来的版面里。两个读口各自失败只让对应版面缺席，不合成一次「整页错」。
+ * ------------------------------------------------------------------ */
+
+export interface OverviewApi {
+  stats: ApprovalStats | null;
+  rows: ApprovalRow[] | null;
+  /** loading＝还没回话；ready＝两个读口都问过（任一 null 即为缺读口）。 */
+  phase: "loading" | "ready";
+  reload: () => void;
+}
+
+export function useApprovalOverview(forced: ForcedState, enabled: boolean): OverviewApi {
+  const [stats, setStats] = useState<ApprovalStats | null>(null);
+  const [rows, setRows] = useState<ApprovalRow[] | null>(null);
+  const [phase, setPhase] = useState<OverviewApi["phase"]>("loading");
+  const seq = useRef(0);
+
+  const load = useCallback((): void => {
+    const ticket = ++seq.current;
+    void (async () => {
+      const [nextStats, nextRows] = await Promise.all([
+        fetchApprovalStats().catch(() => null),
+        fetchAllApprovals().catch(() => null),
+      ]);
+      if (ticket !== seq.current) return;
+      setStats(nextStats);
+      setRows(nextRows);
+      setPhase("ready");
+    })();
+  }, []);
+
+  useEffect(() => {
+    // 只在待办队列读完且为空时才补这两口读数：队列有条目时右栏与页头
+    // 用队列自己的行就够，不再多发取数（既有「进页一次读」契约）。
+    if (forced !== null || !enabled) {
+      ++seq.current;
+      setStats(null);
+      setRows(null);
+      setPhase("ready");
+      return;
+    }
+    setPhase("loading");
+    load();
+  }, [forced, enabled, load]);
+
+  return { stats, rows, phase, reload: load };
 }

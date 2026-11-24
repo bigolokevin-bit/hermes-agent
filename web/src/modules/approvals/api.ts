@@ -25,6 +25,7 @@ import {
   employeeVersionRefsFrom,
   type ApprovalDetail,
   type ApprovalPage,
+  type ApprovalRow,
   type EmployeeVersionRef,
 } from "./model";
 import { auditPageFrom, type AuditPage } from "@/modules/audit/model";
@@ -109,6 +110,48 @@ export async function fetchProcessingRecords(resourceId: string): Promise<AuditP
 export async function fetchList(status: string | null, cursor: string | null): Promise<ApprovalPage | null> {
   const payload = await fetchJSON<unknown>(listUrl(status, cursor));
   return approvalsPageFrom(payload);
+}
+
+/**
+ * 骨架页头等宽指标带的只读腿：待批与将到期两个数来自 BFF 既有的
+ * `/api/approval-stats`（现网实测顶层 `{pending, dueSoon, asOf, asOfSource}`），
+ * 不新增端点、不发写。`null` = 这次没读到：调用方整项不进版面，不补 0。
+ */
+export const STATS_PATH = "/agent-api/api/approval-stats";
+
+export interface ApprovalStats {
+  pending: number | null;
+  dueSoon: number | null;
+  asOf: string | null;
+}
+
+function finiteNumber(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+export function approvalStatsFrom(payload: unknown): ApprovalStats | null {
+  if (payload === null || typeof payload !== "object" || Array.isArray(payload)) return null;
+  const rec = payload as Record<string, unknown>;
+  const pending = finiteNumber(rec.pending);
+  const dueSoon = finiteNumber(rec.dueSoon);
+  if (pending === null && dueSoon === null) return null;
+  const asOf = typeof rec.asOf === "string" && rec.asOf.trim() ? rec.asOf.trim() : null;
+  return { pending, dueSoon, asOf };
+}
+
+export async function fetchApprovalStats(): Promise<ApprovalStats | null> {
+  const payload = await fetchJSON<unknown>(STATS_PATH);
+  return approvalStatsFrom(payload);
+}
+
+/**
+ * 「近 7 天」两张只读卡的数据腿：同一列表读口的无状态腿（不带 status ⇒
+ * 服务端八态扇出，现网实测 16 行一次给全）。它是既有读口，不是新端点；
+ * 读不到（失败/非列表）返回 null，卡底只留一行缺读口声明。
+ */
+export async function fetchAllApprovals(): Promise<ApprovalRow[] | null> {
+  const page = await fetchList(null, null);
+  return page ? page.rows : null;
 }
 
 export async function fetchDetail(id: string): Promise<ApprovalDetail | null> {

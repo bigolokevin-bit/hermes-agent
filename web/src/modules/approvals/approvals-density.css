@@ -56,8 +56,9 @@
   border-bottom: 1px solid var(--color-border-subtle);
 }
 
-/* 空态保底高：空表不塌陷（沿 audit audp-empty-min-h 240px 先例，覆盖队列与历史两态）。 */
-[data-testid^="apr5-empty"] {
+/* 空态保底高：空表不塌陷（沿 audit audp-empty-min-h 240px 先例，覆盖队列与历史两态）。
+ * 只锚空态根（.apr5-empty），不用 testid 前缀——那会把「出口」子块也撑到 240px。 */
+.apr5-empty {
   min-height: 240px;
 }
 
@@ -1262,4 +1263,282 @@
   .apr5-releaserow > span:nth-child(5) {
     display: none;
   }
+}
+
+/* ==================================================================
+ * 2026-11-24 待处理 pane 九卡骨架（第三轮）
+ * 骨架 L3319–3535：左栈（待办队列 / 批量操作 / 今日办结）＋右栏（审批负载 /
+ * 谁在等 / 硬规则），再两张整宽卡与两卡一排（发布链 / 校验项）。
+ * 只服务 [data-testid="apr5-page-pending"]，其它模块不受影响。
+ * ================================================================== */
+
+.apr5-board {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  align-items: start;
+  gap: var(--space-ls-3);
+}
+
+.apr5-col,
+.apr5-rail {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--space-ls-3);
+}
+
+.apr5-g2 {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: var(--space-ls-3);
+}
+
+@media (max-width: 1099.98px) {
+  .apr5-board {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .apr5-rail {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .apr5-rail > * {
+    min-width: 0;
+    flex: 1 1 260px;
+  }
+}
+
+@media (max-width: 899.98px) {
+  .apr5-g2 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* 卡内表头/行：与队列表头同一套 9px mono 形制。 */
+.apr5-th {
+  display: grid;
+  min-width: 0;
+  height: 32px;
+  align-items: center;
+  column-gap: var(--space-ls-2);
+  padding: 0 12px;
+  border-bottom: 1px solid var(--color-border-subtle-ls);
+  background: color-mix(in srgb, var(--color-text-ls) 2%, transparent);
+  font-family: var(--font-family-mono-ls);
+  font-size: 9px;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--color-text-faint-ls);
+}
+
+.apr5-tr {
+  display: grid;
+  min-width: 0;
+  min-height: var(--table-row-h-ls);
+  align-items: center;
+  column-gap: var(--space-ls-2);
+  padding: 0 12px;
+  border-bottom: 1px solid var(--color-border-subtle-ls);
+  color: var(--color-text-muted-ls);
+  font-size: var(--font-size-ls-1);
+}
+
+.apr5-t5 { grid-template-columns: 60px minmax(0, 1.7fr) 92px 82px 56px; }
+.apr5-t4 { grid-template-columns: minmax(0, 1.9fr) 104px 104px 84px; }
+.apr5-t6 { grid-template-columns: minmax(0, 1.4fr) 52px 60px 84px 96px 76px; }
+.apr5-t2 { grid-template-columns: minmax(0, 1fr) 64px; }
+
+.apr5-tcell {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-text-ls);
+}
+
+.apr5-sub {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  color: var(--color-text-subtle-ls);
+}
+
+.apr5-mono {
+  font-family: var(--font-family-mono-ls);
+  font-size: 11px;
+  font-variant-numeric: var(--tabular-ls);
+  white-space: nowrap;
+}
+
+.apr5-right { text-align: right; }
+.apr5-is-warn { color: var(--color-warning-ls); }
+
+/* 空表骨架行：与表头同轨、同高，零文字。 */
+.apr5-gh {
+  display: grid;
+  min-width: 0;
+  min-height: var(--table-row-h-compact-ls);
+  align-items: center;
+  column-gap: var(--space-ls-2);
+  padding: 0 12px;
+  border-bottom: 1px solid var(--color-border-subtle-ls);
+}
+
+.apr5-gh > span { min-width: 0; }
+
+.apr5-gh > span > i {
+  display: block;
+  width: 64%;
+  height: 8px;
+  border-radius: var(--radius-ls-1);
+  background: color-mix(in srgb, var(--color-text-ls) 9%, transparent);
+}
+
+.apr5-gh > span:first-child > i { width: 78%; }
+.apr5-gh > span:last-child > i { width: 46%; }
+
+/* 卡底 11px 声明：全模块唯一句式。 */
+.apr5-cardfoot {
+  margin: 0;
+  padding: 8px 12px;
+  border-top: 1px solid var(--color-border-subtle-ls);
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--color-text-faint-ls);
+  overflow-wrap: anywhere;
+}
+
+/* 右栏：负载大字 + kv。 */
+.apr5-load {
+  display: flex;
+  min-width: 0;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-ls-2);
+}
+
+.apr5-load__n {
+  font-family: var(--font-family-mono-ls);
+  font-size: 26px;
+  line-height: 1;
+  font-variant-numeric: var(--tabular-ls);
+  color: var(--color-text-ls);
+}
+
+.apr5-load__ghost {
+  display: block;
+  width: 44px;
+  height: 22px;
+  border-radius: var(--radius-ls-1);
+  background: color-mix(in srgb, var(--color-text-ls) 9%, transparent);
+}
+
+.apr5-waiters {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.apr5-waiter {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 64px;
+  align-items: center;
+  gap: var(--space-ls-2);
+  min-height: 28px;
+  font-size: 11px;
+}
+
+.apr5-waiter > .apr5-mono { text-align: right; }
+
+/* 校验项：项名 + 灰骨架 pill（不写通过/失败）。 */
+.apr5-checks {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.apr5-check {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-ls-2);
+  font-size: 11px;
+  color: var(--color-text-muted-ls);
+}
+
+.apr5-ghostpill {
+  display: block;
+  flex: none;
+  width: 58px;
+  height: 16px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-text-ls) 9%, transparent);
+}
+
+.apr5-band__cellwrap {
+  display: inline-flex;
+  min-width: 0;
+}
+
+/* 待处理页的空态：保留行形制，不撑 240px，也不摆两尊大按钮。 */
+.apr5-pending [data-testid="apr5-empty"] {
+  min-height: 0;
+}
+
+.apr5-pending .apr5-empty__exits {
+  margin-top: 6px;
+}
+
+/* 375：卡内表先裁次要列，事项列拿剩余宽度。 */
+@media (max-width: 639.98px) {
+  .apr5-t5 { grid-template-columns: 52px minmax(0, 1fr) 66px; }
+  .apr5-tr.apr5-t5 > span:nth-child(3),
+  .apr5-th.apr5-t5 > span:nth-child(3),
+  .apr5-gh.apr5-t5 > span:nth-child(3) { display: none; }
+
+  .apr5-t4 { grid-template-columns: minmax(0, 1fr) 76px; }
+  .apr5-tr.apr5-t4 > span:nth-child(2),
+  .apr5-th.apr5-t4 > span:nth-child(2),
+  .apr5-gh.apr5-t4 > span:nth-child(2) { display: none; }
+
+  .apr5-t6 { grid-template-columns: minmax(0, 1fr) 72px; }
+  .apr5-tr.apr5-t6 > span:nth-child(2),
+  .apr5-tr.apr5-t6 > span:nth-child(3),
+  .apr5-tr.apr5-t6 > span:nth-child(5),
+  .apr5-th.apr5-t6 > span:nth-child(2),
+  .apr5-th.apr5-t6 > span:nth-child(3),
+  .apr5-th.apr5-t6 > span:nth-child(5),
+  .apr5-gh.apr5-t6 > span:nth-child(2),
+  .apr5-gh.apr5-t6 > span:nth-child(3),
+  .apr5-gh.apr5-t6 > span:nth-child(5) { display: none; }
+
+  .apr5-th,
+  .apr5-tr,
+  .apr5-gh { padding: 0 8px; column-gap: 6px; }
+}
+
+/* 卡头 h2 复位：视觉完全走 console-card__label，不带浏览器默认标题样式。 */
+.apr5-cardtitle {
+  margin: 0;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+}
+
+/* 页头计数行：骨架「全部待处理 16 · 其中待我处理 6」的位置，只上真读数。 */
+.apr5-countline {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--color-text-subtle-ls);
+  font-variant-numeric: var(--tabular-ls);
 }

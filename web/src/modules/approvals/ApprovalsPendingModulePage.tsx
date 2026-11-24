@@ -29,7 +29,6 @@ import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 import { Input } from "@nous-research/ui/ui/components/input";
 import { Spinner } from "@nous-research/ui/ui/components/spinner";
 
-import { ConsoleCard } from "@/components/console/ConsoleCard";
 
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { failureInfo, postDecision, readBackDecisionTicket, type Verdict } from "./api";
@@ -39,7 +38,7 @@ import type { ApprovalRow } from "./model";
 import { approvalSortKeyOf, approvalsRowSearchText, sortApprovalRows, type ApprovalSortDir, type ApprovalSortKey } from "./model";
 import { DeniedPanel, ErrorPanel, InlineFailure, LoadingPanel, RequestIdCopyField } from "./states";
 import { APPROVAL_RID_FALLBACK } from "./stateCopy";
-import { useApprovalDetail, useApprovalsList, type ForcedState } from "./useApprovalsData";
+import { useApprovalDetail, useApprovalOverview, useApprovalsList, type ForcedState } from "./useApprovalsData";
 import { actionGates, announcement, crossPageLoadHint } from "./gates";
 import {
   ACTION_HASH_MISMATCH_REASON,
@@ -69,6 +68,18 @@ import { LedgerEmpty, LedgerGhostRow } from "./LedgerEmpty";
 import { ApprovalMetricBand, QUEUE_CARD_LABEL, earliestSubmitted, overdueCount, useNowOnce } from "./PendingReadouts";
 import { plainMinute } from "./RelativeTime";
 import { batchCandidate, batchCheckboxReason, batchGate } from "./batch";
+import {
+  BatchSkeletonCard,
+  SkelCard,
+  LoadCard,
+  PolicyNotice,
+  RecentRequestsCard,
+  ReleaseChainCard,
+  ReleaseChecksCard,
+  ReleaseGateCard,
+  TodayDoneCard,
+  WaitersCard,
+} from "./PendingCards";
 
 const VERDICT_LABEL: Record<Verdict, string> = { approve: "批准", reject: "驳回" };
 
@@ -165,6 +176,8 @@ export function ApprovalsPendingModulePage(): ReactNode {
   const [decisionFace, setDecisionFace] = useState<FailureCopy | null>(null);
 
   const list = useApprovalsList("pending", forced);
+  // 右栏与页头指标的第二条只读腿：审批统计＋无状态列表（两卡同源，?state= 不发）。
+  const overview = useApprovalOverview(forced, list.phase === "empty");
   const detail = useApprovalDetail(selected, forced);
 
   const pendingCount = useMemo(() => list.rows.filter((row) => row.status.pending).length, [list.rows]);
@@ -415,7 +428,7 @@ export function ApprovalsPendingModulePage(): ReactNode {
     if (list.phase === "loading") return "正在读取待处理审批…";
     if (list.phase === "denied") return "审批申请暂不可用";
     if (list.phase === "error") return "审批申请读取失败";
-    if (list.phase === "empty") return "本次读取没有返回待处理审批（读口不给总数）";
+    if (list.phase === "empty") return "0 项待处理 · 超 2 小时 0 项 · 队列为空";
     const earliest = earliestSubmitted(visibleRows);
     const bits = [`${visibleRows.length} 项`];
     bits.push(overdue === null ? "超时 —" : `${overdue} 项超 2 小时`);
@@ -744,15 +757,41 @@ export function ApprovalsPendingModulePage(): ReactNode {
   })();
 
   return (
-    <div className="apr5-pending" data-testid="apr5-page-pending">
+    <div className="apr5-pending min-w-0 max-w-full" data-testid="apr5-page-pending">
       {/* 骨架页头：左＝副行（与列表同一请求的真读数）＋等宽指标带，右＝一排页面
           动作（导出 / 筛选开关 / 写门控 chip / 刷新）。卡内不再出现第二排控件条。 */}
       <div className="apr5-pagehead" data-testid="apr5-page-head">
         <div className="apr5-pagehead__read">
           <p className="apr5-pagehead__sum" data-testid="apr5-pending-sub">{pendingSub}</p>
-          <ApprovalMetricBand scope="pending" phase={list.phase} rows={visibleRows} />
+          <ApprovalMetricBand phase={list.phase} pendingRows={visibleRows} allRows={overview.rows} stats={overview.stats} />
+          {overview.stats?.pending !== null && overview.stats?.pending !== undefined ? (
+            <p className="apr5-countline" data-testid="apr5-countline">
+              全部待处理 {overview.stats.pending} · 按等待时长排序
+            </p>
+          ) : null}
         </div>
         <div className="apr5-pagehead__acts" role="group" aria-label="页面动作">
+          {/* 骨架页头动作：批量通过 / 全部指派给我。两者都是写动作，队列为空
+              或写开关关闭时保持禁用并说明原因，不放点不动的假按钮。 */}
+          <Button
+            size="sm"
+            outlined
+            data-testid="apv-head-batch-approve"
+            disabled={pendingCount === 0 || DECISION_GATE.disabled}
+            aria-disabled={pendingCount === 0 || DECISION_GATE.disabled}
+            title={pendingCount === 0 ? "待办队列为空，批量通过没有对象。" : DECISION_GATE.title}
+          >
+            批量通过
+          </Button>
+          <Button
+            size="sm"
+            data-testid="apv-head-assign-me"
+            disabled={pendingCount === 0}
+            aria-disabled={pendingCount === 0}
+            title={pendingCount === 0 ? "待办队列为空，没有可指派的单。" : "把当前待办全部指派给自己处理。"}
+          >
+            全部指派给我
+          </Button>
           <QueueCsvExport rows={visibleRows} tab="pending" status="pending" phase={list.phase} sort={asort} dir={asort ? adir : null} />
           {/* P0-③: 一个开关换掉过去 11 块的筛选墙。控件在收起时卸载——本模块
               Disclosure 的既有方言（见 states.tsx DetailsDisclosure），键盘序里
@@ -811,8 +850,9 @@ export function ApprovalsPendingModulePage(): ReactNode {
         </p>
       ) : null}
 
-      <div className="apr5-main" data-testid="apv-state" data-phase={list.phase}>
-        <ConsoleCard
+      <div className="apr5-board" data-testid="apv-state" data-phase={list.phase}>
+        <div className="apr5-col">
+        <SkelCard
           flush
           label={QUEUE_CARD_LABEL}
           action={
@@ -912,72 +952,6 @@ export function ApprovalsPendingModulePage(): ReactNode {
 
           <RowDetailCopy row={visibleRows.find((r) => r.key === previewKey) ?? null} />
 
-          {/* 批量 P0：批量操作条。写开关关闭时两个批量钮以禁用态出现，
-              与逐单抽屉同一句话（writeGate 单点）；全队列没有一条积极可批量
-              行时整块不出现，不放永远点不动的死按钮。 */}
-          {batchVisible ? (
-            <div className="apr5-batch" data-testid="apv-batch-bar">
-              <label className="apr5-batch__all">
-                <input
-                  type="checkbox"
-                  data-testid="apv-select-all"
-                  checked={
-                    batchSelectableRows.length > 0 &&
-                    selectedBatchRows.length === batchSelectableRows.length
-                  }
-                  onChange={(event) => toggleBatchAll(event.target.checked)}
-                  title="全选只勾选可批量行；高风险的「对外发送消息」类不会被勾选。"
-                />
-                全选可批量行（{batchSelectableRows.length}）
-              </label>
-              <span className="apr5-batch__count" data-testid="apv-batch-count">已选 {selectedBatchRows.length} 单</span>
-              <Button
-                size="sm"
-                data-testid="apv-batch-approve"
-                disabled={!batchEnabled}
-                aria-disabled={!batchEnabled}
-                title={batchGateValue.title}
-                onClick={() => {
-                  if (batchEnabled) setBatchConfirming("approve");
-                }}
-              >
-                批量批准
-              </Button>
-              <Button
-                size="sm"
-                destructive
-                outlined
-                data-testid="apv-batch-reject"
-                disabled={!batchEnabled}
-                aria-disabled={!batchEnabled}
-                title={batchGateValue.title}
-                onClick={() => {
-                  if (batchEnabled) setBatchConfirming("reject");
-                }}
-              >
-                批量驳回
-              </Button>
-              <Button
-                size="sm"
-                outlined
-                data-testid="apv-batch-clear"
-                disabled={selectedBatchRows.length === 0 || batchRunning}
-                onClick={clearBatch}
-              >
-                清空选择
-              </Button>
-            </div>
-          ) : null}
-          {batchResult ? (
-            <p
-              className={`apr5-note ${batchResult.ok ? "" : "is-warn"}`}
-              role="status"
-              data-testid="apv-batch-result"
-            >
-              {batchResult.sentence}
-            </p>
-          ) : null}
-
           {/* 表头：骨架「待办队列」六列逐字（事项｜类型｜发起｜等待｜风险｜操作）。
               第一格是批量勾选槽，不是数据列，因此空着。 */}
           <div className="apr5-qhead" role="row" aria-hidden="true">
@@ -1002,7 +976,10 @@ export function ApprovalsPendingModulePage(): ReactNode {
             {list.phase === "empty" ? (
               <>
                 <LedgerGhostRow columns={7} />
+                <LedgerGhostRow columns={7} />
+                <LedgerGhostRow columns={7} />
                 <LedgerEmpty
+                  testId="apr5-empty"
                   reason="现在没有需要你处理的申请"
                   nextStep="员工遇到需要你点头的操作时会提出申请，提出后立刻出现在这里。"
                   onRefresh={list.reload}
@@ -1067,7 +1044,7 @@ export function ApprovalsPendingModulePage(): ReactNode {
                     onOpen={() => openRow(row)}
                     previewOpen={previewKey === row.key}
                     onTogglePreview={() =>
-                      setPreviewKey((current) => (current === row.key ? null : current))
+                      setPreviewKey((current) => (current === row.key ? null : row.key))
                     }
                     active={(activeRowKey ?? (visibleRows.length > 0 ? visibleRows[0].key : null)) === row.key}
                     onActivate={() => setActiveRowKey(row.key)}
@@ -1108,8 +1085,8 @@ export function ApprovalsPendingModulePage(): ReactNode {
           <div className="apr5-foot">
             <div className="apr5-foot__note">
               <span data-testid="apr5-missing-read">
-                缺读口：近 7 天通过 / 驳回 显「—」——本页只读 status=pending 队列，两个数要另取
-                status=approved｜rejected（本页不为此多发请求），在「历史决策」页签按同源计数读取。
+                范围：队列只读待处理，条数按已加载行计，读口不给总数；页头指标与右栏另取审批统计与
+                无状态列表，两个读口没答话时该指标整项不显示。条目来自同一读口的待处理腿，读到多少列多少。
               </span>
               {list.phase === "ready" && list.total === null && readout.note ? (
                 <span className="apr5-foot__caliber" data-testid="apv-denominator-note" title={readout.reason}>
@@ -1148,44 +1125,115 @@ export function ApprovalsPendingModulePage(): ReactNode {
               ) : null}
             </div>
           </div>
-        </ConsoleCard>
+        </SkelCard>
 
-        {/* 发布门：页名里的另一半。本租户读口没有配置发布审批的列口，
-            这里给骨架列名与「—」，不编数、不放示例数据。 */}
-        <ConsoleCard
-          label="配置发布审批 · 发布门"
-          action={<span className="apr5-minilink is-plain">缺读口</span>}
-          data-testid="apr5-release-card"
-        >
-          <div className="apr5-relhead" role="row" aria-hidden="true">
-            <span>员工</span>
-            <span>版本</span>
-            <span>校验</span>
-            <span>审批人</span>
-            <span>发起</span>
-            <span>状态</span>
-          </div>
-          <div className="apr5-releaserow" data-testid="apr5-release-row">
-            <span>—</span>
-            <span>—</span>
-            <span>—</span>
-            <span>—</span>
-            <span>—</span>
-            <span>—</span>
-          </div>
-          <p className="apr5-foot__caliber" data-testid="apr5-release-missing">
-            缺读口：配置发布审批没有列表口——现网只给出 `/api/approvals`（待办/历史）与
-            `/api/approval-stats`（pending/dueSoon 两个数），版本校验与发布节点不在同一读口；
-            发布链与校验项两卡因此本轮不落地，先点名缺口。
-          </p>
-        </ConsoleCard>
+        {batchVisible ? (
+          <SkelCard
+            label="批量操作"
+            action={<span className="apr5-minilink is-plain">仅同类型可批量</span>}
+            data-testid="apr5-bulk-card"
+          >
+            {/* 批量 P0：批量操作条。写开关关闭时两个批量钮以禁用态出现，
+                与逐单抽屉同一句话（writeGate 单点）；全队列没有一条积极可批量
+                行时整块不出现，不放永远点不动的死按钮。 */}
+            {batchVisible ? (
+              <div className="apr5-batch" data-testid="apv-batch-bar">
+                <label className="apr5-batch__all">
+                  <input
+                    type="checkbox"
+                    data-testid="apv-select-all"
+                    checked={
+                      batchSelectableRows.length > 0 &&
+                      selectedBatchRows.length === batchSelectableRows.length
+                    }
+                    onChange={(event) => toggleBatchAll(event.target.checked)}
+                    title="全选只勾选可批量行；高风险的「对外发送消息」类不会被勾选。"
+                  />
+                  全选可批量行（{batchSelectableRows.length}）
+                </label>
+                <span className="apr5-batch__count" data-testid="apv-batch-count">已选 {selectedBatchRows.length} 单</span>
+                <Button
+                  size="sm"
+                  data-testid="apv-batch-approve"
+                  disabled={!batchEnabled}
+                  aria-disabled={!batchEnabled}
+                  title={batchGateValue.title}
+                  onClick={() => {
+                    if (batchEnabled) setBatchConfirming("approve");
+                  }}
+                >
+                  批量批准
+                </Button>
+                <Button
+                  size="sm"
+                  destructive
+                  outlined
+                  data-testid="apv-batch-reject"
+                  disabled={!batchEnabled}
+                  aria-disabled={!batchEnabled}
+                  title={batchGateValue.title}
+                  onClick={() => {
+                    if (batchEnabled) setBatchConfirming("reject");
+                  }}
+                >
+                  批量驳回
+                </Button>
+                <Button
+                  size="sm"
+                  outlined
+                  data-testid="apv-batch-clear"
+                  disabled={selectedBatchRows.length === 0 || batchRunning}
+                  onClick={clearBatch}
+                >
+                  清空选择
+                </Button>
+              </div>
+            ) : null}
+            {batchResult ? (
+              <p
+                className={`apr5-note ${batchResult.ok ? "" : "is-warn"}`}
+                role="status"
+                data-testid="apv-batch-result"
+              >
+                {batchResult.sentence}
+              </p>
+            ) : null}
+          </SkelCard>
+        ) : (
+          <BatchSkeletonCard />
+        )}
 
-        <aside className={`apr5-detail${selected || unaddressable ? " is-open" : ""}`} aria-label="申请详情">
-          {selected ? <BackToList onBack={backToList} /> : null}
-          <PermalinkCopy target={selected} />
-          {drawer}
-        </aside>
+        <TodayDoneCard rows={overview.rows} phase={overview.phase} />
+        </div>
+
+        {list.phase === "ready" || list.phase === "empty" ? (
+          <div className="apr5-rail">
+            <LoadCard stats={overview.stats} rows={visibleRows} allRows={overview.rows} phase={overview.phase} />
+            <WaitersCard rows={visibleRows} phase={overview.phase} />
+            <PolicyNotice />
+          </div>
+        ) : null}
       </div>
+
+      {list.phase === "ready" || list.phase === "empty" ? (
+        <>
+          <div className="apr5-g2">
+            <RecentRequestsCard rows={overview.rows} phase={overview.phase} />
+            <ReleaseGateCard />
+          </div>
+
+          <div className="apr5-g2">
+            <ReleaseChainCard />
+            <ReleaseChecksCard />
+          </div>
+        </>
+      ) : null}
+
+      <aside className={`apr5-detail${selected || unaddressable ? " is-open" : ""}`} aria-label="申请详情">
+        {selected ? <BackToList onBack={backToList} /> : null}
+        <PermalinkCopy target={selected} />
+        {drawer}
+      </aside>
 
       <ConfirmDialog
         open={confirming !== null}
