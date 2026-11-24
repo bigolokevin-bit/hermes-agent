@@ -60,21 +60,52 @@
   color: var(--color-danger-ls);
 }
 
-/* Tab 条底线。 */
+/* Tab 条：纯文字行，只有底部一条 1px 分隔线（骨架 .mtabs）。窄屏横向滚动，
+   滚动条隐藏；整行不换行，由 tab 自身 nowrap 撑开而不是撑破文档。 */
 .console-tablist {
-  border-color: var(--color-border-ls);
+  border-color: var(--color-border-subtle-ls);
+  gap: var(--space-ls-4);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
-/* 单个 Tab：非活动=透明底+次要字，活动=抬起底+正字。驱动量是 aria-selected，
-   与原内联三元式同源，故不必在 TSX 里再写 style。 */
+.console-tablist::-webkit-scrollbar {
+  display: none;
+}
+
+/* 单个 Tab：无底色、无圆角、无盒感（骨架 .mtabs button）。未选=三级灰，
+   hover 只改字色，选中=正字 + 底部实线下划线；下划线与行底线逐像素同层叠，
+   与骨架的「1px fg 贴着 1px line」一致。驱动量仍是 aria-selected，故不必在
+   TSX 里再写 style。 */
 .console-tab {
-  background: transparent;
-  border-color: var(--color-border-subtle-ls);
+  background: none;
+  border: 0;
+  border-bottom: var(--border-ls-1);
+  border-bottom-color: transparent;
+  color: var(--color-text-subtle-ls);
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  font-size: var(--font-size-ls-1);
+  font-weight: var(--font-weight-ls-regular);
+  line-height: var(--line-height-ls-1);
+  min-height: var(--hit-min-ls);
+  padding: var(--space-ls-1);
+  white-space: nowrap;
+  transition:
+    color var(--duration-ls-fast) var(--ease-ls-standard),
+    border-color var(--duration-ls-fast) var(--ease-ls-standard);
+}
+
+.console-tab:hover {
   color: var(--color-text-muted-ls);
 }
 
 .console-tab[aria-selected="true"] {
-  background: var(--color-surface-raised-ls);
+  background: none;
+  border-bottom-color: var(--color-text-ls);
   color: var(--color-text-ls);
 }
 

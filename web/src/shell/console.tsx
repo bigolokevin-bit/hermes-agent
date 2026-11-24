@@ -465,7 +465,7 @@ function ConsoleTabStrip({
     <div
       role="tablist"
       aria-label={`${module} 控制台 Tab`}
-      className="console-tablist flex min-w-0 flex-wrap gap-1 border-b pb-1"
+      className="console-tablist flex min-w-0 border-b"
     >
       {tabs.map((tab) => {
         const active = tab.tabId === activeTabId;
@@ -481,7 +481,7 @@ function ConsoleTabStrip({
             role="tab"
             aria-selected={active}
             data-tab={tab.tabId}
-            className="console-tab rounded-t-[var(--radius-1)] border border-b-0 px-3 py-2 text-sm no-underline"
+            className="console-tab no-underline"
           >
             {tab.label}
           </NavLink>
@@ -669,7 +669,7 @@ export function ConsoleEmployeeDetailPage({
       <div
         role="tablist"
         aria-label="员工详情分区"
-        className="console-tablist flex min-w-0 flex-wrap gap-1 border-b pb-1"
+        className="console-tablist flex min-w-0 border-b"
       >
         {ZONE_ORDER.map((z) => {
           // 显式分区路由（zone prop）优先；否则按 ?zone= 词归位，
@@ -682,7 +682,7 @@ export function ConsoleEmployeeDetailPage({
               role="tab"
               aria-selected={activeZone}
               data-zone={z}
-              className="console-tab rounded-t-[var(--radius-1)] border border-b-0 px-3 py-2 text-sm no-underline"
+              className="console-tab no-underline"
             >
               {ZONE_LABELS[z]}
             </NavLink>
