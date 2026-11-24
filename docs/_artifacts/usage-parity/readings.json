@@ -1,0 +1,48 @@
+{
+  "wide": {
+    "cards": 5,
+    "len": 1231,
+    "dashTotal": 6,
+    "tablist": 0,
+    "h2": 1,
+    "fixture": 0,
+    "docScrollW": 1440,
+    "innerW": 1440,
+    "overflowCards": 0,
+    "svgTrend": true,
+    "hasDegradedWord": true,
+    "sourceLegs": 3,
+    "bodySnippet": "用量与成本统计窗口最近 30 天重新读取范围 最近 30 天 · 对象 当前租户 · 更新 数据截至 未提供 · 金额只来自成本账本的实际扣费；单价与估算在「模型与单价 · 单价」用量读数 · 最近 30 天窗口切换会重发这一路输入 Token—输出 Token—缓存读取—替代指标窗口运行86失败0待审批0数据可用性3",
+    "dashContext": [
+      "会重发这一路输入 Token—输出 To",
+      "Token—输出 Token—缓存读取—",
+      "—输出 Token—缓存读取—替代指标窗",
+      "测 · 85 条账目今日已花—· 0 条",
+      "本块，与窗口选择无关预计月底—预估 · ",
+      "估 · 见卡底数据可用性浪费—预估 · "
+    ]
+  },
+  "narrow": {
+    "cards": 5,
+    "len": 1231,
+    "dashTotal": 6,
+    "tablist": 0,
+    "h2": 1,
+    "fixture": 0,
+    "docScrollW": 375,
+    "innerW": 375,
+    "overflowCards": 0,
+    "svgTrend": true,
+    "hasDegradedWord": true,
+    "sourceLegs": 3,
+    "bodySnippet": "用量与成本统计窗口最近 30 天重新读取范围 最近 30 天 · 对象 当前租户 · 更新 数据截至 未提供 · 金额只来自成本账本的实际扣费；单价与估算在「模型与单价 · 单价」用量读数 · 最近 30 天窗口切换会重发这一路输入 Token—输出 Token—缓存读取—替代指标窗口运行86失败0待审批0数据可用性3",
+    "dashContext": [
+      "会重发这一路输入 Token—输出 To",
+      "Token—输出 Token—缓存读取—",
+      "—输出 Token—缓存读取—替代指标窗",
+      "测 · 85 条账目今日已花—· 0 条",
+      "本块，与窗口选择无关预计月底—预估 · ",
+      "估 · 见卡底数据可用性浪费—预估 · "
+    ]
+  }
+}
