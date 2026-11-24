@@ -503,6 +503,13 @@ export function findRoute(location: string): RouteMatch | null {
   const parsed = parseHash(raw);
   const zone: string = ZONE_ALIAS[parsed.zone] ?? parsed.zone;
 
+  // 示例租户总览（DEMO_ROUTE，见文件末）：唯一一条不参加附录 A 计数法、
+  // 但外壳标题与面包屑仍需认得的路径。它没有 redirect、没有 query 形态，
+  // 所以直接短路；ROUTE_TABLE 与计数法一个字都不动。
+  if (parsed.path === DEMO_ROUTE.path) {
+    return { entry: DEMO_ROUTE, params: {} };
+  }
+
   // Pass 0 — exact appendix A hash literal (crawl/PRD forms whose own `path`
   // uses the react-router segment spelling instead of the ?zone= query).
   for (const entry of ROUTE_TABLE) {
@@ -604,3 +611,25 @@ export const PANEL_TABS: Readonly<
   }
   return acc as Partial<Record<ConsoleModule, Readonly<Record<string, string>>>>;
 })();
+
+/* ------------------------------------------------------------------ *
+ * 示例租户总览（owner 裁定 2026-11-24）——与 /overview 同外壳分组的
+ * 平行演示路由，**不进** ROUTE_TABLE：
+ *   - 真租户 /overview 只许真读数，缺读口一律「—」，禁止示例数字；
+ *   - 骨架式稠密信息搬到这里（modules/demo-tenant/**），两页互不引用；
+ *   - 它不是 PRD 附录 A 的可导航 tab，所以计数法（51/22/23/24/8）不动，
+ *     也不出现在侧栏；App.tsx 直接挂载这条 path。
+ * 路由元数据留在本表旁的唯一理由：标题与面包屑口径与外壳同源，避免
+ * 「总览（示例租户）」这个标签在 App 里再写第二遍。
+ * ------------------------------------------------------------------ */
+export const DEMO_ROUTE: ConsoleRoute & { demo: true } = {
+  hash: '#/demo/overview',
+  path: '/demo/overview',
+  module: 'overview',
+  tabId: 'duty',
+  kind: 'tab',
+  visible: false,
+  label: '总览（示例租户）',
+  dataSource: '示例租户构造数据（modules/demo-tenant/dataset.ts，与真实租户完全隔离）',
+  demo: true,
+};
