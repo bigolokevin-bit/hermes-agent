@@ -111,22 +111,12 @@ function BlockCard({ block }: { block: BlockSpec }) {
 export function SettingsPage() {
   const [runtime, setRuntime] = useState<RuntimeFacts>(LOADING_RUNTIME);
   const [sources, setSources] = useState<SourcesFacts>(LOADING_SOURCES);
+  const forced = currentFixtureState();
 
   useEffect(() => {
+    // 预览态（?state=loading/empty/error）只派生读数，不取数、不落空白页。
+    if (currentFixtureState()) return;
     let alive = true;
-    const forced = currentFixtureState();
-    // 预览态只影响读数呈现，表单形状始终在（不落空白页）。
-    if (forced === "loading") {
-      setRuntime(LOADING_RUNTIME);
-      setSources(LOADING_SOURCES);
-      return () => { alive = false; };
-    }
-    if (forced === "empty" || forced === "error") {
-      setRuntime(ABSENT_RUNTIME);
-      setSources(ABSENT_SOURCES);
-      return () => { alive = false; };
-    }
-
     void (async () => {
       const [summary, health] = await Promise.allSettled([
         fetchJSON<unknown>("/agent-api/api/hermes-summary"),
@@ -140,11 +130,14 @@ export function SettingsPage() {
     return () => { alive = false; };
   }, []);
 
-  const blocks = buildBlocks(runtime, sources);
+  const previewAbsent = forced === "empty" || forced === "error";
+  const runtimeView = previewAbsent ? ABSENT_RUNTIME : runtime;
+  const sourcesView = previewAbsent ? ABSENT_SOURCES : sources;
+  const blocks = buildBlocks(runtimeView, sourcesView);
   const updated =
-    runtime.collectedAt ??
-    sources.collectedAt ??
-    (runtime.phase === "loading" || sources.phase === "loading" ? "读取中…" : "未读到");
+    runtimeView.collectedAt ??
+    sourcesView.collectedAt ??
+    (runtimeView.phase === "loading" || sourcesView.phase === "loading" ? "读取中…" : "未读到");
 
   return (
     <section className="set5-page" data-testid="set5-page">
