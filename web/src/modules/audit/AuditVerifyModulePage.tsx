@@ -62,7 +62,59 @@ export function AuditVerifyModulePage(): ReactNode {
 
   const body = (() => {
     if (verify.phase === "loading") {
-      return <LoadingPanel testId="aud01-verify-loading" />;
+      // AU-05：等待可见（走过的秒数，不是编造的百分比），且随时可掐。
+      return (
+        <div className="flex min-w-0 flex-col gap-2">
+          <LoadingPanel testId="aud01-verify-loading" />
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <p
+              className="min-w-0 break-words text-xs text-muted-foreground"
+              aria-live="polite"
+              data-testid="aud01-verify-elapsed"
+            >
+              已等待 {(verify.elapsedMs / 1000).toFixed(1)}s／本页时限 {(verify.timeoutMs / 1000)}s
+            </p>
+            <Button
+              size="xs"
+              outlined
+              onClick={verify.cancel}
+              data-testid="aud01-verify-cancel"
+            >
+              取消这次等待
+            </Button>
+          </div>
+        </div>
+      );
+    }
+    if (verify.phase === "timeout") {
+      const copy = (verify.failure as FailureCopy | null)?.sentence
+        ?? "等待超时，这次校验没有可用的回答。";
+      return (
+        <Card className="border-border bg-card" data-testid="aud01-verify-timeout">
+          <CardContent className="flex min-w-0 flex-col items-start gap-2 px-4 py-6">
+            <p className="min-w-0 break-words text-sm">没有等到回答</p>
+            <p className="max-w-prose break-words text-xs text-muted-foreground">{copy}</p>
+            <Button size="xs" outlined onClick={() => run(askedKey ?? choice)} data-testid="aud01-verify-timeout-retry">
+              换窗口重试
+            </Button>
+          </CardContent>
+        </Card>
+      );
+    }
+    if (verify.phase === "canceled") {
+      return (
+        <Card className="border-border bg-card" data-testid="aud01-verify-canceled">
+          <CardContent className="flex min-w-0 flex-col items-start gap-2 px-4 py-6">
+            <p className="min-w-0 break-words text-sm">这次等待已取消</p>
+            <p className="max-w-prose break-words text-xs text-muted-foreground">
+              你掐掉了这轮校验：没有跑完就没有结论，这里不写「已通过」也不写「已失败」。选定时间窗可重新运行。
+            </p>
+            <Button size="xs" outlined onClick={() => run(askedKey ?? choice)} data-testid="aud01-verify-canceled-retry">
+              重新运行
+            </Button>
+          </CardContent>
+        </Card>
+      );
     }
     if (verify.phase === "ready" && verify.result) {
       const result = verify.result;
@@ -156,7 +208,11 @@ export function AuditVerifyModulePage(): ReactNode {
                 ? "这套环境里跑不了这个校验"
                 : verify.phase === "error"
                   ? "校验没能给出可读的结论"
-                  : "选好时间窗，再运行校验"}
+                  : verify.phase === "timeout"
+                    ? "等到了时限，服务没有回答：这一轮不算结果"
+                    : verify.phase === "canceled"
+                      ? "这一轮等待已被取消，没有结论"
+                      : "选好时间窗，再运行校验"}
         </p>
       </div>
 

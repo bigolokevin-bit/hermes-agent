@@ -316,8 +316,19 @@ export function useAuditDetail(id: string | null, forced: ForcedState): DetailAp
  * SAME body (one panel, one sentence), and so do 405/501 (capability closed)
  * and an unreachable service. `idle` is the honest empty: nobody has asked for
  * a window yet, so there is nothing to report.
+ * AU-05：`timeout` = 时限内没有回音（连接可能仍挂着，服务也许还在算——这不是
+ * 结果，也不是失败）；`canceled` = 人主动掐了这次等待（没跑完=没有结论）。
  */
-export type VerifyPhase = "idle" | "loading" | "ready" | "error" | "unavailable";
+export type VerifyPhase = "idle" | "loading" | "ready" | "error" | "unavailable" | "timeout" | "canceled";
+
+/**
+ * AU-05 阈值：BFF `UPSTREAM_TIMEOUT=5.0s` 在案（seakoi-agent-os server.py，当拍现读），
+ * 后端自身放弃会回 502 进 unavailable 族；前端 8s 是「连接级挂死」的最后防线
+ * （keep-alive 污染/半开连接先例在册）。超时后 abort 断开，绝不绿链、绝不假失败。
+ */
+export const VERIFY_TIMEOUT_MS = 8_000;
+/** 进度滴答：给「已经等了多久」一个可读秒数（不是完成度——服务不回进度，不编造）。 */
+const VERIFY_TICK_MS = 250;
 
 export interface VerifyApi {
   phase: VerifyPhase;
@@ -327,51 +338,132 @@ export interface VerifyApi {
   asked: { from: string | null; to: string | null };
   forced: boolean;
   run: (from: string | null, to: string | null) => void;
+  /** 本次等待已过的毫秒数（仅 loading 期间走动；不做百分比假进度）。 */
+  elapsedMs: number;
+  /** 掐掉在飞请求：回到诚实的「已取消」，不是结果也不是失败。 */
+  cancel: () => void;
+  timeoutMs: number;
 }
 
 /**
  * The window check only runs when a person asks for it: there is no implicit
  * verify on page load, because a chain check is work the service has to do.
  */
-export function useAuditVerify(forced: ForcedState): VerifyApi {
+export function useAuditVerify(
+  forced: ForcedState,
+  opts?: { timeoutMs?: number },
+): VerifyApi {
+  const timeoutMs = opts?.timeoutMs ?? VERIFY_TIMEOUT_MS;
   const [phase, setPhase] = useState<VerifyPhase>("idle");
   const [result, setResult] = useState<VerifyResult | null>(null);
   const [failure, setFailure] = useState<VerifyFailure | FailureCopy | null>(null);
   const [asked, setAsked] = useState<{ from: string | null; to: string | null }>({ from: null, to: null });
   const [isForced, setIsForced] = useState(false);
+  const [elapsedMs, setElapsedMs] = useState(0);
   const seq = useRef(0);
   const lastRef = useRef<{ from: string | null; to: string | null }>({ from: null, to: null });
+  const abortRef = useRef<AbortController | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const stopClocks = useCallback((): void => {
+    if (timerRef.current !== null) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    if (tickRef.current !== null) {
+      clearInterval(tickRef.current);
+      tickRef.current = null;
+    }
+  }, []);
+
+  const settle = useCallback(
+    (ticket: number, fn: () => void): void => {
+      if (ticket !== seq.current) return;
+      stopClocks();
+      abortRef.current = null;
+      fn();
+    },
+    [stopClocks],
+  );
 
   const runWindow = useCallback((from: string | null, to: string | null): void => {
     lastRef.current = { from, to };
     setAsked({ from, to });
     const ticket = ++seq.current;
+    // 掐掉上一条在飞（含其超时器）：连点两次只有后一次的回答会被采纳。
+    abortRef.current?.abort();
+    stopClocks();
     setPhase("loading");
     setResult(null);
     setFailure(null);
+    setElapsedMs(0);
     setIsForced(false);
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const startedAt = Date.now();
+    tickRef.current = setInterval(() => setElapsedMs(Date.now() - startedAt), VERIFY_TICK_MS);
+    timerRef.current = setTimeout(() => {
+      timerRef.current = null;
+      if (ticket !== seq.current) return;
+      // 时限到：断开这条连接，如实说「没等到回答」——服务是否仍在算，本页不推断。
+      ++seq.current; // 本条在飞作废：此后任何迟到回答都不得覆盖 timeout 态
+      controller.abort();
+      stopClocks();
+      abortRef.current = null;
+      setElapsedMs(Date.now() - startedAt);
+      setResult(null);
+      setFailure({
+        sentence: `等待 ${Math.max(1, Math.round(timeoutMs / 1000))} 秒仍未收到校验回答，这次请求已由本页断开。这不是一次已完成的校验：服务可能仍在核对，也可能已经失败，这里都不替它下结论。可以换更小的时间窗再试。`,
+        requestId: null,
+        technical: "client-timeout",
+      });
+      setPhase("timeout");
+    }, timeoutMs);
     void (async () => {
       try {
-        const next = await fetchVerify(from, to);
-        if (ticket !== seq.current) return;
-        if (!next) {
-          setFailure(shapeFailure());
-          setPhase("error");
-          return;
-        }
-        setResult(next);
-        setPhase("ready");
+        const next = await fetchVerify(from, to, { signal: controller.signal });
+        settle(ticket, () => {
+          if (!next) {
+            setFailure(shapeFailure());
+            setPhase("error");
+            return;
+          }
+          setResult(next);
+          setPhase("ready");
+        });
       } catch (err) {
-        if (ticket !== seq.current) return;
-        const info = failureInfo(err);
-        const copy = verifyFailure(err, info);
-        setFailure(copy);
-        // 403 and 404 are both "not reachable here": one body for both, and it
-        // reads 本环境未启用, never a green chain.
-        setPhase(isVerifyUnavailable(info.status) ? "unavailable" : "error");
+        // 被本页主动 abort 的请求不再落任何态（超时/取消分支已经先行落定）。
+        if (err instanceof DOMException && err.name === "AbortError") return;
+        if (controller.signal.aborted) return;
+        settle(ticket, () => {
+          const info = failureInfo(err);
+          const copy = verifyFailure(err, info);
+          setFailure(copy);
+          // 403 and 404 are both "not reachable here": one body for both, and it
+          // reads 本环境未启用, never a green chain.
+          setPhase(isVerifyUnavailable(info.status) ? "unavailable" : "error");
+        });
       }
     })();
-  }, []);
+  }, [settle, stopClocks, timeoutMs]);
+
+  const cancel = useCallback((): void => {
+    ++seq.current; // 在飞回答作废：取消之后没有「迟到的结果」
+    abortRef.current?.abort();
+    abortRef.current = null;
+    stopClocks();
+    setResult(null);
+    setFailure(null);
+    setPhase("canceled");
+  }, [stopClocks]);
+
+  // 卸载即掐表断连：不留下会在组件死后 setState 的定时器/回调。
+  useEffect(() => () => {
+    ++seq.current;
+    abortRef.current?.abort();
+    stopClocks();
+  }, [stopClocks]);
 
   useEffect(() => {
     if (forced === null) {
@@ -409,5 +501,5 @@ export function useAuditVerify(forced: ForcedState): VerifyApi {
     setPhase("error");
   }, [forced, isForced]);
 
-  return { phase, result, failure, asked, forced: isForced, run: runWindow };
+  return { phase, result, failure, asked, forced: isForced, run: runWindow, elapsedMs, cancel, timeoutMs };
 }
