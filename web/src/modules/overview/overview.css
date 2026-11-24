@@ -427,3 +427,13 @@ section.ov5-page > textarea[data-testid="ov6-summary-fallback"] {
   background: var(--color-background, #fff);
   color: var(--color-foreground);
 }
+
+/* OM-19 T2D：待审批视角 tone + dot appearance（色走令牌，禁 bg-*-900 类硬色）。 */
+.ov5-pending-seg { display: inline-flex; align-items: center; gap: 8px; }
+.ov5-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--fg-2); }
+.ov5-dot[data-appearance="success"],
+.ov5-dot[data-appearance="value"] { background: var(--ok); }
+.ov5-dot[data-appearance="attention"] { background: var(--warn); }
+.ov5-dot[data-appearance="missing"] { background: transparent; border: 1.5px dashed var(--fg-2); }
+.tone-success { color: var(--ok); }
+.tone-attention { color: var(--warn); }

@@ -56,3 +56,10 @@
 - 新增 overview.asof.test.tsx 6 例：①系统时钟拨前 24h 屏上时刻逐字不变（假时钟反证）；②R41 多源只挂最大分钟（12:24 胜 12:20/12:21）；③跨页 parity——sourceStamp(ready{asOf}).shown 与 metrics asOfText(iso) 字节相等，缺值双页同写「—」；④⑤⑥ready/loading/error 三态 ov6-asof 永不缺席，loading/error 值「采集时刻 —（北京时间）」且 title 给原因。
 - DoD 实测：grep -n "new Date()" OverviewPage.tsx | grep -v setTimeout | wc -l = 0；模块 vitest 8 文件 58/58；vite build EXIT=0（dist 残留即 rm）。
 - 步骤④ once-live 抽核（脸 9131，真 BFF）：屏 ASOF_LINE=「采集时刻 北京时间 2026-11-24 08:21 · 每卡来源见卡内标注」= 本批真响应 asOf 最大值 → OM11_PARITY_OK；证据 docs/_artifacts/OM-11-asof-parity/parity.json + om11-asof-1440.png。
+
+## OM-19 审批视角真零+tone（T2D 件2，2026-11-24，基线 4a9e5d2732）
+- 待审批卡 value 改挂 seg：真 0 → tone-success + dot data-appearance=success（不是裸 0）；有数 → tone-attention/attention；读取中/故障 → missing，绝不绿。
+- partial 明说覆盖：queueStats 透传 degraded（duty/types.ts +duty/workbench.ts 各 1 行，OM-04 跨面先例，登记写域含此两文件）；卡内注「上游降级 N 路（名单）；此数只覆盖已接通上游，BFF 未给上游总数。」——覆盖率分母 sources_total 现网无字段，不编造，记已知边界。
+- dot/seg 只用 var(--ok)/var(--warn)/var(--fg-2) 令牌，零 bg-*-900 硬色（测试钉类名）。
+- 坑在册：OverviewView 局部 approvalStats 是解包值（可 null），判态必须用 data.approvalStats，否则 .k TypeError 连带 asof/window 全面崩。
+- 门禁：模块 9 文件 64/64 绿；vite build EXIT=0，dist 残留已清（e1Contract 陷阱）。

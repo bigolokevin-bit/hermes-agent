@@ -351,6 +351,20 @@ export function OverviewView({
     totalEmployeesFallback: employees,
     matrix,
   });
+  // OM-19 T2D：待审批视角三态——真 0=success、有数=attention、读不到=missing；dot 永不 bg-*-900。
+  const pendingLoadable = data.approvalStats;
+  const pendingAppearance =
+    pendingLoadable.k === 'ready'
+      ? kpis.pending === 0
+        ? 'success'
+        : kpis.pending !== null
+          ? 'attention'
+          : 'missing'
+      : 'missing';
+  const pendingDegraded =
+    pendingLoadable.k === 'ready' && Array.isArray(pendingLoadable.data.degraded)
+      ? pendingLoadable.data.degraded
+      : [];
   const healthSources = [
     { label: '员工统计', state: data.employees },
     { label: '运行统计', state: data.stats },
@@ -545,7 +559,7 @@ export function OverviewView({
         <KpiCard title="今日运行" value={dashed(kpis.runs)} foot={<>失败 <b>{dashed(kpis.failed)}</b> · 失败率 <b>{kpis.failureRate === null ? '—' : `${kpis.failureRate}%`}</b></>} source="运行统计（今日）" stamps={[{ source: '运行统计', state: data.todayStats }]} testid="ov6-kpi-runs" issues={[{ label: '运行统计', state: data.todayStats, gap: OVERVIEW_GAP.runs }]} onRetry={onRetry} note={kpis.runs === 0 && kpis.failureRate === null ? '今天还没有运行，失败率不计算' : null} noteTitle={kpis.runs === 0 && kpis.failureRate === null ? OVERVIEW_GAP.runs : undefined}>
           <Gauge className="ov5-watermark" aria-hidden />
         </KpiCard>
-        <KpiCard title="待审批" value={dashed(kpis.pending)} foot={<Link to="/approvals">去审批中心<ArrowRight className="h-3.5 w-3.5" /></Link>} source="审批统计" stamps={[{ source: '审批统计', state: data.approvalStats }]} testid="ov6-kpi-pending" issues={[{ label: '审批统计', state: data.approvalStats, gap: OVERVIEW_GAP.approvals }]} onRetry={onRetry}>
+        <KpiCard title="待审批" value={<span className={`ov5-pending-seg${pendingAppearance === 'success' ? ' tone-success' : pendingAppearance === 'attention' ? ' tone-attention' : ''}`} data-testid="ov6-pending-seg"><span className="ov5-dot" data-appearance={pendingAppearance} aria-hidden />{dashed(kpis.pending)}</span>} foot={<Link to="/approvals">去审批中心<ArrowRight className="h-3.5 w-3.5" /></Link>} source="审批统计" stamps={[{ source: '审批统计', state: data.approvalStats }]} testid="ov6-kpi-pending" issues={[{ label: '审批统计', state: data.approvalStats, gap: OVERVIEW_GAP.approvals }]} onRetry={onRetry} note={pendingDegraded.length > 0 ? `上游降级 ${pendingDegraded.length} 路（${pendingDegraded.join('、')}）；此数只覆盖已接通上游，BFF 未给上游总数。` : null} noteTitle={OVERVIEW_GAP.approvals}>
           <ShieldAlert className="ov5-watermark" aria-hidden />
         </KpiCard>
         <KpiCard title="今日成本" value={kpis.costUsd === null ? '—' : usd(kpis.costUsd)} foot={kpis.costPartial ? <>账本未覆盖全部员工{kpis.costMissing > 0 ? `（${kpis.costMissing} 人缺账本）` : ''}</> : <>美元 · 账本实扣</>} source="成本账本（日）" stamps={[{ source: '成本账本', state: data.budgetDay }]} testid="ov6-kpi-cost" issues={[{ label: '成本账本', state: data.budgetDay, gap: OVERVIEW_GAP.cost }]} onRetry={onRetry} note={kpis.costUsd === null ? '成本口径未齐' : null} noteTitle={kpis.costUsd === null ? OVERVIEW_GAP.cost : undefined} />

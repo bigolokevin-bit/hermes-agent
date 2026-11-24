@@ -180,6 +180,8 @@ export function queueStats(body: unknown): ApprovalStatsBody & { asOf?: string; 
     asOf: stamp.asOf ?? undefined,
     pending: available ? total : undefined,
     dueSoon: undefined,
+    // OM-19 T2D：degraded 在 available:true 时也要透传，partial 覆盖才能上屏。
+    degraded: stamp.degraded,
     reason: available ? undefined : stamp.degraded[0] ?? (isRecord(body) ? text(body.reason) ?? undefined : undefined),
   };
 }

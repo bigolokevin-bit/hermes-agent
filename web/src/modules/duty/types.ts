@@ -151,6 +151,8 @@ export interface ApprovalStatsBody {
   asOf?: string;
   /** Why the count is missing (failed source), human wording from the BFF. */
   reason?: string;
+  /** OM-19 T2D：available 时也透传降级上游清单，partial 覆盖率不再隐形。 */
+  degraded?: string[];
 }
 
 export interface ApprovalRow {
