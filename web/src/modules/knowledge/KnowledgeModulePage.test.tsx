@@ -4773,8 +4773,8 @@ describe("R102 — space row deep link (kn-space-open / kn-space-nolink)", () =>
     wire();
     await render("/knowledge?tab=spaces");
     const u0 = urlsCalled().slice().sort().join("|");
-    // 列表面自身的既有读取：空间登记 + 文档登记（R52 预载）+ 可引用读数；链接本身不增一条
-    expect(u0).toBe([DOCUMENTS_PLAIN, SPACES, CITATIONS].sort().join("|"));
+    // 列表面自身的既有读取：空间登记 + 文档登记（R52 预载）+ 索引状态读数；链接本身不增一条
+    expect(u0).toBe([DOCUMENTS_PLAIN, SPACES, INGEST_STATUS].sort().join("|"));
     // 只读交互不产生任何新请求
     await click("kn-space-toggle-0");
     await click("kn-space-toggle-0");
@@ -4785,7 +4785,7 @@ describe("R102 — space row deep link (kn-space-open / kn-space-nolink)", () =>
     const u1 = urlsCalled();
     // 点链后新增的读取全部是详情槽位自身的既有读取（spaces 复读给面包屑 + 该空间文档表，
     // R52/R73 口径）；未知 URL 零出现——链接本身不引入任何新请求
-    expect([...new Set(u1)].sort()).toEqual([DOCUMENTS_PLAIN, DOCS_SPACE, SPACES, CITATIONS].sort());
+    expect([...new Set(u1)].sort()).toEqual([DOCUMENTS_PLAIN, DOCS_SPACE, SPACES, INGEST_STATUS].sort());
     expect(u1.filter((x) => x === DOCS_SPACE)).toHaveLength(1);
   });
 });

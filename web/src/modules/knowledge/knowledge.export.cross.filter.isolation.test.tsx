@@ -40,7 +40,7 @@ import KnowledgeModulePage from "./KnowledgeModulePage";
 
 const SPACES = "/agent-api/api/knowledge/spaces?limit=20";
 const DOCUMENTS_PLAIN = "/agent-api/api/documents?limit=50";
-const CITATIONS = "/agent-api/api/knowledge/citations?limit=20";
+const INGEST_STATUS = "/agent-api/api/knowledge/ingest-status?limit=20";
 const docsUrlFor = (id: string) => `/agent-api/api/documents?limit=50&spaceId=${id}`;
 
 function fail(status: number, message: string, requestId?: string): Promise<never> {
@@ -173,8 +173,8 @@ describe("knowledge export cross-face filter isolation loop (R255)", () => {
     await clickNode(q("knG-copy"), "knG phase-A2");
     expect(String(writeText.mock.calls[0][0])).toBe(textG0); // 闭环零残留（桶/ktype 不回染全局面）
     expect(urls().length).toBe(readsB + 2); // 导出本身 0 请求——读账本闭环：open+2、back+2、三次复制共 +0
-    // 返回时面板重挂：spaces 复读（面板级合法读）+ 可引用读数复读；文档登记由页面根挂，不重读
-    expect(urls().slice(readsB)).toEqual([CITATIONS, SPACES]);
+    // 返回时面板重挂：spaces 复读（面板级合法读）+ 索引状态读数复读；文档登记由页面根挂，不重读
+    expect(urls().slice(readsB)).toEqual([INGEST_STATUS, SPACES]);
   });
 
   it("② 反向：详情态（space+ktype 深链）导出后返回全局——knG 恢复全行集（含 xlsx，若 ktype 串写必被剔）、链==屏上、逐位行钮与清单互等（引用 R226①-b 不重写）", async () => {

@@ -1936,3 +1936,118 @@
   padding: 0;
   border-bottom: 0;
 }
+
+/* 空间台账二轮：命中率条 + 空读口骨架行（列宽与真表对齐，只放灰条不放样例）。 */
+.knv-hitlist {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.knv-hitrow {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) minmax(72px, 2fr) 4rem;
+  gap: 4px 12px;
+  align-items: center;
+}
+
+.knv-hitname {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text-ls);
+  font-size: var(--font-size-ls-1);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.knv-hitbar {
+  width: 100%;
+}
+
+.knv-hitval {
+  color: var(--color-text-faint-ls);
+  font-size: var(--font-size-ls-1);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.knv-skelgrid {
+  display: grid;
+  min-width: 0;
+  gap: 8px 12px;
+  padding: 2px 0 4px;
+  overflow: hidden;
+}
+
+.knv-skelgrid--miss {
+  grid-template-columns: minmax(0, 1fr) 3.5rem;
+}
+
+.knv-skelgrid--kv {
+  grid-template-columns: 5.5rem minmax(0, 1fr);
+}
+
+.knv-skelgrid--memory {
+  grid-template-columns: 4rem minmax(0, 1fr) 3rem 2.5rem 3.5rem;
+}
+
+.knv-skelcell {
+  height: 10px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--color-muted) 45%, transparent);
+}
+
+@media (max-width: 560px) {
+  /* 窄屏仍保留比例条槽位，只把条压窄，不整块拿掉。 */
+  .knv-hitrow {
+    grid-template-columns: minmax(0, 1fr) minmax(48px, 1.6fr) 3.5rem;
+  }
+}
+
+/* 宽骨架表（7 列库明细 / 5 列权限边界）：窄屏保持表格列对齐，横向滚动而不是堆叠，
+   避免多列 + 富首格在 375 下互相压字。外层 .knw5-scroll--wide 恢复横向滚动。 */
+@media (max-width: 720px) {
+  .knw5-scroll--wide {
+    overflow-x: auto;
+  }
+
+  .knw5-table.knw5-table--scroll {
+    display: table;
+    min-width: 640px;
+  }
+
+  .knw5-table--scroll thead {
+    display: table-header-group;
+  }
+
+  .knw5-table--scroll tbody {
+    display: table-row-group;
+  }
+
+  .knw5-table--scroll tr {
+    display: table-row;
+    padding: 0;
+    border-bottom: 0;
+  }
+
+  .knw5-table--scroll td {
+    display: table-cell;
+    width: auto;
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--color-border-subtle);
+    vertical-align: top;
+  }
+
+  .knw5-table--scroll td::before {
+    content: none;
+  }
+
+  .knw5-table--scroll td > * {
+    grid-column: auto;
+  }
+}
