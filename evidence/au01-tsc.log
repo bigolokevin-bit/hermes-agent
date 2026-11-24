@@ -1,0 +1,49 @@
+../apps/shared/src/ansi.test.ts(1,38): error TS2307: Cannot find module 'vitest' or its corresponding type declarations.
+../apps/shared/src/catalog-featured.test.ts(1,38): error TS2307: Cannot find module 'vitest' or its corresponding type declarations.
+../apps/shared/src/color.test.ts(1,38): error TS2307: Cannot find module 'vitest' or its corresponding type declarations.
+../apps/shared/src/color.test.ts(55,84): error TS7006: Parameter 'bg' implicitly has an 'any' type.
+../apps/shared/src/color.test.ts(55,88): error TS7006: Parameter 'inks' implicitly has an 'any' type.
+../apps/shared/src/color.test.ts(56,31): error TS7006: Parameter 'a' implicitly has an 'any' type.
+../apps/shared/src/color.test.ts(56,34): error TS7006: Parameter 'b' implicitly has an 'any' type.
+../apps/shared/src/color.test.ts(72,45): error TS7006: Parameter 'color' implicitly has an 'any' type.
+../apps/shared/src/color.test.ts(72,52): error TS7006: Parameter 'bg' implicitly has an 'any' type.
+../apps/shared/src/color.test.ts(72,56): error TS7006: Parameter 'min' implicitly has an 'any' type.
+../apps/shared/src/color.test.ts(89,95): error TS7006: Parameter '_label' implicitly has an 'any' type.
+../apps/shared/src/color.test.ts(89,103): error TS7006: Parameter 'badStep' implicitly has an 'any' type.
+../apps/shared/src/file-url.test.ts(1,38): error TS2307: Cannot find module 'vitest' or its corresponding type declarations.
+../apps/shared/src/file-url.test.ts(18,35): error TS7006: Parameter 'url' implicitly has an 'any' type.
+../apps/shared/src/file-url.test.ts(18,40): error TS7006: Parameter 'path' implicitly has an 'any' type.
+../apps/shared/src/file-url.test.ts(30,35): error TS7006: Parameter 'url' implicitly has an 'any' type.
+../apps/shared/src/file-url.test.ts(30,40): error TS7006: Parameter 'path' implicitly has an 'any' type.
+../apps/shared/src/file-url.test.ts(38,33): error TS7006: Parameter 'url' implicitly has an 'any' type.
+../apps/shared/src/file-url.test.ts(38,38): error TS7006: Parameter 'path' implicitly has an 'any' type.
+../apps/shared/src/file-url.test.ts(49,45): error TS7006: Parameter 'url' implicitly has an 'any' type.
+../apps/shared/src/file-url.test.ts(65,83): error TS7006: Parameter 'url' implicitly has an 'any' type.
+../apps/shared/src/file-url.test.ts(73,69): error TS7006: Parameter 'url' implicitly has an 'any' type.
+../apps/shared/src/file-url.test.ts(73,74): error TS7006: Parameter 'path' implicitly has an 'any' type.
+../apps/shared/src/file-url.test.ts(79,5): error TS7006: Parameter 'value' implicitly has an 'any' type.
+../apps/shared/src/file-url.test.ts(86,5): error TS7006: Parameter 'value' implicitly has an 'any' type.
+../apps/shared/src/format.test.ts(1,38): error TS2307: Cannot find module 'vitest' or its corresponding type declarations.
+../apps/shared/src/format.test.ts(19,18): error TS7006: Parameter 'value' implicitly has an 'any' type.
+../apps/shared/src/format.test.ts(19,25): error TS7006: Parameter 'expected' implicitly has an 'any' type.
+../apps/shared/src/fuzzy.test.ts(1,38): error TS2307: Cannot find module 'vitest' or its corresponding type declarations.
+../apps/shared/src/fuzzy.test.ts(106,56): error TS7006: Parameter 'query' implicitly has an 'any' type.
+../apps/shared/src/fuzzy.test.ts(106,63): error TS7006: Parameter 'expected' implicitly has an 'any' type.
+../apps/shared/src/gateway-canonical.test.ts(3,43): error TS2307: Cannot find module 'vitest' or its corresponding type declarations.
+../apps/shared/src/hermes-cloud.test.ts(1,38): error TS2307: Cannot find module 'vitest' or its corresponding type declarations.
+../apps/shared/src/i18n.test.ts(1,38): error TS2307: Cannot find module 'vitest' or its corresponding type declarations.
+../apps/shared/src/json-rpc-channel.test.ts(1,42): error TS2307: Cannot find module 'vitest' or its corresponding type declarations.
+../apps/shared/src/json-rpc-channel.test.ts(50,100): error TS7006: Parameter 'text' implicitly has an 'any' type.
+../apps/shared/src/json-rpc-gateway-connect.test.ts(1,38): error TS2307: Cannot find module 'vitest' or its corresponding type declarations.
+../apps/shared/src/json-rpc-gateway-legacy-replay.test.ts(1,54): error TS2307: Cannot find module 'vitest' or its corresponding type declarations.
+../apps/shared/src/json-rpc-gateway-replay.test.ts(1,54): error TS2307: Cannot find module 'vitest' or its corresponding type declarations.
+../apps/shared/src/json-rpc-gateway-replay.test.ts(488,11): error TS7006: Parameter 'fallback' implicitly has an 'any' type.
+../apps/shared/src/json-rpc-gateway-replay.test.ts(609,11): error TS7006: Parameter 'via' implicitly has an 'any' type.
+../apps/shared/src/model-search-text.test.ts(1,38): error TS2307: Cannot find module 'vitest' or its corresponding type declarations.
+../apps/shared/src/provider-names.test.ts(1,38): error TS2307: Cannot find module 'vitest' or its corresponding type declarations.
+../apps/shared/src/reasoning-effort.test.ts(1,38): error TS2307: Cannot find module 'vitest' or its corresponding type declarations.
+../apps/shared/src/reconnect-backoff.test.ts(1,42): error TS2307: Cannot find module 'vitest' or its corresponding type declarations.
+../apps/shared/src/skill-scaffold.test.ts(1,38): error TS2307: Cannot find module 'vitest' or its corresponding type declarations.
+../apps/shared/src/slash-input.test.ts(1,38): error TS2307: Cannot find module 'vitest' or its corresponding type declarations.
+../apps/shared/src/slash-score.test.ts(1,38): error TS2307: Cannot find module 'vitest' or its corresponding type declarations.
+../apps/shared/src/slash.test.ts(1,38): error TS2307: Cannot find module 'vitest' or its corresponding type declarations.

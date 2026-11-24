@@ -222,6 +222,12 @@ describe("AU-01 record pane — chains render from the one table", () => {
     expect(run.textContent).toBe(`哪次运行：${AUDIT_CHAIN_UNRELATED_TEXT}`);
     const decision = chain("decision") as HTMLElement;
     expect(decision.getAttribute("data-aud-chain-kind")).toBe("unrelated");
+    expect(decision.textContent).toBe(`哪次判定：${AUDIT_CHAIN_UNRELATED_TEXT}`);
+    // 票面 DoD：缺字段 ⇒ 「无关联」文字且该链位零 <a> 零钮——叶是文字壳，无空壳钮。
+    for (const el of [run, decision]) {
+      expect(el.tagName).toBe("SPAN");
+      expect(el.querySelectorAll("a,button")).toHaveLength(0);
+    }
     const box = document.querySelector("[data-testid='aud3-chains']");
     expect(box?.textContent).not.toContain("undefined");
     expect(box?.textContent).not.toContain("null");
