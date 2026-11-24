@@ -62,6 +62,7 @@ import {
   useFixtureState,
 } from "./fixtures";
 import EmployeeDetailWorkbench from "../modules/employee-detail/EmployeeDetailWorkbench";
+import { useSidebarBadges, type SidebarBadges } from "./sidebar-data";
 import { ConsoleButton } from "./ConsoleButton";
 import { StatePlaceholder } from "./StatePlaceholder";
 import "./console-nav.css";
@@ -738,71 +739,85 @@ function moduleDefaultPath(module: ConsoleModule): string {
   return row !== undefined ? row.path : `/${module}`;
 }
 
-export function ConsoleNav({ onNavigate }: { onNavigate?: () => void }) {
+/** 哪几个模块的条目右侧带数字徽标；数字全部来自 sidebar-data 的真读数，
+ * 取不到（null）时整枚不渲染——不写死、不拿 0 冒充。 */
+const BADGE_KEYS: Partial<Record<ConsoleModule, keyof SidebarBadges>> = {
+  employees: "employees",
+  work: "work",
+  approvals: "approvals",
+};
+
+export function ConsoleNav({
+  onNavigate,
+  collapsed = false,
+}: {
+  onNavigate?: () => void;
+  collapsed?: boolean;
+}) {
+  const badges = useSidebarBadges();
+
   return (
     <div
-      className="flex flex-col pb-2"
+      className={`console-nav flex flex-col pb-2${collapsed ? " is-collapsed" : ""}`}
       role="group"
       aria-labelledby="hermes-console-nav-heading"
     >
-      <span
-        id="hermes-console-nav-heading"
-        className="console-nav-group px-4 pt-3 pb-1 font-sans text-display text-xs tracking-[0.12em] text-text-tertiary"
-      >
+      {/* 骨架侧栏没有「控制台」这行大标题：品牌之下直接是 4 个分组。
+        * id 保留（sidebar 208px 锁宽规则与 aria-labelledby 都读它），只做 sr-only。 */}
+      <span id="hermes-console-nav-heading" className="sr-only">
         控制台
       </span>
       {CONSOLE_GROUPS.map((group) => {
         const items = CONSOLE_MODULES.filter((m) => m.group === group);
         if (items.length === 0) return null;
         return (
-          <div key={group} role="group" aria-label={group}>
-            <span
-              className="console-nav-group px-4 pt-2 pb-1 font-sans text-xs tracking-[0.1em]"
-            >
-              {group}
-            </span>
+          <div
+            key={group}
+            className="console-nav-section"
+            role="group"
+            aria-label={group}
+          >
+            <span className="console-nav-group-h">{group}</span>
             <ul className="flex flex-col">
-              {items.map((meta) => (
-                <li key={meta.module}>
-                  <NavLink
-                    to={moduleDefaultPath(meta.module)}
-                    onClick={onNavigate}
-                    data-mod={meta.module}
-                    className={({ isActive }) =>
-                      [
-                        "console-nav-link relative flex items-center gap-3 px-4 py-2",
-                        "font-sans text-display text-sm tracking-[0.08em] whitespace-nowrap no-underline",
-                        "focus-visible:[outline:var(--focus-ring)] focus-visible:outline-offset-2",
-                        isActive
-                          ? "text-midground"
-                          : "text-text-secondary hover:text-midground",
-                      ].join(" ")
-                    }
-                  >
-                    {meta.label}
-                  </NavLink>
-                </li>
-              ))}
+              {items.map((meta) => {
+                const badgeKey = BADGE_KEYS[meta.module];
+                const badge = badgeKey === undefined ? null : badges[badgeKey];
+                return (
+                  <li key={meta.module}>
+                    <NavLink
+                      to={moduleDefaultPath(meta.module)}
+                      onClick={onNavigate}
+                      data-mod={meta.module}
+                      className="console-nav-link"
+                    >
+                      <span className="console-nav-label">{meta.label}</span>
+                      {badge !== null && (
+                        <span
+                          className={`console-nav-badge${
+                            meta.module === "approvals" && badge > 0
+                              ? " is-alert"
+                              : ""
+                          }`}
+                          title={`${meta.label}：${badge}`}
+                        >
+                          {badge}
+                        </span>
+                      )}
+                    </NavLink>
+                  </li>
+                );
+              })}
             </ul>
           </div>
         );
       })}
       {/* R29 item 2: the audit surface is reachable from the console sidebar;
         * a plain anchor so the DOM keeps a single Chinese label. */}
-      <NavLink
-        to="/audit"
-        onClick={onNavigate}
-        className={({ isActive }) =>
-          [
-            "console-nav-link relative flex items-center gap-3 px-4 py-2",
-            "font-sans text-display text-sm tracking-[0.08em] whitespace-nowrap no-underline",
-            "focus-visible:[outline:var(--focus-ring)] focus-visible:outline-offset-2",
-            isActive ? "text-midground" : "text-text-secondary hover:text-midground",
-          ].join(" ")
-        }
-      >
-        审计
-      </NavLink>
+      <div className="console-nav-section">
+        <NavLink to="/audit" onClick={onNavigate} className="console-nav-link">
+          <span className="console-nav-label">审计</span>
+        </NavLink>
+      </div>
     </div>
   );
 }

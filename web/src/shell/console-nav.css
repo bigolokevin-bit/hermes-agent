@@ -2,23 +2,309 @@
  * 只覆盖 ConsoleShell 骨架（侧栏导航 / 全局侧栏列），不触碰 modules 页面。
  * 值全部走 tokens.css 语义层。由 shell/console.tsx 引入。
  *
+ * 2026-11-24 侧栏骨架对齐：几何与字级照 console-v4-skeleton.html 的
+ * .brand / .nav / .nav-foot / .account 块（16px 衬线标题 + 8.5px 等宽小标，
+ * 12.5px 条目、2px 左引导条、分组细分割线、等宽数字徽标、10px 额度行）。
+ * 颜色一律 var(--…)，不新增令牌；未在本树落地的只有骨架的 --side 宽度 208px
+ * （已由下方 :has 规则锁定）。
+ *
  * 顶栏英文模块名一项不在这里：本分支 resolve-page-title.ts（设计车道③
  * 「删顶栏英文模块名，统一中文面包屑」）已让 console-shell 路径的全局
  * 标题栏不再渲染重复标题，中文面包屑由 console.tsx 页头提供，无需 CSS。 */
 
-/* 侧栏分组标题（控制台 / 审计 / 运营 / 治理 / 平台 / 系统）：
- * 比菜单项降一级字号 + 次级色。 */
-.console-nav-group {
-  font-size: var(--font-size-1);
-  color: var(--color-text-muted);
+/* ── 品牌两行（sekoi / AGENT OS） ────────────────────────────────────── */
+.sidebar-brand {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
 }
 
-/* 菜单项选中态：浅底 + 左侧 2px 主色条（NavLink 激活时自带
- * aria-current="page"，替换原先仅换文字色的弱选中态）。 */
+.sidebar-brand-name {
+  font-family: var(--serif);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 0.95;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--fg);
+}
+
+.sidebar-brand-sub {
+  font-family: var(--mono);
+  font-size: 9px;
+  line-height: 1;
+  letter-spacing: 0.19em;
+  text-transform: uppercase;
+  color: var(--fg-3);
+}
+
+.sidebar-brand-mark {
+  flex: none;
+  width: 19px;
+  height: 19px;
+  color: var(--fg);
+}
+
+/* ── 导航：分组 / 条目 / 徽标 ─────────────────────────────────────────── */
+.console-nav-section + .console-nav-section {
+  margin-top: 2px;
+  padding-top: 2px;
+  border-top: 1px solid var(--line-3);
+}
+
+/* 分组标题：等宽小标注，比条目低一级（骨架 .nav-g-h 8.5px/0.2em）。 */
+.console-nav-group-h {
+  display: block;
+  padding: 12px 14px 4px;
+  font-family: var(--mono);
+  font-size: 8.5px;
+  line-height: 1.3;
+  letter-spacing: 0.2em;
+  color: var(--fg-2);
+}
+
+/* 条目：12.5px、34px 行高，左侧 2px 引导条（选中/悬停点亮），
+ * 文本右侧留出徽标位。缩进 22px 建立「组标题 → 条目」的层次。 */
+.console-nav-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 34px;
+  padding: 4px 12px 4px 22px;
+  border-left: 2px solid transparent;
+  font-family: var(--sans);
+  font-size: 12.5px;
+  line-height: 1.35;
+  letter-spacing: 0.01em;
+  color: var(--fg-2);
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    background 120ms ease,
+    color 120ms ease;
+}
+
+.console-nav-link:hover {
+  color: var(--fg);
+  background: rgba(255, 230, 203, 0.045);
+}
+
 .console-nav-link[aria-current="page"] {
-  background: var(--color-surface);
-  color: var(--color-text);
-  box-shadow: inset 2px 0 0 var(--color-primary);
+  color: var(--fg);
+  background: rgba(255, 230, 203, 0.075);
+  border-left-color: var(--fg);
+}
+
+.console-nav-link:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.console-nav-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 条目右侧数字徽标：11px 等宽、弱底胶囊，右对齐。数字来自 BFF 真读数，
+ * 取不到时整枚不渲染（由组件决定，不在这里兜 0）。 */
+.console-nav-badge {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 16px;
+  padding: 0 5px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--panel-2);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  /* 注意：letter-spacing 只影响字形间距，不是新的颜色/几何令牌。 */
+  letter-spacing: 0.02em;
+  color: var(--fg-3);
+}
+
+.console-nav-link:hover .console-nav-badge,
+.console-nav-link[aria-current="page"] .console-nav-badge {
+  color: var(--fg);
+}
+
+/* 待办类徽标（审批与发布门）：非零时用警示色，0 仍是弱色。 */
+.console-nav-badge.is-alert {
+  color: var(--warn);
+}
+
+/* 折叠档（lg:w-14）：只留引导条与行高，标签与徽标不参与裁剪。 */
+@media (min-width: 1024px) {
+  .console-nav.is-collapsed .console-nav-label,
+  .console-nav.is-collapsed .console-nav-badge,
+  .console-nav.is-collapsed .console-nav-group-h {
+    display: none;
+  }
+
+  .console-nav.is-collapsed .console-nav-link {
+    justify-content: center;
+    padding: 4px 0;
+  }
+}
+
+/* ── 底部：额度块 + 账号芯片 + 工具行 ───────────────────────────────── */
+.sidebar-usage {
+  display: grid;
+  gap: 4px;
+  padding: 9px 14px 10px;
+  border-top: 1px solid var(--line);
+}
+
+.sidebar-usage-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.sidebar-usage-k {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.16em;
+  color: var(--fg-4);
+}
+
+.sidebar-usage-v {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.03em;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-3);
+  white-space: nowrap;
+}
+
+.sidebar-usage-bar {
+  height: 4px;
+  overflow: hidden;
+  border-radius: 1px;
+  background: rgba(255, 230, 203, 0.14);
+}
+
+.sidebar-usage-bar > i {
+  display: block;
+  height: 100%;
+}
+
+/* 账号芯片：圆形姓名缩写 + 姓名 + 租户/角色弱色一行 + 出口图标。 */
+.sidebar-account {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  min-width: 0;
+  min-height: 38px;
+  padding: 4px 6px;
+  border-radius: var(--r-sm);
+  text-align: left;
+}
+
+.sidebar-account:hover {
+  background: rgba(255, 230, 203, 0.05);
+}
+
+.sidebar-avatar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--line-2);
+  border-radius: 50%;
+  background: rgba(255, 230, 203, 0.08);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--fg);
+}
+
+.sidebar-account-meta {
+  display: grid;
+  flex: 1;
+  gap: 2px;
+  min-width: 0;
+}
+
+.sidebar-account-name {
+  overflow: hidden;
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--fg);
+}
+
+.sidebar-account-sub {
+  overflow: hidden;
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.03em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--fg-3);
+}
+
+.sidebar-account-exit {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  min-height: 24px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: none;
+  color: var(--fg-3);
+  cursor: pointer;
+}
+
+.sidebar-account-exit:hover {
+  background: rgba(255, 230, 203, 0.08);
+  color: var(--fg);
+}
+
+/* 工具行：主题 / 语言 / 版本 / 组织，一行收口，不再各占一行。 */
+.sidebar-utils {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  padding: 4px 10px 8px;
+}
+
+.sidebar-version {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--fg-4);
+  white-space: nowrap;
+}
+
+.sidebar-org {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: var(--fg-3);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.sidebar-org:hover {
+  color: var(--fg);
 }
 
 /* 侧栏定宽 208px：宽视口（≥1440 目标，1100 起生效避开窄屏折叠交互）锁定，

@@ -2,10 +2,26 @@
  * R19 tail a: the sidebar identity widget, extracted from App.tsx so the
  * logout-clears-identity behavior is directly testable. Refreshes on
  * `auth5:session` (login success broadcast); logout drops it to anonymous.
+ *
+ * 2026-11-24 侧栏骨架对齐：登录态从四行（姓名 / 角色 / 租户 / 退出登录按钮）
+ * 收成一枚紧凑账号芯片 —— 圆形姓名缩写 + 姓名 + 租户弱色一行 + 右端出口图标
+ * （骨架 console-v4-skeleton.html 的 .account-btn 形态）。角色与租户仍在
+ * DOM 里（sr-only，给读屏与验收读数），只是不再各占一行。
  */
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useNavigate } from "react-router";
+import { LogOut } from "lucide-react";
 import { isSessionExpired, subscribeSessionExpired } from "@/lib/session-expiry";
+
+/** 圆形缩写：拉丁姓名取前两段首字母（Kevin Lee → KL），中文/单词取前两字。 */
+function initialsOf(display: string): string {
+  const parts = display.trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) {
+    return (parts[0]![0]! + parts[1]![0]!).toUpperCase();
+  }
+  const single = parts[0] ?? "?";
+  return single.slice(0, 2).toUpperCase();
+}
 
 export function Auth5Session(): ReactNode {
   const navigate = useNavigate();
@@ -44,8 +60,8 @@ export function Auth5Session(): ReactNode {
             const tenant = tid && !/^[a-z]+_[0-9A-Za-z]+$/.test(tid) ? tid : "—";
             setWho({ k: "ok", display: disp, role, tenant });
             // UI-QA P1: whoami 2xx 是本页唯一的「已登录证据」。广播出去，让同栏
-            // AuthWidget 的「暂时确认不到登录状态」不确定态即刻闭嘴——两者同屏
-            // 自相矛盾（下方已显示 opsadmin 身份，上方却说确认不到登录）不能再现。
+            // 身份件的不确定态即刻闭嘴——两者同屏自相矛盾（下方已显示 opsadmin
+            // 身份，上方却说确认不到登录）不能再现。
             window.dispatchEvent(new CustomEvent("auth5:verified"));
           } else {
             setWho({ k: "anon" });
@@ -67,7 +83,7 @@ export function Auth5Session(): ReactNode {
   if (who.k === "loading") {
     return (
       <div
-        className="mx-3 mb-2 h-8 animate-pulse rounded-sm bg-white/5"
+        className="mx-1 h-9 animate-pulse rounded-sm bg-white/5"
         data-testid="auth5-widget"
         aria-label="加载中"
       />
@@ -76,7 +92,7 @@ export function Auth5Session(): ReactNode {
   if (who.k === "anon") {
     return (
       <div
-        className="flex items-center justify-between gap-2 px-3 py-2 text-xs"
+        className="flex items-center justify-between gap-2 px-1 py-1.5 text-xs"
         data-testid="auth5-widget"
       >
         {!bannerShowing && (
@@ -93,37 +109,55 @@ export function Auth5Session(): ReactNode {
       </div>
     );
   }
+  const sub =
+    who.tenant !== "—"
+      ? who.tenant
+      : who.role !== "—"
+        ? who.role
+        : typeof window !== "undefined"
+          ? window.location.host
+          : "—";
   return (
-    <div
-      className="flex min-w-0 flex-col gap-1 px-3 py-2 text-xs"
-      data-testid="auth5-widget"
-    >
-      <span className="min-w-0 truncate font-medium" data-testid="auth5-display" title={who.display}>
-        {who.display}
+    <>
+      <div className="sidebar-account" data-testid="auth5-widget">
+        <span className="sidebar-avatar" aria-hidden="true">
+          {initialsOf(who.display)}
+        </span>
+        <div className="sidebar-account-meta">
+          <b
+            className="sidebar-account-name"
+            data-testid="auth5-display"
+            title={who.display}
+          >
+            {who.display}
+          </b>
+          <span className="sidebar-account-sub" data-testid="auth5-tenant" title={sub}>
+            {sub}
+          </span>
+        </div>
+        <button
+          type="button"
+          className="sidebar-account-exit"
+          data-testid="auth5-logout"
+          aria-label="退出登录"
+          title="退出登录"
+          onClick={() => {
+            void fetch("/auth/logout", { method: "POST", credentials: "same-origin" }).finally(() => {
+              sessionStorage.removeItem("auth5.session");
+              // R19 tail a: never leave a stale identity on the client after
+              // logout — drop the widget to its anonymous state immediately.
+              setWho({ k: "anon" });
+              navigate("/login");
+            });
+          }}
+        >
+          <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
+        </button>
+      </div>
+      {/* 芯片里压缩掉的两行仍在无障碍树里：读屏与验收读数都还能读到。 */}
+      <span className="sr-only" data-testid="auth5-role">
+        角色：{who.role}；租户：{who.tenant}
       </span>
-      <span className="min-w-0 break-words text-muted-foreground" data-testid="auth5-role">
-        角色：{who.role}
-      </span>
-      <span className="min-w-0 break-words text-muted-foreground" data-testid="auth5-tenant">
-        租户：{who.tenant}
-      </span>
-      <button
-        type="button"
-        className="mt-1 shrink-0 self-start rounded-sm border border-border px-2 py-1"
-        data-testid="auth5-logout"
-        onClick={() => {
-          void fetch("/auth/logout", { method: "POST", credentials: "same-origin" }).finally(() => {
-            sessionStorage.removeItem("auth5.session");
-            // R19 tail a: never leave a stale identity on the client after
-            // logout — drop the widget to its anonymous state immediately.
-            setWho({ k: "anon" });
-            navigate("/login");
-          });
-        }}
-      >
-        退出登录
-      </button>
-    </div>
+    </>
   );
 }
-

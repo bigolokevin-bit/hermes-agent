@@ -66,11 +66,10 @@ import { Spinner } from "@nous-research/ui/ui/components/spinner";
 import { Typography } from "@nous-research/ui/ui/components/typography/index";
 import { ConfirmDialog } from "@nous-research/ui/ui/components/confirm-dialog";
 import { cn } from "@/lib/utils";
-import { SidebarFooter } from "@/components/SidebarFooter";
+import { SidebarUsage } from "@/shell/SidebarUsage";
 import { SidebarStatusStrip, gatewayLine } from "@/components/SidebarStatusStrip";
 import { useBelowBreakpoint } from "@nous-research/ui/hooks/use-below-breakpoint";
 import { useSidebarStatus } from "@/hooks/useSidebarStatus";
-import { AuthWidget } from "@/components/AuthWidget";
 import { PageHeaderProvider } from "@/contexts/PageHeaderProvider";
 import { useProfileScope } from "@/contexts/useProfileScope";
 import { ProfileSwitcher } from "@/components/ProfileSwitcher";
@@ -1020,24 +1019,73 @@ export default function App() {
           >
             <div
               className={cn(
-                "flex h-14 shrink-0 items-center gap-2",
+                "flex shrink-0 items-center gap-2.5",
                 "border-b border-current/20",
-                collapsed ? "lg:justify-center lg:px-0" : "px-4 justify-between",
+                "px-3.5 py-3",
+                collapsed ? "lg:justify-center lg:px-0 lg:py-4" : "justify-between",
               )}
             >
               <div
                 className={cn(
-                  "flex items-center gap-2",
+                  "flex min-w-0 items-center gap-2.5",
                   collapsed && "lg:hidden",
                 )}
               >
                 <PluginSlot name="header-left" />
 
-                <Typography className="font-bold text-[1.125rem] leading-[0.95] tracking-[0.0525rem] text-midground uppercase">
-                  sekoi
-                  <br />
-                  AgentOS
-                </Typography>
+                {/* 骨架品牌的 7×7 像素标（console-v4-skeleton.html .brand .mark）。 */}
+                <svg
+                  aria-hidden="true"
+                  className="sidebar-brand-mark"
+                  viewBox="0 0 23 23"
+                  width="19"
+                  height="19"
+                >
+                  <g fill="currentColor">
+                    <rect x="0" y="0" width="2" height="2" />
+                    <rect x="3" y="0" width="2" height="2" />
+                    <rect x="6" y="0" width="2" height="2" />
+                    <rect x="0" y="3" width="2" height="2" />
+                    <rect x="0" y="6" width="2" height="2" />
+                    <rect x="3" y="3" width="2" height="2" opacity=".22" />
+                    <rect x="6" y="3" width="2" height="2" opacity=".22" />
+                    <rect x="3" y="6" width="2" height="2" opacity=".22" />
+                    <rect x="6" y="6" width="2" height="2" opacity=".9" />
+                    <rect x="12" y="0" width="2" height="2" opacity=".22" />
+                    <rect x="15" y="0" width="2" height="2" opacity=".22" />
+                    <rect x="18" y="0" width="2" height="2" opacity=".22" />
+                    <rect x="12" y="3" width="2" height="2" opacity=".22" />
+                    <rect x="15" y="3" width="2" height="2" opacity=".9" />
+                    <rect x="18" y="3" width="2" height="2" opacity=".22" />
+                    <rect x="12" y="6" width="2" height="2" opacity=".9" />
+                    <rect x="15" y="6" width="2" height="2" opacity=".22" />
+                    <rect x="18" y="6" width="2" height="2" opacity=".22" />
+                    <rect x="0" y="12" width="2" height="2" opacity=".22" />
+                    <rect x="3" y="12" width="2" height="2" opacity=".22" />
+                    <rect x="6" y="12" width="2" height="2" opacity=".22" />
+                    <rect x="0" y="15" width="2" height="2" opacity=".22" />
+                    <rect x="3" y="15" width="2" height="2" opacity=".9" />
+                    <rect x="6" y="15" width="2" height="2" opacity=".22" />
+                    <rect x="0" y="18" width="2" height="2" opacity=".9" />
+                    <rect x="3" y="18" width="2" height="2" opacity=".22" />
+                    <rect x="6" y="18" width="2" height="2" opacity=".22" />
+                    <rect x="12" y="12" width="2" height="2" opacity=".22" />
+                    <rect x="15" y="12" width="2" height="2" opacity=".22" />
+                    <rect x="18" y="12" width="2" height="2" opacity=".22" />
+                    <rect x="12" y="15" width="2" height="2" opacity=".22" />
+                    <rect x="15" y="15" width="2" height="2" opacity=".22" />
+                    <rect x="18" y="15" width="2" height="2" opacity=".22" />
+                    <rect x="12" y="18" width="2" height="2" opacity=".22" />
+                    <rect x="15" y="18" width="2" height="2" opacity=".22" />
+                    <rect x="18" y="18" width="2" height="2" opacity=".9" />
+                  </g>
+                </svg>
+
+                {/* 品牌两行：sekoi / AGENT OS（18px、0.09em、0.95 行高、紧排）。 */}
+                <span className="sidebar-brand">
+                  <span className="sidebar-brand-name">sekoi</span>
+                  <span className="sidebar-brand-sub">Agent OS</span>
+                </span>
               </div>
 
               <Button
@@ -1069,7 +1117,10 @@ export default function App() {
                   stays as-is: it is the only surface that still points at
                   routes the console tabs do not cover (sessions, files,
                   cron, …), and the plugin tab mechanism must not move. */}
-              <ConsoleNav onNavigate={closeMobile} />
+              <ConsoleNav
+                onNavigate={closeMobile}
+                collapsed={isDesktopCollapsed}
+              />
 
               {/* PRD A.3 shell consolidation: the upstream NAV_GROUP_ORDER
                 * loop (with NAV_GROUP_FALLBACK group titles) is no longer
@@ -1111,56 +1162,74 @@ export default function App() {
               )}
             </nav>
 
-            {/* PRD A.3: SidebarSystemActions (Restart Gateway 等上游系统动作)
-              * is no longer rendered; the sign-in widget stays. */}
-            <div className="shrink-0">
-              <Auth5Session />
-            </div>
-
+            {/* 侧栏底部（骨架 .nav-foot + .account 对齐）：额度块 → 账号芯片 →
+              * 工具行。退出登录留在账号芯片右端；主题/语言/版本/组织收成一行。
+              * 骨架的「今日全局上限」分母在本树 BFF 没有真口径，SidebarUsage
+              * 只显示「今日成本 $X」，不编分母、不画占比条。 */}
             <div
               className={cn(
-                "flex shrink-0 items-center gap-2",
-                "px-3 py-2",
-                "border-t border-current/20",
-                isDesktopCollapsed
-                  ? "lg:flex-col lg:items-start lg:gap-3 lg:py-3"
-                  : "justify-between",
+                "shrink-0",
+                isDesktopCollapsed && "lg:hidden",
               )}
             >
-              <div
-                className={cn(
-                  "flex min-w-0 items-center gap-2",
-                  isDesktopCollapsed && "lg:flex-col lg:items-start",
-                )}
-              >
-                <PluginSlot name="header-right" />
-
-                <SidebarIconWithTooltip
-                  collapsed={isDesktopCollapsed}
-                  label={t.theme?.switchTheme ?? "Switch theme"}
-                  tooltipWarmRef={tooltipWarmRef}
-                >
-                  <ThemeSwitcher collapsed={isDesktopCollapsed} dropUp />
-                </SidebarIconWithTooltip>
-
-                <SidebarIconWithTooltip
-                  collapsed={isDesktopCollapsed}
-                  label={t.language.switchTo}
-                  tooltipWarmRef={tooltipWarmRef}
-                >
-                  <LanguageSwitcher collapsed={isDesktopCollapsed} dropUp />
-                </SidebarIconWithTooltip>
+              <SidebarUsage />
+              <div className="px-2.5 pb-1 pt-2">
+                <Auth5Session />
               </div>
             </div>
 
             <div
               className={cn(
-                "flex shrink-0 flex-col",
-                isDesktopCollapsed && "lg:hidden",
+                "sidebar-utils shrink-0",
+                isDesktopCollapsed &&
+                  "lg:flex-col lg:items-center lg:gap-2 lg:px-0 lg:py-2",
               )}
             >
-              <AuthWidget />
-              <SidebarFooter status={sidebarStatus} />
+              <div
+                className={cn(
+                  "flex min-w-0 items-center gap-1",
+                  isDesktopCollapsed && "lg:flex-col lg:items-center",
+                )}
+              >
+                <PluginSlot name="header-right" />
+
+                <SidebarIconWithTooltip
+                  collapsed
+                  label={t.theme?.switchTheme ?? "Switch theme"}
+                  tooltipWarmRef={tooltipWarmRef}
+                >
+                  <ThemeSwitcher collapsed dropUp />
+                </SidebarIconWithTooltip>
+
+                <SidebarIconWithTooltip
+                  collapsed
+                  label={t.language.switchTo}
+                  tooltipWarmRef={tooltipWarmRef}
+                >
+                  <LanguageSwitcher collapsed dropUp />
+                </SidebarIconWithTooltip>
+              </div>
+
+              <div
+                className={cn(
+                  "flex min-w-0 items-center gap-2",
+                  isDesktopCollapsed && "lg:hidden",
+                )}
+              >
+                <span className="sidebar-version">
+                  {sidebarStatus?.version != null
+                    ? `v${sidebarStatus.version}`
+                    : "—"}
+                </span>
+                <a
+                  className="sidebar-org"
+                  href="https://nousresearch.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {t.app.footer.org}
+                </a>
+              </div>
             </div>
           </aside>
 
