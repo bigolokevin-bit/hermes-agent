@@ -3,6 +3,7 @@ import { beijing } from '../duty/format';
 import { isRecord, num } from '../duty/types';
 import type { ApprovalRow, BudgetBody, Loadable, MatrixBody, RunRow, RunStatsBody, TaskRow } from '../duty/types';
 import { normalizeMatrixRow } from '../duty/fixture';
+import { heatLevel } from './VizChart';
 
 export const OVERVIEW_GAP = {
   employees: 'GAP-OV5-EMPLOYEES',
@@ -146,16 +147,168 @@ const DAY_LABEL = new Intl.DateTimeFormat('zh-CN', {
  * duty 层裁桶，这里再按档位天数收口，缺省 14 保持既有口径）。
  */
 export function trendPoints(stats: RunStatsBody | null, days = 14): TrendPoint[] {
-  const buckets = stats?.buckets;
-  if (!Array.isArray(buckets)) return [];
-  return buckets.slice(-days).map((bucket) => {
-    const at = new Date(bucket.bucketStart);
-    return {
-      label: Number.isNaN(at.getTime()) ? '—' : DAY_LABEL.format(at),
+  return trendWindow(stats, days);
+}
+
+const DAY_KEY = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Asia/Shanghai',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+
+/** Beijing is UTC+8 year-round — the day grid can be cut on fixed 24h steps. */
+const SH_OFFSET_MS = 8 * 3600 * 1000;
+const DAY_MS = 24 * 3600 * 1000;
+
+function beijingDayStart(ms: number): number {
+  return Math.floor((ms + SH_OFFSET_MS) / DAY_MS) * DAY_MS - SH_OFFSET_MS;
+}
+
+function dayKeyOf(ms: number): string {
+  return DAY_KEY.format(new Date(ms));
+}
+
+/**
+ * 近 N 天逐日点位：把读口返回的桶铺到「日格」上，没有桶的那一天是 null
+ * （缺读数），既不是 0，也不是被跳过的一格。窗口末端优先用响应自带的 `to`；
+ * 测试/旧响应没有 `to` 时以最后一个桶为末端，且不回填第一个桶之前的日子。
+ */
+export function trendWindow(stats: RunStatsBody | null, days = 14): TrendPoint[] {
+  const buckets = Array.isArray(stats?.buckets) ? stats.buckets : [];
+  const parsed = buckets
+    .map((bucket) => ({
+      ms: Date.parse(bucket.bucketStart),
       runs: num(bucket.runs),
       failed: num(bucket.failed),
+    }))
+    .filter((row) => Number.isFinite(row.ms));
+  if (parsed.length === 0) return [];
+
+  const byDay = new Map<string, { runs: number | null; failed: number | null }>();
+  for (const row of parsed) byDay.set(dayKeyOf(row.ms), { runs: row.runs, failed: row.failed });
+
+  const lastMs = Math.max(...parsed.map((row) => row.ms));
+  const firstMs = Math.min(...parsed.map((row) => row.ms));
+  const toMs = typeof stats?.to === 'string' ? Date.parse(stats.to) : NaN;
+  const hasTo = Number.isFinite(toMs);
+  const endMs = beijingDayStart(hasTo ? toMs : lastMs);
+  let startMs = endMs - (days - 1) * DAY_MS;
+  // 没有响应级 to 时只铺数据自己的跨度，既不把首桶之前当缺读数，也不硬凑天数。
+  if (!hasTo) startMs = Math.max(startMs, beijingDayStart(firstMs));
+
+  const count = Math.max(1, Math.round((endMs - startMs) / DAY_MS) + 1);
+  return Array.from({ length: count }, (_, i) => {
+    const ms = startMs + i * DAY_MS;
+    const hit = byDay.get(dayKeyOf(ms));
+    return {
+      label: DAY_LABEL.format(new Date(ms)),
+      runs: hit ? hit.runs : null,
+      failed: hit ? hit.failed : null,
     };
   });
+}
+
+export interface DayActivityCellView {
+  hour: number;
+  /** null＝该小时没有读到（未发生/无读数），与真 0 区分。 */
+  count: number | null;
+  level: number;
+}
+
+export interface DayActivityView {
+  cells: DayActivityCellView[];
+  peak: { hour: number; count: number } | null;
+  day: number | null;
+  dayLabel: string | null;
+  /** 整个读取窗口的合计（不只是被选中那一天的）。 */
+  windowTotal: number;
+  hasRead: boolean;
+}
+
+const DOW_LABEL: Record<number, string> = {
+  0: '周日',
+  1: '周一',
+  2: '周二',
+  3: '周三',
+  4: '周四',
+  5: '周五',
+  6: '周六',
+  7: '周日',
+};
+
+/**
+ * 24 小时活跃：从 run-activity 的星期×小时矩阵里取「读数最多的一天」铺成
+ * 24 格。返回形状的每一格都只来自真读数；没有格子的小时是 null（画斜线），
+ * 不当 0。为什么不是「今天」：读口只给星期不给日期，窗口内也不保证今天有
+ * 读数，不拿浏览器时钟猜一个「今天」出来。
+ */
+export function dayActivity(cells: unknown): DayActivityView {
+  const list = Array.isArray(cells) ? cells : [];
+  const rows = new Map<number, Map<number, number>>();
+  let windowTotal = 0;
+  for (const raw of list) {
+    if (!raw || typeof raw !== 'object') continue;
+    const cell = raw as { dow?: unknown; hour?: unknown; count?: unknown };
+    const dow = num(cell.dow);
+    const hour = num(cell.hour);
+    const count = num(cell.count);
+    if (dow === null || hour === null || count === null) continue;
+    if (hour < 0 || hour > 23) continue;
+    if (!rows.has(dow)) rows.set(dow, new Map());
+    rows.get(dow)!.set(hour, count);
+    windowTotal += count;
+  }
+  if (rows.size === 0) {
+    return { cells: [], peak: null, day: null, dayLabel: null, windowTotal: 0, hasRead: false };
+  }
+  let bestDay: number | null = null;
+  let bestTotal = -1;
+  for (const [dow, hours] of rows) {
+    let total = 0;
+    for (const count of hours.values()) total += count;
+    if (total > bestTotal) {
+      bestTotal = total;
+      bestDay = dow;
+    }
+  }
+  const hours = bestDay === null ? null : rows.get(bestDay) ?? null;
+  const dayCells: DayActivityCellView[] = Array.from({ length: 24 }, (_, hour) => {
+    const count = hours?.has(hour) ? (hours.get(hour) as number) : null;
+    return { hour, count, level: count === null ? 0 : heatLevel(count) };
+  });
+  let peak: DayActivityView['peak'] = null;
+  for (const cell of dayCells) {
+    if (cell.count === null) continue;
+    if (peak === null || cell.count > peak.count) peak = { hour: cell.hour, count: cell.count };
+  }
+  return {
+    cells: dayCells,
+    peak,
+    day: bestDay,
+    dayLabel: bestDay === null ? null : DOW_LABEL[bestDay] ?? null,
+    windowTotal,
+    hasRead: true,
+  };
+}
+
+/**
+ * 月配额合计只来自能力矩阵里每名员工自带的 budget.monthlyCostUsd；任一员工
+ * 缺这个字段就整项返回 null（不给部分和冒充合计）。没有矩阵就是 null。
+ */
+export function monthQuota(matrix: Loadable<MatrixBody>): number | null {
+  if (matrix.k !== 'ready') return null;
+  const items = Array.isArray(matrix.data.items) ? matrix.data.items : [];
+  let sum = 0;
+  let seen = 0;
+  for (const raw of items) {
+    if (!isRecord(raw) || !isRecord(raw.budget)) continue;
+    const value = num(raw.budget.monthlyCostUsd);
+    if (value === null) return null;
+    sum += value;
+    seen += 1;
+  }
+  return seen > 0 ? sum : null;
 }
 
 export function blockerRows(input: {

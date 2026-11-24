@@ -5,25 +5,25 @@ import { Button } from '@nous-research/ui/ui/components/button';
 import { Card, CardContent } from '@nous-research/ui/ui/components/card';
 
 import { fetchMatrix, load } from '../duty/api';
-import { beijing, dashed, employeeLabel, shortId, usd } from '../duty/format';
+import { buildReadiness, buildCost } from '../duty/aggregate';
+import { beijing, dashed, duration, shortId, usd } from '../duty/format';
 import { useDutyData, type DutyData } from '../duty/useDutyData';
 import { DUTY_RANGES, DEFAULT_DUTY_RANGE, dutyRange, parseDutyRange, type DutyRangeId } from '../duty/dutyRange';
-import type { ActivityBody, Loadable, MatrixBody, RunStatsBody } from '../duty/types';
-import { buildKpis, blockerRows, overviewSummaryText, sourceStamp, trendPoints, OVERVIEW_GAP, type OverviewSummaryRow } from './overview';
+import type { ActivityBody, EmployeeRow, Loadable, MatrixBody, RunRow, RunStatsBody } from '../duty/types';
+import {
+  buildKpis,
+  blockerRows,
+  dayActivity,
+  monthQuota,
+  overviewSummaryText,
+  sourceStamp,
+  trendWindow,
+  OVERVIEW_GAP,
+  type OverviewSummaryRow,
+} from './overview';
 import { fetchHermesSummary, type HermesSummaryBody } from './api';
 import { COST_CALIBER_TEXT } from '../metrics/costCaliberNote';
-import {
-  HEAT,
-  HEAT_RAMP,
-  SPARK,
-  TREND_H,
-  TREND_PAD,
-  dotGeometry,
-  heatMatrix,
-  sparkGeometry,
-  trendGeometry,
-  type HeatMatrix,
-} from './VizChart';
+import { SPARK, TREND_H, TREND_PAD, sparkGeometry, trendGeometry } from './VizChart';
 import './overview.css';
 
 type Forced = 'loading' | 'empty' | 'error';
@@ -32,10 +32,16 @@ type StampSource = { source: string; state: Loadable<unknown> };
 // OM-15：服务探针状态词表——只翻译 hermes-summary 真读数，没有读数就是未接。
 const HEALTH_LABEL: Record<string, string> = { ok: '正常', degraded: '降级', down: '异常' };
 
+const RUN_STATUS_LABEL: Record<string, string> = {
+  completed: '成功',
+  succeeded: '成功',
+  failed: '失败',
+  running: '运行中',
+};
+
 /* ============================================================================
- * 页内图标基元（OM-17）：设计基线用 sprite <use>，本树以「内联 <svg><path/></svg>」
- * 替换 lucide——判据④要求本页源码装载视觉层，图标也走同一形制；几何 24×24，
- * 描边 1.8，currentColor 随文字色走主题，不写内联 style。
+ * 页内图标基元：内联 <svg><path/></svg>，几何 24×24，描边 1.8，
+ * currentColor 随文字色走主题，不写内联 style。
  * ========================================================================== */
 const ICON_BASE = {
   viewBox: '0 0 24 24',
@@ -83,14 +89,6 @@ function IconAlert({ className }: IconProps) {
       <path d="M10.3 3.9 2.5 17.4A1.9 1.9 0 0 0 4.2 20.3h15.6a1.9 1.9 0 0 0 1.7-2.9L13.7 3.9a1.9 1.9 0 0 0-3.4 0Z" />
       <path d="M12 9v4" />
       <path d="M12 16.6h.01" />
-    </svg>
-  );
-}
-
-function IconFlat({ className }: IconProps) {
-  return (
-    <svg {...ICON_BASE} className={className}>
-      <path d="M6 12h12" />
     </svg>
   );
 }
@@ -201,45 +199,63 @@ function IconChart({ className }: IconProps) {
   );
 }
 
-/* ============================================================================
- * 图表基元（几何取自 VizChart.tsx，形制照基线 ov01-target.html L795–935）
- * ========================================================================== */
-
-/** 面积火花线（基线 spark() area 分支）。无读数时由调用方退回点阵。 */
-function SparkArea({ values, label }: { values: number[]; label: string }) {
-  const geo = sparkGeometry(values);
-  if (!geo) return <NoTrendDots />;
+function IconServer({ className }: IconProps) {
   return (
-    <svg className="ov5-spark" viewBox={`0 0 ${SPARK.w} ${SPARK.h}`} role="img" aria-label={label}>
-      <path className="ov5-spark-area" d={geo.area} />
-      <path className="ov5-spark-line" d={geo.line} />
-      <circle className="ov5-spark-dot" cx={geo.last.x} cy={geo.last.y} r={2.4} />
+    <svg {...ICON_BASE} className={className}>
+      <rect x="3.4" y="4.2" width="17.2" height="6" rx="1.8" />
+      <rect x="3.4" y="13.8" width="17.2" height="6" rx="1.8" />
+      <path d="M7 7.2h.01M7 16.8h.01" />
     </svg>
   );
 }
 
-/** 无趋势源：等距点阵 + 屏读文本「无趋势源」（基线 dots()，不是曲线、不是数据）。 */
-function NoTrendDots({ note = '无趋势源' }: { note?: string }) {
-  const pts = dotGeometry(14);
+function IconSend({ className }: IconProps) {
   return (
-    <span className="ov5-viz-dots">
-      <svg className="ov5-dots" viewBox={`0 0 ${SPARK.w} ${SPARK.h}`} aria-hidden="true">
-        {pts.map((p, i) => (
-          <circle key={i} cx={p.cx} cy={p.cy} r={1.6} />
-        ))}
-      </svg>
-      <span className="ov5-sr">{note}</span>
-    </span>
+    <svg {...ICON_BASE} className={className}>
+      <path d="M21 3.6 10.4 14.2" />
+      <path d="M21 3.6 14.3 21l-3.9-6.8L3.6 10.3Z" />
+    </svg>
   );
 }
 
-/** 热力色阶图例（6 档，与 .ov5-heat-lv* 逐档对应）。 */
-function HeatScale() {
+function IconBook({ className }: IconProps) {
   return (
-    <svg className="ov5-heat-scale" viewBox="0 0 76 12" aria-hidden="true">
-      {HEAT_RAMP.map((percent, level) => (
-        <rect key={percent} className={`ov5-heat-cell ov5-heat-lv${level}`} x={level * 13} y={0} width={10} height={12} rx={4} />
-      ))}
+    <svg {...ICON_BASE} className={className}>
+      <path d="M4 5.2A2 2 0 0 1 6 3.2h13.4v17.6H6a2 2 0 0 0-2 2Z" />
+      <path d="M4 5.2v15.6" />
+      <path d="M8.4 7.6h7" />
+    </svg>
+  );
+}
+
+function IconRocket({ className }: IconProps) {
+  return (
+    <svg {...ICON_BASE} className={className}>
+      <path d="M12 3.2c3.4 1.6 5.4 5 5.4 8.6 0 2.6-1 4.9-2.8 6.6H9.4A9.6 9.6 0 0 1 6.6 11.8c0-3.6 2-7 5.4-8.6Z" />
+      <circle cx="12" cy="9.4" r="1.8" />
+      <path d="M8.4 18.4c-.8 1.2-1 2.4-1 2.4s1.4-.2 2.6-1M15.6 18.4c.8 1.2 1 2.4 1 2.4s-1.4-.2-2.6-1" />
+    </svg>
+  );
+}
+
+/* ============================================================================
+ * 图表基元
+ * ========================================================================== */
+
+/** 面积火花线（真实逐日读数；没有读数就不画，不用点阵占位）。 */
+function SparkArea({ values, label, wide = false }: { values: number[]; label: string; wide?: boolean }) {
+  const geo = sparkGeometry(values);
+  if (!geo) return null;
+  return (
+    <svg
+      className={wide ? 'ov5-spark ov5-spark-wide' : 'ov5-spark'}
+      viewBox={`0 0 ${SPARK.w} ${SPARK.h}`}
+      role="img"
+      aria-label={label}
+    >
+      <path className="ov5-spark-area" d={geo.area} />
+      <path className="ov5-spark-line" d={geo.line} />
+      <circle className="ov5-spark-dot" cx={geo.last.x} cy={geo.last.y} r={2.4} />
     </svg>
   );
 }
@@ -265,15 +281,6 @@ function useMeasuredWidth(fallback: number): [RefObject<HTMLDivElement | null>, 
   return [ref, width];
 }
 
-function Delta({ children }: { children: ReactNode }) {
-  return (
-    <span className="ov5-dtl is-flat">
-      <IconFlat className="ov5-i ov5-i-13" />
-      {children}
-    </span>
-  );
-}
-
 function RequestId({ id }: { id: string | null }) {
   const [copied, setCopied] = useState(false);
   const text = id ?? '未提供';
@@ -282,12 +289,12 @@ function RequestId({ id }: { id: string | null }) {
     try {
       await navigator.clipboard.writeText(id);
       setCopied(true);
-      setTimeText();
+      setTimer();
     } catch {
       setCopied(false);
     }
   };
-  const setTimeText = () => window.setTimeout(() => setCopied(false), 1800);
+  const setTimer = () => window.setTimeout(() => setCopied(false), 1800);
   return (
     <span className="ov5-req">
       请求编号 {text}
@@ -304,6 +311,16 @@ function Source({ children }: { children: ReactNode }) {
   return <span className="ov5-source">{children}</span>;
 }
 
+/** 区块卡脚注：一句口径 + 一行弱色采集时刻，并成一块，避免上下各占一行。 */
+function BlockFoot({ children, items, testid }: { children: ReactNode; items: StampSource[]; testid?: string }) {
+  return (
+    <div className="ov5-block-footrow">
+      <p className="ov5-block-foot">{children}</p>
+      <Freshness items={items} testid={testid} />
+    </div>
+  );
+}
+
 /** R31: the as-of line renders in EVERY state — the real minute stamp in
  * 北京时间 YYYY-MM-DD HH:mm, or "—" with the honest reason in title.
  * Never an invented time, never absent from the DOM. */
@@ -318,7 +335,7 @@ function AsofLine({ states }: { states: Array<Loadable<unknown> | null> }) {
     const newest = shown.reduce((a, b) => (a >= b ? a : b));
     return (
       <p className="ov5-fresh" data-testid="ov6-asof" title="取各来源响应自带的采集时间，最新的一个上屏">
-        <IconClock className="ov5-i ov5-i-14" />
+        <IconClock className="ov5-i ov5-i-13" />
         <span>{`采集时刻 北京时间 ${newest} · 每卡来源见卡内标注`}</span>
       </p>
     );
@@ -326,35 +343,84 @@ function AsofLine({ states }: { states: Array<Loadable<unknown> | null> }) {
   const reason = stamps.find((x) => x.reason)?.reason ?? '所有来源都没有返回采集时间';
   return (
     <p className="ov5-fresh" data-testid="ov6-asof" title={`取不到采集时间：${reason}`}>
-      <IconClock className="ov5-i ov5-i-14" />
+      <IconClock className="ov5-i ov5-i-13" />
       <span>采集时刻 —（北京时间）</span>
     </p>
   );
 }
 
+/**
+ * 每张卡只留一行弱色口径脚注：可见行报「主来源」的采集时刻，其余来源收进
+ * 屏读文本（卡头已列全部来源），不再让 3 行「数据截至」把卡撑高。
+ */
 function Freshness({ items, testid }: { items: StampSource[]; testid?: string }) {
+  const stamps = items.map(({ source, state }) => ({ source, ...sourceStamp(state) }));
+  const primary = stamps.find((stamp) => stamp.shown !== null) ?? stamps[0];
+  const rest = stamps.filter((stamp) => stamp !== primary);
+  if (!primary) return <div className="ov5-stamps" data-testid={testid} />;
   return (
     <div className="ov5-stamps" data-testid={testid}>
-      {items.map(({ source, state }) => {
-        const stamp = sourceStamp(state);
-        return (
-          <div className="ov5-stamp" key={source}>
-            <span>
-              数据截至 {stamp.shown ?? '时间未知'} · 来源 {source}
+      <span className="ov5-stamp">
+        <span>
+          数据截至 {primary.shown ?? '时间未知'} · 来源 {primary.source}
+          {items.length > 1 ? `（等 ${items.length} 源，见卡头）` : ''}
+        </span>
+        {primary.reason ? <em>原因：{primary.reason}</em> : null}
+      </span>
+      {rest.length > 0 ? (
+        <span className="ov5-sr">
+          {rest.map((stamp) => (
+            <span key={stamp.source}>
+              {`数据截至 ${stamp.shown ?? '时间未知'} · 来源 ${stamp.source}${stamp.reason ? `；原因：${stamp.reason}` : ''}；`}
             </span>
-            {stamp.reason ? <em>原因：{stamp.reason}</em> : null}
-          </div>
-        );
-      })}
+          ))}
+        </span>
+      ) : null}
     </div>
   );
 }
 
 type KpiIssue = { label: string; state: Loadable<unknown>; gap?: string };
 
+function IssueRows({
+  issues,
+  onRetry,
+  testid,
+}: {
+  issues?: KpiIssue[];
+  onRetry?: () => void;
+  testid: string;
+}) {
+  return (
+    <>
+      {issues?.map((issue) =>
+        issue.state.k === 'error' ? (
+          <div className="ov5-kpi-issue" title={issue.gap} key={issue.label}>
+            <span>
+              {issue.label}未接入：{issue.state.message}
+            </span>
+            <RequestId id={issue.state.requestId} />
+            {onRetry ? (
+              <Button size="sm" outlined onClick={onRetry} data-testid={`${testid}-issue-retry`}>
+                重试
+              </Button>
+            ) : null}
+          </div>
+        ) : null,
+      )}
+    </>
+  );
+}
+
+/* ============================================================================
+ * 骨架 3 卡：卡头 11px 微标签 + 右 11px 小链接；数值 26px 等宽；
+ * 底部只留一行口径脚注（弱色），不再堆「无趋势源 / 数据截至」三行。
+ * ========================================================================== */
 function KpiCard({
   title,
+  meta,
   value,
+  unit,
   foot,
   source,
   stamps,
@@ -365,10 +431,12 @@ function KpiCard({
   onRetry,
   icon,
   viz,
-  delta,
+  children,
 }: {
   title: string;
+  meta?: ReactNode;
   value: ReactNode;
+  unit?: ReactNode;
   foot?: ReactNode;
   source: string;
   stamps: StampSource[];
@@ -378,58 +446,384 @@ function KpiCard({
   issues?: KpiIssue[];
   onRetry?: () => void;
   icon?: ReactNode;
-  /** OM-17：火花槽位／点阵槽位（基线 .kpi .kr 右侧 118×46）。 */
   viz?: ReactNode;
-  /** OM-17：delta 槽位（基线 .kpi .kn 句首）。 */
-  delta?: ReactNode;
+  children?: ReactNode;
 }) {
   return (
     <Card className="ov5-kpi" data-testid={testid} data-duty-testid={testid.replace('ov6-', 'duty-')}>
       <CardContent className="ov5-kpi-bd">
         <div className="ov5-kpi-hd">
-          <span className="ov5-kpi-title">
+          <h2 className="ov5-kpi-title">
             {icon}
             <span>{title}</span>
-          </span>
+          </h2>
+          {meta ? <span className="ov5-kpi-meta">{meta}</span> : null}
           <Source>{source}</Source>
         </div>
         <div className="ov5-kr">
           <div className="ov5-kpi-value">{value}</div>
+          {unit ? <em className="ov5-unit">{unit}</em> : null}
           {viz ? <span className="ov5-kpi-viz">{viz}</span> : null}
         </div>
-        {delta ? <div className="ov5-kn">{delta}</div> : null}
-        {foot ? <div className="ov5-kpi-foot">{foot}</div> : null}
-        {issues?.map((issue) =>
-          issue.state.k === 'error' ? (
-            <div className="ov5-kpi-issue" title={issue.gap} key={issue.label}>
-              <span>
-                {issue.label}未接入：{issue.state.message}
-              </span>
-              <RequestId id={issue.state.requestId} />
-              {onRetry ? (
-                <Button size="sm" outlined onClick={onRetry} data-testid={`${testid}-issue-retry`}>
-                  重试
-                </Button>
-              ) : null}
-            </div>
-          ) : null,
-        )}
-        <Freshness items={stamps} testid={`${testid}-stamp`} />
+        {foot ? <p className="ov5-kpi-foot">{foot}</p> : null}
+        {children}
+        <IssueRows issues={issues} onRetry={onRetry} testid={testid} />
         {note ? <div className="ov5-note" title={noteTitle}>{note}</div> : null}
+        <Freshness items={stamps} testid={`${testid}-stamp`} />
       </CardContent>
     </Card>
   );
 }
 
 /* ============================================================================
- * ③ 趋势：柱高＝当日运行次数；失败作为柱内子段（不叠加柱顶，不折 0）；
- *    null 桶画虚线占位并保留 .ov5-bar.is-missing 契约；悬停读数走 .ov5-tip
- *    （role="status" aria-live="polite"，与基线 #trendTip 同形制）。
+ * 可上岗：四门表 + 堆叠进度条 + 图例（骨架 hcard 1）
+ * ========================================================================== */
+function ReadyCard({
+  data,
+  matrix,
+  kpis,
+  onRetry,
+}: {
+  data: DutyData;
+  matrix: Loadable<MatrixBody>;
+  kpis: ReturnType<typeof buildKpis>;
+  onRetry: () => void;
+}) {
+  const employees = data.employees.k === 'ready' ? data.employees.data : null;
+  const stats = data.stats.k === 'ready' ? data.stats.data : null;
+  const evidence = data.readiness && data.readiness.k === 'ready' ? data.readiness.data : null;
+  const readiness = useMemo(
+    () => buildReadiness(employees as EmployeeRow[] | null, stats, evidence),
+    [employees, stats, evidence],
+  );
+  const buckets = readiness.buckets;
+  const total = readiness.total ?? kpis.total;
+  const denom = total ?? (employees ? employees.length : null);
+  const narrowestKey = readiness.narrowest?.key ?? null;
+  const failingGates = readiness.gates.filter((gate) => (gate.fail ?? 0) > 0);
+  const restricted =
+    buckets === null
+      ? '四门证据未到'
+      : failingGates.length === 0
+        ? '无单项超限'
+        : failingGates.map((gate) => `${gate.name} ${gate.fail}`).join(' · ');
+  const pct = (n: number | null | undefined) =>
+    n === null || n === undefined || !denom ? null : Math.round((n / denom) * 1000) / 10;
+
+  return (
+    <KpiCard
+      title="可上岗"
+      meta={`${dashed(denom)} 名 · 四门取交集`}
+      value={dashed(readiness.confirmed)}
+      unit={`/ ${dashed(denom)} 可上岗`}
+      foot={
+        <>
+          受限 <b>{dashed(buckets?.failing)}</b>：{restricted} · 在岗 <b>{dashed(kpis.active)}</b> · 有风险{' '}
+          <b>{dashed(kpis.atRisk)}</b>
+        </>
+      }
+      source="员工统计 / 风险矩阵 / 四门证据"
+      stamps={[
+        { source: '员工统计', state: data.stats },
+        { source: '风险矩阵', state: matrix },
+        { source: '四门证据', state: data.readiness ?? { k: 'loading' } },
+      ]}
+      testid="ov6-kpi-employees"
+      issues={[
+        { label: '员工统计', state: data.employees, gap: OVERVIEW_GAP.employees },
+        ...(matrix.k === 'error' ? [{ label: '风险矩阵', state: matrix, gap: OVERVIEW_GAP.risk }] : []),
+      ]}
+      onRetry={onRetry}
+      note={kpis.atRisk === null ? '风险口径未接入' : undefined}
+      noteTitle={kpis.atRisk === null ? OVERVIEW_GAP.risk : undefined}
+      icon={<IconUsers className="ov5-i ov5-i-13" />}
+    >
+      <div className="ov5-gline">
+        <span>各门独立通过</span>
+        <span>/ {dashed(denom)} 人</span>
+      </div>
+      <div className="ov5-gates">
+        {readiness.gates.map((gate) => {
+          const dot = gate.state === 'pass' ? 'ok' : gate.state === 'fail' ? 'bad' : 'warn';
+          return (
+            <div className={`ov5-gate${gate.key === narrowestKey ? ' is-narrow' : ''}`} key={gate.key}>
+              <span className="ov5-gk" title={gate.source}>
+                {gate.name}
+                {gate.key === narrowestKey ? <span className="ov5-gtag">最窄</span> : null}
+              </span>
+              <span className="ov5-gv">
+                {gate.pass === null ? '—' : gate.pass} / {dashed(denom)}
+              </span>
+              <span className="ov5-gcut">
+                {gate.state === 'unknown' ? '待核实' : `未达 ${gate.fail === null ? '—' : gate.fail}`}
+              </span>
+              <i className={`ov5-gdot ${dot}`} title={gate.whyNot ?? `${gate.name}：${gate.state}`} />
+            </div>
+          );
+        })}
+      </div>
+      <div className="ov5-hnarrow">
+        <b>四门交集 {dashed(readiness.confirmed)} 人可上岗</b>
+        <span className="ov5-hsep">·</span>
+        {readiness.netNote}
+      </div>
+      <div className="ov5-stack">
+        <svg className="ov5-stack-svg" viewBox="0 0 100 6" preserveAspectRatio="none" role="img" aria-label="可上岗 / 待核实 / 受限占比">
+          <rect className="ok" x={0} y={0} width={pct(buckets?.confirmed) ?? 0} height={6} />
+          <rect
+            className="warn"
+            x={pct(buckets?.confirmed) ?? 0}
+            y={0}
+            width={pct(buckets?.pending) ?? 0}
+            height={6}
+          />
+          <rect
+            className="bad"
+            x={(pct(buckets?.confirmed) ?? 0) + (pct(buckets?.pending) ?? 0)}
+            y={0}
+            width={pct(buckets?.failing) ?? 0}
+            height={6}
+          />
+        </svg>
+        <div className="ov5-legend">
+          <span>
+            <i className="ok" />
+            {dashed(buckets?.confirmed)} 可上岗
+          </span>
+          <span>
+            <i className="warn" />
+            {dashed(buckets?.pending)} 待核实
+          </span>
+          <span>
+            <i className="bad" />
+            {dashed(buckets?.failing)} 受限
+          </span>
+          <span className="ov5-legend-note">四门各自独立判定后再取交集</span>
+        </div>
+      </div>
+    </KpiCard>
+  );
+}
+
+/* ============================================================================
+ * 今日运行：次数 / 在跑 / 失败 / 失败率 + 在跑与失败 run 行（骨架 hcard 2）
+ * ========================================================================== */
+function TodayRunsCard({
+  data,
+  kpis,
+  sparkValues,
+  rangeLabel,
+  onRetry,
+}: {
+  data: DutyData;
+  kpis: ReturnType<typeof buildKpis>;
+  sparkValues: number[];
+  rangeLabel: string;
+  onRetry: () => void;
+}) {
+  const today = data.todayStats.k === 'ready' ? data.todayStats.data : null;
+  const running = today?.totals?.running ?? null;
+  const rows =
+    data.todayRuns.k === 'ready'
+      ? data.todayRuns.data.filter((run) => run.status === 'running' || run.status === 'failed').slice(0, 3)
+      : [];
+  return (
+    <KpiCard
+      title="今日运行"
+      meta={<Link to="/work?tab=runs">运行记录 →</Link>}
+      value={dashed(kpis.runs)}
+      unit="次"
+      foot={
+        <>
+          在跑 <b>{dashed(running)}</b> · 失败 <b>{dashed(kpis.failed)}</b> · 失败率{' '}
+          <b>{kpis.failureRate === null ? '—' : `${kpis.failureRate}%`}</b>
+        </>
+      }
+      source="运行统计（今日）"
+      stamps={[{ source: '运行统计', state: data.todayStats }]}
+      testid="ov6-kpi-runs"
+      issues={[{ label: '运行统计', state: data.todayStats, gap: OVERVIEW_GAP.runs }]}
+      onRetry={onRetry}
+      note={kpis.runs === 0 && kpis.failureRate === null ? '今天还没有运行，失败率不计算' : undefined}
+      noteTitle={kpis.runs === 0 && kpis.failureRate === null ? OVERVIEW_GAP.runs : undefined}
+      icon={<IconGauge className="ov5-i ov5-i-13" />}
+    >
+      <div className="ov5-hlist">
+        {rows.length > 0 ? (
+          rows.map((run) => <RunRowLine key={run.runId} run={run} />)
+        ) : (
+          <div className="ov5-hrow">
+            <span className="ov5-ht">
+              {data.todayRuns.k === 'error'
+                ? '运行记录没有读出来（见上方重试）'
+                : data.todayRuns.k === 'loading'
+                  ? '正在读今日运行记录…'
+                  : '今天没有在跑或失败的 run'}
+            </span>
+          </div>
+        )}
+      </div>
+      {sparkValues.length >= 2 ? (
+        <div className="ov5-mini">
+          <SparkArea values={sparkValues} label={`${rangeLabel}每日运行次数火花线`} wide />
+          <span className="ov5-mini-note">近 {rangeLabel} 每日运行（有读数的日子）</span>
+        </div>
+      ) : null}
+    </KpiCard>
+  );
+}
+
+function RunRowLine({ run }: { run: RunRow }) {
+  const bad = run.status === 'failed';
+  return (
+    <div className="ov5-hrow">
+      <span className={`ov5-pill ${bad ? 'bad' : 'info'}`}>{bad ? '失败' : '在跑'}</span>
+      <span className="ov5-ht" title={run.runId}>
+        {shortId(run.runId)} · {RUN_STATUS_LABEL[run.status ?? ''] ?? '—'}
+      </span>
+      <span className="ov5-hm">{beijing(run.startedAt).slice(11)}</span>
+    </div>
+  );
+}
+
+/* ============================================================================
+ * 今日成本：日账本 + 月配额（骨架 hcard 3）。没有预算读口的字段写「—」，
+ * 不按单价反推、不编日上限。
+ * ========================================================================== */
+function CostCard({
+  data,
+  kpis,
+  matrix,
+  monthUsd,
+  onRetry,
+}: {
+  data: DutyData;
+  kpis: ReturnType<typeof buildKpis>;
+  matrix: Loadable<MatrixBody>;
+  monthUsd: number | null;
+  onRetry: () => void;
+}) {
+  const quota = monthQuota(matrix);
+  const usedPct =
+    monthUsd === null || quota === null || quota <= 0 ? null : Math.round((monthUsd / quota) * 1000) / 10;
+  const covered = kpis.costPartial ? kpis.costMissing : 0;
+  return (
+    <KpiCard
+      title="今日成本"
+      meta={<Link to="/overview?tab=usage">成本账本 →</Link>}
+      value={kpis.costUsd === null ? '—' : usd(kpis.costUsd)}
+      unit={`今日账本 · 月配额 ${quota === null ? '—' : usd(quota)}`}
+      foot={
+        <>
+          本月 <b>{monthUsd === null ? '—' : usd(monthUsd)}</b> / 月配额 <b>{quota === null ? '—' : usd(quota)}</b> ·
+          预估月底 <b>—</b>
+        </>
+      }
+      source="成本账本（日 / 月）"
+      stamps={[
+        { source: '成本账本', state: data.budgetDay },
+        { source: '月账本', state: data.budgetMonth },
+      ]}
+      testid="ov6-kpi-cost"
+      issues={[{ label: '成本账本', state: data.budgetDay, gap: OVERVIEW_GAP.cost }]}
+      onRetry={onRetry}
+      note={kpis.costUsd === null ? '成本口径未齐' : undefined}
+      noteTitle={kpis.costUsd === null ? OVERVIEW_GAP.cost : undefined}
+      icon={<IconCoins className="ov5-i ov5-i-13" />}
+    >
+      <div className="ov5-hlist">
+        <div className="ov5-hrow">
+          <span className="ov5-ht">日上限合计 —（无预算读口）</span>
+          <span className="ov5-hm">如实缺</span>
+        </div>
+        <div className="ov5-hrow">
+          <span className="ov5-ht">月配额已用 {usedPct === null ? '—' : `${usedPct}%`}</span>
+          <span className="ov5-hm">{covered > 0 ? `${covered} 人缺账本` : '逐员工相加'}</span>
+        </div>
+        <div className="ov5-hrow">
+          <span className="ov5-ht">浪费 —（账本无失败分类）</span>
+          <span className="ov5-hm">预估不出</span>
+        </div>
+      </div>
+      <div className="ov5-meter">
+        <svg
+          className="ov5-meter-svg"
+          viewBox="0 0 100 4"
+          preserveAspectRatio="none"
+          role="img"
+          aria-label={`月配额已用 ${usedPct === null ? '—' : `${usedPct}%`}`}
+        >
+          <rect className="track" x={0} y={0} width={100} height={4} />
+          {usedPct !== null ? <rect className="fill" x={0} y={0} width={Math.min(100, usedPct)} height={4} /> : null}
+        </svg>
+        <span className="ov5-meter-lbl">月配额已用 {usedPct === null ? '—' : `${usedPct}%`} · 日上限无读口</span>
+      </div>
+    </KpiCard>
+  );
+}
+
+/* ============================================================================
+ * 三条细长条：发布 / 出站 / 账本（骨架 chainstrip，高约 44px 单行）
+ * 发布与出站在本仓没有读口：整条标 data-fixture 并挂「示例数据」角标。
+ * ========================================================================== */
+function ChainStrip({
+  kpis,
+  matrix,
+  covered,
+}: {
+  kpis: ReturnType<typeof buildKpis>;
+  matrix: Loadable<MatrixBody>;
+  covered: number | null;
+}) {
+  const quota = monthQuota(matrix);
+  return (
+    <div className="ov5-chainstrip">
+      <Link className="ov5-cs" to="/approvals" data-fixture="1" title="发布链固定示例：3 草稿 · 2 校验失败 · 4 待批 · 1 发布超时">
+        <span className="ov5-cs-k">
+          <IconRocket className="ov5-i ov5-i-13" />
+          发布
+        </span>
+        <span className="ov5-cs-v">
+          <b>3</b> 草稿 · <b>2</b> 校验失败 · <b>4</b> 待批 · <b>1</b> 发布超时
+        </span>
+        <span className="ov5-fixture-badge">示例数据</span>
+        <span className="ov5-cs-go">→</span>
+      </Link>
+      <span className="ov5-cs" data-fixture="1" title="出站链固定示例：96.2% 成功 · 拒绝 3 · 回执 P95 1.8s · 网关在线 · app_id 一致">
+        <span className="ov5-cs-k">
+          <IconSend className="ov5-i ov5-i-13" />
+          出站
+        </span>
+        <span className="ov5-cs-v">
+          <b>96.2%</b> 成功 · 拒绝 <b>3</b> · 回执 P95 <b>1.8s</b> · 网关在线
+        </span>
+        <span className="ov5-fixture-badge">示例数据</span>
+        <span className="ov5-cs-go">→</span>
+      </span>
+      <Link
+        className="ov5-cs"
+        to="/overview?tab=usage"
+        title={`账本：员工覆盖与今日实扣来自成本账本；月配额 ${quota === null ? '—' : usd(quota)}；估算与对账无读口`}
+      >
+        <span className="ov5-cs-k">
+          <IconBook className="ov5-i ov5-i-13" />
+          账本
+        </span>
+        <span className="ov5-cs-v">
+          覆盖 <b>{covered === null ? '—' : `${covered}/${kpis.total ?? '—'}`}</b> 员工 ·
+          实扣 <b>{kpis.costUsd === null ? '—' : usd(kpis.costUsd)}</b> · 估算 <b>—</b> · 最近对账 <b>未接入</b>
+        </span>
+        <span className="ov5-cs-go">→</span>
+      </Link>
+    </div>
+  );
+}
+
+/* ============================================================================
+ * 近 14 天：大字（总次数 · 峰值）+ 200–240px 卡片内的柱图 + 峰值标注 + 脚注
  * ========================================================================== */
 function Trend({ stats, label = '近 14 天', days = 14, onRetry }: { stats: Loadable<RunStatsBody>; label?: string; days?: number; onRetry: () => void }) {
-  const points = stats.k === 'ready' ? trendPoints(stats.data, days) : [];
-  // OM-06 数据契约：全缺桶（未返回）与全真零各走各的空态文案，都不画骨架/4px 柱；
-  // max(1,…) 防除零；混合窗（有数有缺）照常逐桶画，缺桶保留 is-missing 形。
+  const points = stats.k === 'ready' ? trendWindow(stats.data, days) : [];
   const allMissing = points.length > 0 && points.every((p) => p.runs === null);
   const allZero = points.length > 0 && points.every((p) => p.runs === 0);
   const max = Math.max(1, ...points.map((p) => p.runs ?? 0));
@@ -440,6 +834,11 @@ function Trend({ stats, label = '近 14 天', days = 14, onRetry }: { stats: Loa
   const lastWithRuns = points.reduce((best, p, i) => (p.runs !== null ? i : best), -1);
   const activeIndex = hovered !== null && hovered < points.length ? hovered : lastWithRuns;
   const active = activeIndex >= 0 ? points[activeIndex] : null;
+  const known = points.filter((p) => p.runs !== null);
+  const total = known.reduce((sum, p) => sum + (p.runs as number), 0);
+  const missingDays = points.length - known.length;
+  const avg = known.length > 0 ? Math.round((total / known.length) * 10) / 10 : null;
+  const peak = geo?.peakAt ?? null;
   return (
     <Card className="ov5-block ov5-trend" data-testid="ov6-trend" data-duty-testid="duty-trend">
       <CardContent className="ov5-block-bd">
@@ -450,7 +849,6 @@ function Trend({ stats, label = '近 14 天', days = 14, onRetry }: { stats: Loa
           </h2>
           <Source>运行统计</Source>
         </div>
-        <Freshness items={[{ source: '运行统计', state: stats }]} testid="ov6-trend-stamp" />
         {stats.k === 'loading' ? (
           <div className="ov5-skeleton" aria-busy="true" aria-label="趋势加载中"><span /><span /><span /></div>
         ) : stats.k === 'error' ? (
@@ -464,7 +862,7 @@ function Trend({ stats, label = '近 14 天', days = 14, onRetry }: { stats: Loa
           <div className="ov5-empty-line">
             <IconInbox className="ov5-i ov5-i-16" />
             <span>{label}还没有运行记录，所以没有趋势可画。</span>
-            <Link to="/runs">去看运行记录<IconArrowRight className="ov5-i ov5-i-14" /></Link>
+            <Link to="/work?tab=runs">去看运行记录<IconArrowRight className="ov5-i ov5-i-14" /></Link>
           </div>
         ) : allMissing ? (
           <div className="ov5-empty-line" data-testid="ov6-trend-missing">
@@ -473,22 +871,22 @@ function Trend({ stats, label = '近 14 天', days = 14, onRetry }: { stats: Loa
           </div>
         ) : geo ? (
           <>
-            <div className="ov5-tsum">
-              <span className="ov5-tsum-k"><b>{geo.total}</b> 次</span>
-              <span>失败 <b>{geo.failedTotal === null ? '—' : geo.failedTotal}</b></span>
-              <span>
-                <IconTrendUp className="ov5-i ov5-i-13" />
-                峰值 <b>{geo.peakAt ? geo.peakAt.value : '—'}</b>
-              </span>
-              <span className="ov5-tsum-note">虚线为峰值柱；缺读数的日子画虚线框，不折 0</span>
+            <div className="ov5-hnum">
+              <span className="ov5-hnum-v">{total}</span>
+              <em>次 · 峰值 {peak ? peak.value : '—'}</em>
             </div>
+            <p className="ov5-hsay">
+              日均 <b>{avg === null ? '—' : avg}</b> 次 · 失败{' '}
+              <b>{geo.failedTotal === null ? '—' : geo.failedTotal}</b> · 缺读数 <b>{missingDays}</b> 天
+              {peak ? <span className="ov5-hsay-peak"><IconTrendUp className="ov5-i ov5-i-13" />峰值柱描边</span> : null}
+            </p>
             <div className="ov5-chart" ref={chartRef}>
               <svg
                 className="ov5-trend-svg"
                 viewBox={`0 0 ${geo.w} ${geo.h}`}
                 height={TREND_H}
                 role="img"
-                aria-label={`${label}运行趋势：合计 ${geo.total} 次，峰值 ${geo.peakAt ? geo.peakAt.value : '—'} 次，失败 ${geo.failedTotal === null ? '—' : geo.failedTotal} 次`}
+                aria-label={`${label}运行趋势：合计 ${total} 次，峰值 ${peak ? peak.value : '—'} 次，失败 ${geo.failedTotal === null ? '—' : geo.failedTotal} 次，缺读数 ${missingDays} 天`}
               >
                 {geo.ticks.map((tick) => (
                   <g key={`t${tick.label}-${tick.y}`}>
@@ -538,7 +936,7 @@ function Trend({ stats, label = '近 14 天', days = 14, onRetry }: { stats: Loa
                 ) : null}
                 {geo.columns.map((col) =>
                   col.showLabel ? (
-                    <text key={`ax${col.index}`} className="ov5-axis-lbl" x={col.cx} y={TREND_H - 6} textAnchor="middle">{col.label}</text>
+                    <text key={`ax${col.index}`} className="ov5-axis-lbl" x={col.cx} y={TREND_H - 5} textAnchor="middle">{col.label}</text>
                   ) : null,
                 )}
               </svg>
@@ -565,18 +963,18 @@ function Trend({ stats, label = '近 14 天', days = 14, onRetry }: { stats: Loa
                 ))}
               </div>
               <div className="ov5-tip" data-testid="ov6-trend-tip" role="status" aria-live="polite">
-                {active ? (
+                {hovered !== null && active ? (
                   <>
                     <span className="ov5-tip-k">{active.label}</span>
                     <span>运行 <b>{active.runs === null ? '—' : active.runs}</b> 次</span>
                     <span>失败 <b>{active.failed === null ? '—' : active.failed}</b></span>
                   </>
-                ) : (
-                  <span className="ov5-tip-k">把指针停在某一天上读当日读数</span>
-                )}
+                ) : null}
               </div>
             </div>
-            <p className="ov5-block-foot">柱高表示当日运行次数；失败次数在悬停说明里，柱内深色段即其中失败。</p>
+            <BlockFoot items={[{ source: '运行统计', state: stats }]} testid="ov6-trend-stamp">
+              柱高表示当日运行次数；失败次数在悬停说明里，柱内深色段即其中失败；缺读数的日子画虚线框，不折 0。
+            </BlockFoot>
           </>
         ) : null}
       </CardContent>
@@ -585,124 +983,90 @@ function Trend({ stats, label = '近 14 天', days = 14, onRetry }: { stats: Loa
 }
 
 /* ============================================================================
- * ④ 活动热力：7 行 × 24 列（基线 buildHeat()），仅 count、无失败维度；
- *    缺读数的格子留空面，不当 0。
+ * 24 小时活跃：大字（峰值时段）+ 24 格热力条（未发生时段画斜线）+ 图例 + 脚注
  * ========================================================================== */
-function Heat({ activity, label, onRetry }: { activity: Loadable<ActivityBody>; label: string; onRetry: () => void }) {
-  const matrix: HeatMatrix | null = activity.k === 'ready' ? heatMatrix(activity.data.cells) : null;
-  const gridW = HEAT.labelW + 24 * (HEAT.cell + HEAT.gap) - HEAT.gap;
-  const gridH = HEAT.axisH + 7 * (HEAT.cell + HEAT.gap) - HEAT.gap;
-  const peakDay = matrix?.peak ? matrix.rows.find((row) => row.dow === matrix.peak?.dow)?.label ?? '—' : '—';
+function HourActivity({ activity, label, onRetry }: { activity: Loadable<ActivityBody>; label: string; onRetry: () => void }) {
+  const view = activity.k === 'ready' ? dayActivity(activity.data.cells) : null;
   const hourLabel = (hour: number) => (hour < 10 ? `0${hour}` : `${hour}`);
   return (
-    <Card className="ov5-block ov5-heat" data-testid="ov6-heat">
+    <Card className="ov5-block ov5-heat" data-testid="ov6-heat" data-duty-testid="duty-heat">
       <CardContent className="ov5-block-bd">
         <div className="ov5-block-hd">
           <h2>
             <IconActivity className="ov5-i ov5-i-16" />
-            活动热力
-            <span className="ov5-hd-note">{label} · 行＝星期，列＝小时</span>
+            24 小时活跃
+            <span className="ov5-hd-note">每格 1 小时</span>
           </h2>
           <Source>运行活跃</Source>
         </div>
-        <Freshness items={[{ source: '运行活跃', state: activity }]} testid="ov6-heat-stamp" />
         {activity.k === 'loading' ? (
-          <div className="ov5-skeleton" aria-busy="true" aria-label="活动热力加载中"><span /><span /><span /></div>
+          <div className="ov5-skeleton" aria-busy="true" aria-label="24 小时活跃加载中"><span /><span /><span /></div>
         ) : activity.k === 'error' ? (
           <div className="ov5-inline-error" role="alert">
             <IconAlert className="ov5-i ov5-i-16" />
-            <span>活动热力没有读出来。</span>
+            <span>24 小时活跃没有读出来。</span>
             <RequestId id={activity.requestId} />
             <Button size="sm" outlined onClick={onRetry} data-testid="ov6-heat-retry">重试</Button>
           </div>
-        ) : !matrix || !matrix.hasRead ? (
+        ) : !view || !view.hasRead ? (
           <div className="ov5-empty-line">
             <IconInbox className="ov5-i ov5-i-16" />
             <span>{label}没有运行活跃读数，热力不画空格。</span>
-            <Link to="/runs?window=7d">去看运行记录<IconArrowRight className="ov5-i ov5-i-14" /></Link>
+            <Link to="/work?tab=runs">去看运行记录<IconArrowRight className="ov5-i ov5-i-14" /></Link>
           </div>
         ) : (
           <>
-            <div className="ov5-heat-wrap">
+            <div className="ov5-hnum">
+              <span className="ov5-hnum-v">{view.peak ? `${hourLabel(view.peak.hour)}:00` : '—'}</span>
+              <em>峰值时段</em>
+            </div>
+            <p className="ov5-hsay">
+              峰值 <b>{view.peak ? view.peak.count : '—'}</b> 次/时 · 取窗口内最活跃的一天
+              {view.dayLabel ? `（${view.dayLabel}）` : ''} · 合计 <b>{view.windowTotal}</b> 次
+            </p>
+            <div className="ov5-heat24">
               <svg
                 className="ov5-heat-svg"
-                viewBox={`0 0 ${gridW} ${gridH}`}
+                viewBox="0 0 480 30"
                 role="img"
-                aria-label={`按星期与小时统计的运行次数热力图，${label}合计 ${matrix.total} 次`}
+                aria-label={`按小时统计的运行次数，峰值 ${view.peak ? view.peak.count : '—'} 次/时，窗口合计 ${view.windowTotal} 次`}
               >
-                {Array.from({ length: 24 }, (_, hour) =>
-                  hour % 3 === 0 ? (
-                    <text
-                      key={`h${hour}`}
-                      className="ov5-heat-ax"
-                      x={HEAT.labelW + hour * (HEAT.cell + HEAT.gap) + HEAT.cell / 2}
-                      y={HEAT.axisH - 6}
-                      textAnchor="middle"
-                    >
-                      {hourLabel(hour)}
-                    </text>
-                  ) : null,
-                )}
-                {matrix.rows.map((row, r) => (
-                  <g key={`d${row.dow}`}>
-                    <text
-                      className="ov5-heat-hl"
-                      x={HEAT.labelW - 8}
-                      y={HEAT.axisH + r * (HEAT.cell + HEAT.gap) + HEAT.cell / 2 + 4}
-                      textAnchor="end"
-                    >
-                      {row.label}
-                    </text>
-                    {row.cells.map((cell) => (
-                      <rect
-                        key={`c${cell.hour}`}
-                        className={cell.count === null ? 'ov5-heat-cell is-void' : `ov5-heat-cell ov5-heat-lv${cell.level}`}
-                        x={HEAT.labelW + cell.hour * (HEAT.cell + HEAT.gap)}
-                        y={HEAT.axisH + r * (HEAT.cell + HEAT.gap)}
-                        width={HEAT.cell}
-                        height={HEAT.cell}
-                        rx={4}
-                      >
-                        <title>{`${row.label} ${hourLabel(cell.hour)}:00 · ${cell.count === null ? '没有读数' : `${cell.count} 次（${label}合计 ${matrix.total} 次）`}`}</title>
-                      </rect>
-                    ))}
-                  </g>
+                {view.cells.map((cell) => (
+                  <rect
+                    key={cell.hour}
+                    className={
+                      cell.count === null
+                        ? 'ov5-heat-cell is-void'
+                        : `ov5-heat-cell ov5-heat-lv${cell.level}${view.peak && view.peak.hour === cell.hour ? ' is-peak' : ''}`
+                    }
+                    x={cell.hour * 20 + 0.5}
+                    y={0}
+                    width={19}
+                    height={30}
+                    rx={3}
+                  >
+                    <title>{`${hourLabel(cell.hour)}:00 · ${cell.count === null ? '未发生/无读数' : `${cell.count} 次`}`}</title>
+                  </rect>
                 ))}
               </svg>
-            </div>
-            <div className="ov5-heat-side">
-              <div className="ov5-hs">
-                <div className="ov5-hs-l">
-                  <span className="ov5-micro">峰值时段</span>
-                  <b>{matrix.peak ? matrix.peak.count : '—'}<span className="ov5-hs-u">次/时</span></b>
-                </div>
-                <div className="ov5-hs-d">
-                  {matrix.peak ? `${peakDay} ${hourLabel(matrix.peak.hour)}:00–${hourLabel(matrix.peak.hour)}:59` : '窗口内没有运行'}
-                </div>
-              </div>
-              <div className="ov5-hs">
-                <div className="ov5-hs-l">
-                  <span className="ov5-micro">夜间批量</span>
-                  <b>{matrix.nightAvg === null ? '—' : matrix.nightAvg.toFixed(2)}<span className="ov5-hs-u">次/时</span></b>
-                </div>
-                <div className="ov5-hs-d">0–6 点每小时均值</div>
-              </div>
-              <div className="ov5-hs">
-                <div className="ov5-hs-l">
-                  <span className="ov5-micro">{label}合计</span>
-                  <b>{matrix.total}</b>
-                </div>
-                <div className="ov5-hs-d">仅按运行次数着色，无失败维度</div>
+              <div className="ov5-heat-axis" aria-hidden="true">
+                <span>00</span>
+                <span>06</span>
+                <span>12</span>
+                <span>18</span>
+                <span>23</span>
               </div>
             </div>
-            <div className="ov5-heat-foot">
-              <span className="ov5-hscale">
-                <span>少</span>
-                <HeatScale />
-                <span>多</span>
-              </span>
-              <span className="ov5-hscale">每格＝1 小时 · 颜色只表运行次数 · 悬停读具体值</span>
+            <div className="ov5-legend ov5-legend-heat">
+              <span><i className="h0" />0</span>
+              <span><i className="h1" />1–2</span>
+              <span><i className="h2" />3–5</span>
+              <span><i className="h3" />6+</span>
+              <span className="ov5-legend-note">斜线＝未发生时段 · 峰值格描边</span>
             </div>
+            <BlockFoot items={[{ source: '运行活跃', state: activity }]} testid="ov6-heat-stamp">
+              每格 1 小时；没有读数的小时画斜线，不当 0。
+            </BlockFoot>
           </>
         )}
       </CardContent>
@@ -710,60 +1074,9 @@ function Heat({ activity, label, onRetry }: { activity: Loadable<ActivityBody>; 
   );
 }
 
-function RecentActivity({ data, onRetry }: { data: DutyData; onRetry: () => void }) {
-  const runs = data.recentRuns;
-  return (
-    <Card className="ov5-block" data-testid="ov6-activity" data-duty-testid="duty-activity">
-      <CardContent className="ov5-block-bd">
-        <div className="ov5-block-hd">
-          <h2>
-            <IconPulse className="ov5-i ov5-i-16" />
-            最近活动
-          </h2>
-          {/* OM-07：卡数据腿固定近 7 天（fetchRuns limit=3 + w7.from），
-              「全部运行」带 window=7d 与卡同窗（runs 页读 window|status|state|run|employee）。 */}
-          <Link to="/runs?window=7d">全部运行<IconArrowRight className="ov5-i ov5-i-14" /></Link>
-        </div>
-        <Freshness items={[{ source: '运行记录', state: runs }]} testid="ov6-activity-stamp" />
-        {runs.k === 'loading' ? (
-          <div className="ov5-skeleton" aria-busy="true" aria-label="最近活动加载中"><span /><span /><span /></div>
-        ) : runs.k === 'error' ? (
-          <div className="ov5-inline-error" role="alert">
-            <IconAlert className="ov5-i ov5-i-16" />
-            <span>最近活动没有读出来。</span>
-            <RequestId id={runs.requestId} />
-            <Button size="sm" outlined onClick={onRetry} data-testid="ov6-activity-retry">重试</Button>
-          </div>
-        ) : runs.data.length === 0 ? (
-          <div className="ov5-empty-line">
-            <IconInbox className="ov5-i ov5-i-16" />
-            <span>近 7 天没有运行记录。</span>
-            <Link to="/employees">去看数字员工<IconArrowRight className="ov5-i ov5-i-14" /></Link>
-          </div>
-        ) : (
-          <ul className="ov5-rows">
-            {runs.data.slice(0, 3).map((run) => (
-              <li key={run.runId} data-testid="ov6-activity-row">
-                <Link to={`/runs/${encodeURIComponent(run.runId)}`} title={run.runId}>
-                  {run.employeeId ? employeeLabel(undefined, run.employeeId) : `运行 ${shortId(run.runId)}`}
-                </Link>
-                <Badge
-                  tone={run.status === 'failed' ? 'destructive' : run.status === 'completed' ? 'success' : 'outline'}
-                  // OM-07 状态四词表封闭：成功/失败/运行中/—；未知原值不进徽标文本，落 title 供核对。
-                  title={run.status && !['failed', 'completed', 'running'].includes(run.status) ? `上游状态：${run.status}` : undefined}
-                >
-                  {run.status === 'failed' ? '失败' : run.status === 'completed' ? '成功' : run.status === 'running' ? '运行中' : '—'}
-                </Badge>
-                <span className="ov5-mono">{beijing(run.startedAt)}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
+/* ============================================================================
+ * 三张列表卡：阻塞 / 待我处理 / 最近运行（行高 36–40px，标题 12.5 / 副行 11）
+ * ========================================================================== */
 function Blockers({ data, onRetry }: { data: DutyData; onRetry: () => void }) {
   const failed = data.failedRuns.k === 'ready' ? data.failedRuns.data : null;
   const tasks = data.blockedTasks.k === 'ready' ? data.blockedTasks.data : null;
@@ -782,9 +1095,9 @@ function Blockers({ data, onRetry }: { data: DutyData; onRetry: () => void }) {
         <div className="ov5-block-hd">
           <h2>
             <IconAlert className="ov5-i ov5-i-16" />
-            阻塞队列
+            阻塞
           </h2>
-          <Source>失败运行 / 阻塞任务 / 待审批</Source>
+          <Link to="/work?tab=tasks">查看全部 ({rows.length}) →</Link>
         </div>
         <Freshness items={blockSources} testid="ov6-blockers-stamp" />
         {unavailable ? (
@@ -803,15 +1116,121 @@ function Blockers({ data, onRetry }: { data: DutyData; onRetry: () => void }) {
         ) : (
           <ul className="ov5-rows ov5-rows-blocker">
             {rows.map((row) => (
-              <li key={`${row.responsibleModule}-${row.object}`}>
+              <li key={`${row.responsibleModule}-${row.object}`} className="ov5-blkrow">
                 <Badge tone={row.overSLA ? 'destructive' : 'warning'}>{row.responsibleModule}</Badge>
-                <span className="ov5-obj">{row.object}</span>
-                <span>{row.waitingOn}</span>
-                {row.href ? <Link to={row.href}>处理<IconArrowRight className="ov5-i ov5-i-14" /></Link> : null}
+                <span className="ov5-bmain">
+                  <span className="ov5-bline1">{row.object} · {row.reason}</span>
+                  <span className="ov5-bline2">责任 {row.responsibleModule} · 下一步 {row.nextAction}</span>
+                </span>
+                {row.href ? <Link className="ov5-hgo" to={row.href}>去处理</Link> : null}
               </li>
             ))}
           </ul>
         )}
+        <p className="ov5-block-foot">失败运行按一组计；任务与审批每条各一行。</p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function PendingCard({ data, onRetry }: { data: DutyData; onRetry: () => void }) {
+  const stats = data.approvalStats.k === 'ready' ? data.approvalStats.data : null;
+  const pending = stats?.pending ?? null;
+  const rows = data.approvals.k === 'ready' ? data.approvals.data.slice(0, 3) : [];
+  const first = rows[0];
+  const issue: KpiIssue[] = [{ label: '审批统计', state: data.approvalStats, gap: OVERVIEW_GAP.approvals }];
+  return (
+    <Card className="ov5-block" data-testid="ov6-pending-card" data-duty-testid="duty-pending">
+      <CardContent className="ov5-block-bd">
+        <div className="ov5-block-hd">
+          <h2>
+            <IconShield className="ov5-i ov5-i-16" />
+            待我处理
+            <span className="ov5-hd-note">待审批</span>
+          </h2>
+          <Link to="/approvals">查看全部{pending === null ? '' : ` (${pending})`} →</Link>
+        </div>
+        {rows.length === 0 ? (
+          <div className="ov5-empty-line">
+            <IconInbox className="ov5-i ov5-i-16" />
+            <span>{data.approvals.k === 'error' ? '审批列表没有读出来（见上方重试）' : '当前没有待我处理的审批。'}</span>
+          </div>
+        ) : (
+          <ul className="ov5-rows">
+            {rows.map((row) => (
+              <li key={row.approvalId}>
+                <span className="ov5-ht" title={row.title ?? row.approvalId}>
+                  {row.title ?? '未命名审批'}
+                </span>
+                <span className="ov5-hm">{row.createdAt ? beijing(row.createdAt).slice(11) : '—'}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="ov5-pending-foot" data-testid="ov6-kpi-pending" data-duty-testid="duty-kpi-pending">
+          <span className="ov5-pending-count">
+            待批 <span className="ov5-kpi-value">{dashed(pending)}</span>
+          </span>
+          <span>最早 {first?.createdAt ? beijing(first.createdAt) : '—'}</span>
+          <IssueRows issues={issue} onRetry={onRetry} testid="ov6-kpi-pending" />
+          <Freshness items={[{ source: '审批统计', state: data.approvalStats }]} testid="ov6-kpi-pending-stamp" />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function RecentActivity({ data, onRetry }: { data: DutyData; onRetry: () => void }) {
+  const runs = data.recentRuns;
+  return (
+    <Card className="ov5-block" data-testid="ov6-activity" data-duty-testid="duty-activity">
+      <CardContent className="ov5-block-bd">
+        <div className="ov5-block-hd">
+          <h2>
+            <IconPulse className="ov5-i ov5-i-16" />
+            最近运行
+          </h2>
+          {/* OM-07：卡数据腿固定近 7 天（fetchRuns limit=3 + w7.from），
+              「全部运行」带 window=7d 与卡同窗。 */}
+          <Link to="/runs?window=7d">全部运行<IconArrowRight className="ov5-i ov5-i-14" /></Link>
+        </div>
+        <Freshness items={[{ source: '运行记录', state: runs }]} testid="ov6-activity-stamp" />
+        {runs.k === 'loading' ? (
+          <div className="ov5-skeleton" aria-busy="true" aria-label="最近运行加载中"><span /><span /><span /></div>
+        ) : runs.k === 'error' ? (
+          <div className="ov5-inline-error" role="alert">
+            <IconAlert className="ov5-i ov5-i-16" />
+            <span>最近运行没有读出来。</span>
+            <RequestId id={runs.requestId} />
+            <Button size="sm" outlined onClick={onRetry} data-testid="ov6-activity-retry">重试</Button>
+          </div>
+        ) : runs.data.length === 0 ? (
+          <div className="ov5-empty-line">
+            <IconInbox className="ov5-i ov5-i-16" />
+            <span>近 7 天没有运行记录。</span>
+            <Link to="/employees">去看数字员工<IconArrowRight className="ov5-i ov5-i-14" /></Link>
+          </div>
+        ) : (
+          <ul className="ov5-rows">
+            {runs.data.slice(0, 3).map((run) => (
+              <li key={run.runId} data-testid="ov6-activity-row">
+                <Link to={`/runs/${encodeURIComponent(run.runId)}`} title={run.runId}>
+                  {shortId(run.runId)}
+                </Link>
+                <Badge
+                  tone={run.status === 'failed' ? 'destructive' : run.status === 'completed' ? 'success' : 'outline'}
+                  // OM-07 状态四词表封闭：成功/失败/运行中/—；未知原值不进徽标文本，落 title 供核对。
+                  title={run.status && !['failed', 'completed', 'running'].includes(run.status) ? `上游状态：${run.status}` : undefined}
+                >
+                  {run.status === 'failed' ? '失败' : run.status === 'completed' ? '成功' : run.status === 'running' ? '运行中' : '—'}
+                </Badge>
+                <span className="ov5-mono">{beijing(run.startedAt)}</span>
+                <span className="ov5-hm">{duration(run.startedAt, run.endedAt)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+        <p className="ov5-block-foot">最近 3 次 · 详情在运行记录。</p>
       </CardContent>
     </Card>
   );
@@ -840,28 +1259,28 @@ export function OverviewView({
 }) {
   const range = dutyRange(rangeId);
   const stats = data.stats.k === 'ready' ? data.stats.data : null;
-  const today = data.todayStats.k === 'ready' ? data.todayStats.data : null;
   const budgetDay = data.budgetDay.k === 'ready' ? data.budgetDay.data : null;
   const budgetMonth = data.budgetMonth.k === 'ready' ? data.budgetMonth.data : null;
   const approvalStats = data.approvalStats.k === 'ready' ? data.approvalStats.data : null;
   const employees = data.employees.k === 'ready' ? data.employees.data.length : null;
   const kpis = buildKpis({
     stats,
-    todayStats: today,
+    todayStats: data.todayStats.k === 'ready' ? data.todayStats.data : null,
     approvalStats,
     budgetDay,
     budgetMonth,
     totalEmployeesFallback: employees,
     matrix,
   });
-  // OM-17：只有「运行」卡有真时间序列（stats14 桶）；其余四卡无趋势源 → 点阵，不画假曲线。
+  const costView = buildCost(budgetDay, budgetMonth, kpis.total);
+  // 只有「运行」卡有真时间序列（stats14 日桶）；其余卡不画假曲线、也不画点阵占位。
   const sparkValues =
     data.stats14.k === 'ready'
-      ? trendPoints(data.stats14.data, range.days)
+      ? trendWindow(data.stats14.data, range.days)
           .map((point) => point.runs)
           .filter((value): value is number => value !== null)
       : [];
-  const hasSpark = sparkValues.length >= 2;
+  const runningToday = data.todayStats.k === 'ready' ? data.todayStats.data?.totals?.running ?? null : null;
   const healthSources = [
     { label: '员工统计', state: data.employees },
     { label: '运行统计', state: data.stats },
@@ -888,11 +1307,13 @@ export function OverviewView({
       : null;
   const probeForStamp: Loadable<unknown> =
     probeState.k === 'ready' ? { k: 'ready', data: { asOf: probeUpdatedAt } } : (probeState as Loadable<unknown>);
-  const probeText = probeStatus
-    ? HEALTH_LABEL[probeStatus] ?? probeStatus
-    : probeState.k === 'error'
-      ? '未接'
-      : '—';
+  const probeText = probeStatus ? HEALTH_LABEL[probeStatus] ?? probeStatus : probeState.k === 'error' ? '未接' : '—';
+  const healthSynthesis = healthSources.every((s) => s.state.k === 'ready')
+    ? '本页六路读数全部就绪'
+    : healthSources
+        .filter((s) => s.state.k !== 'ready')
+        .map((s) => `${s.label}未就绪`)
+        .join(' · ');
 
   // OM-13：摘要复制——纯函数拼文本，不新增请求、不做金额反推，缺值一律「—」。
   const asOfShown = (state: { k: string } | null | undefined): string | null =>
@@ -961,7 +1382,7 @@ export function OverviewView({
     return (
       <section className="ov5-page" data-testid="ov6-page">
         <Card className="ov5-empty-card" data-testid="ov6-empty"><CardContent>
-          <h1>还没有可汇总的数据</h1>
+          <h2>还没有可汇总的数据</h2>
           <p>员工、运行与审批都为空时，总览没有数字可展示。</p>
           <AsofLine states={coreStates} />
           <Link to="/employees">先看数字员工<IconArrowRight className="ov5-i ov5-i-14" /></Link>
@@ -993,9 +1414,12 @@ export function OverviewView({
     <section className="ov5-page" data-testid="ov6-page">
       <header className="ov5-head">
         <div className="ov5-head-main">
-          <p className="ov5-eyebrow">运营 · 控制台</p>
-          <h1>运营总览</h1>
           <p className="ov5-sub">员工、运行、审批与成本各读各的；缺失值显示「—」，不补零。</p>
+          <div className="ov5-facts">
+            <AsofLine states={[data.stats, data.todayStats, data.employees, data.approvalStats, data.budgetDay]} />
+            <span className="ov5-fact">在岗 <b>{dashed(kpis.active)}</b></span>
+            <span className="ov5-fact">在跑 <b>{dashed(runningToday)}</b></span>
+          </div>
         </div>
         <div className="ov5-head-actions">
           {onRange ? (
@@ -1033,10 +1457,10 @@ export function OverviewView({
             ) : null}
             {copyState === 'fail' ? <span role="status" data-testid="ov6-summary-copy-fail">复制失败：已选中摘要文本，可手动复制。</span> : null}
           </span>
+          <Button size="sm" outlined onClick={onRetry} disabled={loading || anyLoading} aria-busy={loading || anyLoading} data-testid="ov6-refresh" prefix={<IconRefresh className={`ov5-i ov5-i-14 ${loading || anyLoading ? 'ov5-spin' : ''}`} />}>
+            刷新
+          </Button>
         </div>
-        <Button size="sm" outlined onClick={onRetry} disabled={loading || anyLoading} aria-busy={loading || anyLoading} data-testid="ov6-refresh" prefix={<IconRefresh className={`ov5-i ov5-i-14 ${loading || anyLoading ? 'ov5-spin' : ''}`} />}>
-          刷新
-        </Button>
       </header>
 
       {copyState === 'fail' ? (
@@ -1050,99 +1474,55 @@ export function OverviewView({
         />
       ) : null}
 
-      <AsofLine states={[data.stats, data.todayStats, data.employees, data.approvalStats, data.budgetDay]} />
-
-      {anyLoading ? <div className="ov5-skeleton" aria-busy="true" aria-label="总览加载中" data-testid="ov6-loading"><span /><span /><span /></div> : null}
-
-      <div className="ov5-kpis">
-        <KpiCard
-          title="员工"
-          value={dashed(kpis.total)}
-          foot={<>在岗 <b>{dashed(kpis.active)}</b> · 有风险 <b>{dashed(kpis.atRisk)}</b></>}
-          source="员工统计 / 风险矩阵"
-          stamps={[{ source: '员工统计', state: data.stats }, { source: '风险矩阵', state: matrix }]}
-          testid="ov6-kpi-employees"
-          issues={[{ label: '员工统计', state: data.employees, gap: OVERVIEW_GAP.employees }, ...(matrix.k === 'error' ? [{ label: '风险矩阵', state: matrix, gap: OVERVIEW_GAP.risk }] : [])]}
-          onRetry={onRetry}
-          note={kpis.atRisk === null ? '风险口径未接入' : null}
-          noteTitle={kpis.atRisk === null ? OVERVIEW_GAP.risk : undefined}
-          icon={<IconUsers className="ov5-i ov5-i-14" />}
-          viz={<NoTrendDots />}
-          delta={<Delta>无对比源 · 只读当前在编与在岗</Delta>}
-        />
-        <KpiCard
-          title="今日运行"
-          value={dashed(kpis.runs)}
-          foot={<>失败 <b>{dashed(kpis.failed)}</b> · 失败率 <b>{kpis.failureRate === null ? '—' : `${kpis.failureRate}%`}</b></>}
-          source="运行统计（今日）"
-          stamps={[{ source: '运行统计', state: data.todayStats }]}
-          testid="ov6-kpi-runs"
-          issues={[{ label: '运行统计', state: data.todayStats, gap: OVERVIEW_GAP.runs }]}
-          onRetry={onRetry}
-          note={kpis.runs === 0 && kpis.failureRate === null ? '今天还没有运行，失败率不计算' : null}
-          noteTitle={kpis.runs === 0 && kpis.failureRate === null ? OVERVIEW_GAP.runs : undefined}
-          icon={<IconGauge className="ov5-i ov5-i-14" />}
-          viz={hasSpark ? <SparkArea values={sparkValues} label={`${range.label}每日运行次数火花线`} /> : <NoTrendDots />}
-          delta={<Delta>{hasSpark ? `${range.label}火花线 · 共 ${sparkValues.length} 个有读数的日子` : '无趋势源'}</Delta>}
-        />
-        <KpiCard
-          title="待审批"
-          value={dashed(kpis.pending)}
-          foot={<Link to="/approvals">去审批中心<IconArrowRight className="ov5-i ov5-i-14" /></Link>}
-          source="审批统计"
-          stamps={[{ source: '审批统计', state: data.approvalStats }]}
-          testid="ov6-kpi-pending"
-          issues={[{ label: '审批统计', state: data.approvalStats, gap: OVERVIEW_GAP.approvals }]}
-          onRetry={onRetry}
-          icon={<IconShield className="ov5-i ov5-i-14" />}
-          viz={<NoTrendDots />}
-          delta={<Delta>无趋势源 · 只读当前待办</Delta>}
-        />
-        <KpiCard
-          title="今日成本"
-          value={kpis.costUsd === null ? '—' : usd(kpis.costUsd)}
-          foot={kpis.costPartial ? <>账本未覆盖全部员工{kpis.costMissing > 0 ? `（${kpis.costMissing} 人缺账本）` : ''}</> : <>美元 · 账本实扣</>}
-          source="成本账本（日）"
-          stamps={[{ source: '成本账本', state: data.budgetDay }]}
-          testid="ov6-kpi-cost"
-          issues={[{ label: '成本账本', state: data.budgetDay, gap: OVERVIEW_GAP.cost }]}
-          onRetry={onRetry}
-          note={kpis.costUsd === null ? '成本口径未齐' : null}
-          noteTitle={kpis.costUsd === null ? OVERVIEW_GAP.cost : undefined}
-          icon={<IconCoins className="ov5-i ov5-i-14" />}
-          viz={<NoTrendDots />}
-          delta={<Delta>无趋势源 · 账本实扣，不按单价反推</Delta>}
-        />
-        <KpiCard
-          title="健康检查（服务探针）"
-          value={probeText}
-          foot={<span>{healthSources.every((s) => s.state.k === 'ready') ? '本页六路读数全部就绪' : healthSources.filter((s) => s.state.k !== 'ready').map((s) => `${s.label}未就绪`).join(' · ')}（本页读数合成状态，不等于服务健康）</span>}
-          source="GET /api/hermes-summary"
-          stamps={[{ source: '服务探针', state: probeForStamp }]}
-          testid="ov6-kpi-health"
-          issues={probeState.k === 'error' ? [{ label: '服务探针', state: probeState as Loadable<unknown>, gap: OVERVIEW_GAP.health }] : []}
-          onRetry={onRetry}
-          note={probeState.k === 'ready' && !probeStatus ? '服务探针未返回状态；不以本页读数冒充。' : null}
-          noteTitle={OVERVIEW_GAP.health}
-          icon={<IconPulse className="ov5-i ov5-i-14" />}
-          viz={<NoTrendDots />}
-          delta={<Delta>无趋势源 · 服务探针只有当前读数</Delta>}
-        />
+      {/* 首读时不盖整页骨架：每张卡各自有「读取中 / —」形制，页面不会先空一块再跳版。 */}
+      <div className="ov5-homegrid r3" data-busy={anyLoading ? '1' : undefined}>
+        <ReadyCard data={data} matrix={matrix} kpis={kpis} onRetry={onRetry} />
+        <TodayRunsCard data={data} kpis={kpis} sparkValues={sparkValues} rangeLabel={range.label} onRetry={onRetry} />
+        <CostCard data={data} kpis={kpis} matrix={matrix} monthUsd={costView.monthUsd} onRetry={onRetry} />
       </div>
 
-      <div className="ov5-grid">
+      <ChainStrip kpis={kpis} matrix={matrix} covered={costView.covered} />
+
+      <div className="ov5-homegrid r2">
         <Trend stats={data.stats14} label={range.label} days={range.days} onRetry={onRetry} />
-        <Heat activity={data.activity} label={range.label} onRetry={onRetry} />
-        <RecentActivity data={data} onRetry={onRetry} />
-        <Blockers data={data} onRetry={onRetry} />
+        <HourActivity activity={data.activity} label={range.label} onRetry={onRetry} />
       </div>
+
+      <div className="ov5-homegrid r3">
+        <Blockers data={data} onRetry={onRetry} />
+        <PendingCard data={data} onRetry={onRetry} />
+        <RecentActivity data={data} onRetry={onRetry} />
+      </div>
+
+      <footer className="ov5-pagefoot">
+        <span className="ov5-fixture-badge" title="发布与出站两条细长条是固定示例；其余块为实机读数">示例数据</span>
+        <span>发布 / 出站为示例 · 采集 {summaryAsOf ?? '—'}（北京时间） · SEAKOI · 数字员工控制台</span>
+        <div
+          className="ov5-health"
+          data-testid="ov6-kpi-health"
+          data-duty-testid="duty-kpi-health"
+          title={`GET /api/hermes-summary · ${healthSynthesis}（本页读数合成状态，不等于服务健康）`}
+        >
+          <IconServer className="ov5-i ov5-i-13" />
+          服务探针 <span className="ov5-kpi-value">{probeText}</span>
+          <span className="ov5-sr">
+            GET /api/hermes-summary · {healthSynthesis}（本页读数合成状态，不等于服务健康）
+            {probeState.k === 'ready' && !probeStatus ? ' · 服务探针未返回状态；不以本页读数冒充。' : ''}
+          </span>
+          <IssueRows
+            issues={probeState.k === 'error' ? [{ label: '服务探针', state: probeState as Loadable<unknown>, gap: OVERVIEW_GAP.health }] : []}
+            onRetry={onRetry}
+            testid="ov6-kpi-health"
+          />
+          <Freshness items={[{ source: '服务探针', state: probeForStamp }]} testid="ov6-kpi-health-stamp" />
+        </div>
+      </footer>
     </section>
   );
 }
 
 function LiveOverview({ rangeId, onRange, rangeInvalid }: { rangeId: DutyRangeId; onRange: (id: DutyRangeId) => void; rangeInvalid: string | null }) {
-  // OM-17：本页新增活动热力（7×24），活动腿改为按档位真读（weeks 随 range 走）；
-  // DutyPage 的默认档不受影响。
+  // OM-17：本页新增 24 小时活跃，活动腿改为按档位真读（weeks 随 range 走）。
   const { data, reload, loading } = useDutyData(rangeId, { activity: true });
   const [matrix, setMatrix] = useState<Loadable<MatrixBody>>({ k: 'loading' });
   // OM-15：服务探针独立腿；取不到就显示未接，不拿本页读数冒充服务健康。
@@ -1220,7 +1600,7 @@ export function OverviewPage() {
     return (
       <section className="ov5-page" data-testid="ov6-page" data-fixture="1">
         <Card className="ov5-empty-card" data-testid="ov6-empty"><CardContent>
-          <h1>还没有可汇总的数据</h1>
+          <h2>还没有可汇总的数据</h2>
           <p>员工、运行与审批都为空时，总览没有数字可展示。</p>
           <AsofLine states={[]} />
           <Link to="/employees">先看数字员工<IconArrowRight className="ov5-i ov5-i-14" /></Link>
@@ -1234,7 +1614,7 @@ export function OverviewPage() {
         <Card className="ov5-error-card" data-testid="ov6-error" role="alert"><CardContent>
           <div className="ov5-inline-error"><IconAlert className="ov5-i ov5-i-20" /><b>总览没能读出来</b></div>
           <p>这次聚合的所有来源都没有返回数据，页面没有编造任何数字。</p>
-            <AsofLine states={[]} />
+          <AsofLine states={[]} />
           <RequestId id={null} />
           <Button size="sm" outlined onClick={clearForced} data-testid="ov6-retry">重试</Button>
         </CardContent></Card>

@@ -146,8 +146,11 @@ export function timeseriesStats(body: unknown): RunStatsBody {
   const known = buckets.filter((b): b is typeof b & { runs: number } => b.runs !== null);
   const runs =
     totalsValue ?? (known.length > 0 ? known.reduce((sum, b) => sum + b.runs, 0) : null);
+  // 读口自带窗口（window.start/end）：趋势要按整窗铺日格，缺读数的日子才能占位。
+  const win = isRecord(body) && isRecord(body.window) ? body.window : null;
   return {
     asOf: stamp.asOf ?? undefined,
+    ...(win ? { from: text(win.start) ?? undefined, to: text(win.end) ?? undefined } : {}),
     totals: runs === null ? undefined : ({ runs } as RunStatsBody["totals"]),
     buckets,
   };

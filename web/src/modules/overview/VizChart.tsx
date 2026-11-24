@@ -18,10 +18,10 @@ import { num } from '../duty/types';
 /** 火花槽位（基线 .kpi .spark 宽高 118×46）。 */
 export const SPARK = { w: 118, h: 46, pad: 3 } as const;
 
-/** 趋势图画布高（基线 #trendChart style="height:224px"）。 */
-export const TREND_H = 224;
-/** 趋势图内边距（基线 pl/pr/pt/pb）。overview.css 的 .ov5-bars 覆盖层按这四值对齐。 */
-export const TREND_PAD = { l: 34, r: 12, t: 24, b: 22 } as const;
+/** 趋势图画布高：把 14 天卡压回 200–260px 档，绘图区仍占正文主体。 */
+export const TREND_H = 136;
+/** 趋势图内边距。overview.css 的 .ov5-bars 覆盖层按这四值对齐。 */
+export const TREND_PAD = { l: 30, r: 10, t: 24, b: 20 } as const;
 
 /** 热力栅格几何：单元格 26、间隔 2、行标签列 38、小时轴 18（基线 28/2/38/≈14）。 */
 export const HEAT = { cell: 26, gap: 2, labelW: 38, axisH: 18 } as const;
@@ -124,7 +124,8 @@ export function trendGeometry(width: number, points: TrendPointView[]): TrendGeo
   const iw = Math.max(1, w - TREND_PAD.l - TREND_PAD.r);
   const n = points.length || 1;
   const slot = iw / n;
-  const bw = Math.min(16, Math.max(2, slot - 6));
+  // 骨架的柱/面积填满绘图区：柱宽取槽位一半以上，14 天档不再留大段空槽。
+  const bw = Math.min(30, Math.max(3, slot * 0.56));
   const peakValue = points.reduce<number>((best, p) => (p.runs !== null && p.runs > best ? p.runs : best), 0);
   const top = niceCeil(peakValue);
   const ticks = [0, 1, 2, 3].map((k) => ({ y: t + (ih * k) / 3, label: Math.round(top * (1 - k / 3)) }));
@@ -151,7 +152,7 @@ export function trendGeometry(width: number, points: TrendPointView[]): TrendGeo
       h,
       failH,
       missing,
-      showLabel: i % 4 === 0 || i === points.length - 1,
+      showLabel: i === 0 || i === Math.floor((points.length - 1) / 2) || i === points.length - 1,
       peak: i === peakIndex,
     };
   });

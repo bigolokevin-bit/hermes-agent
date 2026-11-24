@@ -44,8 +44,9 @@ const BUCKETS = [
   { bucketStart: '2026-11-04T00:00:00Z', runs: 5, failed: 2 },
 ];
 
+// 同一个星期行内放三档读数，24 格热力取读数最多的一天，档位断言才落在同一行。
 const HEAT_CELLS = [
-  { dow: 1, hour: 15, count: 1 },
+  { dow: 5, hour: 13, count: 1 },
   { dow: 5, hour: 14, count: 8 },
   { dow: 5, hour: 15, count: 5 },
 ];
@@ -81,7 +82,7 @@ function view(cells?: Array<{ dow: number; hour: number; count: number }>) {
 }
 
 describe('OM-17 视觉层：火花／点阵／趋势／热力', () => {
-  it('运行卡有面积火花线（闭合面积 + 折线 + 末点圆），员工卡无源走点阵', async () => {
+  it('运行卡有面积火花线（闭合面积 + 折线 + 末点圆），员工卡无趋势源就不画点阵', async () => {
     await render(view());
     const runs = container.querySelector('[data-testid="ov6-kpi-runs"]')!;
     const area = runs.querySelector('.ov5-spark-area');
@@ -91,9 +92,10 @@ describe('OM-17 视觉层：火花／点阵／趋势／热力', () => {
     expect(runs.querySelector('.ov5-spark-line')?.getAttribute('stroke-width')).toBeNull();
     expect(runs.querySelector('.ov5-spark-dot')?.getAttribute('r')).toBe('2.4');
 
+    // 无趋势源的卡不拿点阵占位：员工卡换成一排四门真读数行。
     const employees = container.querySelector('[data-testid="ov6-kpi-employees"]')!;
-    expect(employees.querySelectorAll('.ov5-dots circle')).toHaveLength(14);
-    expect(employees.querySelector('.ov5-sr')?.textContent).toBe('无趋势源');
+    expect(employees.querySelector('.ov5-dots')).toBeNull();
+    expect(employees.querySelectorAll('.ov5-gate')).toHaveLength(4);
   });
 
   it('趋势图：4 条网格线、逐桶柱、缺桶虚线框、峰值标记、失败子段', async () => {
@@ -123,20 +125,21 @@ describe('OM-17 视觉层：火花／点阵／趋势／热力', () => {
     expect(missing.querySelector('.ov5-bar-track i')).toBeNull();
   });
 
-  it('热力：7×24 共 168 格，档位随次数分档，aria-label 带合计', async () => {
+  it('热力：24 格单排，档位随次数分档，峰值格描边，aria-label 带窗口合计', async () => {
     await render(view());
     const grid = container.querySelector('[data-testid="ov6-heat"] svg.ov5-heat-svg');
     expect(grid).toBeTruthy();
-    expect(grid?.querySelectorAll('rect.ov5-heat-cell')).toHaveLength(168);
+    expect(grid?.querySelectorAll('rect.ov5-heat-cell')).toHaveLength(24);
     expect(grid?.getAttribute('aria-label')).toContain('合计 14 次');
-    // 8 次 → 第 3 档；1 次 → 第 1 档；无读数的格子不留白面而是虚线框。
+    // 8 次 → 第 3 档；5 次 → 第 2 档；1 次 → 第 1 档；其余小时画斜线，不留白面。
     expect(grid?.querySelectorAll('rect.ov5-heat-lv3')).toHaveLength(1);
-    expect(grid?.querySelectorAll('rect.ov5-heat-lv1')).toHaveLength(1);
     expect(grid?.querySelectorAll('rect.ov5-heat-lv2')).toHaveLength(1);
-    expect(grid?.querySelectorAll('rect.ov5-heat-cell.is-void')).toHaveLength(168 - 3);
+    expect(grid?.querySelectorAll('rect.ov5-heat-lv1')).toHaveLength(1);
+    expect(grid?.querySelectorAll('rect.ov5-heat-cell.is-peak')).toHaveLength(1);
+    expect(grid?.querySelectorAll('rect.ov5-heat-cell.is-void')).toHaveLength(24 - 3);
   });
 
-  it('活动腿没有读数时热力不画空格（168 格不出现），走诚实空态', async () => {
+  it('活动腿没有读数时热力不画空格（24 格不出现），走诚实空态', async () => {
     await render(view([]));
     const heat = container.querySelector('[data-testid="ov6-heat"]')!;
     expect(heat.querySelector('svg.ov5-heat-svg')).toBeNull();

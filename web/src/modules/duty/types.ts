@@ -104,6 +104,9 @@ export interface RunBucket {
 export interface RunStatsBody {
   buckets?: RunBucket[];
   totals?: RunTotals;
+  /** Read-model window, when the response carries it (used to align day slots). */
+  from?: string;
+  to?: string;
   /** Top-level collection time from the read model, when it sends one. */
   asOf?: string;
 }
