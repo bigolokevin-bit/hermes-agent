@@ -1,22 +1,17 @@
 /**
- * employee-detail 信息轨 — 20 卡骨架密度（2026-11-24）。
+ * employee-detail 信息轨 — 20 卡，卡体接真读口（2026-11-24）。
  *
  * 视觉基线：tasks/AP-01-pending-truth/web/docs/console-v4-skeleton.html
  * `section[data-mod="employees"] .pane[data-tab="detail"]`（源文件 2086–3047）。
- * 骨架 detail pane 共 20 个 `class="card"`，其中 15 张带 `<h2>` 卡头
- * （基本 / 通信与身份 / 模型路由 / 对话与唤起 / 提示词性格 / 技能挂载 /
- * 工具与 MCP / 知识与范围 / 访问与预算 / 审批策略 / 最近修改 / 派给 /
- * 运行记录 / run 步骤 / 与该员工相关的事件）；本轨把工作台右侧的
- * 4 个折叠组（身份与四道门 / 预算 / 能力 / 最近运行）与 15 张配置卡、
- * 1 张版本链卡并成 20 张同形制卡，卡头一律走 ConsoleCard 的 11px 微标签。
  *
- * 数据纪律（本轨最重要的一条）：
- *  - 每个字段只从真读口取值；取不到写 `—`，并在卡底 11px「缺读口：…」
- *    写明是哪个读口、什么代次原因。禁编数字、禁 data-fixture。
- *  - 按员工过滤要如实：`/api/matrix` 与 `/api/approvals` 本代次忽略
- *    employee 参数（实测），所以本轨按 employeeId / requestedBy 于前端
- *    匹配，并把「服务端未过滤、本卡前端匹配」写进卡内小字，绝不把
- *    全量读成「该员工的」。
+ * 读口实测见 `docs/_artifacts/employee-detail/readout-table.md`。本轨纪律：
+ *  - 一个字段只从真读口取；取不到写 `—`，卡底 `ConsoleCard.availability`
+ *    点名缺哪个读口、什么代次原因，只声明一次。禁编数字、禁 data-fixture。
+ *  - 按员工过滤要如实：`/api/approvals` 连 `requestedBy` 参数都被服务端
+ *    忽略（实测 16 行含 7 行他人）、`/api/matrix` 忽略 employee 参数，
+ *    所以两张卡都在前端匹配并把「服务端未过滤」写进卡内小字。
+ *  - 真 0 与缺行分开：今日 `run-stats.totals.runs=0` 是有值的真 0；
+ *    今日预算账本 `missingEmployeeIds` 非空是缺行，写 `—` 不写 $0.00。
  *  - 全页唯一个 `<h1>` 在工作台头部；卡头是 span 微标签，不是 heading。
  *  - 全页唯一 `role="tablist"` 是外壳 zone 条：本轨只有按钮与 `<Link>`。
  *  - 不许三层套框：一张卡 + 卡体；卡体内部只用 dl 行 / 分隔线 / 行列表。
@@ -48,6 +43,13 @@ function listOf(v: unknown): Rec[] {
   return Array.isArray(items) ? items.filter(isRec) : [];
 }
 
+/** 有些读口把行数组放在具名键下（如 knowledge/spaces → `spaces`）。 */
+function listAt(v: unknown, key: string): Rec[] {
+  const rows = rec(v)?.[key];
+  if (Array.isArray(rows)) return rows.filter(isRec);
+  return listOf(v);
+}
+
 function s(...values: unknown[]): string | null {
   for (const v of values) {
     if (typeof v === "string" && v.trim()) return v.trim();
@@ -77,6 +79,11 @@ function fmtUsd(v: number | null): string {
   return v === null ? DASH : `$${v.toFixed(2)}`;
 }
 
+function fmtPct(v: number | null): string {
+  if (v === null) return DASH;
+  return `${Math.round(v * 1000) / 10}%`;
+}
+
 /** ISO → 北京时间的 `MM-DD HH:mm`；非法/缺失一律 `—`（不拿本机时钟补）。 */
 function fmtWhen(v: unknown): string {
   const iso = s(v);
@@ -92,6 +99,11 @@ function shortRef(v: unknown): string {
   if (!raw) return DASH;
   const tail = raw.replace(/^[a-z]+_/i, "");
   return tail.slice(0, 8).toUpperCase() || DASH;
+}
+
+function clip(v: string | null, max = 26): string {
+  if (!v) return DASH;
+  return v.length > max ? `${v.slice(0, max)}…` : v;
 }
 
 function durationLabel(startedAt: unknown, endedAt: unknown): string {
@@ -111,6 +123,9 @@ function durationLabel(startedAt: unknown, endedAt: unknown): string {
 const LIFECYCLE: Record<string, string> = {
   active: "在岗",
   draft: "草稿",
+  onboarding: "上岗中",
+  paused: "暂停",
+  offboarding: "离岗中",
   suspended: "停用",
   disabled: "停用",
   archived: "归档",
@@ -152,6 +167,7 @@ const APPROVAL_STATUS: Record<string, { label: string; tone: PillTone }> = {
   approved: { label: "已批", tone: "ok" },
   rejected: { label: "驳回", tone: "bad" },
   expired: { label: "过期", tone: "mut" },
+  consumed: { label: "已用", tone: "ok" },
 };
 
 const OUTCOME: Record<string, { label: string; tone: PillTone }> = {
@@ -177,6 +193,75 @@ const TRIGGER: Record<string, string> = {
   command: "指令",
 };
 
+const RESPONSE_MODE: Record<string, string> = {
+  realtime: "实时应答",
+  async: "异步任务",
+  batch: "批处理",
+};
+
+/** 审计 action → 人话（门位事件与事件卡共用）。 */
+const ACTION_LABEL: Record<string, string> = {
+  "employee.created": "建卡",
+  "employee.updated": "档案更新",
+  "employee.lifecycle.transitioned": "生命周期迁移",
+  "employee.lifecycle.denied": "迁移被拒",
+  "employee.version.created": "版本发布",
+  "budget.ledger_entry_applied": "预算记账",
+  "budget.ledger_ensured": "预算账本建立",
+  "budget.soft_alert_sent": "预算软告警",
+};
+
+function actionLabel(v: string | null): string {
+  if (!v) return DASH;
+  return ACTION_LABEL[v] ?? v;
+}
+
+/** run-events 的事件类型 → 人话（不把 `run.completed` 这类工程串铺上屏）。 */
+const RUN_EVENT_LABEL: Record<string, string> = {
+  message: "消息增量",
+  completed: "运行完成",
+  started: "运行开始",
+  failed: "运行失败",
+  tool_call: "工具调用",
+  error: "错误",
+};
+
+function runEventLabel(v: string | null): string {
+  if (!v) return DASH;
+  return RUN_EVENT_LABEL[v] ?? "事件";
+}
+
+/** 把连续同类型事件并成一组：token 级消息增量单条上屏只是噪声，计数与字数是真读数。 */
+function groupRunEvents(events: Rec[]): Array<{ type: string; count: number; chars: number; sample: Rec }> {
+  const groups: Array<{ type: string; count: number; chars: number; sample: Rec }> = [];
+  for (const ev of events) {
+    const type = s(ev.eventType) ?? "event";
+    const chars = typeof rec(ev.payload)?.delta === "string" ? (rec(ev.payload)!.delta as string).length : 0;
+    const last = groups[groups.length - 1];
+    if (last && last.type === type) {
+      last.count += 1;
+      last.chars += chars;
+    } else {
+      groups.push({ type, count: 1, chars, sample: ev });
+    }
+  }
+  return groups;
+}
+
+function runEventSummary(ev: Rec): string {
+  const p = rec(ev.payload);
+  const type = s(ev.eventType);
+  if (type === "message") {
+    const delta = s(p?.delta);
+    return delta ? `「${clip(delta, 20)}」` : "消息增量";
+  }
+  if (type === "completed") {
+    const out = s(p?.output);
+    return p?.completed === true ? `完成${out ? ` · 「${clip(out, 16)}」` : ""}` : "运行结束";
+  }
+  return runEventLabel(type);
+}
+
 /* ------------------------------------------------------------------ *
  * read layer — 一次并发读，逐源记失败原因（缺读口按源点名）
  * ------------------------------------------------------------------ */
@@ -192,13 +277,17 @@ interface Dossier {
   tools: Rec[] | null;
   mcp: Rec[] | null;
   runs: Rec[];
+  runEvents: Rec[];
   tasks: Rec[];
   approvals: Rec[];
   events: Rec[];
   auditTotal: number | null;
-  statsDay: Rec | null;
-  usageMonth: Rec | null;
+  sessions: Rec[];
+  spaces: Rec[];
+  statsToday: Rec | null;
+  stats30: Rec | null;
   usageDay: Rec | null;
+  usageMonth: Rec | null;
   fails: Record<string, string>;
 }
 
@@ -213,13 +302,17 @@ const EMPTY_DOSSIER: Dossier = {
   tools: null,
   mcp: null,
   runs: [],
+  runEvents: [],
   tasks: [],
   approvals: [],
   events: [],
   auditTotal: null,
-  statsDay: null,
-  usageMonth: null,
+  sessions: [],
+  spaces: [],
+  statsToday: null,
+  stats30: null,
   usageDay: null,
+  usageMonth: null,
   fails: {},
 };
 
@@ -239,6 +332,8 @@ interface Periods {
   toDay: string;
   fromMonth: string;
   toMonth: string;
+  from30: string;
+  to30: string;
 }
 
 /** 周期只决定「问服务端哪一天/哪一月」；页面上所有时间仍取自服务端回包。 */
@@ -256,6 +351,9 @@ function periods(): Periods {
     toDay: new Date(Date.UTC(y, mo - 1, d + 1)).toISOString(),
     fromMonth: new Date(Date.UTC(y, mo - 1, 1)).toISOString(),
     toMonth: new Date(Date.UTC(y, mo, 1)).toISOString(),
+    // 30 天窗：day 桶上限 90 天，30 天留足余量且覆盖本机全部运行历史。
+    from30: new Date(Date.UTC(y, mo - 1, d - 29)).toISOString(),
+    to30: new Date(Date.UTC(y, mo - 1, d + 1)).toISOString(),
   };
 }
 
@@ -272,7 +370,7 @@ function useDossier(employeeId: string): Dossier {
     const enc = encodeURIComponent(employeeId);
     const p = periods();
     const reqs: Array<[string, string]> = [
-      ["emp", `/agent-api/api/employees/${enc}`],
+      ["emp", `/agent-api/api/employee?id=${enc}`],
       ["cfg", `/agent-api/api/effective-config?id=${enc}`],
       ["vers", `/agent-api/api/employee-versions?id=${enc}`],
       ["matrix", `/agent-api/api/matrix?employee=${enc}`],
@@ -280,62 +378,91 @@ function useDossier(employeeId: string): Dossier {
       ["tools", "/agent-api/api/tools"],
       ["mcp", "/agent-api/api/mcp/servers"],
       ["runs", `/agent-api/api/runs?employeeId=${enc}&limit=12`],
-      ["statsDay", `/agent-api/api/run-stats?employeeId=${enc}&from=${p.fromDay}&to=${p.toDay}&bucket=day`],
+      // run-stats 必须带 from/to，只给 bucket 会 400 `request.missing_filter`。
+      ["statsToday", `/agent-api/api/run-stats?employeeId=${enc}&from=${p.fromDay}&to=${p.toDay}&bucket=day`],
+      ["stats30", `/agent-api/api/run-stats?employeeId=${enc}&from=${p.from30}&to=${p.to30}&bucket=day`],
       ["usageDay", `/agent-api/api/budget-usage?employeeId=${enc}&periodKind=day&period=${p.day}`],
       ["usageMonth", `/agent-api/api/budget-usage?employeeId=${enc}&periodKind=month&period=${p.month}`],
-      ["tasks", `/agent-api/api/tasks?assignee=${encodeURIComponent(`employee:${employeeId}`)}&limit=20`],
-      ["approvals", "/agent-api/api/approvals?status=all&limit=20"],
-      ["events", `/agent-api/api/audit?resourceId=${enc}&limit=50`],
+      ["tasks", `/agent-api/api/tasks?assignee=${encodeURIComponent(`employee:${employeeId}`)}&limit=50`],
+      ["approvals", "/agent-api/api/approvals?status=all&limit=50"],
+      ["events", `/agent-api/api/audit?resourceId=${enc}&limit=200`],
+      ["sessions", `/agent-api/api/console-sessions?employeeId=${enc}&limit=50`],
+      ["spaces", "/agent-api/api/knowledge/spaces"],
     ];
 
-    void Promise.allSettled(reqs.map(([, url]) => fetchJSON<unknown>(url))).then((results) => {
-      if (!alive) return;
-      const bodies: Record<string, unknown> = {};
-      const fails: Record<string, string> = {};
-      results.forEach((res, i) => {
-        const key = reqs[i][0];
-        if (res.status === "fulfilled") bodies[key] = res.value;
-        else fails[key] = failNote(res.reason);
-      });
+    void Promise.allSettled(reqs.map(([, url]) => fetchJSON<unknown>(url)))
+      .then(async (results) => {
+        if (!alive) return;
+        const bodies: Record<string, unknown> = {};
+        const fails: Record<string, string> = {};
+        results.forEach((res, i) => {
+          const key = reqs[i][0];
+          if (res.status === "fulfilled") bodies[key] = res.value;
+          else fails[key] = failNote(res.reason);
+        });
 
-      const cfg = rec(bodies.cfg);
-      const cfgEmployee = rec(cfg?.employee);
-      const cfgVersion = rec(cfg?.version);
-      const versionRows = listOf(bodies.vers);
-      const currentVersion =
-        cfgVersion ??
-        versionRows.find((row) => s(row.id) === s(rec(bodies.emp)?.currentVersionId)) ??
-        versionRows[0] ??
-        null;
-      // matrix 本代次忽略 employee 参数（实测三行全量）：这里按 employeeId 于前端匹配，
-      // 匹配不到就是 null（不拿别人员工的行冒充）。
-      const matrixRow =
-        listOf(bodies.matrix).find(
-          (row) => s(row.employeeId, row.employee_id, row.id) === employeeId,
-        ) ?? null;
-      const auditBody = rec(bodies.events);
+        const runs = listOf(bodies.runs);
+        // 步骤卡取「近期事件最全」的一次运行：最近的运行常常 lastEventSeq=0（刚起跑），
+        // 拿它当样本会得到空流。同等事件数取更新的一次（runs 已按时间倒序）。
+        const sampleRun =
+          runs.reduce<Rec | null>((best, r) => {
+            if (!best) return r;
+            return (Number(r.lastEventSeq) || 0) > (Number(best.lastEventSeq) || 0) ? r : best;
+          }, null) ?? null;
+        let runEvents: Rec[] = [];
+        if (sampleRun) {
+          const rid = encodeURIComponent(s(sampleRun.runId, sampleRun.id) ?? "");
+          try {
+            const body = await fetchJSON<unknown>(`/agent-api/api/run-events?runId=${rid}&limit=200`);
+            runEvents = listOf(body);
+          } catch (err) {
+            fails.runEvents = failNote(err);
+          }
+        }
+        if (!alive) return;
 
-      setState({
-        done: true,
-        emp: rec(bodies.emp) ?? cfgEmployee,
-        cfg,
-        version: currentVersion,
-        versions: versionRows,
-        matrix: matrixRow,
-        skills: "skills" in bodies ? listOf(bodies.skills) : null,
-        tools: "tools" in bodies ? listOf(bodies.tools) : null,
-        mcp: "mcp" in bodies ? listOf(bodies.mcp) : null,
-        runs: listOf(bodies.runs),
-        tasks: listOf(bodies.tasks),
-        approvals: listOf(bodies.approvals),
-        events: Array.isArray(auditBody?.events) ? (auditBody.events as unknown[]).filter(isRec) : [],
-        auditTotal: n(auditBody?.total),
-        statsDay: rec(bodies.statsDay),
-        usageDay: rec(bodies.usageDay),
-        usageMonth: rec(bodies.usageMonth),
-        fails,
+        const cfg = rec(bodies.cfg);
+        const cfgEmployee = rec(cfg?.employee);
+        const cfgVersion = rec(cfg?.version);
+        const versionRows = listOf(bodies.vers);
+        const currentVersion =
+          cfgVersion ??
+          versionRows.find((row) => s(row.id) === s(rec(bodies.emp)?.currentVersionId)) ??
+          versionRows[0] ??
+          null;
+        // matrix 本代次忽略 employee 参数（实测三行全量）：这里按 employeeId 于前端匹配，
+        // 匹配不到就是 null（不拿别人员工的行冒充）。
+        const matrixRow =
+          listOf(bodies.matrix).find(
+            (row) => s(row.employeeId, row.employee_id, row.id) === employeeId,
+          ) ?? null;
+        const auditBody = rec(bodies.events);
+
+        setState({
+          done: true,
+          emp: rec(bodies.emp) ?? cfgEmployee,
+          cfg,
+          version: currentVersion,
+          versions: versionRows,
+          matrix: matrixRow,
+          skills: "skills" in bodies ? listOf(bodies.skills) : null,
+          tools: "tools" in bodies ? listOf(bodies.tools) : null,
+          mcp: "mcp" in bodies ? listOf(bodies.mcp) : null,
+          runs,
+          runEvents,
+          tasks: listOf(bodies.tasks),
+          approvals: listOf(bodies.approvals),
+          events: Array.isArray(auditBody?.events) ? (auditBody.events as unknown[]).filter(isRec) : [],
+          auditTotal: n(auditBody?.total),
+          sessions: listOf(bodies.sessions),
+          spaces: listAt(bodies.spaces, "spaces"),
+          statsToday: rec(bodies.statsToday),
+          stats30: rec(bodies.stats30),
+          usageDay: rec(bodies.usageDay),
+          usageMonth: rec(bodies.usageMonth),
+          fails,
+        });
       });
-    });
 
     return () => {
       alive = false;
@@ -382,10 +509,6 @@ function RailRows({
   );
 }
 
-function Missing({ children }: { children: ReactNode }) {
-  return <p className="edw-rail-missing">缺读口：{children}</p>;
-}
-
 function Meter({ label, value, cap, money }: { label: string; value: number | null; cap: number | null; money: boolean }) {
   const pct = value !== null && cap !== null && cap > 0 ? Math.min(100, Math.round((value / cap) * 100)) : null;
   return (
@@ -401,6 +524,8 @@ function Meter({ label, value, cap, money }: { label: string; value: number | nu
     </div>
   );
 }
+
+type Availability = { label: string; reason?: string };
 
 /* ------------------------------------------------------------------ *
  * card registry — 20 卡，顺序照骨架 detail pane 自上而下
@@ -489,15 +614,35 @@ export function EmployeeDetailRail({ employeeId, hidden }: EmployeeDetailRailPro
   const grants = Array.isArray(d.cfg?.grants) ? (d.cfg.grants as unknown[]).filter(isRec) : [];
   const channelGrants = grants.filter((g) => s(g.scopeType) === "channel");
   const grantedWithApproval = grants.filter((g) => Boolean(s(g.approvalRef)));
-  const statsTotals = rec(d.statsDay?.totals);
   const dayRow = rec((Array.isArray(d.usageDay?.items) ? d.usageDay.items : []).filter(isRec)[0]);
   const monthRow = rec((Array.isArray(d.usageMonth?.items) ? d.usageMonth.items : []).filter(isRec)[0]);
+  const dayMissing = Array.isArray(d.usageDay?.missingEmployeeIds) && d.usageDay!.missingEmployeeIds.length > 0;
   const dayCost = n(dayRow?.costUsd, dayRow?.cost_usd);
   const monthCost = n(monthRow?.costUsd, monthRow?.cost_usd);
-  const myApprovals = d.approvals.filter(
-    (row) => s(rec(row.requestedBy)?.id) === employeeId,
-  );
+  const monthTokens = n(monthRow?.tokensUsed, monthRow?.tokens_used);
+  const monthCap = n(budget?.monthlyCostUsd);
+  const todayTotals = rec(d.statsToday?.totals);
+  const stats30 = rec(d.stats30?.totals);
+  const myApprovals = d.approvals.filter((row) => s(rec(row.requestedBy)?.id) === employeeId);
   const latestRun = d.runs[0] ?? null;
+  const sampleRun =
+    d.runs.reduce<Rec | null>((best, r) => {
+      if (!best) return r;
+      return (Number(r.lastEventSeq) || 0) > (Number(best.lastEventSeq) || 0) ? r : best;
+    }, null) ?? latestRun;
+  const availableSpaces = d.spaces.filter((sp) => !s(sp.status));
+  const degradedSpaces = d.spaces.filter((sp) => s(sp.status));
+
+  /** 门位事件：审计里可观测的四道门痕迹（计数 + 最近一次时刻）。 */
+  const gate = (action: string) => {
+    const rows = d.events.filter((ev) => s(ev.action) === action);
+    return { count: rows.length, at: s(rows[0]?.occurredAt) };
+  };
+  const gateCreated = gate("employee.created");
+  const gateMoves = gate("employee.lifecycle.transitioned");
+  const gateDenied = gate("employee.lifecycle.denied");
+  const gateVersions = gate("employee.version.created");
+  const profileUpdates = d.events.filter((ev) => s(ev.action) === "employee.updated");
 
   /** 每张卡的卡头：11px 微标签 + 右端 meta / 真链接。 */
   const card = (
@@ -506,6 +651,7 @@ export function EmployeeDetailRail({ employeeId, hidden }: EmployeeDetailRailPro
     meta: ReactNode,
     action: ReactNode,
     body: ReactNode,
+    extras?: { availability?: Availability[]; note?: ReactNode },
   ) => (
     <ConsoleCard
       key={id}
@@ -530,6 +676,8 @@ export function EmployeeDetailRail({ employeeId, hidden }: EmployeeDetailRailPro
           {action}
         </span>
       }
+      availability={extras?.availability}
+      note={extras?.note}
     >
       {open[id] ? <div data-testid={`edr-body-${id}`}>{body}</div> : null}
     </ConsoleCard>
@@ -585,12 +733,18 @@ export function EmployeeDetailRail({ employeeId, hidden }: EmployeeDetailRailPro
           <div className="console-divider" />
           <RailKv
             rows={[
-              ["四道门", DASH],
-              ["门禁结论", "核实前不判定"],
+              ["建卡", gateCreated.count ? `${gateCreated.count} 次 · ${fmtWhen(gateCreated.at)}` : DASH],
+              ["生命周期迁移", gateMoves.count ? `${gateMoves.count} 次 · ${fmtWhen(gateMoves.at)}` : DASH],
+              ["迁移被拒", gateDenied.count ? `${gateDenied.count} 次 · ${fmtWhen(gateDenied.at)}` : DASH],
+              ["版本发布", gateVersions.count ? `${gateVersions.count} 次 · ${fmtWhen(gateVersions.at)}` : DASH],
             ]}
           />
-          <Missing>门禁判定（V1/V2/V3/V6）本代次未提供读口；四道门各自独立判定，未核实不判可上岗</Missing>
         </>,
+        {
+          availability: [
+            { label: "门禁判定 V1/V2/V3/V6", reason: "无独立判定读口；上方四行是审计可观测的门位事件，不等于判定结论" },
+          ],
+        },
       )}
 
       {/* 2 预算 */}
@@ -601,52 +755,58 @@ export function EmployeeDetailRail({ employeeId, hidden }: EmployeeDetailRailPro
         link(`/employees/${enc}?zone=usage`, "成本 →", "预算账本 + 运行统计只读聚合"),
         <>
           <div className="flex flex-col gap-2">
-            <Meter label="今日" value={dayCost} cap={null} money />
-            <Meter label="本月" value={monthCost} cap={n(budget?.monthlyCostUsd)} money />
+            <Meter label="本月" value={monthCost} cap={monthCap} money />
           </div>
           <div className="console-divider" />
           <RailKv
             rows={[
+              ["本月实扣", fmtUsd(monthCost)],
+              ["额度余量", monthCost !== null && monthCap !== null ? fmtUsd(Math.max(0, monthCap - monthCost)) : DASH],
               ["日 token 上限", fmtInt(n(budget?.dailyTokens))],
-              ["月成本上限", fmtUsd(n(budget?.monthlyCostUsd))],
+              ["月成本上限", fmtUsd(monthCap)],
               ["单次上限", fmtUsd(n(budget?.perRunMaxUsd))],
-              ["今日运行", fmtInt(n(statsTotals?.runs))],
+              ["今日运行", fmtInt(n(todayTotals?.runs))],
             ]}
           />
-          {dayCost === null || monthCost === null ? (
-            <Missing>
-              实扣金额（
-              {dayCost === null ? "今日" : ""}
-              {dayCost === null && monthCost === null ? " / " : ""}
-              {monthCost === null ? "本月" : ""}
-              无该员工行，missingEmployeeIds 实证；缺行不作 $0.00）
-            </Missing>
-          ) : null}
-          {fail("usageDay") || fail("usageMonth") ? (
-            <Missing>预算账本 {fail("usageDay") ?? fail("usageMonth")}</Missing>
-          ) : null}
         </>,
+        {
+          availability: [
+            ...(dayMissing || dayCost === null
+              ? [{ label: "今日实扣", reason: "今日预算账本尚无记账行（missingEmployeeIds 含本员工）；缺行不写 $0.00" }]
+              : []),
+            ...(monthTokens === 0 && monthCost !== null && monthCost > 0
+              ? [{ label: "本月 token 记账", reason: "账本 token 列本月为 0 而成本已计 $1.26，token 列未累计（如实展示，不拿 0 冒充用量）" }]
+              : []),
+            ...(fail("usageMonth") ? [{ label: "预算账本", reason: fail("usageMonth") }] : []),
+          ],
+          note: d.stats30 ? `运行成本交叉核对：近 30 天 run-stats 合计 ${fmtUsd(n(stats30?.costUsd))}` : undefined,
+        },
       )}
 
       {/* 3 能力 */}
       {card(
         "cap",
         "能力",
-        n(d.matrix?.skillCount) !== null ? `${s(d.matrix?.skillCount)} 技能` : DASH,
+        `${fmtInt(n(d.matrix?.skillCount) ?? skillRefs.length)} 技能`,
         link(`/employees/${enc}?zone=capability`, "能力 →", "员工 × 技能的覆盖面"),
         <>
           <RailKv
             rows={[
-              ["挂载技能", fmtInt(n(d.matrix?.skillCount) ?? skillRefs.length)],
+              ["挂载技能", `${fmtInt(n(d.matrix?.skillCount) ?? skillRefs.length)} 项`],
               ["技能目录", d.skills === null ? DASH : `${d.skills.length} 条`],
               ["知识分区", `${knowledgeScopes.length} 个`],
               ["工具 / MCP", DASH],
             ]}
           />
-          {d.skills === null ? <Missing>/api/skills {fail("skills")}</Missing> : null}
-          {fail("tools") ? <Missing>/api/tools {fail("tools")}（诚实不可用信封）</Missing> : null}
-          {fail("mcp") ? <Missing>/api/mcp/servers {fail("mcp")}</Missing> : null}
         </>,
+        {
+          availability: [
+            ...(fail("tools") ? [{ label: "工具登记", reason: fail("tools") }] : []),
+            ...(fail("mcp") ? [{ label: "MCP 服务器", reason: fail("mcp") }] : []),
+            ...(d.skills === null ? [{ label: "技能目录", reason: fail("skills") ?? "未回包" }] : []),
+          ],
+          note: !skillRefs.length ? "当前版本 skillRefs 为空集：0 项挂载是真 0，不是加载失败" : undefined,
+        },
       )}
 
       {/* 4 最近运行 */}
@@ -658,7 +818,12 @@ export function EmployeeDetailRail({ employeeId, hidden }: EmployeeDetailRailPro
         <RailRows
           empty="该员工没有运行记录（按 employeeId 真过滤，非加载失败）"
           rows={d.runs.slice(0, 4).map((run) => ({
-            main: `运行 · ${shortRef(run.runId ?? run.id)}`,
+            main: (
+              <span className="flex min-w-0 items-baseline gap-2">
+                <span className="edw-rail-mono">{shortRef(run.runId ?? run.id)}</span>
+                <span className="edw-rail-dim">v{s(run.employeeVersionNo) ?? DASH}</span>
+              </span>
+            ),
             aside: (
               <Pill tone={runStatus(s(run.status)).tone} dot={false}>
                 {runStatus(s(run.status)).label}
@@ -682,14 +847,15 @@ export function EmployeeDetailRail({ employeeId, hidden }: EmployeeDetailRailPro
               ["工号", <span className="edw-rail-mono" title={employeeId}>{shortRef(employeeId)}</span>],
               ["部门", s(emp?.department) ?? DASH],
               ["岗位", s(emp?.title, emp?.duty) ?? DASH],
-              ["时区", DASH],
-              ["语言", DASH],
+              ["负责人", s(emp?.ownerUserId) ? `账号 ${s(emp?.ownerUserId)}` : DASH],
               ["创建时间", fmtWhen(emp?.createdAt)],
               ["最近更新", fmtWhen(emp?.updatedAt)],
             ]}
           />
-          <Missing>时区 / 语言（员工读口未回传这两个字段）</Missing>
         </>,
+        {
+          availability: [{ label: "时区 / 语言", reason: "员工读口未回传这两个字段（department 已回传，故不列）" }],
+        },
       )}
 
       {/* 6 通信与身份 */}
@@ -700,10 +866,10 @@ export function EmployeeDetailRail({ employeeId, hidden }: EmployeeDetailRailPro
         link("/capabilities?tab=channels", "渠道 →", "平台接入与发送回执在这里维护"),
         <>
           <RailRows
-            empty="—（该员工没有 channel 类授予）"
+            empty="该员工没有 channel 类授予（effective-config.grants 空集）"
             rows={channelGrants.map((g) => {
               const selector = rec(g.resourceSelector);
-              const types = strs(selector?.types) ;
+              const types = strs(selector?.types);
               const single = s(selector?.type);
               return {
                 main: `${types.join("/") || single || s(g.scopeType) || DASH} · ${strs(g.actions).join("/") || DASH}`,
@@ -715,13 +881,14 @@ export function EmployeeDetailRail({ employeeId, hidden }: EmployeeDetailRailPro
           <div className="console-divider" />
           <RailKv
             rows={[
-              ["App ID / 凭据", DASH],
-              ["权限清单", DASH],
+              ["权限清单", `${grants.length} 条授予 · ${grantedWithApproval.length} 条带审批引用`],
               ["负责人绑定", s(emp?.ownerUserId) ? `账号 ${s(emp?.ownerUserId)}` : DASH],
             ]}
           />
-          <Missing>员工通信绑定与飞书权限清单（本代次无读口；授予只来自 effective-config 的 grant 账本）</Missing>
         </>,
+        {
+          availability: [{ label: "App ID / 凭据", reason: "员工通信绑定与飞书权限清单本代次无读口；授予只来自 effective-config" }],
+        },
       )}
 
       {/* 7 模型路由 */}
@@ -741,8 +908,16 @@ export function EmployeeDetailRail({ employeeId, hidden }: EmployeeDetailRailPro
               ["失败重试", DASH],
             ]}
           />
-          <Missing>模型路由（员工读口与 effective-config 均未回传模型字段；不猜当前路由）</Missing>
         </>,
+        {
+          availability: [
+            {
+              label: "模型路由字段",
+              reason: "员工读口与 effective-config 均未回传模型/温度/超时字段，不猜当前路由",
+            },
+            { label: "价目表", reason: "/api/models/pricing 404 models.pricing_not_wired（Bisheng 价目 404 + 未配价目文件）" },
+          ],
+        },
       )}
 
       {/* 8 对话与唤起 */}
@@ -755,7 +930,7 @@ export function EmployeeDetailRail({ employeeId, hidden }: EmployeeDetailRailPro
           <RailKv
             rows={[
               ["触发方式", strs(policy?.triggers).map((t) => TRIGGER[t] ?? t).join(" · ") || DASH],
-              ["响应模式", s(policy?.mode) ?? DASH],
+              ["响应模式", RESPONSE_MODE[s(policy?.mode) ?? ""] ?? s(policy?.mode) ?? DASH],
               ["单次最大轮次", fmtInt(n(loopGuard?.maxTurnsPerConversation))],
               ["单次最多工具调用", fmtInt(n(loopGuard?.maxToolCallsPerRun))],
             ]}
@@ -769,8 +944,27 @@ export function EmployeeDetailRail({ employeeId, hidden }: EmployeeDetailRailPro
               ["预算耗尽", FALLBACK[s(fallback?.onBudgetExhausted) ?? ""] ?? s(fallback?.onBudgetExhausted) ?? DASH],
             ]}
           />
-          {!policy ? <Missing>响应策略（当前版本未回传 responsePolicy）</Missing> : null}
+          <div className="console-divider" />
+          <RailRows
+            empty="该员工没有控制台会话（console-sessions 按 employeeId 真过滤）"
+            rows={d.sessions.slice(0, 3).map((cs) => ({
+              main: (
+                <span className="flex min-w-0 items-baseline gap-2">
+                  <span className="edw-rail-mono">{shortRef(cs.sessionId)}</span>
+                  <span className="edw-rail-dim">{fmtInt(n(cs.messageCount))} 条消息</span>
+                </span>
+              ),
+              aside: fmtWhen(cs.updatedAt),
+              title: s(cs.sessionId) ?? undefined,
+            }))}
+          />
         </>,
+        {
+          availability: [
+            ...(!policy ? [{ label: "响应策略", reason: "当前版本未回传 responsePolicy" }] : []),
+            ...(fail("sessions") ? [{ label: "控制台会话", reason: fail("sessions") }] : []),
+          ],
+        },
       )}
 
       {/* 9 提示词性格 */}
@@ -791,8 +985,11 @@ export function EmployeeDetailRail({ employeeId, hidden }: EmployeeDetailRailPro
               ["禁止项", DASH],
             ]}
           />
-          <Missing>性格字段（人设取当前版本岗位说明；语气/长度/禁止项未随读口回传）</Missing>
         </>,
+        {
+          note: "人设取当前版本岗位说明（jobDescription 原文）",
+          availability: [{ label: "语气 / 长度 / 禁止项", reason: "版本读口只有 jobDescription，无独立性格字段" }],
+        },
       )}
 
       {/* 10 技能挂载 */}
@@ -807,8 +1004,12 @@ export function EmployeeDetailRail({ employeeId, hidden }: EmployeeDetailRailPro
             rows={skillRefs.map((ref) => ({ main: ref, aside: "已挂载", title: ref }))}
           />
           <div className="console-divider" />
-          <RailKv rows={[["技能目录", d.skills === null ? DASH : `${d.skills.length} 条`]]} />
-          {d.skills === null ? <Missing>/api/skills {fail("skills")}</Missing> : null}
+          <RailKv
+            rows={[
+              ["技能目录", d.skills === null ? DASH : `${d.skills.length} 条`],
+              ["员工 × 技能行", d.matrix ? "已匹配" : DASH],
+            ]}
+          />
         </>,
       )}
 
@@ -825,9 +1026,13 @@ export function EmployeeDetailRail({ employeeId, hidden }: EmployeeDetailRailPro
               ["MCP 服务器", DASH],
             ]}
           />
-          <Missing>/api/tools {fail("tools") ?? DASH}（登记上游探测未获真数据）</Missing>
-          <Missing>/api/mcp/servers {fail("mcp") ?? DASH}</Missing>
         </>,
+        {
+          availability: [
+            { label: "工具登记", reason: `/api/tools ${fail("tools") ?? DASH}（上游 9119 探测未获真数据，诚实不可用信封）` },
+            { label: "MCP 服务器", reason: `/api/mcp/servers ${fail("mcp") ?? DASH}（无可用上游端点）` },
+          ],
+        },
       )}
 
       {/* 12 知识与范围 */}
@@ -846,10 +1051,22 @@ export function EmployeeDetailRail({ employeeId, hidden }: EmployeeDetailRailPro
             rows={[
               ["记忆范围", memoryScope?.employeeScope === true ? "员工级" : DASH],
               ["保留天数", fmtInt(n(memoryScope?.retentionDays))],
+              ["平台知识分区", d.spaces.length ? `${d.spaces.length} 个（可用 ${availableSpaces.length}）` : DASH],
             ]}
           />
-          {!memoryScope ? <Missing>记忆范围（当前版本未回传 memoryScope）</Missing> : null}
+          {degradedSpaces.length ? (
+            <p className="edw-rail-missing">
+              其中 {degradedSpaces.length} 个平台分区未通过授权校验（{clip(s(degradedSpaces[0]?.failure_detail), 22)}）
+            </p>
+          ) : null}
         </>,
+        {
+          availability: [
+            ...(!memoryScope ? [{ label: "记忆范围", reason: "当前版本未回传 memoryScope" }] : []),
+            ...(fail("spaces") ? [{ label: "平台知识分区", reason: fail("spaces") }] : []),
+          ],
+          note: d.spaces.length ? "平台知识分区为租户级列表，员工级范围以上方 knowledgeScopes 为准" : undefined,
+        },
       )}
 
       {/* 13 访问与预算 */}
@@ -860,7 +1077,7 @@ export function EmployeeDetailRail({ employeeId, hidden }: EmployeeDetailRailPro
         link(`/employees/${enc}?zone=usage`, "成本 →"),
         <>
           <RailRows
-            empty="—（有效配置里没有授予行）"
+            empty="有效配置里没有授予行（grants 空集）"
             rows={grants.map((g) => ({
               main: `${s(g.scopeType) ?? DASH} · ${strs(g.actions).join("/") || DASH}`,
               aside: `${s(g.source) ?? DASH}${s(g.expiresAt) ? ` · 至 ${fmtWhen(g.expiresAt)}` : ""}`,
@@ -871,12 +1088,12 @@ export function EmployeeDetailRail({ employeeId, hidden }: EmployeeDetailRailPro
           <RailKv
             rows={[
               ["日 token 上限", fmtInt(n(budget?.dailyTokens))],
-              ["月成本上限", fmtUsd(n(budget?.monthlyCostUsd))],
+              ["月成本上限", fmtUsd(monthCap)],
               ["单次上限", fmtUsd(n(budget?.perRunMaxUsd))],
             ]}
           />
-          {fail("cfg") ? <Missing>有效配置 {fail("cfg")}</Missing> : null}
         </>,
+        { availability: fail("cfg") ? [{ label: "有效配置", reason: fail("cfg") }] : undefined },
       )}
 
       {/* 14 审批策略 */}
@@ -904,14 +1121,14 @@ export function EmployeeDetailRail({ employeeId, hidden }: EmployeeDetailRailPro
           <div className="console-divider" />
           <RailKv
             rows={[
+              ["待批", `${myApprovals.filter((row) => s(row.status) === "pending").length} 条`],
               ["带审批引用的授予", `${grantedWithApproval.length} 条`],
-              ["风险档", DASH],
             ]}
           />
-          <p className="edw-rail-missing">
-            口径：审批读口不按员工过滤（实测），本卡按 requestedBy 于本页匹配自全量 20 条
-          </p>
         </>,
+        {
+          note: `口径：approvals 读口连 requestedBy 参数也忽略（实测回全量 ${d.approvals.length} 行、含他人行），本卡于前端按 requestedBy 匹配`,
+        },
       )}
 
       {/* 15 版本链 */}
@@ -925,28 +1142,42 @@ export function EmployeeDetailRail({ employeeId, hidden }: EmployeeDetailRailPro
             rows={[
               ["已生效版本", s(version?.versionNo) ? `v${s(version?.versionNo)}` : DASH],
               ["生效时间", fmtWhen(version?.effectiveFrom)],
+              ["历史版本", `${d.versions.length} 个`],
               ["版本号", <span className="edw-rail-mono" title={s(version?.id) ?? undefined}>{shortRef(version?.id)}</span>],
               ["策略快照", <span className="edw-rail-mono" title={s(d.cfg?.snapshotRef) ?? undefined}>{shortRef(d.cfg?.snapshotRef)}</span>],
-              ["草稿", DASH],
+              ["审批引用", s(version?.approvalRef) ? shortRef(version?.approvalRef) : DASH],
             ]}
           />
-          <Missing>草稿 / 待发布版本（写接口未接入；本页只读已生效版本）</Missing>
         </>,
+        {
+          availability: [{ label: "草稿 / 待发布版本", reason: "版本读口无 status 字段，也无草稿读口；本页只读已生效版本" }],
+        },
       )}
 
       {/* 16 最近修改 */}
       {card(
         "changes",
         "最近修改",
-        `${Math.max(0, d.versions.length - 1)} 次版本变更`,
+        `${d.versions.length} 个版本 · ${profileUpdates.length} 次档案更新`,
         link(`/employees/${enc}?zone=audit`, "审计 →"),
         <RailRows
-          empty="—（版本读口没有回传任何版本）"
-          rows={d.versions.slice(0, 5).map((v) => ({
-            main: `v${s(v.versionNo) ?? DASH} · ${s(v.changeNote) ?? "（无变更说明）"}`,
-            aside: fmtWhen(v.effectiveFrom),
-            title: s(v.changeNote) ?? undefined,
-          }))}
+          empty="版本读口没有回传任何版本"
+          rows={[
+            ...profileUpdates.slice(0, 1).map((ev) => {
+              const after = rec(ev.after) ?? {};
+              const field = Object.keys(after)[0];
+              return {
+                main: `档案更新 · ${(field === "department" ? "部门" : field) ?? DASH} → ${s(after[field]) ?? DASH}`,
+                aside: fmtWhen(ev.occurredAt),
+                title: s(ev.eventId) ?? undefined,
+              };
+            }),
+            ...d.versions.slice(0, 4).map((v) => ({
+              main: `v${s(v.versionNo) ?? DASH} · ${s(v.changeNote) ? clip(s(v.changeNote), 22) : "（无变更说明）"}`,
+              aside: fmtWhen(v.effectiveFrom),
+              title: s(v.changeNote) ?? undefined,
+            })),
+          ]}
         />,
       )}
 
@@ -970,44 +1201,74 @@ export function EmployeeDetailRail({ employeeId, hidden }: EmployeeDetailRailPro
       {card(
         "runs",
         "运行记录",
-        `今日 ${fmtInt(n(statsTotals?.runs))} · 列表 ${d.runs.length}`,
+        `近 30 天 ${fmtInt(n(stats30?.runs))}`,
         link(`/employees/${enc}?zone=runs`, "运行 →"),
-        <RailRows
-          empty="该员工没有运行记录（按 employeeId 真过滤）"
-          rows={d.runs.slice(0, 6).map((run) => ({
-            main: (
-              <span className="flex min-w-0 items-baseline gap-2">
-                <span className="edw-rail-mono">{shortRef(run.runId ?? run.id)}</span>
-                <span className="edw-rail-dim">{durationLabel(run.startedAt, run.endedAt)}</span>
-              </span>
-            ),
-            aside: (
-              <Pill tone={runStatus(s(run.status)).tone} dot={false}>
-                {runStatus(s(run.status)).label}
-              </Pill>
-            ),
-            title: s(run.runId) ?? undefined,
-          }))}
-        />,
+        <>
+          <RailKv
+            rows={[
+              ["近 30 天运行", fmtInt(n(stats30?.runs))],
+              ["成功 / 失败", `${fmtInt(n(stats30?.succeeded))} / ${fmtInt(n(stats30?.failed))}`],
+              ["成功率", fmtPct(n(stats30?.successRate))],
+              ["实扣成本", fmtUsd(n(stats30?.costUsd))],
+              ["今日运行", fmtInt(n(todayTotals?.runs))],
+            ]}
+          />
+          <div className="console-divider" />
+          <RailRows
+            empty="该员工没有运行记录（按 employeeId 真过滤）"
+            rows={d.runs.slice(0, 4).map((run) => ({
+              main: (
+                <span className="flex min-w-0 items-baseline gap-2">
+                  <span className="edw-rail-mono">{shortRef(run.runId ?? run.id)}</span>
+                  <span className="edw-rail-dim">{durationLabel(run.startedAt, run.endedAt)}</span>
+                </span>
+              ),
+              aside: n(run.costUsd) !== null ? fmtUsd(n(run.costUsd)) : DASH,
+              title: s(run.runId) ?? undefined,
+            }))}
+          />
+        </>,
+        {
+          note: todayTotals ? "今日 0 为真 0（statsToday.totals 有值），与预算账本缺行不是一件事" : undefined,
+        },
       )}
 
       {/* 19 run 步骤 */}
       {card(
         "steps",
         "run 步骤",
-        latestRun ? shortRef(latestRun.runId ?? latestRun.id) : DASH,
+        sampleRun ? `${d.runEvents.length} / ${fmtInt(n(sampleRun.lastEventSeq))}` : DASH,
         null,
         <>
           <RailKv
             rows={[
-              ["样本运行", latestRun ? shortRef(latestRun.runId ?? latestRun.id) : DASH],
-              ["状态", latestRun ? runStatus(s(latestRun.status)).label : DASH],
-              ["耗时", latestRun ? durationLabel(latestRun.startedAt, latestRun.endedAt) : DASH],
-              ["步骤明细", DASH],
+              ["样本运行", sampleRun ? shortRef(sampleRun.runId ?? sampleRun.id) : DASH],
+              ["状态", sampleRun ? runStatus(s(sampleRun.status)).label : DASH],
+              ["耗时", sampleRun ? durationLabel(sampleRun.startedAt, sampleRun.endedAt) : DASH],
+              ["事件总数", fmtInt(n(sampleRun?.lastEventSeq))],
             ]}
           />
-          <Missing>单次运行步骤（/api/runs 只回运行头，不含 steps；步骤读口未接入）</Missing>
+          <div className="console-divider" />
+          <RailRows
+            empty="该样本运行没有回传事件流"
+            rows={groupRunEvents(d.runEvents).slice(0, 6).map((g, gi) => ({
+              main: (
+                <span className="flex min-w-0 items-baseline gap-2">
+                  <span>{runEventLabel(g.type)}</span>
+                  {g.count > 1 ? <span className="edw-rail-dim">× {g.count}</span> : null}
+                </span>
+              ),
+              aside: g.chars ? `${fmtInt(g.chars)} 字符` : runEventSummary(g.sample),
+              title: s(rec(g.sample.payload)?.event) ?? `#${s(g.sample.seq) ?? gi + 1}`,
+            }))}
+          />
         </>,
+        {
+          availability: fail("runEvents")
+            ? [{ label: "运行事件流", reason: fail("runEvents") }]
+            : undefined,
+          note: "步骤取「近期事件最全」的一次运行（最近的运行常刚起跑、事件数为 0）；不含工具调用参数正文",
+        },
       )}
 
       {/* 20 与该员工相关的事件 */}
@@ -1024,7 +1285,7 @@ export function EmployeeDetailRail({ employeeId, hidden }: EmployeeDetailRailPro
               main: (
                 <span className="flex min-w-0 items-baseline gap-2">
                   <span className="edw-rail-dim">{fmtWhen(ev.occurredAt)}</span>
-                  <span className="edw-rail-mono">{s(ev.action) ?? DASH}</span>
+                  <span>{actionLabel(s(ev.action))}</span>
                 </span>
               ),
               aside: (
