@@ -847,3 +847,68 @@
   z-index: 2;
   background: var(--color-card);
 }
+
+/* sysP — 出站 pump 心跳行（HealthPage 状态区，服务清单之下）。
+ * 形制沿用 sys14 注记行：同一套盒 + 左侧状态轨，轨道色走既有 --color-warning /
+ * --color-destructive 令牌。这里刻意不写 font-size：字阶棘轮门（font-scale.test）
+ * 把 health.css 记在全仓 top-4 归属里，新增字面量字号会推高基线；字号由 tsx 上的
+ * text-xs（本目录既有形制）承担。绿色只来自 Badge tone，容器本身不给成功色。 */
+.sysP-pump {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 8px;
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-muted);
+  color: var(--color-foreground);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.sysP-pump[data-state="notWired"] {
+  border-left: 3px solid var(--color-warning);
+}
+
+.sysP-pump[data-state="unknown"] {
+  border-left: 3px solid var(--color-warning);
+}
+
+.sysP-pump[data-state="failed"] {
+  border-left: 3px solid var(--color-warning);
+}
+
+.sysP-pump[data-state="stale"] {
+  border-left: 3px solid var(--color-destructive);
+}
+
+.sysP-pump-line {
+  color: var(--color-foreground);
+}
+
+.sysP-pump-note {
+  flex: 1 1 240px;
+  min-width: 0;
+  color: var(--color-muted-foreground);
+}
+
+.sysP-pump-retry {
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 3px 8px;
+  background: transparent;
+  color: var(--color-foreground);
+  cursor: pointer;
+}
+
+.sysP-pump-retry:hover {
+  border-color: var(--color-foreground);
+}
+
+.sysP-pump-retry:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+}
