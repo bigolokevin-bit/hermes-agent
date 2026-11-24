@@ -98,7 +98,7 @@ describe("isEventsFeedMessage", () => {
 
 describe("reconnect message copy", () => {
   it("renders the delay in whole seconds", () => {
-    expect(eventsReconnectingMessage(1_000)).toContain("1s");
-    expect(eventsReconnectingMessage(30_000)).toContain("30s");
+    expect(eventsReconnectingMessage(1_000)).toContain("1 秒");
+    expect(eventsReconnectingMessage(30_000)).toContain("30 秒");
   });
 });

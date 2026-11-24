@@ -3925,20 +3925,21 @@ function containerQuery(key: string): HTMLElement | null {
 
       <Breadcrumbs items={crumbs} />
 
-      <div className="knw5-seg" role="tablist" aria-label="知识分组">
+      {/* 二级分区，不是 tablist：全站一屏只留外壳那一排 tab。这里是一排
+          普通按钮（功能入口不变，只是换了语义与样式档位）。 */}
+      <nav className="knw5-seg" aria-label="知识分组">
         {TAB_ORDER.map((key) => (
           <button
             key={key}
             type="button"
-            role="tab"
-            aria-selected={tab === key}
+            aria-current={tab === key ? "page" : undefined}
             data-testid={`knw5-tab-${key}`}
             onClick={() => selectTab(key)}
           >
             {TAB_LABEL[key]}
           </button>
         ))}
-      </div>
+      </nav>
 
       <Card>
         <CardContent className="knw5-body" data-testid="knw5-panel" data-tab={tab}>

@@ -1,6 +1,25 @@
 import { describe, expect, it } from 'vitest'
 
-import { SIDECAR_DISCONNECTED_MESSAGE, credentialWarning, sidecarErrorMessage } from './chat-sidebar-banner'
+import {
+  ACTIVITY_UNAVAILABLE_MESSAGE,
+  ACTIVITY_UNAVAILABLE_RETRY_LABEL,
+  SIDECAR_DISCONNECTED_MESSAGE,
+  credentialWarning,
+  sidecarErrorMessage
+} from './chat-sidebar-banner'
+
+describe('activity unavailable copy', () => {
+  it('states the environment fact without fault language', () => {
+    expect(ACTIVITY_UNAVAILABLE_MESSAGE).toContain('活动流未接入本环境')
+    expect(ACTIVITY_UNAVAILABLE_MESSAGE).toContain('对话本身可用')
+    expect(ACTIVITY_UNAVAILABLE_MESSAGE).not.toMatch(/could not connect/i)
+    expect(ACTIVITY_UNAVAILABLE_RETRY_LABEL).toBe('重试接入')
+  })
+
+  it('keeps the side-panel failure copy in Chinese', () => {
+    expect(SIDECAR_DISCONNECTED_MESSAGE).toContain('模型与工具活动未能连接')
+  })
+})
 
 describe('credentialWarning', () => {
   it('rewrites the gateway probe into a sentence that names the provider and the fix', () => {

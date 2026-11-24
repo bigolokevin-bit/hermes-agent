@@ -7,7 +7,19 @@
 
 /** The side panel could not connect; the chat itself is unaffected. */
 export const SIDECAR_DISCONNECTED_MESSAGE =
-  'The chat side panel (model and tool activity) could not connect. Chat still works. Click Reconnect side panel to try again.'
+  '模型与工具活动未能连接，对话本身仍可用。点「重试连接」再试一次。'
+
+/**
+ * This deployment has no activity-stream backend at all (the BFF answers the
+ * ticket exchange with an unknown-route / read-only error, or the socket is
+ * refused before it ever opens). That is an environment fact, not a fault the
+ * user caused, so the sidebar shows one calm line instead of a red banner.
+ */
+export const ACTIVITY_UNAVAILABLE_MESSAGE =
+  '活动流未接入本环境（模型与工具活动暂不显示），对话本身可用'
+
+/** One-shot re-attempt offered beside ACTIVITY_UNAVAILABLE_MESSAGE. */
+export const ACTIVITY_UNAVAILABLE_RETRY_LABEL = '重试接入'
 
 /** Transport-level texts the shared JSON-RPC client can throw. All mean "sidecar down". */
 const SIDECAR_TRANSPORT_ERRORS = [
@@ -47,6 +59,6 @@ export function credentialWarning(raw: string | undefined | null): CredentialWar
   const provider = match[1]
   return {
     provider,
-    message: `No API key set for ${provider}, so messages will fail. Add a key under Keys, or pick a different provider.`
+    message: `还没有为 ${provider} 配置 API Key，消息会发送失败。请在「密钥」里添加，或换一个模型。`
   }
 }

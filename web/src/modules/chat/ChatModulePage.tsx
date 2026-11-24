@@ -6,6 +6,7 @@ import { fetchJSON, setManagementProfile } from "@/lib/api";
 import { ptyAttachToken } from "@/lib/pty-attach-token";
 import { ProfileContext } from "@/contexts/profile-context";
 import { useProfileScope } from "@/contexts/useProfileScope";
+import "./chat-module.css";
 import {
   EmptyBlock,
   ErrorStateBlock,
@@ -315,7 +316,7 @@ export default function ChatModulePage({
           data-chat-host
           data-profile={employeeId}
           data-scope="employee"
-          className="flex min-h-0 flex-1 flex-col"
+          className="chat-module-shell flex min-h-0 flex-1 flex-col"
         >
           <ScopedToEmployee key={employeeId} employeeId={employeeId}>
             <Suspense fallback={<BusyHost />}>

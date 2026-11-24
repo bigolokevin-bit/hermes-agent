@@ -382,18 +382,49 @@ describe('ChatSidebar event socket reconnect', () => {
       }
 
       // One more drop with the budget spent: no further connect is
-      // scheduled, and the banner reports give-up.
+      // scheduled. The socket never opened once, so this deployment has no
+      // sidecar → the calm「活动流未接入」line, not a red give-up banner.
       const finalHandler = stateHandlers[stateHandlers.length - 1];
       await act(async () => {
         finalHandler("closed");
       });
       await advance(4_000);
       expect(gatewayMocks.connect).toHaveBeenCalledTimes(6);
-      expect(container?.textContent ?? "").toContain("gave up after 5 attempts");
+      expect(container?.textContent ?? "").toContain("活动流未接入本环境");
+      expect(container?.textContent ?? "").not.toContain("重试 5 次后仍未能连接");
     } finally {
       gatewayMocks.onState.mockImplementation(originalImpl!);
     }
   });
+
+  it('shows the neutral unavailable line when the ticket route does not exist', async () => {
+    // This deployment's BFF has no ws-ticket route: deterministic, so the
+    // sidebar must not paint a red reconnect banner nor burn the ladder.
+    apiMocks.buildWsUrl.mockRejectedValue(
+      Object.assign(new Error('unknown route'), {
+        status: 404,
+        body: '{"code":"console.unknown_route","message":"no such route"}'
+      })
+    )
+
+    const { ChatSidebar } = await import('./ChatSidebar')
+    await render(<ChatSidebar channel="chat-1" />)
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    expect(container.textContent).toContain('活动流未接入本环境')
+    expect(container.textContent).not.toContain('实时活动已暂停')
+
+    await advance(60_000)
+    expect(apiMocks.buildWsUrl).toHaveBeenCalledTimes(1)
+
+    // The calm line still offers a one-shot re-attempt.
+    const retry = Array.from(container.querySelectorAll('button')).find(
+      b => b.textContent?.trim() === '重试接入'
+    )
+    expect(retry).toBeDefined()
+  })
 
   it('times out a stalled URL request and retries', async () => {
     let resolveStalledRequest!: (url: string) => void
@@ -537,7 +568,7 @@ describe('ChatSidebar event socket reconnect', () => {
 
     // A flapping socket must not refill the ladder: 15 retries + the initial connection.
     expect(FakeWebSocket.instances.length).toBeLessThanOrEqual(EVENTS_MAX_RECONNECT_ATTEMPTS + 1)
-    expect(container.textContent).toContain('stopped after')
+    expect(container.textContent).toContain('次重连后停止')
   })
 
   it('does not retry auth rejections', async () => {
@@ -580,19 +611,21 @@ describe('ChatSidebar event socket reconnect', () => {
   it('clears its own banner on a successful reconnect', async () => {
     await renderSidebar()
 
+    // A feed that had opened once is a real drop, so it keeps the fault copy.
     await act(async () => {
+      FakeWebSocket.instances[0].emit('open', {})
       FakeWebSocket.instances[0].emit('close', { code: 1006 })
     })
-    expect(container.textContent).toContain('Live tool activity paused')
+    expect(container.textContent).toContain('实时活动已暂停')
 
     await advance(1_000)
     await act(async () => {
       FakeWebSocket.instances[1].emit('open', {})
     })
 
-    // Banner gone entirely — including the "Reconnect side panel" button,
-    // which only renders while `error` is set.
-    expect(container.textContent).not.toContain('Live tool activity')
+    // Banner gone entirely — including the「重试连接」button, which only
+    // renders while `error` is set.
+    expect(container.textContent).not.toContain('实时活动')
   })
 
   it('does not clear a credential warning when the feed recovers', async () => {
@@ -642,7 +675,7 @@ describe('ChatSidebar event socket reconnect', () => {
     // The disconnect message must not have replaced it. (Matching the
     // banner text specifically — the reconnect button label is expected to
     // be present whenever a banner shows.)
-    expect(container.textContent).not.toContain('Live tool activity paused')
+    expect(container.textContent).not.toContain('实时活动已暂停')
   })
 
   it('offers Add key and Switch model when the gateway reports a missing key', async () => {
@@ -658,13 +691,13 @@ describe('ChatSidebar event socket reconnect', () => {
 
     const buttons = Array.from(container.querySelectorAll('button'))
     const labels = buttons.map(b => b.textContent?.trim())
-    expect(labels).toContain('Add key')
-    expect(labels).toContain('Switch model')
+    expect(labels).toContain('添加密钥')
+    expect(labels).toContain('切换模型')
 
     // Add key must be an in-app route change: a full page load would tear down
     // the terminal scrollback and the chat sockets.
     await act(async () => {
-      buttons.find(b => b.textContent?.trim() === 'Add key')?.click()
+      buttons.find(b => b.textContent?.trim() === '添加密钥')?.click()
     })
     expect(routerMocks.navigate).toHaveBeenCalledWith('/env')
   })
@@ -699,7 +732,7 @@ describe('ChatSidebar event socket reconnect', () => {
       FakeWebSocket.instances[0].emit('close', { code: 1006 })
     })
     const reconnectButton = Array.from(container.querySelectorAll('button')).find(b =>
-      /reconnect side panel/i.test(b.textContent ?? '')
+      /重试接入/.test(b.textContent ?? '')
     )
     expect(reconnectButton).toBeDefined()
     await act(async () => {
@@ -804,7 +837,7 @@ describe('ChatSidebar sidecar redial grace (#129393)', () => {
     })
     await advance(4_000)
     expect(gatewayMocks.connect).toHaveBeenCalledTimes(6)
-    expect(container?.textContent ?? '').toContain('gave up after 5 attempts')
+    expect(container?.textContent ?? '').toContain('重试 5 次后仍未能连接')
   })
 
   it('clears the pending redial timer when the connection opens', async () => {

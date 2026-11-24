@@ -1,0 +1,20 @@
+/**
+ * Chat module shell — the employee-scoped chat host.
+ *
+ * The upstream ChatPage only initialises xterm after a PTY credential exists;
+ * in deployments without an activity/PTY backend the host stays an empty
+ * <div>, which used to read as a pure black block. Give that empty host a
+ * neutral Chinese empty state instead. The rule is scoped to this module's
+ * shell and literally matches `:empty`, so a real terminal (xterm inserts
+ * children on open) never shows it.
+ */
+.chat-module-shell .hermes-chat-xterm-host:empty::after {
+  content: "还没有会话 · 输入框在下方";
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  block-size: 100%;
+  color: var(--color-muted-foreground, rgb(255 255 255 / 45%));
+  font-size: 12px;
+  letter-spacing: 0.02em;
+}

@@ -36,7 +36,7 @@ import { ModelPickerDialog } from '@/components/ModelPickerDialog'
 import { ModelReloadConfirm } from '@/components/ModelReloadConfirm'
 import { ReasoningPicker } from '@/components/ReasoningPicker'
 import { GatewayClient, type ConnectionState } from '@/lib/gatewayClient'
-import { EventsFeedClient } from '@/lib/eventsFeedClient'
+import { EventsFeedClient, isActivityBackendMissing } from '@/lib/eventsFeedClient'
 import { api } from '@/lib/api'
 import {
   EVENTS_MAX_RECONNECT_ATTEMPTS,
@@ -49,7 +49,12 @@ import {
   isEventsFeedMessage,
   shouldRetryEventsClose
 } from '@/lib/events-reconnect'
-import { credentialWarning, sidecarErrorMessage } from '@/lib/chat-sidebar-banner'
+import {
+  ACTIVITY_UNAVAILABLE_MESSAGE,
+  ACTIVITY_UNAVAILABLE_RETRY_LABEL,
+  credentialWarning,
+  sidecarErrorMessage
+} from '@/lib/chat-sidebar-banner'
 import { titleFromSessionInfoPayload } from '@/lib/chat-title'
 
 import { cn } from '@/lib/utils'
@@ -75,19 +80,19 @@ const SIDE_CAR_MAX_RECONNECT_ATTEMPTS = 5;
 // Shared by the JSON-RPC sidecar and the events feed (#129393).
 const HEALTHY_OPEN_GRACE_MS = 10_000;
 
-// Surfaced once when the redial budget is exhausted. Only this module may
-// clear it (on the next successful open), matching how the events feed
-// owns its own banner messages.
+// Surfaced once when the redial budget is exhausted after a connection that
+// had actually opened. A backend that never opened at all is「未接入」, not a
+// fault, and takes the calm line instead (see `sidecarUnavailable`).
 const SIDE_CAR_GAVE_UP_MESSAGE =
-  "gateway sidecar disconnected — gave up after " +
-  `${SIDE_CAR_MAX_RECONNECT_ATTEMPTS} attempts, use Reconnect`;
+  '模型与工具活动在重试 ' +
+  `${SIDE_CAR_MAX_RECONNECT_ATTEMPTS} 次后仍未能连接，点「重试连接」再试一次。`;
 
 const STATE_LABEL: Record<ConnectionState, string> = {
-  idle: 'idle',
-  connecting: 'connecting',
-  open: 'live',
-  closed: 'closed',
-  error: 'error'
+  idle: '空闲',
+  connecting: '连接中',
+  open: '在线',
+  closed: '已断开',
+  error: '异常'
 }
 
 const STATE_TONE: Record<ConnectionState, 'secondary' | 'warning' | 'success' | 'destructive'> = {
@@ -153,11 +158,21 @@ export function ChatSidebar({
   // Reset on a successful open and on scope switches.
   const sidecarRedialAttemptRef = useRef(0)
   const sidecarGaveUpRef = useRef(false)
+  // Did a sidecar socket ever open? A budget exhausted without a single open
+  // means this deployment has no sidecar backend — 「未接入」, not a fault.
+  const sidecarOpenedRef = useRef(false)
+  // Positive evidence that the backend is absent (unknown route / read-only
+  // BFF / no session token). Stops the redial ladder instead of burning it.
+  const sidecarMissingRef = useRef(false)
 
   const [state, setState] = useState<ConnectionState>('idle')
   const [info, setInfo] = useState<SessionInfo>({})
   const [modelOpen, setModelOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Neutral「活动流未接入」state, one flag per socket so a feed that recovers
+  // clears only its own half. Neither ever paints the red fault banner.
+  const [sidecarUnavailable, setSidecarUnavailable] = useState(false)
+  const [feedUnavailable, setFeedUnavailable] = useState(false)
   // Runtime model identity of the PTY chat session, from its `session.info`
   // broadcasts over the events feed. This is the model actually answering —
   // when a provider fallback replaces the configured primary mid-turn
@@ -227,6 +242,10 @@ export function ChatSidebar({
     // Fresh scope, fresh sidecar redial budget (#95951).
     sidecarRedialAttemptRef.current = 0
     sidecarGaveUpRef.current = false
+    sidecarOpenedRef.current = false
+    sidecarMissingRef.current = false
+    setSidecarUnavailable(false)
+    setFeedUnavailable(false)
     setVersion(v => v + 1)
   }, [scopeKey])
 
@@ -279,6 +298,11 @@ export function ChatSidebar({
         return;
       }
       if (s === "open") {
+        // An open proves the backend exists; clear the「未接入」line and let
+        // a later drop be treated as a real fault.
+        sidecarOpenedRef.current = true;
+        sidecarMissingRef.current = false;
+        setSidecarUnavailable(false);
         // A pending redialTimer would bump the version and tear down the
         // connection that just opened (#129393).
         if (redialTimer) {
@@ -313,10 +337,20 @@ export function ChatSidebar({
       if (cancelled || redialTimer) {
         return;
       }
+      // Deterministic「this deployment has no sidecar」: stop burning attempts.
+      if (sidecarMissingRef.current) {
+        return;
+      }
       // The attempt counter lives in a ref: each redial rebuilds the client
       // and re-runs this effect, so a closure-local counter would reset and
       // the budget would never exhaust (#95951).
       if (sidecarRedialAttemptRef.current >= SIDE_CAR_MAX_RECONNECT_ATTEMPTS) {
+        // A ladder that never opened once is an absent backend, not a fault:
+        // show the calm line instead of the red "gave up" banner.
+        if (!sidecarOpenedRef.current) {
+          setSidecarUnavailable(true);
+          return;
+        }
         // Mirror the events feed's give-up contract: say so once, then the
         // manual Reconnect affordance stays the only path. Cleared again if
         // a later connection does open (manual reconnect followed by a
@@ -354,6 +388,13 @@ export function ChatSidebar({
       .catch((e: Error) => {
         if (!cancelled) {
           console.warn(`[chat-sidebar] sidecar connect failed: ${e.message}`)
+          if (isActivityBackendMissing(e)) {
+            // No ticket route / read-only BFF / no session token: the
+            // deployment has no sidecar. Neutral line, no retry ladder.
+            sidecarMissingRef.current = true
+            setSidecarUnavailable(true)
+            return
+          }
           setError(sidecarErrorMessage(e.message))
         }
       })
@@ -395,6 +436,10 @@ export function ChatSidebar({
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null
     let healthyOpenTimer: ReturnType<typeof setTimeout> | null = null
     let attempt = 0
+    // Did this socket generation ever open? Before the first open the feed
+    // is「未接入」rather than「断线」: the calm line, never the red banner,
+    // and the retry ladder keeps running silently in the background.
+    let feedOpened = false
 
     // The banner is shared with `info.credential_warning` and the JSON-RPC
     // sidecar, and `error` is those messages' only home — the sidecar does
@@ -404,6 +449,14 @@ export function ChatSidebar({
       !unmounting && setError(current => (isEventsFeedMessage(current) ? msg : (current ?? msg)))
 
     const clearEventsBanner = () => !unmounting && setError(current => (isEventsFeedMessage(current) ? null : current))
+
+    // A feed that has never opened once means this deployment provides no
+    // activity stream. Calm line, no red banner, no「重连」fault language.
+    const markUnavailable = () => {
+      if (unmounting) return
+      clearEventsBanner()
+      setFeedUnavailable(true)
+    }
 
     // Single scheduling path: the client collapses `error` + `close` of one
     // socket generation into one `closed` transition, so only one timer is
@@ -417,13 +470,26 @@ export function ChatSidebar({
         healthyOpenTimer = null
       }
       if (attempt >= EVENTS_MAX_RECONNECT_ATTEMPTS) {
+        // Never opened: the retries were chasing an absent endpoint, so the
+        // neutral「未接入」line stays and the ladder stops.
+        if (!feedOpened) {
+          markUnavailable()
+          return
+        }
         surface(eventsGaveUpMessage())
         return
       }
 
       const delay = eventsReconnectDelayMs(attempt)
       attempt += 1
-      surface(eventsReconnectingMessage(delay))
+      // Before the first successful open there is nothing to "pause": show
+      // the available-soon line, not a fault banner that would sit red on
+      // screen while the backend is simply absent.
+      if (feedOpened) {
+        surface(eventsReconnectingMessage(delay))
+      } else {
+        markUnavailable()
+      }
 
       reconnectTimer = setTimeout(() => {
         reconnectTimer = null
@@ -439,7 +505,13 @@ export function ChatSidebar({
         // Re-minted every attempt: tickets are single-use with a short TTL,
         // so a reconnect cannot replay the URL from the first connection.
         await feed.connect(channel)
-      } catch {
+      } catch (err) {
+        // The ticket exchange said the route does not exist (or the BFF is
+        // read-only): deterministic「未接入」, retrying cannot help.
+        if (isActivityBackendMissing(err)) {
+          markUnavailable()
+          return
+        }
         // Connect-phase failures (ticket mint, handshake timeout, close
         // during handshake) reach the reconnect ladder through the close
         // handler when a socket existed; a pre-socket failure has no close
@@ -467,6 +539,8 @@ export function ChatSidebar({
 
     const offState = feed.onState(state => {
       if (state === 'open') {
+        feedOpened = true
+        setFeedUnavailable(false)
         clearEventsBanner()
         // Same rule as the sidecar: an open that dies within the grace window
         // is a flap, not a recovery, so it must not refill the ladder.
@@ -531,6 +605,19 @@ export function ChatSidebar({
     setVersion(v => v + 1)
   }, [])
 
+  // One-shot re-attempt offered beside the neutral「未接入」line. Resets both
+  // budgets and flags, then rebuilds the sockets exactly like `reconnect`.
+  const retryActivity = useCallback(() => {
+    setSidecarUnavailable(false)
+    setFeedUnavailable(false)
+    setError(current => (isEventsFeedMessage(current) ? null : current))
+    sidecarRedialAttemptRef.current = 0
+    sidecarGaveUpRef.current = false
+    sidecarOpenedRef.current = false
+    sidecarMissingRef.current = false
+    setVersion(v => v + 1)
+  }, [])
+
   // Runtime-first (#54509): the PTY session's `session.info` reports the
   // model that is actually answering, so a provider-fallback swap shows the
   // fallback model, not the configured primary that failed. Config remains
@@ -549,6 +636,24 @@ export function ChatSidebar({
         className
       )}
     >
+      {!error && (sidecarUnavailable || feedUnavailable) && (
+        <div
+          className="flex flex-wrap items-baseline gap-x-2 text-[11px] leading-snug text-text-tertiary"
+          role="status"
+          data-testid="chat-sidebar-activity-unavailable"
+        >
+          <span className="min-w-0">{ACTIVITY_UNAVAILABLE_MESSAGE}</span>
+          <button
+            type="button"
+            onClick={retryActivity}
+            className="underline decoration-dotted underline-offset-2 hover:text-text-secondary"
+            data-testid="chat-sidebar-activity-retry"
+          >
+            {ACTIVITY_UNAVAILABLE_RETRY_LABEL}
+          </button>
+        </div>
+      )}
+
       <Card className="flex items-center justify-between gap-2 px-3 py-2">
         <div className="min-w-0 flex-1">
           <div className="text-display text-xs tracking-wider text-text-tertiary">model</div>
@@ -562,7 +667,7 @@ export function ChatSidebar({
               'self-start normal-case tracking-normal text-sm font-medium',
               'hover:underline disabled:no-underline'
             )}
-            title={modelName === '—' ? 'switch model' : modelName}
+            title={modelName === '—' ? '切换模型' : modelName}
           >
             <span className="flex min-w-0 max-w-full items-center gap-1">
               <span className="truncate">{modelLabel}</span>
@@ -585,7 +690,7 @@ export function ChatSidebar({
             refreshKey={modelRefreshKey}
             onChanged={effort =>
               setModelNotice(
-                `Reasoning effort set to ${effort}. Run /new or refresh the page to apply it to this chat.`
+                `推理强度已设为 ${effort}。运行 /new 或刷新页面后可应用到本对话。`
               )
             }
           />
@@ -615,12 +720,12 @@ export function ChatSidebar({
                 onClick={() => window.location.reload()}
                 prefix={<RefreshCw />}
               >
-                Reload page
+                刷新页面
               </Button>
             )}
             {error && !showReload && (
               <Button size="sm" outlined className="mt-1" onClick={reconnect} prefix={<RefreshCw />}>
-                Reconnect side panel
+                重试连接
               </Button>
             )}
             {!error && credential && (
@@ -634,10 +739,10 @@ export function ChatSidebar({
                   // still lives under ChatPage, so router context is present.)
                   onClick={() => navigate('/env')}
                 >
-                  Add key
+                  添加密钥
                 </Button>
                 <Button size="sm" outlined onClick={() => setModelOpen(true)}>
-                  Switch model
+                  切换模型
                 </Button>
               </div>
             )}
@@ -689,7 +794,7 @@ export function ChatSidebar({
           const m = pendingReloadModel
           setPendingReloadModel(null)
           setModelNotice(
-            `Model set to ${m}. Run /new or refresh the page to apply it to this chat.` +
+            `模型已设为 ${m}。运行 /new 或刷新页面后可应用到本对话。` +
               (switchNotice ? ` ${switchNotice}` : '')
           )
         }}

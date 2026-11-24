@@ -91,3 +91,31 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
     )
   })
 }
+
+/**
+ * BFF answers that mean "this deployment does not provide a WebSocket
+ * backend", as opposed to "the connection failed and is worth retrying":
+ *
+ *  - `404 console.unknown_route` — the BFF has no ticket/events route;
+ *  - `405 console.read_only` — the console BFF only serves GET/HEAD, so no
+ *    POST ticket exchange and no upgrade can ever succeed;
+ *  - the loopback client's "Session token not available" — the page was not
+ *    served by the Hermes dashboard server, so it has no WS credential.
+ *
+ * All three are environment facts, surfaced as the calm「活动流未接入」line
+ * instead of a red reconnect banner. Real failures (401/403/5xx, a socket
+ * that opened and then died) keep the fault tone.
+ */
+const MISSING_BACKEND_CODES = ['console.unknown_route', 'console.read_only']
+
+export function isActivityBackendMissing(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false
+  const record = error as { body?: unknown; message?: unknown; status?: unknown }
+  const status = typeof record.status === 'number' ? record.status : undefined
+  const text = `${typeof record.body === 'string' ? record.body : ''} ${
+    typeof record.message === 'string' ? record.message : ''
+  }`
+  if (text.includes('Session token not available')) return true
+  if (status !== 404 && status !== 405) return false
+  return MISSING_BACKEND_CODES.some(code => text.includes(code))
+}

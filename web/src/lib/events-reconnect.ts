@@ -58,26 +58,26 @@ export function isEventsAuthRejection(code: number | undefined): boolean {
 // wrote itself. Everything this module can put in the banner starts with
 // EVENTS_FEED_PREFIX so `isEventsFeedMessage` can recognise it.
 //
-// "Live tool activity" is what the feed is to the user: the sidebar's tool
-// list and the chat title. Never name the transport or print a close code —
-// those go to the console (ChatSidebar logs them) for diagnosis.
-const EVENTS_FEED_PREFIX = 'Live tool activity '
+// 「实时活动」is what the feed is to the user: the sidebar's tool list and
+// the chat title. Never name the transport or print a close code — those go
+// to the console (ChatSidebar logs them) for diagnosis.
+const EVENTS_FEED_PREFIX = '实时活动'
 
-export const EVENTS_DISCONNECTED_MESSAGE = `${EVENTS_FEED_PREFIX}paused — the chat title may not update`
+export const EVENTS_DISCONNECTED_MESSAGE = `${EVENTS_FEED_PREFIX}已暂停，会话标题可能不会更新`
 
 export function eventsReconnectingMessage(delayMs: number): string {
-  return `${EVENTS_FEED_PREFIX}paused — reconnecting in ${Math.round(delayMs / 1000)}s…`
+  return `${EVENTS_FEED_PREFIX}已暂停，${Math.round(delayMs / 1000)} 秒后重连…`
 }
 
 /** Auth rejection (4401/4403): the login expired, only a reload mints a new one.
  *  The code is logged by the caller; it never appears in user text. */
 export function eventsRejectedMessage(code: number): string {
   void code
-  return `${EVENTS_FEED_PREFIX}stopped (your login expired). Reload the page to resume.`
+  return `${EVENTS_FEED_PREFIX}已停止（登录已过期）。刷新页面后恢复。`
 }
 
 export function eventsGaveUpMessage(): string {
-  return `${EVENTS_FEED_PREFIX}stopped after ${EVENTS_MAX_RECONNECT_ATTEMPTS} reconnect attempts. Click Reconnect side panel, or reload the page.`
+  return `${EVENTS_FEED_PREFIX}在 ${EVENTS_MAX_RECONNECT_ATTEMPTS} 次重连后停止。点「重试连接」或刷新页面。`
 }
 
 /** True for the auth-rejection message, which needs a Reload button rather than Reconnect. */

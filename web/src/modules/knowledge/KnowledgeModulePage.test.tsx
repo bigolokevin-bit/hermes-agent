@@ -1692,12 +1692,22 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
       for (const key of ["spaces", "ingest", "retrieval", "evidence"]) {
         expect(byTestid(`knw5-tab-${key}`), key).toBeTruthy();
       }
-      const selected = container.querySelector('[role="tab"][aria-selected="true"]');
+      const selected = container.querySelector('.knw5-seg [aria-current="page"]');
       expect(selected?.getAttribute("data-testid")).toBe(`knw5-tab-${panel}`);
       expect(attr("knw5-panel", "data-tab")).toBe(panel);
       expect(byTestid(`knw5-panel-${panel}`)).toBeTruthy();
       for (const url of urls) expect(urlsCalled(), url).toContain(url);
     }
+  });
+
+  it("renders the group switcher as a secondary nav, not a second tablist", async () => {
+    fetchMock.mockResolvedValue({ items: [], results: [], events: [], sessions: [] });
+    await render("/knowledge?tab=spaces");
+    expect(container.querySelectorAll('[role="tablist"]')).toHaveLength(0);
+    expect(container.querySelectorAll('[role="tab"]')).toHaveLength(0);
+    const seg = container.querySelector('.knw5-seg');
+    expect(seg?.getAttribute("role")).toBeNull();
+    expect(seg?.querySelectorAll("button")).toHaveLength(4);
   });
 
   it("keeps the selected panel and keyword in the URL and restores both on re-render", async () => {
@@ -1721,7 +1731,7 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
   it("switches panels when only the URL changes, without a stale copy of it", async () => {
     fetchMock.mockResolvedValue({ items: [] });
     await render("/knowledge?tab=sources");
-    const initial = container.querySelector('[role="tab"][aria-selected="true"]');
+    const initial = container.querySelector('.knw5-seg [aria-current="page"]');
     expect(initial?.getAttribute("data-testid")).toBe("knw5-tab-ingest");
     await click("jump-search");
     expect(attr("knw5-panel", "data-tab")).toBe("retrieval");
@@ -2473,7 +2483,7 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
       await click(`knw5-tab-${key}`);
       expect(attr("knw5-panel", "data-tab")).toBe(key);
       expect(byTestid(`knw5-panel-${key}`)).toBeTruthy();
-      const selected = container.querySelector('[role="tab"][aria-selected="true"]');
+      const selected = container.querySelector('.knw5-seg [aria-current="page"]');
       expect(selected?.getAttribute("data-testid")).toBe(`knw5-tab-${key}`);
     }
     const lastSearch = byTestid("loc")?.textContent ?? "";
