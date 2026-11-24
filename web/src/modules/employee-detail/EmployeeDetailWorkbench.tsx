@@ -151,7 +151,6 @@ export default function EmployeeDetailWorkbench({
             {header.department ? (
               <span className="min-w-0">部门 · {header.department}</span>
             ) : null}
-            <span className="min-w-0">工作台</span>
           </p>
         </div>
         {employeeId ? (

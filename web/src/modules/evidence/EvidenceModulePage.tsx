@@ -238,7 +238,7 @@ export function EvidenceModulePage() {
     <section className="min-w-0 space-y-4" data-testid="ev5-page">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="font-mondwest text-xl">证据与引用</h1>
+          <h2 className="font-mondwest text-xl">证据与引用</h2>
           <p className="text-sm ev5-muted">
             每条记录都写明谁留下的、动了什么对象、什么时候；能点回原文的给链接，点不回去的说清原因。
           </p>

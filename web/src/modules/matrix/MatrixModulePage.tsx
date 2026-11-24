@@ -194,7 +194,7 @@ export function MatrixModulePage() {
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="font-mondwest text-xl">能力与权限矩阵</h1>
+          <h2 className="font-mondwest text-xl">能力与权限矩阵</h2>
           <p className="mt-1 text-sm text-white/55">谁被授了什么、谁还没有，放在同一张表里看；点一行或一列换视角。</p>
         </div>
         <div className="flex items-center gap-2">
