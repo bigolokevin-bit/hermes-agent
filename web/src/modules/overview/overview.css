@@ -131,6 +131,7 @@
 /* 值 + 火花/点阵槽位（基线 .kpi .kr：底对齐，槽位 118×46 靠右） */
 .ov5-kr {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-end;
   gap: var(--space-ls-3);
   min-width: 0;
@@ -149,6 +150,7 @@
 
 .ov5-kpi-viz {
   display: flex;
+  min-width: 0;
   flex: none;
   align-items: flex-end;
   margin-left: auto;
