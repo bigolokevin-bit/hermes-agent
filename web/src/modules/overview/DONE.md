@@ -49,3 +49,10 @@
 - 换基：git merge FETCH_HEAD（DU-08/SE-05 与 modules/overview 零交集，diff 实据为空，零冲突）→ 终 tip 2d23a79e8d3303e5cb25a991af50de6626112310，ls-remote 输出行核验 B=0。
 - 换基后门禁：全量 vitest 541 文件 / 4162 过 | 1 跳 exit 0；模块 52/52；e1Contract 本树判读 SKIPPED-NOT-DEPLOYED（dist 残留已 rm）。
 - task-lane：OM-15 与 OM-13 均 DELIVERED tip 2d23a79e8d…，写后复读核验（OM-13 行 branch/worktree 字段仍指旧死栈，报 L0 清理）。
+
+## OM-11 采集时刻纪律·跨页 parity 腿补测（2026-11-24，基现脸 db793b7b10）
+
+- 现状核验：sourceStamp/AsofLine(R41 取最新)/Freshness 与「never client clock」纪律已在现脸；缺口＝overview 侧无独立 as-of 测试件（metrics 侧有 asof.parity.test.ts）。
+- 新增 overview.asof.test.tsx 6 例：①系统时钟拨前 24h 屏上时刻逐字不变（假时钟反证）；②R41 多源只挂最大分钟（12:24 胜 12:20/12:21）；③跨页 parity——sourceStamp(ready{asOf}).shown 与 metrics asOfText(iso) 字节相等，缺值双页同写「—」；④⑤⑥ready/loading/error 三态 ov6-asof 永不缺席，loading/error 值「采集时刻 —（北京时间）」且 title 给原因。
+- DoD 实测：grep -n "new Date()" OverviewPage.tsx | grep -v setTimeout | wc -l = 0；模块 vitest 8 文件 58/58；vite build EXIT=0（dist 残留即 rm）。
+- 步骤④ once-live 抽核（脸 9131，真 BFF）：屏 ASOF_LINE=「采集时刻 北京时间 2026-11-24 08:21 · 每卡来源见卡内标注」= 本批真响应 asOf 最大值 → OM11_PARITY_OK；证据 docs/_artifacts/OM-11-asof-parity/parity.json + om11-asof-1440.png。
