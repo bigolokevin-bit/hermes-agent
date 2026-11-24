@@ -147,6 +147,7 @@ function Kpi({
 export function HealthPage() {
   const [state, setState] = useState<State>({ k: "loading" });
   const [kpi, setKpi] = useState<HealthKpi>(EMPTY_KPI);
+  const [slowestMs, setSlowestMs] = useState<number | null>(null);
   const refresh = useRefreshCoordinator(2);
   const forced = currentFixtureState();
   const preview = fixtureView<State | null>(forced ?? "ready", {
@@ -201,6 +202,8 @@ export function HealthPage() {
         }
       });
       // 顶部四格复用 runtime 那条探针已经拿到的 payload：本页的请求笔数不变。
+      const measured = settled.map((_, index) => durations[index]).filter((ms): ms is number => typeof ms === "number");
+      setSlowestMs(measured.length === 0 ? null : Math.max(...measured));
       const runtimeIndex = PROBE_DEFINITIONS.findIndex((probe) => probe.id === "runtime");
       const runtimeResult = runtimeIndex >= 0 ? settled[runtimeIndex] : undefined;
       setKpi(runtimeResult?.status === "fulfilled" ? readHealthKpi(runtimeResult.value) : EMPTY_KPI);
@@ -262,26 +265,26 @@ export function HealthPage() {
           detail={kpi.agents === null ? "上游没给活跃运行数" : "进程内活跃运行 · 不含排期"}
         />
         <Kpi
-          label="内存"
-          testid="hlt5-kpi-memory"
-          value={kpi.memoryPercent === null ? "—" : `${kpi.memoryPercent}%`}
+          label="探测耗时"
+          testid="hlt5-kpi-latency"
+          value={slowestMs === null ? "未记录" : `${slowestMs} ms`}
           detail={
-            kpi.memoryPercent === null
-              ? "缺读口：运行时没回内存读数"
-              : `已用 ${kpi.memoryUsedMb ?? "—"} MB · 上限 ${kpi.memoryTotalMb ?? "—"} MB`
+            slowestMs === null
+              ? "本次没有记录到探针耗时"
+              : `最慢一条 · ${total} 条探针 · 浏览器侧计时`
           }
         />
         <Kpi
-          label="更新"
-          testid="hlt5-kpi-update"
-          value="—"
-          detail="缺读口：版本更新检查未接入"
+          label="探测时刻"
+          testid="hlt5-kpi-observed"
+          value={updatedAt === null ? "未提供" : updatedAt.slice(-5)}
+          detail={updatedAt === null ? "上游没带采集时刻" : `${updatedAt} · 上游顶层时间`}
         />
       </div>
 
       <p className="hlt5-caliber" data-testid="hlt5-caliber">
         范围 本次读取 · 更新 {updatedAt ?? "—"} · 对象 {total} 个探测项 · 口径 探针=一次 HTTP 往返，
-        延迟按浏览器侧计时，缺值显示「—」不补
+        延迟按浏览器侧计时，缺值不补、不猜
       </p>
 
       <ConsoleCard
@@ -321,13 +324,13 @@ export function HealthPage() {
               <li key={hook.name} className="hlt5-hook">
                 <span className="hlt5-hook-id">{hook.name}</span>
                 <span className="hlt5-hook-note" title={hook.note}>{hook.note}</span>
-                <Pill tone="mut" dot={false}>—</Pill>
+                <Pill tone="mut" dot={false}>无读口</Pill>
               </li>
             ))}
           </ul>
           <div className="hlt5-divider" />
           <p className="hlt5-gap" data-testid="hlt5-hooks-gap">
-            缺读口：钩子注册表没有读口，四项的启用/停用状态无法读出，所以状态列是「—」。
+            缺读口：钩子注册表没有读口，四项的启用/停用状态读不出来，所以状态列写「无读口」。
           </p>
         </ConsoleCard>
       </div>

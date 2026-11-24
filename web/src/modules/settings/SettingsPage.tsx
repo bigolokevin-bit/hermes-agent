@@ -41,6 +41,14 @@ const AUTO_RULE_TABLE = {
   gap: "缺读口：审批策略只读摘要没有读口，规则、条件与命中数都读不到。",
 } as const;
 
+/** 本页没有读口、且没有各自的表来承载的项：一行一条，卡底一次口径声明，行内不写破折号。 */
+const GAP_ITEMS = [
+  { what: "全局默认设置项", why: "读口 /api/config 未注册：时区、并发、单次超时、调度、检索默认值都读不到" },
+  { what: "轮换策略", why: "没有读口：轮换周期与提前提醒天数读不到；轮换动作由「最近轮换」表单独声明" },
+  { what: "检查点占用", why: "没有读口：快照配额与占用百分比读不到；清单由「检查点」表单独声明" },
+  { what: "审批策略摘要", why: "没有读口：流程覆盖与策略变更读不到；自动通过规则由同名表单独声明" },
+] as const;
+
 function forcedState(value: FixtureState | null): State | null {
   if (value === "loading") return { k: "loading" };
   if (value === "empty") return { k: "empty" };
@@ -239,8 +247,8 @@ export function SettingsPage() {
       </header>
 
       <p className="set5-caliber" data-testid="set5-caliber">
-        范围 本环境只读事实 · 更新 {runtime.collectedAt ?? "—"} · 对象 1 个配置读口 + 1 个运行时摘要 ·
-        口径 缺读口一律显示「—」并按缺口声明，不补 0、不估算
+        范围 本环境只读事实 · 更新 {runtime.collectedAt ?? "未读到"} · 对象 1 个配置读口 + 1 个运行时摘要 ·
+        口径 缺读口按缺口声明，不补 0、不估算
       </p>
 
       {/* 本环境实际生效的只读事实：全部来自真实读口，缺值写「—」+原因。
@@ -281,7 +289,7 @@ export function SettingsPage() {
           ) : (
             <div className="set5-fact-row" data-testid="set4-facts-unavailable">
               <dt>运行时摘要</dt>
-              <dd>—（本次没读到 /api/hermes-summary，不代表 0）</dd>
+              <dd>本次没读到运行时摘要，不代表 0</dd>
             </div>
           )}
           <div className="set5-fact-row" title="浏览器侧只读边界：非白名单方法由 BFF 统一拒绝">
@@ -356,40 +364,36 @@ export function SettingsPage() {
           <GapTable {...KEY_TABLE} testid="set5-keys" />
           <GapTable {...ROTATION_TABLE} testid="set5-rotation" />
 
-          <div className="set5-pair">
-            <ConsoleCard label="轮换策略" action={<span className="set5-card-action">建议 · 无读口</span>}>
-              <dl className="set5-kv">
-                <dt>周期</dt><dd>—</dd>
-                <dt>提前提醒</dt><dd>—</dd>
-                <dt>过期动作</dt><dd>停用该 provider，运行前预检失败（设计口径，策略读口未接入）</dd>
-              </dl>
-              <div className="set5-card-foot">缺读口：轮换策略没有读口，本页不给周期与提醒天数。</div>
-            </ConsoleCard>
-            <ConsoleCard label="安全" action={<span className="set5-card-action">设计口径</span>}>
-              <p className="set5-prose">
-                密钥不进入提示词、不写日志、不出现在前端响应里。任何「查看明文」的请求都应被拒绝——这是设计，不是权限不足。
-              </p>
-              <div className="set5-card-foot">口径：本页永不回显密钥值，也不提供查看明文的入口。</div>
-            </ConsoleCard>
-          </div>
+          <ConsoleCard label="安全" action={<span className="set5-card-action">设计口径</span>}>
+            <p className="set5-prose">
+              密钥不进入提示词、不写日志、不出现在前端响应里。任何「查看明文」的请求都应被拒绝——这是设计，不是权限不足。
+              轮换周期与提前提醒天数同样没有读口，不在本页编造。
+            </p>
+            <div className="set5-card-foot">口径：本页永不回显密钥值，也不提供查看明文的入口。</div>
+          </ConsoleCard>
 
           <GapTable {...CHECKPOINT_TABLE} testid="set5-checkpoints" />
 
-          <div className="set5-pair">
-            <ConsoleCard label="存储" action={<span className="set5-card-action">检查点占用 · 无读口</span>}>
-              <div className="set5-kv">
-                <span>占用</span><span className="set5-kv-mono">—</span>
-                <span>上限</span><span className="set5-kv-mono">—</span>
-              </div>
-              <div className="set5-card-foot">缺读口：检查点占用没有读口，本页不给 MB 与占比。</div>
-            </ConsoleCard>
-            <ConsoleCard label="恢复影响" action={<span className="set5-card-action">须知</span>}>
-              <p className="set5-prose">恢复配置会重启网关；进行中的运行会中止并标记「因恢复中断」。</p>
-              <div className="set5-card-foot">口径：恢复是写操作，本页不提供入口。</div>
-            </ConsoleCard>
-          </div>
+          <ConsoleCard label="恢复影响" action={<span className="set5-card-action">须知</span>}>
+            <p className="set5-prose">恢复配置会重启网关；进行中的运行会中止并标记「因恢复中断」。</p>
+            <div className="set5-card-foot">口径：恢复是写操作，本页不提供入口。</div>
+          </ConsoleCard>
 
           <GapTable {...AUTO_RULE_TABLE} testid="set5-approval-rules" />
+
+          <ConsoleCard label="缺读口清单" action={<span className="set5-card-action">逐行一次声明 · 不补 0</span>}>
+            <ul className="set5-gaplist" data-testid="set5-gap-list">
+              {GAP_ITEMS.map((item) => (
+                <li key={item.what} className="set5-gapline">
+                  <span className="set5-gaplabel">{item.what}</span>
+                  <span className="set5-gapwhy" title={item.why}>{item.why}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="set5-card-foot">
+              口径：以上各项都没有读口，所以本页不显示它们的值；接上读口后逐项恢复，期间不拿 0 或估算值顶替。
+            </div>
+          </ConsoleCard>
 
           <ConsoleCard label="高风险操作去处" action={<span className="set5-card-action">只跳到该去的地方</span>}>
             <div className="set5-rows" data-testid="set4-danger">

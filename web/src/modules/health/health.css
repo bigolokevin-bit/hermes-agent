@@ -1093,13 +1093,13 @@
 /* 服务表列宽：延迟/端口/重启是窄读数，说明列留够放版本与时刻，避免破折号悬在空白正中。 */
 .sys3-table th:nth-child(2), .sys3-table td:nth-child(2) { width: 92px; }
 .sys3-table th:nth-child(3), .sys3-table td:nth-child(3) { width: 88px; }
-.sys3-table th:nth-child(4), .sys3-table td:nth-child(4) { width: 72px; }
-.sys3-table th:nth-child(5), .sys3-table td:nth-child(5) { width: 72px; }
-.sys3-table th:nth-child(6), .sys3-table td:nth-child(6) { width: 220px; }
+.sys3-table th:nth-child(4), .sys3-table td:nth-child(4) { width: 86px; }
+.sys3-table th:nth-child(5), .sys3-table td:nth-child(5) { width: 232px; }
+.sys-port { font-family: var(--font-family-mono-ls); color: var(--color-text-subtle-ls); }
 
 .sys-note-line { justify-content: flex-end; white-space: nowrap; }
 .sys-note-line > span { white-space: nowrap; }
 
 @media (max-width: 720px) {
-  .sys3-table th:nth-child(6), .sys3-table td:nth-child(6) { width: auto; }
+  .sys3-table th:nth-child(5), .sys3-table td:nth-child(5) { width: auto; }
 }

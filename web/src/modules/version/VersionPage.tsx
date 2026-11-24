@@ -138,8 +138,8 @@ export function VersionPage() {
   const channel = view.k === "ready" ? view.build.find((row) => row.label === "运行代码") : undefined;
   const commit = view.k === "ready" ? view.build.find((row) => row.label === "提交号") : undefined;
   const builtAt = view.k === "ready" ? view.build.find((row) => row.label === "构建时间") : undefined;
-  const runningLabel = running?.value ?? "—";
-  const subline = `当前 ${runningLabel} · 可用更新 —（缺读口）· 通道 ${channel?.value ?? "—"}`;
+  const runningLabel = running?.value ?? "未注入";
+  const subline = `当前 ${runningLabel} · 可用更新 无读口 · 通道 ${channel?.value ?? "未注入"}`;
 
   return (
     <section className="ver5-page" data-testid="ver4-page">
@@ -163,22 +163,22 @@ export function VersionPage() {
       </header>
 
       <p className="ver5-caliber" data-testid="ver5-caliber">
-        范围 当前构建注入 + 包清单 · 更新 {builtAt?.value ?? "—"} · 对象 {view.k === "ready" ? view.build.length + view.dependencies.length : 0} 项 ·
-        口径 版本只读构建注入与包清单，缺注入显示「—」不编版本号
+        范围 当前构建注入 + 包清单 · 更新 {builtAt?.value ?? "未注入"} · 对象 {view.k === "ready" ? view.build.length + view.dependencies.length : 0} 项 ·
+        口径 版本只读构建注入与包清单，缺注入按缺口声明，不编版本号
       </p>
 
       <div className="ver5-pair">
         <ConsoleCard label="当前版本" action={<span className="ver5-card-action">{running?.value ? "运行中" : "构建信息未注入"}</span>}>
           <div className="ver5-now">
             <span className="ver5-now-version" data-testid="ver5-running">{runningLabel}</span>
-            <span className="ver5-card-action" title={builtAt?.title ?? undefined}>构建于 {builtAt?.value ?? "—"}</span>
+            <span className="ver5-card-action" title={builtAt?.title ?? undefined}>构建时刻 {builtAt?.value ?? "未注入"}</span>
           </div>
           <div className="ver5-divider" />
           <dl className="ver5-kv">
-            <dt>构建</dt><dd>{running?.value ?? "—"}</dd>
-            <dt>通道</dt><dd>{channel?.value ?? "—"}</dd>
-            <dt>提交号</dt><dd>{commit?.value ?? "—"}</dd>
-            <dt>构建时间</dt><dd>{builtAt?.value ?? "—"}</dd>
+            <dt>构建</dt><dd>{running?.value ?? "未注入"}</dd>
+            <dt>通道</dt><dd>{channel?.value ?? "未注入"}</dd>
+            <dt>提交号</dt><dd>{commit?.value ?? "未注入"}</dd>
+            <dt>构建时间</dt><dd>{builtAt?.value ?? "未注入"}</dd>
           </dl>
           {allMissing ? <p className="ver5-gap">构建时没有写入这项信息；请让发布流程补齐构建标识</p> : null}
         </ConsoleCard>

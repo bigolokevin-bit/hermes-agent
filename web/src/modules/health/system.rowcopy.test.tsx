@@ -250,10 +250,11 @@ describe("sys row copy sticky rail (buglist P0-5)", () => {
     await render();
     await waitFor(() => !!q("sys3-table"), "table");
 
-    // Header corner cell: the 6th th, carrying the class the sticky rule hooks.
+    // Header corner cell: the last th (5 columns — 「重启」整列已删，无读口不留空列),
+    // carrying the class the sticky rule hooks.
     const heads = Array.from(container.querySelectorAll(".sys3-table thead th"));
-    expect(heads).toHaveLength(6);
-    expect(heads[5]?.className).toContain("sys-row-copy-head");
+    expect(heads).toHaveLength(5);
+    expect(heads[4]?.className).toContain("sys-row-copy-head");
 
     // Every data row's final cell carries the rail class and holds the copy button.
     const rows = Array.from(container.querySelectorAll("tbody tr.sys3-row"));

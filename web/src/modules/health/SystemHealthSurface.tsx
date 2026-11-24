@@ -532,7 +532,7 @@ export function SystemHealthSurface({ preview = null, onRetry, refreshTick = 0, 
               <table className="sys3-table" data-testid="sys3-table">
                 <thead>
                   <tr>
-                    <th>服务</th><th>状态</th><th>延迟</th><th className="sys-hide-sm">端口</th><th className="sys-hide-sm">重启</th><th className="sys-row-copy-head">说明</th>
+                    <th>服务</th><th>状态</th><th>延迟</th><th className="sys-hide-sm">端口</th><th className="sys-row-copy-head">说明</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -562,8 +562,9 @@ export function SystemHealthSurface({ preview = null, onRetry, refreshTick = 0, 
                           <Badge tone={tone(row.state)}>{row.state}</Badge>
                         </td>
                         <td data-testid="sys3-latency" title={row.latencyReason ?? undefined}>{row.latency ?? "—"}</td>
-                        <td className="sys-hide-sm" data-testid="sys3-port" title="端口没有读口：健康清单不回服务端口">—</td>
-                        <td className="sys-hide-sm" data-testid="sys3-restarts" title="重启次数没有读口：健康清单不回重启计数">—</td>
+                        <td className="sys-hide-sm sys-port" data-testid="sys3-port" title={row.port === null ? "健康清单没有给出这个服务的端口" : `配置派生端口 :${row.port}；不是探测读数`}>
+                          {row.port === null ? "—" : `:${row.port}`}
+                        </td>
                         <td className="sys-row-copy-cell" data-testid="sys3-note">
                           <span className="sys-note-line">
                             <span data-testid="sys3-version" title={[row.version, row.versionReason].filter(Boolean).join(" · ") || undefined}>

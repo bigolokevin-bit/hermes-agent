@@ -289,3 +289,40 @@
   border-radius: var(--radius-ls-1);
   background: var(--color-surface-raised-ls);
 }
+
+/* 缺读口清单：一行一条，行内不写破折号（值根本不存在，不拿「—」占位）。 */
+.set5-gaplist {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--space-ls-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.set5-gapline {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-ls-1) var(--space-ls-3);
+  padding-top: var(--space-ls-2);
+  border-top: var(--border-ls-1);
+}
+
+.set5-gapline:first-child { border-top: 0; padding-top: 0; }
+
+.set5-gaplabel {
+  flex: 0 0 auto;
+  font-size: var(--font-size-ls-2);
+  color: var(--color-text-ls);
+}
+
+.set5-gapwhy {
+  flex: 1 1 60%;
+  min-width: 0;
+  font-size: var(--font-size-ls-1);
+  line-height: var(--line-height-ls-2);
+  color: var(--color-text-muted-ls);
+}

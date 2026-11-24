@@ -39,6 +39,8 @@ export interface SystemHealthRow {
   checkedReason: string | null;
   latency: string | null;
   latencyReason: string | null;
+  /** 服务端口（配置派生，不是探测读数）；上游没给就 null。 */
+  port: number | null;
   endpoint: string | null;
   basis: string[];
   lastError: string | null;
@@ -177,6 +179,7 @@ export function readSystemHealth(body: unknown): SystemHealthRead | null {
     const state = stateOf(rawState);
     const version = versionIdentity(row);
     const latencyMs = pickNumber(row, ["latencyMs", "latency_ms", "durationMs", "duration_ms", "responseTimeMs", "response_time_ms", "elapsedMs", "elapsed_ms"]);
+    const port = pickNumber(row, ["port", "listenPort", "listen_port"]);
     const key = (pickString(row, ["id"]) ?? name ?? `source-${index}`).replace(/[^a-zA-Z0-9_-]+/g, "-");
     const endpoint = pickString(row, ["path", "endpoint", "readPath", "read_path", "url"]) ?? SYS3_PATH;
     const error = errorOf(row);
@@ -195,6 +198,7 @@ export function readSystemHealth(body: unknown): SystemHealthRead | null {
       checkedReason: asOfReason,
       latency: latencyMs === null ? null : `${Math.round(latencyMs)} ms`,
       latencyReason: latencyMs === null ? "健康接口没有给出响应耗时。" : null,
+      port: port === null || port <= 0 ? null : Math.round(port),
       endpoint,
       basis: [],
       lastError: error.text,
