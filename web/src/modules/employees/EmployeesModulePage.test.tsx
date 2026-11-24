@@ -122,7 +122,8 @@ describe("EmployeesModulePage list depth", () => {
   it("reopens a shared ?q=&lifecycle= URL with exactly one real query", async () => {
     fetchJSON.mockImplementation(() => Promise.resolve(rowsBody));
     await render("/employees?q=%E5%B0%8F%E9%B2%A4&lifecycle=active");
-    expect(fetchJSON).toHaveBeenCalledTimes(1);
+    // 列表腿只发一次；矩阵/运行是列读数的第二腿，不计入这里。
+    expect(fetchJSON.mock.calls.filter((c) => String(c[0]).includes("/api/employees?")).length).toBe(1);
     const url = String(fetchJSON.mock.calls[0][0]);
     expect(url).toContain("keyword=%E5%B0%8F%E9%B2%A4");
     expect(url).toContain("lifecycleState=active");
@@ -146,7 +147,8 @@ describe("EmployeesModulePage list depth", () => {
     const dept = document.querySelector('[data-label="部门"]');
     expect(dept?.textContent).toBe("未标注部门"); // R96：部门键在值为空=未标注口径（不再显 —）
     expect(dept?.getAttribute("title")).toContain("值为空");
-    expect(document.querySelector('[data-label="最近活跃"]')?.textContent).toBe("2026-11-17 13:52");
+    // 最近活跃不再单占表格列（骨架八列），口径值挂在整行链接的 title 上。
+    expect(link.getAttribute("title")).toContain("2026-11-17 13:52");
   });
 
   it("typing a search writes the URL and re-queries with keyword", async () => {
@@ -353,7 +355,7 @@ describe("R62 column sorting (emp-list-sort-*)", () => {
   it("sort rides alongside ?q=&lifecycle= without dropping either, and never refetches", async () => {
     fetchJSON.mockImplementation(() => Promise.resolve(sortBody));
     await render("/employees?q=%E5%B0%8F%E9%B2%A4&lifecycle=active&sort=name&dir=desc");
-    expect(fetchJSON).toHaveBeenCalledTimes(1); // 排序不触发新请求
+    expect(fetchJSON.mock.calls.filter((c) => String(c[0]).includes("/api/employees?")).length).toBe(1); // 排序不触发列表取数
     const url = String(fetchJSON.mock.calls[0][0]);
     expect(url).toContain("keyword=%E5%B0%8F%E9%B2%A4");
     expect(url).toContain("lifecycleState=active");
@@ -368,7 +370,7 @@ describe("R62 column sorting (emp-list-sort-*)", () => {
     expect(lastSearch()).toContain("q=%E5%B0%8F%E9%B2%A4");
     expect(lastSearch()).toContain("lifecycle=active");
     expect(lastSearch()).toContain("sort=state");
-    expect(fetchJSON).toHaveBeenCalledTimes(1); // 依旧零新请求
+    expect(fetchJSON.mock.calls.filter((c) => String(c[0]).includes("/api/employees?")).length).toBe(1); // 依旧零列表取数
     // paused > active（原始值升序），缺值行（无 lifecycleState 的行没有）不参与。
     expect(rowOrder()).toEqual(["emp_CCCC3333DDDD4444", "emp_AAAA1111BBBB2222", "emp_BBBB2222CCCC3333"]);
   });
@@ -966,7 +968,11 @@ describe("R81 department filter (emp-list-dept-*)", () => {
     expect(q("emp-list-dept-all")?.getAttribute("aria-pressed")).toBe("true");
     expect(q("emp-list-dept-scope-note")?.textContent).toContain("按当前已加载 2 人统计，不是全量");
     const urlsBefore = fetchJSON.mock.calls.map((c) => String(c[0]));
-    expect(urlsBefore.every((u) => !u.includes("dept=") && u.includes("lifecycleState=active"))).toBe(true);
+    expect(
+      urlsBefore
+        .filter((u) => u.includes("/api/employees?"))
+        .every((u) => !u.includes("dept=") && u.includes("lifecycleState=active")),
+    ).toBe(true);
     const n0 = fetchJSON.mock.calls.length;
     const chao = bucketFor("筛选部门「增长组」");
     expect(chao, "增长组 bucket").toBeTruthy();

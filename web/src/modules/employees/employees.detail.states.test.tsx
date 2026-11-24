@@ -253,6 +253,7 @@ describe("R209 ②③ retry recovers, matches the list row, and never re-fetches
     await waitFor(() => !!q("ed5-overview-error"), "detail error first");
     expect(detailLegs()).toBe(1);
     expect(listLegs(), "the detail module never fetches the list leg").toBe(1);
+    const matrixBefore = matrixLegs();
     const pageBefore = text("emp-list-page-count", listBox);
     const moreBefore = q("emp-list-page-more", listBox)?.getAttribute("disabled");
 
@@ -264,7 +265,7 @@ describe("R209 ②③ retry recovers, matches the list row, and never re-fetches
     await waitFor(() => !!q("ed1-identity"), "identity after retry");
     expect(detailLegs(), "retry = exactly one more detail read").toBe(2);
     expect(listLegs(), "the list leg was not re-fetched").toBe(1);
-    expect(matrixLegs(), "the recovered read does not re-run the fallback").toBe(1);
+    expect(matrixLegs(), "the recovered read does not re-run the fallback").toBe(matrixBefore);
     // 错误锚消失，互斥锚全部 null。
     expect(q("ed5-overview-error")).toBeNull();
     expect(q("ed5-overview-empty")).toBeNull();

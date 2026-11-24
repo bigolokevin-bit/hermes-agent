@@ -99,7 +99,10 @@ describe("/employees mount chain (R38)", () => {
     expect(depts[0]?.textContent).toBe("增长组");
     expect(depts[1]?.textContent).toBe("未标注部门"); // 部门键在而值为空：R96 三态口径，不假造也不显 —
     expect(depts[1]?.getAttribute("title")).toContain("值为空");
-    expect(document.body.textContent).toContain("2026-11-18 09:10");
+    // 骨架八列不再单列「最近活跃」：口径值挂在整行链接 title 上（预览里仍可见）。
+    expect(
+      q("emp-l-name-link-emp_DDDD4444EEEE5555FFFF6666")?.getAttribute("title") ?? "",
+    ).toContain("2026-11-18 09:10");
   });
 
   it("lifecycle select changes row count and stays in the URL (?lifecycle=)", async () => {

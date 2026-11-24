@@ -205,7 +205,10 @@ describe("PE-09 ② cursor paging clears the selection", () => {
     expect(selectedRead()).toBe("已选 1 / 2");
     click(q("emp-list-dept-0"), "dept rail");
     await flush();
-    expect(fetchJSON.mock.calls.length, "部门是本地过滤，不发新请求").toBe(1);
+    expect(
+      fetchJSON.mock.calls.filter((c) => String(c[0]).includes("/api/employees?")).length,
+      "部门是本地过滤，不发新的列表请求",
+    ).toBe(1);
     // 桶里只剩一人：选择当场清空，屏上也只报这一桶的行数。
     expect(selectedRead()).toBe("已选 0 / 1");
   });

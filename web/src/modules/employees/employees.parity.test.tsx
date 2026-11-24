@@ -168,8 +168,8 @@ const rowCell = (id: string, label: "部门" | "最近活跃") =>
 const rowName = (id: string) =>
   document.querySelector(`[data-testid="emp-l-name-link-${id}"] span span`)?.textContent ?? "";
 const rowCode = (id: string) => q(`employees-code-${id}`)?.textContent ?? "";
-/** 状态格=工号格的后一个兄弟格（七列固定顺序）。 */
-const rowState = (id: string) => q(`employees-code-${id}`)?.nextElementSibling?.textContent ?? "";
+/** 状态格=独立「可上岗」格子（骨架八列里的第三列）。 */
+const rowState = (id: string) => q(`emp-life-${id}`)?.textContent ?? "";
 
 const openPreview = async (id: string) => {
   const btn = q(`emp-row-preview-toggle-${id}`) as HTMLButtonElement | null;
@@ -216,10 +216,10 @@ describe("R134 ① row cell joins the preview/detail verbatim matrix", () => {
     const dept = rowCell(E1, "部门");
     expect(dept, "row department verbatim").toBe("增长组");
     expect(q("ed1-identity-department")?.textContent, "identity dept == row").toBe(dept);
-    // 最近活跃：行格 == 预览（identity 无活跃位，其时间是 createdAt 语义）。
-    const active = rowCell(E1, "最近活跃");
-    expect(active, "row active is a BJT minute").toBe("2026-11-17 13:52");
-    expect(pv[4], "preview active == row").toBe(active);
+    // 最近活跃：骨架八列里不再单占一列，口径值挂整行链接 title；预览里仍是同一句。
+    const link = q(`emp-l-name-link-${E1}`) as HTMLAnchorElement | null;
+    expect(link?.getAttribute("title"), "row active is a BJT minute").toContain("2026-11-17 13:52");
+    expect(pv[4], "preview active == row").toBe("2026-11-17 13:52");
   });
 
   it("the three-state department sentence is identical in row and identity", async () => {

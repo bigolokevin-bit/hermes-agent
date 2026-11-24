@@ -1,0 +1,115 @@
+/* Console 卡式基元（2026-11-24 员工列表密度车道）。
+ * 只消费 tokens.css 的 --color-、--space-、--font-size-ls- 语义层；
+ * 本文件不写裸 hex，圆角取骨架的 6px 档，由局部变量承载。 */
+.console-primitives-scope,
+.console-card,
+.emp-pill,
+.emp-chip,
+.console-segbar,
+.stat-value {
+  --console-card-radius: 6px;
+  --console-card-pad: 12px;
+}
+
+.console-card {
+  background: var(--color-surface-ls);
+  border: var(--border-ls-1);
+  border-radius: var(--console-card-radius);
+  min-width: 0;
+}
+
+.console-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-ls-2);
+  padding: 10px var(--space-ls-3);
+  border-bottom: 1px solid var(--color-border-subtle-ls);
+}
+
+.console-card__label {
+  font-family: var(--font-family-mono-ls);
+  font-size: 11px;
+  line-height: 1.2;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-subtle-ls);
+}
+
+.console-card__action {
+  font-size: 11px;
+  line-height: 1.2;
+  color: var(--color-text-muted-ls);
+}
+
+.console-card__body {
+  padding: var(--console-card-pad) 14px;
+  min-width: 0;
+}
+
+.console-segbar {
+  display: flex;
+  gap: 1px;
+  width: 100%;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 1px;
+  background: transparent;
+}
+
+.console-segbar > i {
+  display: block;
+  height: 100%;
+  background: var(--color-text-faint-ls);
+}
+
+.console-segbar > i.tone-ok { background: var(--color-success-ls); }
+.console-segbar > i.tone-warn { background: var(--color-warning-ls); }
+.console-segbar > i.tone-bad { background: var(--color-danger-ls); }
+.console-segbar > i.tone-info { background: var(--color-info-ls); }
+.console-segbar > i.tone-mut { background: var(--color-text-faint-ls); }
+
+.emp-pill,
+.emp-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--color-border-ls);
+  border-radius: 3px;
+  padding: 0 6px;
+  font-family: var(--font-family-mono-ls);
+  font-size: 10px;
+  line-height: 16px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  color: var(--color-text-muted-ls);
+  background: color-mix(in srgb, var(--color-text-ls) 4.5%, transparent);
+}
+
+.emp-pill__dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
+}
+
+.emp-pill.ok { color: var(--color-success-ls); border-color: color-mix(in srgb, var(--color-success-ls) 32%, transparent); background: color-mix(in srgb, var(--color-success-ls) 7%, transparent); }
+.emp-pill.warn { color: var(--color-warning-ls); border-color: color-mix(in srgb, var(--color-warning-ls) 32%, transparent); background: color-mix(in srgb, var(--color-warning-ls) 7%, transparent); }
+.emp-pill.bad { color: var(--color-danger-ls); border-color: color-mix(in srgb, var(--color-danger-ls) 34%, transparent); background: color-mix(in srgb, var(--color-danger-ls) 7%, transparent); }
+.emp-pill.info { color: var(--color-info-ls); border-color: color-mix(in srgb, var(--color-info-ls) 34%, transparent); background: color-mix(in srgb, var(--color-info-ls) 8%, transparent); }
+.emp-pill.mut { color: var(--color-text-subtle-ls); border-color: var(--color-border-subtle-ls); background: color-mix(in srgb, var(--color-text-ls) 3%, transparent); }
+
+.stat-value {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  font-family: var(--font-family-mono-ls);
+  font-size: 24px;
+  line-height: 1.1;
+  font-variant-numeric: var(--tabular-ls);
+  color: var(--color-text-ls);
+}
+
+.stat-value--compact { font-size: var(--font-size-ls-1); }
+.stat-value__suffix { font-size: 0.6em; color: var(--color-text-subtle-ls); }
