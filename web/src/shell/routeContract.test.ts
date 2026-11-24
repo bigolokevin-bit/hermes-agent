@@ -430,6 +430,7 @@ describe("MT-06 /metrics registration: routes, bridge, and page title tell one s
     );
     expect(row?.dataSource).toContain("App 直挂");
     expect(row?.conflict).toContain("2026-11-23");
+    // 第三说法：标题映射与 routes 登记、页内 h1 同一句话（空 Translations 走内置中文兜底表）。
     expect(resolvePageTitle("/metrics", {} as Translations, [])).toBe("运行分析");
   });
 });
