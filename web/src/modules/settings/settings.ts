@@ -63,7 +63,42 @@ export function statusLabel(state: SettingState): string {
  * 数据源健康/采集时刻。缺哪个就说「—」和原因，绝不补 0、不猜值。
  * ------------------------------------------------------------------ */
 
-export type FactRow = { key: string; label: string; value: string; reason: string | null };
+export type FactRow = {
+  key: string;
+  label: string;
+  value: string;
+  reason: string | null;
+  /** 人话版读数（工程键名只进 title）；没有就照 value 显示。 */
+  display?: string;
+  /** 计数类读数：大字号等宽数字用；缺值时不出现。 */
+  stats?: { label: string; value: string }[];
+};
+
+/** 上游工程键名 → 屏上人话；不认识的原样保留（不编翻译）。 */
+const SOURCE_LABELS: Record<string, string> = {
+  gateway_health: "网关",
+  dashboard_system: "系统状态",
+  dashboard_sessions_stats: "会话统计",
+  dashboard_system_stats: "系统统计",
+};
+const PLATFORM_LABELS: Record<string, string> = {
+  api_server: "API 服务",
+  feishu: "飞书",
+};
+const STATE_LABELS: Record<string, string> = {
+  connected: "已连接",
+  disconnected: "已断开",
+  ok: "正常",
+  degraded: "降级",
+  unknown: "未知",
+};
+
+function humanizePair(name: string, state: string, reason: string | null): string {
+  const label = SOURCE_LABELS[name] ?? PLATFORM_LABELS[name] ?? name;
+  const stateLabel = STATE_LABELS[state] ?? state;
+  const base = `${label}${stateLabel}`;
+  return reason ? `${base}（${reason}）` : base;
+}
 
 export type RuntimeFacts = {
   /** loading = 还在读（不发假「没读到」）；unavailable = 读失败但如实说。 */
@@ -108,14 +143,16 @@ function count(value: unknown): string {
 
 function sourcesRow(sources: Record<string, unknown>): FactRow {
   const parts: string[] = [];
+  const human: string[] = [];
   for (const [name, value] of Object.entries(sources)) {
     const entry = record(value);
     const state = text(entry.state) ?? "unknown";
     const reason = text(entry.reason);
     parts.push(reason ? `${name}=${state}（${reason}）` : `${name}=${state}`);
+    human.push(humanizePair(name, state, reason === "timeout" ? "超时" : reason));
   }
   return parts.length
-    ? { key: "sources", label: "数据源健康", value: parts.join(" · "), reason: null }
+    ? { key: "sources", label: "数据源健康", value: parts.join(" · "), reason: parts.join(" · "), display: human.join(" · ") }
     : { key: "sources", label: "数据源健康", value: ABSENT("上游未随回答发送"), reason: null };
 }
 
@@ -135,9 +172,20 @@ export function readRuntimeFacts(payload: unknown): RuntimeFacts {
     const state = text(record(value).state) ?? "unknown";
     return `${name}=${state}`;
   });
+  const platformHuman = Object.entries(platforms).map(([name, value]) => {
+    const state = text(record(value).state) ?? "unknown";
+    return humanizePair(name, state, null);
+  });
   const version = text(gateway.version);
   const gatewayState = text(gateway.gateway_state);
   const status = text(gateway.status);
+  const metricStats = Object.keys(metrics).length
+    ? [
+        { label: "请求", value: count(metrics.requests) },
+        { label: "消息", value: count(metrics.messages) },
+        { label: "tokens", value: count(metrics.tokens) },
+      ]
+    : undefined;
   const rows: FactRow[] = [
     {
       key: "gateway",
@@ -157,16 +205,18 @@ export function readRuntimeFacts(payload: unknown): RuntimeFacts {
       key: "platforms",
       label: "平台连接",
       value: platformParts.length ? platformParts.join(" · ") : ABSENT("上游未随回答发送"),
-      reason: null,
+      reason: platformParts.length ? platformParts.join(" · ") : null,
+      display: platformHuman.length ? platformHuman.join(" · ") : undefined,
     },
     {
       key: "metrics-today",
       label: "今日计数",
-      value: Object.keys(metrics).length
-        ? `请求 ${count(metrics.requests)} · 消息 ${count(metrics.messages)} · tokens ${count(metrics.tokens)}`
+      value: metricStats
+        ? `请求 ${metricStats[0]!.value} · 消息 ${metricStats[1]!.value} · tokens ${metricStats[2]!.value}`
         : ABSENT("上游未随回答发送"),
       // 上游自己写明计数口径，照抄，不在前端改写成别的意思。
       reason: text(gateway.note),
+      stats: metricStats,
     },
     sourcesRow(record(root.sources)),
   ];

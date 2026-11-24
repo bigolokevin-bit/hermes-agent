@@ -263,7 +263,7 @@ export function VersionHealthSurface({ preview = null, refreshTick = 0, onRefres
             </table>
           </div>
         )}
-        <p className="text-xs text-white/40">版本/构建标识优先取健康读口，与 /system 同源同字段；健康无组件行时才回退版本读口。缺失显示「—」，不补 0，也不编造版本号。</p>
+        <p className="text-xs text-white/40">版本与构建标识优先取健康读口，与系统健康页同源同字段；健康无组件行时才回退版本读口。缺值按缺失显示，不补 0，也不编造版本号。</p>
       </div>
     </div>
   );

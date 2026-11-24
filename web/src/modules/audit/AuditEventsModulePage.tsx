@@ -683,7 +683,7 @@ function AuditSortBar({
         data-testid="aud-sort-scope-note"
         title="为什么只做本地排序：本轮朝活体读口试过排序参数，服务端没有给出可以核对的生效回答（拿不到排序前后台账顺序变化的证据），所以这里只重排已经读到的行。原始探码记在交付文档的 audN 一节，不搬上屏——屏上出现路径或状态码会让人以为在读日志"
       >
-        仅在当前已加载的 {count} 条内排序——服务端没有可用的排序参数（本轮实测拿不到生效证据），清掉排序就回到服务给的回行顺序。
+        仅在当前已加载的 {count} 条内排序，服务端没有可用的排序参数（本轮实测拿不到生效证据），清掉排序就回到服务给的回行顺序。
       </p>
     </div>
   );
@@ -1604,12 +1604,19 @@ function AuditEventsSurface(): ReactNode {
         </div>
       </div>
 
+      {/* 卡式外壳（2026-11-24 密度收口）：读取、导出与筛选收进一张卡；
+          内部控件与文案行不重建、不搬移语义，只共享一层卡框。 */}
+      <ConsoleCard
+        label="读取与导出"
+        action={<span className="text-[0.6875rem] text-muted-foreground">地址是唯一事实源 · 时间为北京时间</span>}
+      >
+        <div className="flex min-w-0 flex-col gap-2">
       {/* 骨架 events pane 的副行：窗口、屏上行数、可查询与关联口径，一句说完；
-          留存策略没有读口，就地声明，不给假数字。 */}
+          留存策略没有读口，在「审计事件」卡的可用性块点名一次。 */}
       <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="aud5-sub">
         {windowLabel} · 已显示 {listedRows.length} 条
         {list.total === null ? "" : ` · 命中 ${list.total} 条`}
-        {` · 事件可查询 · 关联 Run/审批 · ${"留存策略未接入"}`}
+        {" · 事件可查询 · 关联 Run/审批"}
       </p>
 
       <div className="flex min-w-0 flex-wrap items-center gap-2" data-testid="aud5-export-bar">
@@ -1772,6 +1779,8 @@ function AuditEventsSurface(): ReactNode {
           loading and denied: the question this page asked exists before the
           answer does, and a refused read is exactly what a ticket needs. */}
       <FilterSummaryCopy line={filterSummary} gate={gates.copyFilter} rule={gates.copyFilterRule} />
+        </div>
+      </ConsoleCard>
 
       {/* The window check lives on the list too, and it says exactly one of
           four things: asking, the real counts, 本环境未启用 + why + where, or a
@@ -1780,6 +1789,11 @@ function AuditEventsSurface(): ReactNode {
       <ConsoleCard
         label="链完整性"
         action={<span className="text-[0.6875rem] text-muted-foreground">SHA-256 逐条串联 · 本段窗口</span>}
+        availability={[
+          { label: "留存策略", reason: "没有读口，不声明到期清理已生效" },
+          { label: "外部锚定", reason: "没有读口，不声明每日锚定已生效" },
+        ]}
+        note="口径：校验结果只覆盖这一段窗口。"
       >
       {(() => {
         if (verify.phase === "loading") {
@@ -1886,15 +1900,21 @@ function AuditEventsSurface(): ReactNode {
             />
           );
         }
-        return null;
+        return (
+          <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="aud5-verify-idle">
+            校验未运行：点上方「完整性校验」核对这一段窗口的链。
+          </p>
+        );
       })()}
-        <p className="mt-2 min-w-0 break-words text-[0.6875rem] text-muted-foreground" data-testid="aud5-chain-gap">
-          口径：校验结果只覆盖这一段窗口；留存策略与外部锚定都没有读口，本页不声明到期清理与每日锚定已经生效。
-        </p>
       </ConsoleCard>
 
       <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]">
-        <ConsoleCard label="审计事件" action={<span className="text-[0.6875rem] text-muted-foreground">只追加写入 · 时间为北京时间</span>} flush>
+        <ConsoleCard
+          label="审计事件"
+          action={<span className="text-[0.6875rem] text-muted-foreground">只追加写入 · 时间为北京时间</span>}
+          availability={[{ label: "留存策略与归档", reason: "没有读口，不显示到期时间与清理计划；账本只追加，不做物理删" }]}
+          flush
+        >
         <section className="flex min-w-0 flex-col gap-2" aria-label="审计事件列表">
           {customInvalid ? (
             <p className="min-w-0 break-words text-xs text-warning" data-testid="aud01-custom-hint">
@@ -2168,9 +2188,6 @@ function AuditEventsSurface(): ReactNode {
             </>
           ) : null}
         </section>
-        <p className="border-t border-white/10 px-3 py-2 text-[0.6875rem] text-muted-foreground" data-testid="aud5-retention-gap">
-          缺读口：留存策略与归档没有读口，本页不显示到期时间与清理计划；账本只追加，不做物理删。
-        </p>
         </ConsoleCard>
 
         <aside className="flex min-w-0 flex-col gap-3 lg:sticky lg:top-4 lg:self-start" aria-label="事件详情">

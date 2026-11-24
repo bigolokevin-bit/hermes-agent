@@ -1,8 +1,11 @@
-/* 骨架 version pane 形制（ver5）：h2 标题 + 副行 + 卡式分区 + 只读表。
-   字号/间距/颜色只走 tokens.css 的 -ls 令牌与 --ok/--warn/--bad/--info。 */
+/* 骨架 version pane 形制（ver5）：h2 标题 + 副行 + 卡式分区。
+   两层套框就到顶：页底 → 卡（ConsoleCard）→ 表体分隔线；卡内不再各自描边。
+   字号/间距/颜色只走 tokens.css 的 -ls 令牌。 */
 .ver5-page {
   display: flex;
   min-width: 0;
+  max-width: 100%;
+  overflow-x: clip;
   flex-direction: column;
   gap: var(--space-ls-3);
 }
@@ -44,20 +47,13 @@
   min-width: 0;
 }
 
-.ver5-card { min-width: 0; }
-
 .ver5-card-action {
   font-size: var(--font-size-ls-1);
   color: var(--color-text-subtle-ls);
+  text-decoration: none;
 }
 
-.ver5-card-foot {
-  padding: var(--space-ls-2) var(--space-ls-3);
-  border-top: var(--border-ls-1);
-  font-size: var(--font-size-ls-1);
-  line-height: var(--line-height-ls-2);
-  color: var(--color-text-subtle-ls);
-}
+a.ver5-card-link:hover { text-decoration: underline; }
 
 .ver5-now {
   display: flex;
@@ -68,10 +64,12 @@
   gap: var(--space-ls-2);
 }
 
+/* 关键数字：24px 等宽大字（骨架 22–26px 档）。 */
 .ver5-now-version {
   font-family: var(--font-family-mono-ls);
-  font-size: var(--font-size-ls-5);
-  line-height: var(--line-height-ls-1);
+  font-size: var(--font-size-ls-6);
+  line-height: 1.1;
+  font-variant-numeric: var(--tabular-ls);
   color: var(--color-text-ls);
 }
 
@@ -93,6 +91,80 @@
 .ver5-kv dt { color: var(--color-text-subtle-ls); }
 .ver5-kv dd { margin: 0; word-break: break-word; }
 
+/* 构建/依赖行：36–40px 行高 + 表体分隔线。 */
+.ver5-kv-rows { margin: 0; }
+
+.ver5-kv-row {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-ls-2);
+  box-sizing: border-box;
+  min-height: 36px;
+  padding: var(--space-ls-1) 0;
+  border-top: var(--border-ls-1);
+}
+
+.ver5-kv-rows > .ver5-kv-row:first-child { border-top: 0; }
+
+.ver5-kv-row dt {
+  flex: 0 0 auto;
+  font-size: var(--font-size-ls-1);
+  letter-spacing: 0.08em;
+  color: var(--color-text-subtle-ls);
+}
+
+.ver5-kv-row dd {
+  flex: 1 1 60%;
+  min-width: 0;
+  margin: 0;
+  text-align: right;
+}
+
+.ver5-kv-value {
+  font-size: var(--font-size-ls-2);
+  color: var(--color-text-ls);
+  font-variant-numeric: var(--tabular-ls);
+  word-break: break-all;
+}
+
+.ver5-kv-unknown {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-ls-1);
+  font-size: var(--font-size-ls-2);
+  color: var(--color-text-muted-ls);
+}
+
+.ver5-kv-reason {
+  margin: 2px 0 0;
+  font-size: var(--font-size-ls-1);
+  line-height: var(--line-height-ls-2);
+  color: var(--color-text-subtle-ls);
+}
+
+.ver5-dep-name {
+  min-width: 0;
+  font-size: var(--font-size-ls-1);
+  color: var(--color-text-subtle-ls);
+  word-break: break-all;
+}
+
+/* 整表无读口：正文只留一行「—」，缺列在卡底可用性块点名。 */
+.ver5-dash {
+  margin: 0;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  font-family: var(--font-family-mono-ls);
+  font-size: var(--font-size-ls-2);
+  color: var(--color-text-subtle-ls);
+}
+
+/* 构建注入缺失时的一句实话（当前版本卡内）。 */
 .ver5-gap {
   margin: var(--space-ls-2) 0 0;
   font-size: var(--font-size-ls-1);
@@ -100,18 +172,10 @@
   color: var(--color-text-subtle-ls);
 }
 
-.ver5-prose {
-  margin: 0;
-  font-size: var(--font-size-ls-1);
-  line-height: 1.65;
-  color: var(--color-text-muted-ls);
-}
-
 .ver5-ops {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-ls-2);
-  margin-top: var(--space-ls-3);
 }
 
 .ver5-planned {
@@ -125,50 +189,44 @@
   opacity: var(--opacity-disabled-ls);
 }
 
-.ver5-tw { min-width: 0; overflow-x: auto; }
-
-.ver5-table {
+/* 单价表：等宽数字、36–40px 行、表体分隔线。 */
+.ver5-price-table {
   width: 100%;
+  min-width: 560px;
   border-collapse: collapse;
-  font-size: var(--font-size-ls-1);
+  text-align: left;
+  font-size: var(--font-size-ls-2);
+  color: var(--color-text-ls);
 }
 
-.ver5-table thead th {
-  padding: var(--space-ls-2) var(--space-ls-3);
+.ver5-price-table th {
+  padding: var(--space-ls-1) var(--space-ls-3) var(--space-ls-1) 0;
   border-bottom: var(--border-ls-1);
+  font-size: var(--font-size-ls-1);
   font-weight: var(--font-weight-ls-regular);
   color: var(--color-text-subtle-ls);
   text-align: left;
   white-space: nowrap;
 }
 
-.ver5-gap-cell {
-  padding: var(--space-ls-3);
-  line-height: var(--line-height-ls-2);
-  color: var(--color-text-muted-ls);
+.ver5-price-table td {
+  box-sizing: border-box;
+  height: 36px;
+  padding: var(--space-ls-1) var(--space-ls-3) var(--space-ls-1) 0;
+  border-bottom: var(--border-ls-1);
 }
 
-.ver5-h3 {
-  margin: 0;
-  font-size: var(--font-size-ls-2);
-  font-weight: var(--font-weight-ls-medium);
-  color: var(--color-text-ls);
+.ver5-price-table tbody tr:last-child td { border-bottom: 0; }
+
+.ver5-num {
+  font-family: var(--font-family-mono-ls);
+  font-variant-numeric: var(--tabular-ls);
+  white-space: nowrap;
 }
 
-.ver5-row-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-ls-2);
-  margin-bottom: var(--space-ls-2);
-}
+/* 版本读口卡（flush 卡体自带内距）。 */
+.ver5-health-inner { padding: var(--space-ls-3); }
 
 @media (max-width: 900px) {
   .ver5-pair { grid-template-columns: minmax(0, 1fr); }
 }
-
-@media (max-width: 720px) {
-  .ver5-hide-sm { display: none; }
-}
-.ver5-health-inner { padding: var(--space-ls-3); }

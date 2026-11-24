@@ -38,9 +38,10 @@ describe("SettingsPage", () => {
     await render();
     expect(container.querySelector('[data-testid="set4-switch-approval"]')?.textContent).toContain("未启用");
     expect(container.querySelector('[data-testid="set4-switch-chat"]')?.textContent).toContain("未启用");
-    expect(container.textContent).toContain("配置自检尚未接入，该项未启用");
+    // 缺读口只在卡底可用性块声明一次；行内只留状态，原因进 title。
+    expect(container.querySelector('[data-testid="set4-switch-approval"]')?.getAttribute("title")).toContain("配置自检尚未接入");
+    expect(container.querySelector('[data-testid="set4-switch-chat"]')?.getAttribute("title")).toContain("该项未启用");
     expect(container.textContent).toContain("上游连通自检");
-    expect(container.textContent).toContain("配置自检尚未接入，该项未启用");
     expect(container.textContent).not.toContain("CR-M2-02");
     expect(container.textContent).not.toContain("HTTP");
     expect(container.querySelectorAll("button")).toHaveLength(1);
@@ -98,9 +99,12 @@ describe("SettingsPage", () => {
     expect(facts).toBeTruthy();
     expect(container.querySelector('[data-testid="set4-fact-read-port"]')?.textContent).toContain("未接入");
     expect(container.querySelector('[data-testid="set4-fact-gateway"]')?.textContent).toContain("running");
-    expect(container.querySelector('[data-testid="set4-fact-platforms"]')?.textContent).toContain("api_server=connected");
+    // 工程键名不上屏：人话读数在正文，原始键值进 title。
+    expect(container.querySelector('[data-testid="set4-fact-platforms"]')?.textContent).toContain("已连接");
+    expect(container.querySelector('[data-testid="set4-fact-platforms"]')?.getAttribute("title")).toContain("api_server=connected");
     expect(container.querySelector('[data-testid="set4-fact-metrics-today"]')?.textContent).toContain("请求 0");
-    expect(container.querySelector('[data-testid="set4-fact-sources"]')?.textContent).toContain("dashboard_system=degraded（timeout）");
+    expect(container.querySelector('[data-testid="set4-fact-sources"]')?.textContent).toContain("系统状态降级");
+    expect(container.querySelector('[data-testid="set4-fact-sources"]')?.getAttribute("title")).toContain("dashboard_system=degraded（timeout）");
     expect(container.querySelector('[data-testid="set4-facts-stamp"]')?.textContent).toContain("2026-11-24");
     // 诚实纪律：没有假开关、没有写入口。
     expect(container.querySelectorAll('input, [role="switch"]')).toHaveLength(0);
