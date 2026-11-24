@@ -333,7 +333,15 @@ function BlockFoot({ children, items, testid }: { children: ReactNode; items: St
 /** R31: the as-of line renders in EVERY state — the real minute stamp in
  * 北京时间 YYYY-MM-DD HH:mm, or "—" with the honest reason in title.
  * Never an invented time, never absent from the DOM. */
-function AsofLine({ states }: { states: Array<Loadable<unknown> | null> }) {
+function AsofLine({ states, waiting = false }: { states: Array<Loadable<unknown> | null>; waiting?: boolean }) {
+  if (waiting) {
+    return (
+      <p className="ov5-fresh" data-testid="ov6-asof" title="取不到采集时间：数据还在读取">
+        <IconClock className="ov5-i ov5-i-13" />
+        <span>采集时刻 —（北京时间）</span>
+      </p>
+    );
+  }
   const stamps = states.map((st) => sourceStamp(st));
   const shown = stamps
     .map((x) => x.shown)
@@ -418,9 +426,9 @@ function IssueRows({
  * ========================================================================== */
 type KpiGap = { label: string; reason: string };
 
-/** 主数字位的未知态：不写裸破折号，写「待核实」并让下一行说明缺哪个读口。 */
+/** 主数字位的未知态：16px 弱色破折号（不写「待核实」三字）。 */
 function UnknownValue() {
-  return <span className="ov5-kpi-unknown">待核实</span>;
+  return <span className="ov5-kpi-unknown">—</span>;
 }
 
 function KpiCard({
@@ -429,17 +437,13 @@ function KpiCard({
   value,
   unit,
   foot,
-  source,
   stamps,
   testid,
-  note,
-  noteTitle,
   issues,
   onRetry,
   icon,
   viz,
-  coverage,
-  unknownReason,
+  status,
   gaps,
   children,
 }: {
@@ -448,19 +452,14 @@ function KpiCard({
   value: ReactNode;
   unit?: ReactNode;
   foot?: ReactNode;
-  source: string;
   stamps: StampSource[];
   testid: string;
-  note?: ReactNode;
-  noteTitle?: string;
   issues?: KpiIssue[];
   onRetry?: () => void;
   icon?: ReactNode;
   viz?: ReactNode;
-  /** 卡顶右上的覆盖率小标：已接通读口 / 该卡使用的读口总数。 */
-  coverage?: { ready: number; total: number };
-  /** 主数字为「待核实」时的缺口感（一行小字）。 */
-  unknownReason?: ReactNode;
+  /** 卡右上角唯一的状态点（title 里写已接通读口数 / 缺什么）。 */
+  status?: { tone: 'ok' | 'unknown' | 'bad'; title: string };
   /** 卡内不可得的读数：默认收起在「未接入 N 项」里。 */
   gaps?: KpiGap[];
   children?: ReactNode;
@@ -474,28 +473,23 @@ function KpiCard({
             <span>{title}</span>
           </h2>
           {meta ? <span className="ov5-kpi-meta">{meta}</span> : null}
-          {coverage ? (
+          {status ? (
             <span
-              className="ov5-coverage"
-              title={`${source} · 已接通 ${coverage.ready}/${coverage.total} 个读口`}
-            >
-              数据源 {coverage.ready}/{coverage.total}
-            </span>
-          ) : (
-            <Source>{source}</Source>
-          )}
+              className={`ov5-dot ${status.tone} ov5-card-status`}
+              title={status.title}
+              data-testid={`${testid}-status`}
+            />
+          ) : null}
         </div>
         <div className="ov5-kr">
           <div className="ov5-kpi-value">{value}</div>
           {unit ? <em className="ov5-unit">{unit}</em> : null}
           {viz ? <span className="ov5-kpi-viz">{viz}</span> : null}
         </div>
-        {unknownReason ? <p className="ov5-unknown-why">缺：{unknownReason}</p> : null}
         {foot ? <p className="ov5-kpi-foot">{foot}</p> : null}
         {children}
         <IssueRows issues={issues} onRetry={onRetry} testid={testid} />
         <div className="ov5-kpi-footline">
-          {note ? <span className="ov5-note" title={noteTitle}>{note}</span> : null}
           <Freshness items={stamps} testid={`${testid}-stamp`} />
         </div>
         {gaps && gaps.length > 0 ? (
@@ -550,8 +544,6 @@ function ReadyCard({
         : failingGates.map((gate) => `${gate.name} ${gate.fail}`).join(' · ');
   const pct = (n: number | null | undefined) =>
     n === null || n === undefined || !denom ? null : Math.round((n / denom) * 1000) / 10;
-  const countText = (n: number | null | undefined) =>
-    n === null || n === undefined ? '待核实' : String(n);
   const unknownGates = readiness.gates.filter((gate) => gate.state === 'unknown');
   const v3Known = readiness.gates.find((gate) => gate.key === 'V3')?.state !== 'unknown';
   const coverageReady = [
@@ -561,31 +553,29 @@ function ReadyCard({
     data.readiness?.k === 'ready',
     v3Known,
   ].filter(Boolean).length;
-  const unknownReason =
-    readiness.confirmed === null
-      ? unknownGates.length > 0
-        ? unknownGates
-            .map((gate) => (gate.key === 'V3' ? '引用门（强制引用策略读口）' : `${gate.name}门读口`))
-            .join('、')
-        : '四门证据未齐'
-      : undefined;
+  const gapList: KpiGap[] = [
+    ...(v3Known ? [] : [{ label: '引用门', reason: '强制引用策略读口' }]),
+    ...(kpis.atRisk === null ? [{ label: '风险口径', reason: '风险矩阵' }] : []),
+  ];
+  const statusTone = gapList.length === 0 && unknownGates.length === 0 ? 'ok' : 'unknown';
 
   return (
     <KpiCard
       title="可上岗"
       meta={`${dashed(denom)} 名 · 四门取交集`}
       value={readiness.confirmed === null ? <UnknownValue /> : readiness.confirmed}
-      unit={`/ ${countText(denom)} 可上岗`}
-      unknownReason={unknownReason}
-      coverage={{ ready: coverageReady, total: 5 }}
-      gaps={v3Known ? [] : [{ label: '引用门', reason: '强制引用策略读口' }]}
+      unit={`/ ${denom === null ? '—' : denom} 可上岗`}
+      status={{
+        tone: statusTone,
+        title: `数据源 ${coverageReady}/5${gapList.length > 0 ? ` · 缺：${gapList.map((gap) => gap.label).join('、')}` : ''}`,
+      }}
+      gaps={gapList}
       foot={
         <>
-          受限 <b>{countText(buckets?.failing)}</b>：{restricted} · 在岗 <b>{countText(kpis.active)}</b> · 有风险{' '}
-          <b>{countText(kpis.atRisk)}</b>
+          受限 <b>{dashed(buckets?.failing)}</b>：{restricted} · 在岗 <b>{dashed(kpis.active)}</b> · 有风险{' '}
+          <b>{dashed(kpis.atRisk)}</b>
         </>
       }
-      source="员工统计 / 风险矩阵 / 四门证据 / 引用策略"
       stamps={[
         { source: '员工统计', state: data.stats },
         { source: '风险矩阵', state: matrix },
@@ -597,13 +587,11 @@ function ReadyCard({
         ...(matrix.k === 'error' ? [{ label: '风险矩阵', state: matrix, gap: OVERVIEW_GAP.risk }] : []),
       ]}
       onRetry={onRetry}
-      note={kpis.atRisk === null ? '风险口径未接入' : undefined}
-      noteTitle={kpis.atRisk === null ? OVERVIEW_GAP.risk : undefined}
       icon={<IconUsers className="ov5-i ov5-i-13" />}
     >
       <div className="ov5-gline">
         <span>各门独立通过</span>
-        <span>/ {countText(denom)} 人</span>
+        <span>/ {dashed(denom)} 人</span>
       </div>
       <div className="ov5-gates">
         {readiness.gates.map((gate) => {
@@ -615,23 +603,23 @@ function ReadyCard({
                 {gate.key === narrowestKey ? <span className="ov5-gtag">最窄</span> : null}
               </span>
               <span className="ov5-gv">
-                {gate.pass === null ? '待核实' : gate.pass} / {countText(denom)}
+                {gate.pass === null ? '—' : gate.pass} / {dashed(denom)}
               </span>
               <span className="ov5-gcut">
-                {gate.state === 'unknown' ? '缺读口' : `未达 ${gate.fail ?? 0}`}
+                {gate.state === 'unknown' ? '—' : `未达 ${gate.fail ?? 0}`}
               </span>
               <i className={`ov5-gdot ${dot}`} title={gate.whyNot ?? `${gate.name}：${gate.state}`} />
             </div>
           );
         })}
       </div>
-      <div className="ov5-hnarrow">
-        <b>
-          四门交集 {readiness.confirmed === null ? '待核实' : `${readiness.confirmed} 人可上岗`}
-        </b>
-        <span className="ov5-hsep">·</span>
-        {readiness.netNote}
-      </div>
+      {readiness.confirmed !== null ? (
+        <div className="ov5-hnarrow">
+          <b>四门交集 {readiness.confirmed} 人可上岗</b>
+          <span className="ov5-hsep">·</span>
+          {readiness.netNote}
+        </div>
+      ) : null}
       <div className="ov5-stack">
         <svg className="ov5-stack-svg" viewBox="0 0 100 6" preserveAspectRatio="none" role="img" aria-label="可上岗 / 受限 / 未知占比">
           {buckets === null ? (
@@ -659,15 +647,15 @@ function ReadyCard({
         <div className="ov5-legend">
           <span>
             <i className="ok" />
-            {countText(buckets?.confirmed)} 可上岗
+            {dashed(buckets?.confirmed)} 可上岗
           </span>
           <span>
             <i className="bad" />
-            {countText(buckets?.failing)} 受限
+            {dashed(buckets?.failing)} 受限
           </span>
           <span>
             <i className="unknown" />
-            {countText(buckets?.pending)} 未知
+            {dashed(buckets?.pending)} 未知
           </span>
           <span className="ov5-legend-note">四门各自独立判定后再取交集</span>
         </div>
@@ -697,14 +685,12 @@ function TodayRunsCard({
     data.todayRuns.k === 'ready'
       ? data.todayRuns.data.filter((run) => run.status === 'running' || run.status === 'failed').slice(0, 3)
       : [];
-  const countText = (n: number | null | undefined) =>
-    n === null || n === undefined ? '待核实' : String(n);
   const failureRateText =
     kpis.failureRate !== null
       ? `${kpis.failureRate}%`
       : kpis.runs === 0
         ? '不计算'
-        : '待核实';
+        : '—';
   const coverageReady = [data.todayStats.k === 'ready', data.todayRuns.k === 'ready'].filter(Boolean).length;
   return (
     <KpiCard
@@ -712,36 +698,38 @@ function TodayRunsCard({
       meta={<Link to="/work?tab=runs">运行记录 →</Link>}
       value={kpis.runs === null ? <UnknownValue /> : kpis.runs}
       unit="次"
-      unknownReason={kpis.runs === null ? '运行统计读口' : undefined}
-      coverage={{ ready: coverageReady, total: 2 }}
+      status={{ tone: coverageReady === 2 ? 'ok' : 'unknown', title: `数据源 ${coverageReady}/2` }}
       foot={
         <>
-          在跑 <b>{countText(running)}</b> · 失败 <b>{countText(kpis.failed)}</b> · 失败率{' '}
+          在跑 <b>{dashed(running)}</b> · 失败 <b>{dashed(kpis.failed)}</b> · 失败率{' '}
           <b>{failureRateText}</b>
         </>
       }
-      source="运行统计（今日）"
       stamps={[{ source: '运行统计', state: data.todayStats }]}
       testid="ov6-kpi-runs"
       issues={[{ label: '运行统计', state: data.todayStats, gap: OVERVIEW_GAP.runs }]}
       onRetry={onRetry}
-      note={kpis.runs === 0 && kpis.failureRate === null ? '今天还没有运行，失败率不计算' : undefined}
-      noteTitle={kpis.runs === 0 && kpis.failureRate === null ? OVERVIEW_GAP.runs : undefined}
       icon={<IconGauge className="ov5-i ov5-i-13" />}
     >
       <div className="ov5-hlist">
         {rows.length > 0 ? (
           rows.map((run) => <RunRowLine key={run.runId} run={run} />)
         ) : (
-          <div className="ov5-hrow">
-            <span className="ov5-ht">
+          <>
+            <p className="ov5-empty-line">
               {data.todayRuns.k === 'error'
                 ? '运行记录没有读出来（见上方重试）'
                 : data.todayRuns.k === 'loading'
                   ? '正在读今日运行记录…'
                   : '今天没有在跑或失败的 run'}
-            </span>
-          </div>
+            </p>
+            {data.todayRuns.k === 'ready' ? (
+              <>
+                <div className="ov5-skelrow"><span className="ov5-skelbar" /></div>
+                <div className="ov5-skelrow"><span className="ov5-skelbar" /></div>
+              </>
+            ) : null}
+          </>
         )}
       </div>
     </KpiCard>
@@ -807,17 +795,18 @@ function CostCard({
       title="今日成本"
       meta={<Link to="/overview?tab=usage">成本账本 →</Link>}
       value={displayCost === null ? <UnknownValue /> : usd(displayCost)}
-      unit={`${caliber} · 月配额 ${quota === null ? '待核实' : usd(quota)}`}
-      unknownReason={displayCost === null ? '成本账本 / 运行统计读口' : undefined}
-      coverage={{ ready: coverageReady, total: 5 }}
+      unit={`${caliber} · 月配额 ${quota === null ? '—' : usd(quota)}`}
+      status={{
+        tone: gaps.length === 0 ? 'ok' : 'unknown',
+        title: `数据源 ${coverageReady}/5${gaps.length > 0 ? ` · 缺：${gaps.map((gap) => gap.label).join('、')}` : ''}`,
+      }}
       gaps={gaps}
       foot={
         <>
-          月配额 <b>{quota === null ? '待核实' : usd(quota)}</b> ·{' '}
+          月配额 <b>{quota === null ? '—' : usd(quota)}</b> ·{' '}
           {covered > 0 ? `${covered} 人缺账本` : '逐员工相加'}
         </>
       }
-      source="成本账本（日 / 月） / 运行统计"
       stamps={[
         { source: '成本账本', state: data.budgetDay },
         { source: '月账本', state: data.budgetMonth },
@@ -825,21 +814,19 @@ function CostCard({
       testid="ov6-kpi-cost"
       issues={[{ label: '成本账本', state: data.budgetDay, gap: OVERVIEW_GAP.cost }]}
       onRetry={onRetry}
-      note={kpis.costUsd === null ? '成本口径未齐' : undefined}
-      noteTitle={kpis.costUsd === null ? OVERVIEW_GAP.cost : undefined}
       icon={<IconCoins className="ov5-i ov5-i-13" />}
     >
       <div className="ov5-hlist">
         <div className="ov5-hrow">
           <span className="ov5-ht">账本覆盖</span>
           <span className="ov5-hm">
-            {coveredRows === null ? '待核实' : `${coveredRows}/${kpis.total ?? '待核实'}`} 员工
+            {coveredRows === null ? '—' : `${coveredRows}/${kpis.total ?? '—'}`} 员工
           </span>
         </div>
         <div className="ov5-hrow">
           <span className="ov5-ht">今日成本来源</span>
           <span className="ov5-hm">
-            {kpis.costUsd !== null ? '成本账本' : liveCostUsd !== null ? '运行统计' : '未接入'}
+            {kpis.costUsd !== null ? '成本账本' : liveCostUsd !== null ? '运行统计' : '—'}
           </span>
         </div>
       </div>
@@ -857,15 +844,21 @@ function ChainStrip({
   matrix,
   covered,
   pending,
+  pendingLoading,
   gateway,
+  gatewayLoading,
   liveCostUsd,
+  costLoading,
 }: {
   kpis: ReturnType<typeof buildKpis>;
   matrix: Loadable<MatrixBody>;
   covered: number | null;
   pending: number | null;
+  pendingLoading: boolean;
   gateway: string | null;
+  gatewayLoading: boolean;
   liveCostUsd: number | null;
+  costLoading: boolean;
 }) {
   const quota = monthQuota(matrix);
   const actual = kpis.costUsd ?? liveCostUsd;
@@ -886,7 +879,7 @@ function ChainStrip({
         </span>
         <span className="ov5-cs-v">
           {pending === null ? (
-            <span className="ov5-cs-na">未接入</span>
+            <span className="ov5-cs-na">{pendingLoading ? '读取中' : '未接入'}</span>
           ) : (
             <>
               <b>{pending}</b> 待批
@@ -906,7 +899,7 @@ function ChainStrip({
         </span>
         <span className="ov5-cs-v">
           {gateway === null ? (
-            <span className="ov5-cs-na">未接入</span>
+            <span className="ov5-cs-na">{gatewayLoading ? '读取中' : '未接入'}</span>
           ) : (
             <>
               <i className={`ov5-dot ${gatewayTone}`} />
@@ -927,7 +920,7 @@ function ChainStrip({
         </span>
         <span className="ov5-cs-v">
           {actual === null ? (
-            <span className="ov5-cs-na">未接入</span>
+            <span className="ov5-cs-na">{costLoading ? '读取中' : '未接入'}</span>
           ) : (
             <>
               实扣 <b>{usd(actual)}</b>
@@ -1009,11 +1002,6 @@ function Trend({ stats, label = '近 14 天', days = 14, onRetry }: { stats: Loa
                 role="img"
                 aria-label={`${label}运行趋势：合计 ${total} 次，峰值 ${peak ? peak.value : '无'} 次，失败 ${geo.failedTotal === null ? '待核实' : geo.failedTotal} 次，缺读数 ${missingDays} 天`}
               >
-                <defs>
-                  <pattern id="ov5-trend-hatch" patternUnits="userSpaceOnUse" width="6" height="6">
-                    <path className="ov5-trend-hatch-line" d="M0 6 L6 0" />
-                  </pattern>
-                </defs>
                 {geo.ticks.map((tick) => (
                   <g key={`t${tick.label}-${tick.y}`}>
                     <line className="ov5-grid-line" x1={TREND_PAD.l} x2={geo.w - TREND_PAD.r} y1={tick.y} y2={tick.y} />
@@ -1025,12 +1013,14 @@ function Trend({ stats, label = '近 14 天', days = 14, onRetry }: { stats: Loa
                     <rect
                       key={`void${col.index}`}
                       className="ov5-trend-void"
-                      x={col.cx - col.w / 2}
-                      y={TREND_PAD.t}
-                      width={col.w}
-                      height={geo.plot.h}
-                      rx={2}
-                    />
+                      x={col.cx - 1.5}
+                      y={TREND_PAD.t + geo.plot.h - 7}
+                      width={3}
+                      height={7}
+                      rx={1}
+                    >
+                      <title>{`${col.label} · 缺读数`}</title>
+                    </rect>
                   ) : null,
                 )}
                 {geo.segments.map((segment, index) => (
@@ -1060,8 +1050,8 @@ function Trend({ stats, label = '近 14 天', days = 14, onRetry }: { stats: Loa
                       cy={geo.columns[geo.peakAt.index].y ?? TREND_PAD.t}
                       r={2.4}
                     />
-                    <text className="ov5-axis-lbl" x={geo.columns[geo.peakAt.index].cx} y={TREND_PAD.t - 11} textAnchor="middle">
-                      峰值 {geo.columns[geo.peakAt.index].label}
+                    <text className="ov5-axis-lbl ov5-peak-lbl" x={geo.columns[geo.peakAt.index].cx} y={TREND_PAD.t - 11} textAnchor="middle">
+                      峰值 {geo.peakAt.value}
                     </text>
                   </g>
                 ) : null}
@@ -1219,13 +1209,17 @@ function Blockers({
   onRetry,
   health,
   gateway,
+  gatewayLoading,
   pending,
+  queueLoading,
 }: {
   data: DutyData;
   onRetry: () => void;
   health?: Loadable<HealthSourcesBody>;
   gateway: string | null;
+  gatewayLoading: boolean;
   pending: number | null;
+  queueLoading: boolean;
 }) {
   const failed = data.failedRuns.k === 'ready' ? data.failedRuns.data : null;
   const tasks = data.blockedTasks.k === 'ready' ? data.blockedTasks.data : null;
@@ -1259,11 +1253,11 @@ function Blockers({
         <div className="ov5-statusline" data-testid="ov6-blocker-status">
           <span className="ov5-stat">
             <i className={`ov5-dot ${gatewayTone}`} />
-            网关 <b>{gatewayText}</b>
+            网关 <b>{gatewayLoading ? '读取中' : gatewayText}</b>
           </span>
-          <span className="ov5-stat">服务 <b>{services ?? '未接入'}</b></span>
+          <span className="ov5-stat">服务 <b>{health?.k === 'loading' ? '读取中' : services ?? '未接入'}</b></span>
           <span className="ov5-stat">客户端 <b>未接入</b></span>
-          <span className="ov5-stat">队列 <b>{pending ?? '未接入'}</b></span>
+          <span className="ov5-stat">队列 <b>{queueLoading && pending === null ? '读取中' : pending ?? '未接入'}</b></span>
         </div>
         <Freshness items={blockSources} testid="ov6-blockers-stamp" />
         {rows.length === 0 ? (
@@ -1336,7 +1330,7 @@ function PendingCard({ data, onRetry }: { data: DutyData; onRetry: () => void })
           <span className="ov5-pending-count">
             待批{' '}
             <span className={pending !== null && pending > 0 ? 'ov5-kpi-value ov5-count-warn' : 'ov5-kpi-value'}>
-              {pending === null ? '待核实' : pending}
+              {pending === null ? '—' : pending}
             </span>
           </span>
           <span>最早 {first?.createdAt ? beijing(first.createdAt) : '无'}</span>
@@ -1387,13 +1381,21 @@ function RecentActivity({ data, onRetry }: { data: DutyData; onRetry: () => void
                 <Link to={`/runs/${encodeURIComponent(run.runId)}`} title={run.runId}>
                   {shortId(run.runId)}
                 </Link>
-                <Badge
-                  tone={run.status === 'failed' ? 'destructive' : run.status === 'completed' ? 'success' : 'outline'}
+                <span
+                  className={`ov5-runstate ${
+                    run.status === 'failed'
+                      ? 'failed'
+                      : run.status === 'completed'
+                        ? 'success'
+                        : run.status === 'running'
+                          ? 'running'
+                          : 'unknown'
+                  }`}
                   // OM-07 状态四词表封闭：成功/失败/运行中/—；未知原值不进徽标文本，落 title 供核对。
                   title={run.status && !['failed', 'completed', 'running'].includes(run.status) ? `上游状态：${run.status}` : undefined}
                 >
                   {run.status === 'failed' ? '失败' : run.status === 'completed' ? '成功' : run.status === 'running' ? '运行中' : '—'}
-                </Badge>
+                </span>
                 <span className="ov5-mono">{beijing(run.startedAt)}</span>
                 <span className="ov5-hm">{duration(run.startedAt, run.endedAt)}</span>
               </li>
@@ -1469,6 +1471,14 @@ export function OverviewView({
   const coreStates = [data.employees, data.stats, data.todayStats, data.approvalStats, data.budgetDay];
   const allError = coreStates.every((state) => state.k === 'error');
   const anyLoading = coreStates.some((state) => state.k === 'loading');
+  // 首屏元数据等全部读口（含四门证据/探针/健康/聚合）落定再出数字：
+  // 否则截图会停在半加载态，把「读取中」误读成占位词。
+  const criticalWaiting =
+    anyLoading ||
+    (data.readiness !== undefined && data.readiness.k === 'loading') ||
+    (probe !== undefined && probe.k === 'loading') ||
+    (health !== undefined && health.k === 'loading') ||
+    (summary !== undefined && summary.k === 'loading');
   const firstError = coreStates.find((state) => state.k === 'error');
 
   // OM-15：健康卡两段式——服务探针真读数（gateway.status/updated_at），本页读数只做合成脚注。
@@ -1488,7 +1498,7 @@ export function OverviewView({
     ? HEALTH_LABEL[probeStatus] ?? probeStatus
     : probeState.k === 'error'
       ? '未接'
-      : '待核实';
+      : '—';
   const healthSynthesis = healthSources.every((s) => s.state.k === 'ready')
     ? '本页六路读数全部就绪'
     : healthSources
@@ -1537,8 +1547,6 @@ export function OverviewView({
     [summaryAsOf, summaryRowsKey],
   );
   const [copyState, setCopyState] = useState<'idle' | 'ok' | 'fail'>('idle');
-  // 搜索 / 导出没有读口：按钮可见，按下只给可见的诚实提示，不做无声假动作。
-  const [actionHint, setActionHint] = useState<string | null>(null);
   const fallbackRef = useRef<HTMLTextAreaElement | null>(null);
   const copySummary = useCallback(() => {
     const fail = () => {
@@ -1599,29 +1607,36 @@ export function OverviewView({
         <div className="ov5-head-main">
           {/* 全站只有外壳 TopBar 一个 <h1>：模块内不再重复标题，页头只留一行元数据。 */}
           <div className="ov5-facts">
-            <AsofLine states={[data.stats, data.todayStats, data.employees, data.approvalStats, data.budgetDay]} />
-            <span className="ov5-fact"><b>{dashed(kpis.total)}</b> 名数字员工</span>
-            <span className="ov5-fact">
-              {runningToday === null ? <>在跑 <b>—</b></> : <><b>{runningToday}</b> 个运行在跑</>}
-            </span>
+            {criticalWaiting ? (
+              <AsofLine states={[]} waiting />
+            ) : (
+              <>
+                <AsofLine states={[data.stats, data.todayStats, data.employees, data.approvalStats, data.budgetDay]} />
+                <span className="ov5-fact"><b>{dashed(kpis.total)}</b> 名数字员工</span>
+                <span className="ov5-fact">
+                  {runningToday === null ? <>在跑 <b>—</b></> : <><b>{runningToday}</b> 个运行在跑</>}
+                </span>
+              </>
+            )}
           </div>
         </div>
         <div className="ov5-head-actions">
           {onRange ? (
-            <div className="ov5-seg" role="group" aria-label="时间窗" data-testid="ov6-range-seg">
-              {DUTY_RANGES.map((r) => (
-                <button
-                  key={r.id}
-                  type="button"
-                  data-testid={`ov6-range-${r.id}`}
-                  aria-pressed={r.id === rangeId}
-                  className={r.id === rangeId ? 'ov5-seg-btn is-active' : 'ov5-seg-btn'}
-                  onClick={() => onRange(r.id)}
-                >
-                  {r.label}
-                </button>
-              ))}
-            </div>
+            <label className="ov5-range-chip" title="时间范围">
+              <span className="ov5-range-chip-k">时间</span>
+              <select
+                data-testid="ov6-range"
+                aria-label="时间窗"
+                value={rangeId}
+                onChange={(event) => onRange(event.target.value as DutyRangeId)}
+              >
+                {DUTY_RANGES.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.label}
+                  </option>
+                ))}
+              </select>
+            </label>
           ) : null}
           {rangeInvalid ? (
             <span
@@ -1632,48 +1647,60 @@ export function OverviewView({
               窗口参数无效，按{range.label}读取
             </span>
           ) : null}
-          <span className="ov5-copy" data-testid="ov6-summary-copy-wrap">
-            <Button size="sm" outlined prefix={<IconCopy className="ov5-i ov5-i-14" />} data-testid="ov6-summary-copy" onClick={copySummary}>复制摘要</Button>
-            {copyState === 'ok' ? (
-              <span role="status" data-testid="ov6-summary-copy-ok">
-                <IconCheck className="ov5-i ov5-i-13" />
-                已复制到剪贴板
-              </span>
-            ) : null}
-            {copyState === 'fail' ? <span role="status" data-testid="ov6-summary-copy-fail">复制失败：已选中摘要文本，可手动复制。</span> : null}
-          </span>
           <Button
             size="sm"
-            outlined
-            data-testid="ov6-search"
-            title="搜索读口未接入：⌘K 暂不可用"
-            prefix={<IconSearch className="ov5-i ov5-i-14" />}
-            onClick={() => setActionHint('搜索接口未接入：本页暂不支持检索（⌘K 不可用）。')}
+            onClick={onRetry}
+            disabled={loading || anyLoading}
+            aria-busy={loading || anyLoading}
+            data-testid="ov6-refresh"
+            prefix={<IconRefresh className={`ov5-i ov5-i-14 ${loading || anyLoading ? 'ov5-spin' : ''}`} />}
           >
-            搜索 ⌘K
-          </Button>
-          <Button
-            size="sm"
-            outlined
-            data-testid="ov6-export"
-            title="导出接口未接入：日报导出暂不可用"
-            prefix={<IconDownload className="ov5-i ov5-i-14" />}
-            onClick={() => setActionHint('导出接口未接入：日报导出暂不可用。')}
-          >
-            导出日报
-          </Button>
-          <Button size="sm" outlined onClick={onRetry} disabled={loading || anyLoading} aria-busy={loading || anyLoading} data-testid="ov6-refresh" prefix={<IconRefresh className={`ov5-i ov5-i-14 ${loading || anyLoading ? 'ov5-spin' : ''}`} />}>
             刷新
           </Button>
+          <details className="ov5-more">
+            <summary className="ov5-more-btn" data-testid="ov6-more">
+              更多
+            </summary>
+            <div className="ov5-more-menu">
+              <button type="button" className="ov5-more-item" data-testid="ov6-summary-copy" onClick={copySummary}>
+                <IconCopy className="ov5-i ov5-i-13" />
+                复制摘要
+              </button>
+              {copyState === 'ok' ? (
+                <span className="ov5-more-state" role="status" data-testid="ov6-summary-copy-ok">
+                  <IconCheck className="ov5-i ov5-i-13" />
+                  已复制到剪贴板
+                </span>
+              ) : null}
+              {copyState === 'fail' ? (
+                <span className="ov5-more-state" role="status" data-testid="ov6-summary-copy-fail">
+                  复制失败：已选中摘要文本，可手动复制。
+                </span>
+              ) : null}
+              <button
+                type="button"
+                className="ov5-more-item"
+                data-testid="ov6-search"
+                disabled
+                title="搜索读口未接入：⌘K 暂不可用"
+              >
+                <IconSearch className="ov5-i ov5-i-13" />
+                搜索 ⌘K
+              </button>
+              <button
+                type="button"
+                className="ov5-more-item"
+                data-testid="ov6-export"
+                disabled
+                title="导出接口未接入：日报导出暂不可用"
+              >
+                <IconDownload className="ov5-i ov5-i-13" />
+                导出日报
+              </button>
+            </div>
+          </details>
         </div>
       </header>
-
-      {actionHint ? (
-        <p className="ov5-act-hint" role="status" data-testid="ov6-action-hint">
-          <IconAlert className="ov5-i ov5-i-13" />
-          {actionHint}
-        </p>
-      ) : null}
 
       {copyState === 'fail' ? (
         <textarea
@@ -1706,8 +1733,11 @@ export function OverviewView({
         matrix={matrix}
         covered={costView.covered}
         pending={approvalStats?.pending ?? null}
+        pendingLoading={data.approvalStats.k === 'loading'}
         gateway={probeStatus}
+        gatewayLoading={probeState.k === 'loading'}
         liveCostUsd={liveCostUsd}
+        costLoading={data.budgetDay.k === 'loading' || summary?.k === 'loading'}
       />
 
       <div className="ov5-homegrid r2">
@@ -1721,7 +1751,9 @@ export function OverviewView({
           onRetry={onRetry}
           health={health}
           gateway={probeStatus}
+          gatewayLoading={probeState.k === 'loading'}
           pending={approvalStats?.pending ?? null}
+          queueLoading={data.approvalStats.k === 'loading'}
         />
         <PendingCard data={data} onRetry={onRetry} />
         <RecentActivity data={data} onRetry={onRetry} />

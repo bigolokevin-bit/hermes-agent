@@ -115,9 +115,9 @@ describe('OM-15 重放·健康卡两段式（服务探针 hermes-summary）', ()
     expect(card).not.toMatch(/\d\/\d/);
   });
 
-  it('探针 ready 但无状态字段：「待核实」+「不以本页读数冒充」说明，采集时刻如实未知', async () => {
+  it('探针 ready 但无状态字段：「—」+「不以本页读数冒充」说明，采集时刻如实未知', async () => {
     await render(view(ready({})));
-    expect(healthValue()).toBe('待核实');
+    expect(healthValue()).toBe('—');
     const card = healthCard()?.textContent ?? '';
     expect(card).toContain('服务探针未返回状态；不以本页读数冒充。');
     expect(card).toContain('原因：上游响应没有带采集时间');
@@ -125,7 +125,7 @@ describe('OM-15 重放·健康卡两段式（服务探针 hermes-summary）', ()
 
   it('探针读取中：不给出任何健康断言，只说数据还在读取', async () => {
     await render(view({ k: 'loading' }));
-    expect(healthValue()).toBe('待核实');
+    expect(healthValue()).toBe('—');
     const card = healthCard()?.textContent ?? '';
     expect(card).toContain('原因：数据还在读取');
     expect(card).not.toMatch(/正常|降级|异常/);

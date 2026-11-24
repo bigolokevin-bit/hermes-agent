@@ -26,22 +26,6 @@
   flex: 1 1 auto;
 }
 
-.ov5-act-hint {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 0;
-  padding: 4px 8px;
-  border-left: 2px solid var(--color-warning-ls);
-  border-radius: 3px;
-  background: color-mix(in srgb, var(--color-warning-ls) 7%, transparent);
-  color: var(--color-text-muted-ls);
-  font-size: 10.5px;
-  line-height: 1.45;
-}
-
-.ov5-act-hint > .ov5-i { color: var(--color-warning-ls); }
-
 .ov5-facts {
   display: flex;
   flex-wrap: wrap;
@@ -186,14 +170,9 @@
   white-space: nowrap;
 }
 
-/* 卡顶右上的覆盖率小标（等宽 11px） */
-.ov5-coverage {
+/* 卡右上唯一的状态点：title 里写读口覆盖与缺什么 */
+.ov5-card-status {
   margin-left: auto;
-  color: var(--color-text-faint-ls);
-  font-family: var(--font-family-mono-ls);
-  font-size: 11px;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
 }
 
 .ov5-kr {
@@ -222,13 +201,6 @@
   font-weight: var(--font-weight-ls-regular);
   letter-spacing: 0.02em;
   color: var(--color-text-subtle-ls);
-}
-
-.ov5-unknown-why {
-  margin: 0;
-  color: var(--color-text-faint-ls);
-  font-size: 9.5px;
-  line-height: 1.4;
 }
 
 .ov5-unit {
@@ -296,8 +268,6 @@
   border-top: 1px solid var(--color-border-subtle-ls);
 }
 
-.ov5-kpi-footline .ov5-note { flex: 0 1 auto; }
-
 .ov5-kpi-footline .ov5-stamps {
   flex: 0 1 auto;
   margin: 0;
@@ -351,13 +321,6 @@
   font-style: normal;
   color: var(--color-text-faint-ls);
   opacity: 0.9;
-}
-
-.ov5-note {
-  margin: 0;
-  color: var(--color-text-faint-ls);
-  font-size: 9.5px;
-  overflow-wrap: anywhere;
 }
 
 .ov5-kpi-issue {
@@ -485,9 +448,9 @@
 .ov5-stack-svg rect.ok { fill: var(--color-success-ls); }
 .ov5-stack-svg rect.bad { fill: var(--color-danger-ls); }
 .ov5-stack-svg rect.unknown {
-  fill: color-mix(in srgb, var(--color-info-ls) 18%, transparent);
+  fill: var(--color-surface-raised-ls);
   stroke: var(--color-border-ls);
-  stroke-dasharray: 2 2;
+  stroke-width: 0.5;
 }
 
 .ov5-legend {
@@ -518,7 +481,7 @@
 .ov5-legend i.warn { background: var(--color-warning-ls); }
 .ov5-legend i.bad { background: var(--color-danger-ls); }
 .ov5-legend i.unknown {
-  background: color-mix(in srgb, var(--color-info-ls) 18%, transparent);
+  background: var(--color-surface-raised-ls);
   box-shadow: inset 0 0 0 1px var(--color-border-ls);
 }
 .ov5-legend i.h0 { background: var(--color-surface-raised-ls); box-shadow: inset 0 0 0 1px var(--color-border-subtle-ls); }
@@ -789,12 +752,12 @@ a.ov5-cs:hover { border-color: var(--color-border-ls); }
 }
 
 .ov5-trend-area {
-  fill: color-mix(in srgb, var(--color-primary-ls) 8%, transparent);
+  fill: color-mix(in srgb, var(--color-text-ls) 4%, transparent);
 }
 
 .ov5-trend-line {
   fill: none;
-  stroke: var(--color-primary-ls);
+  stroke: var(--color-text-subtle-ls);
   stroke-width: 1.5;
   stroke-linecap: round;
   stroke-linejoin: round;
@@ -802,41 +765,38 @@ a.ov5-cs:hover { border-color: var(--color-border-ls); }
 
 .ov5-trend-pt {
   fill: var(--color-bg-ls);
-  stroke: var(--color-primary-ls);
+  stroke: var(--color-text-muted-ls);
   stroke-width: 1.2;
 }
 
-/* 跨缺读数的连接线只画虚线：不把插值冒充实测 */
+/* 跨缺读数的连接线只画同色低透明度虚线：不把插值冒充实测 */
 .ov5-trend-connector {
   fill: none;
-  stroke: var(--color-primary-ls);
+  stroke: var(--color-text-subtle-ls);
   stroke-width: 1;
   stroke-dasharray: 3 3;
-  opacity: 0.55;
+  opacity: 0.38;
 }
 
+/* 缺读数：浅灰断口，不画竖斜线，不抢基线 */
 .ov5-trend-void {
-  fill: url(#ov5-trend-hatch);
-  stroke: var(--color-border-ls);
-  stroke-dasharray: 2 3;
+  fill: color-mix(in srgb, var(--color-text-ls) 5%, transparent);
+  stroke: none;
 }
 
-.ov5-trend-hatch-line {
-  fill: none;
-  stroke: var(--color-border-ls);
+.ov5-peak-mark {
+  stroke: var(--color-warning-ls);
+  stroke-dasharray: 3 4;
   stroke-width: 1;
   opacity: 0.7;
 }
 
-.ov5-peak-mark {
-  stroke: var(--color-primary-ls);
-  stroke-dasharray: 3 4;
-  stroke-width: 1;
-  opacity: 0.6;
+.ov5-peak-dot {
+  fill: var(--color-warning-ls);
 }
 
-.ov5-peak-dot {
-  fill: var(--color-primary-ls);
+.ov5-peak-lbl {
+  fill: var(--color-warning-ls) !important;
 }
 
 /* 悬停列覆盖层：与 SVG 的 pl/pr/pt/pb（30/10/24/20）逐像素对齐 */
@@ -1109,6 +1069,40 @@ a.ov5-cs:hover { border-color: var(--color-border-ls); }
   white-space: nowrap;
 }
 
+/* 运行状态四色：运行中=蓝、成功=绿、失败=红、未知=中性 */
+.ov5-runstate {
+  flex: none;
+  padding: 1px 5px;
+  border: 1px solid var(--color-border-subtle-ls);
+  border-radius: 3px;
+  font-size: 9px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.ov5-runstate.success {
+  color: var(--color-success-ls);
+  border-color: color-mix(in srgb, var(--color-success-ls) 34%, transparent);
+  background: color-mix(in srgb, var(--color-success-ls) 8%, transparent);
+}
+
+.ov5-runstate.failed {
+  color: var(--color-danger-ls);
+  border-color: color-mix(in srgb, var(--color-danger-ls) 34%, transparent);
+  background: color-mix(in srgb, var(--color-danger-ls) 8%, transparent);
+}
+
+.ov5-runstate.running {
+  color: var(--color-info-ls);
+  border-color: color-mix(in srgb, var(--color-info-ls) 34%, transparent);
+  background: color-mix(in srgb, var(--color-info-ls) 8%, transparent);
+}
+
+.ov5-runstate.unknown {
+  color: var(--color-text-faint-ls);
+  border-color: var(--color-border-subtle-ls);
+}
+
 .ov5-blkrow {
   align-items: flex-start !important;
   min-height: 42px !important;
@@ -1340,37 +1334,41 @@ a.ov5-cs:hover { border-color: var(--color-border-ls); }
   gap: var(--space-ls-2);
 }
 
-.ov5-seg {
+/* 时间范围 chip：一个下拉，不再四枚并列按钮 */
+.ov5-range-chip {
   display: inline-flex;
-  flex-wrap: wrap;
-  gap: 2px;
-  padding: 2px;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 6px 0 8px;
   border: 1px solid var(--color-border-subtle-ls);
   border-radius: var(--radius-ls-1);
   background: var(--color-surface-ls);
+  color: var(--color-text-faint-ls);
+  font-family: var(--font-family-mono-ls);
+  font-size: 10.5px;
 }
 
-.ov5-seg-btn {
-  height: 26px;
-  padding: 0 8px;
-  border: 0;
-  border-radius: var(--radius-ls-1);
-  background: transparent;
+.ov5-range-chip-k {
   color: var(--color-text-faint-ls);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+}
+
+.ov5-range-chip select {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-muted-ls);
+  font-family: var(--font-family-mono-ls);
   font-size: 10.5px;
   line-height: 1;
-  white-space: nowrap;
   cursor: pointer;
-  transition: background var(--duration-ls-fast) var(--ease-ls-standard), color var(--duration-ls-fast) var(--ease-ls-standard);
 }
 
-.ov5-seg-btn:hover { color: var(--color-text-ls); }
-
-.ov5-seg-btn.is-active {
-  color: var(--color-text-ls);
-  background: var(--color-surface-raised-ls);
-  box-shadow: inset 0 0 0 1px var(--color-border-subtle-ls);
-  font-weight: var(--font-weight-ls-medium);
+.ov5-range-chip select:focus-visible {
+  outline: var(--focus-ring-ls);
+  outline-offset: var(--focus-ring-offset-ls);
 }
 
 .ov5-range-fallback {
@@ -1380,18 +1378,71 @@ a.ov5-cs:hover { border-color: var(--color-border-ls); }
   cursor: help;
 }
 
-.ov5-copy {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-ls-2);
+/* 更多：一枚按钮收住无读口动作；搜索/导出诚实 disabled */
+.ov5-more {
+  position: relative;
 }
 
-.ov5-copy [data-testid="ov6-summary-copy-ok"],
-.ov5-copy [data-testid="ov6-summary-copy-fail"] {
+.ov5-more-btn {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--color-border-subtle-ls);
+  border-radius: var(--radius-ls-1);
+  background: var(--color-surface-ls);
+  color: var(--color-text-muted-ls);
+  font-size: 10.5px;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  list-style: none;
+}
+
+.ov5-more-btn::-webkit-details-marker { display: none; }
+
+.ov5-more-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: var(--z-ls-dropdown);
+  display: grid;
+  min-width: 168px;
+  padding: 4px;
+  border: 1px solid var(--color-border-ls);
+  border-radius: var(--radius-ls-2);
+  background: var(--color-surface-raised-ls);
+  box-shadow: var(--shadow-ls-2);
+}
+
+.ov5-more-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: var(--radius-ls-1);
+  background: transparent;
+  color: var(--color-text-muted-ls);
+  font-size: 11px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ov5-more-item:hover:not(:disabled) { background: color-mix(in srgb, var(--color-text-ls) 6%, transparent); }
+
+.ov5-more-item:disabled {
+  color: var(--color-text-faint-ls);
+  opacity: var(--opacity-disabled-ls);
+  cursor: not-allowed;
+}
+
+.ov5-more-state {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  color: var(--color-text-muted-ls);
+  padding: 4px 8px;
+  color: var(--color-text-faint-ls);
   font-size: 9.5px;
 }
 
@@ -1428,7 +1479,7 @@ section.ov5-page > textarea[data-testid="ov6-summary-fallback"] {
     justify-content: flex-start;
     gap: 6px;
   }
-  .ov5-seg-btn { height: 24px; padding: 0 6px; font-size: 10px; }
+  
   .ov5-kpi-value,
   .ov5-hnum-v { font-size: 24px; }
   .ov5-kpi-foot { font-size: 11px; }

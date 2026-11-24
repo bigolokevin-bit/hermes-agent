@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // OM-05：KPI 缺失/错误态测试面补齐。
 // 每个 GAP 编号至少一条点名断言：error 态与 ready-缺字段态分开钉；
-// 主数字未知时写「待核实」（禁裸破折号、禁空串、禁 0）；每条 issue 带 gap title 与可复制 rid。
+// 主数字未知时写「—」（禁裸破折号、禁空串、禁 0）；每条 issue 带 gap title 与可复制 rid。
 import { act, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { MemoryRouter } from 'react-router';
@@ -68,14 +68,14 @@ function view(data: DutyData, matrix: unknown = ready({ items: [] }), onRetry = 
 }
 
 describe('OM-05 GAP-OV5-EMPLOYEES：员工目录错误与连坐', () => {
-  it('employees error → 员工卡值恰「待核实」、issue 行带 gap 号与 rid、重试可点', async () => {
+  it('employees error → 员工卡值恰「—」、issue 行带 gap 号与 rid、重试可点', async () => {
     const onRetry = vi.fn();
     const data = base();
     data.employees = err(500, '员工目录暂时读不到', 'req-emp-1') as never;
     data.stats = err(500, '员工统计暂时读不到', 'req-emp-1b') as never;
     await render(view(data, ready({ items: [] }), onRetry));
     const emp = card('ov6-kpi-employees')!;
-    expect(emp.querySelector('.ov5-kpi-value')!.textContent).toBe('待核实');
+    expect(emp.querySelector('.ov5-kpi-value')!.textContent).toBe('—');
     const row = emp.querySelector('.ov5-kpi-issue') as HTMLElement;
     expect(row.title).toBe(OVERVIEW_GAP.employees);
     expect(row.textContent).toContain('员工统计未接入：员工目录暂时读不到');
@@ -98,7 +98,7 @@ describe('OM-05 GAP-OV5-EMPLOYEES：员工目录错误与连坐', () => {
     }));
     await render(<OverviewPage />);
     const cost = card('ov6-kpi-cost')!;
-    expect(cost.querySelector('.ov5-kpi-value')!.textContent).toBe('待核实');
+    expect(cost.querySelector('.ov5-kpi-value')!.textContent).toBe('—');
     const row = cost.querySelector('.ov5-kpi-issue') as HTMLElement;
     expect(row.textContent).toContain('成本账本未接入');
     expect(row.textContent).toContain('req-emp-9');
@@ -107,22 +107,23 @@ describe('OM-05 GAP-OV5-EMPLOYEES：员工目录错误与连坐', () => {
     expect(urls.filter((u) => u.includes('/budget-usage'))).toHaveLength(0);
   });
 
-  it('stats ready 但缺 byLifecycle → 在岗计数「待核实」，不补 0', async () => {
+  it('stats ready 但缺 byLifecycle → 在岗计数「—」，不补 0', async () => {
     const data = base();
     data.stats = ready({ total: 2, asOf: '2026-11-19T04:20:00Z' }) as never;
     await render(view(data));
-    expect(card('ov6-kpi-employees')!.querySelector('.ov5-kpi-foot')!.textContent).toContain('在岗 待核实');
+    expect(card('ov6-kpi-employees')!.querySelector('.ov5-kpi-foot')!.textContent).toContain('在岗 —');
   });
 });
 
 describe('OM-05 GAP-OV5-RISK：风险矩阵缺与错', () => {
-  it('matrix ready 但 items 缺口径 → atRisk「待核实」＋note「风险口径未接入」带 gap title', async () => {
+  it('matrix ready 但 items 缺口径 → atRisk「—」＋note「风险口径未接入」带 gap title', async () => {
     await render(view(base(), ready({}) as never));
     const emp = card('ov6-kpi-employees')!;
-    expect(emp.querySelector('.ov5-kpi-foot')!.textContent).toContain('有风险 待核实');
-    const note = emp.querySelector('.ov5-note') as HTMLElement;
-    expect(note.textContent).toBe('风险口径未接入');
-    expect(note.title).toBe(OVERVIEW_GAP.risk);
+    expect(emp.querySelector('.ov5-kpi-foot')!.textContent).toContain('有风险 —');
+    const gaps = emp.querySelector('.ov5-gaps') as HTMLElement;
+    expect(gaps.textContent).toContain('风险口径');
+    expect(gaps.textContent).toContain('风险矩阵');
+    expect(emp.querySelector('[data-testid="ov6-kpi-employees-status"]')?.getAttribute('title')).toContain('数据源');
   });
 
   it('matrix error → issue 行「风险矩阵未接入」带 rid 与 GAP-OV5-RISK', async () => {
@@ -135,41 +136,39 @@ describe('OM-05 GAP-OV5-RISK：风险矩阵缺与错', () => {
 });
 
 describe('OM-05 GAP-OV5-RUNS：运行统计缺与错', () => {
-  it('todayStats error → 今日运行「待核实」，issue 带 GAP-OV5-RUNS 与 rid', async () => {
+  it('todayStats error → 今日运行「—」，issue 带 GAP-OV5-RUNS 与 rid', async () => {
     const data = base();
     data.todayStats = err(502, '运行统计网关超时', 'req-run-3') as never;
     await render(view(data));
-    expect(valueText('ov6-kpi-runs')).toBe('待核实');
+    expect(valueText('ov6-kpi-runs')).toBe('—');
     const row = card('ov6-kpi-runs')!.querySelector('.ov5-kpi-issue') as HTMLElement;
     expect(row.title).toBe(OVERVIEW_GAP.runs);
     expect(row.textContent).toContain('运行统计未接入：运行统计网关超时');
     expect(row.textContent).toContain('req-run-3');
   });
 
-  it('todayStats ready 缺 totals.runs → 值「待核实」；runs=0 且失败率无定义 → note 说明不算失败率', async () => {
+  it('todayStats ready 缺 totals.runs → 值「—」；runs=0 且失败率无定义 → note 说明不算失败率', async () => {
     const missing = base();
     missing.todayStats = ready({ totals: {}, asOf: '2026-11-19T04:21:00Z' }) as never;
     await render(view(missing));
-    expect(valueText('ov6-kpi-runs')).toBe('待核实');
+    expect(valueText('ov6-kpi-runs')).toBe('—');
     act(() => root.unmount());
     root = createRoot(container);
     const zero = base();
     zero.todayStats = ready({ totals: { runs: 0, failed: 0 }, asOf: '2026-11-19T04:21:00Z' }) as never;
     await render(view(zero));
     expect(valueText('ov6-kpi-runs')).toBe('0'); // 真 0 允许显示 0
-    const note = card('ov6-kpi-runs')!.querySelector('.ov5-note') as HTMLElement;
-    expect(note.textContent).toBe('今天还没有运行，失败率不计算');
-    expect(note.title).toBe(OVERVIEW_GAP.runs);
+    expect(card('ov6-kpi-runs')!.querySelector('.ov5-kpi-foot')!.textContent).toContain('失败率 不计算');
   });
 });
 
 describe('OM-05 GAP-OV5-APPROVALS：审批统计缺与错', () => {
-  it('approvalStats error → 待审批「待核实」，issue 行带 gap 号、rid、重试钮', async () => {
+  it('approvalStats error → 待审批「—」，issue 行带 gap 号、rid、重试钮', async () => {
     const onRetry = vi.fn();
     const data = base();
     data.approvalStats = err(500, '审批统计读不到', 'req-ap-4') as never;
     await render(view(data, ready({ items: [] }), onRetry));
-    expect(valueText('ov6-kpi-pending')).toBe('待核实');
+    expect(valueText('ov6-kpi-pending')).toBe('—');
     const row = card('ov6-kpi-pending')!.querySelector('.ov5-kpi-issue') as HTMLElement;
     expect(row.title).toBe(OVERVIEW_GAP.approvals);
     expect(row.textContent).toContain('审批统计未接入：审批统计读不到');
@@ -177,31 +176,33 @@ describe('OM-05 GAP-OV5-APPROVALS：审批统计缺与错', () => {
     expect(card('ov6-kpi-pending')!.querySelector('[data-testid="ov6-kpi-pending-issue-retry"]')).toBeTruthy();
   });
 
-  it('approvalStats ready 但缺 pending 字段 → 「待核实」，不以 0 冒充', async () => {
+  it('approvalStats ready 但缺 pending 字段 → 「—」，不以 0 冒充', async () => {
     const data = base();
     data.approvalStats = ready({ dueSoon: 1 }) as never;
     await render(view(data));
-    expect(valueText('ov6-kpi-pending')).toBe('待核实');
+    expect(valueText('ov6-kpi-pending')).toBe('—');
   });
 });
 
 describe('OM-05 GAP-OV5-COST：成本账本缺与错', () => {
-  it('budgetDay error → 成本「待核实」＋note「成本口径未齐」带 gap title，issue 带 rid', async () => {
+  it('budgetDay error → 成本「—」＋note「成本口径未齐」带 gap title，issue 带 rid', async () => {
     const data = base();
     data.budgetDay = err(500, '账本服务不可用', 'req-cost-5') as never;
     await render(view(data));
-    expect(valueText('ov6-kpi-cost')).toBe('待核实');
+    expect(valueText('ov6-kpi-cost')).toBe('—');
     const row = card('ov6-kpi-cost')!.querySelector('.ov5-kpi-issue') as HTMLElement;
     expect(row.title).toBe(OVERVIEW_GAP.cost);
     expect(row.textContent).toContain('req-cost-5');
-    expect((card('ov6-kpi-cost')!.querySelector('.ov5-note') as HTMLElement).title).toBe(OVERVIEW_GAP.cost);
+    const gaps = card('ov6-kpi-cost')!.querySelector('.ov5-gaps') as HTMLElement;
+    expect(gaps.textContent).toContain('本月实扣');
+    expect(card('ov6-kpi-cost')!.querySelector('[data-testid="ov6-kpi-cost-status"]')?.getAttribute('title')).toContain('数据源');
   });
 
-  it('budgetDay ready 但形状缺失 → 「待核实」而非 $0.00', async () => {
+  it('budgetDay ready 但形状缺失 → 「—」而非 $0.00', async () => {
     const data = base();
     data.budgetDay = ready({ asOf: '2026-11-19T04:23:00Z' }) as never;
     await render(view(data));
-    expect(valueText('ov6-kpi-cost')).toBe('待核实');
+    expect(valueText('ov6-kpi-cost')).toBe('—');
   });
 });
 

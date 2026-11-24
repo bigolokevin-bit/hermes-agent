@@ -138,15 +138,16 @@ export interface TrendGeometry {
  */
 export function niceTicks(peak: number): { top: number; step: number; values: number[] } {
   const v = Math.max(1, peak);
-  const rough = v / 3;
+  const rough = v / 2;
   const mag = Math.pow(10, Math.floor(Math.log10(rough)));
   const norm = rough / mag;
   const rawStep = (norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10) * mag;
   const step = Math.max(1, Math.round(rawStep));
-  const top = Math.ceil(v / step) * step;
-  const values: number[] = [];
-  for (let value = top; value >= 0; value -= step) values.push(Math.round(value * 100) / 100);
-  return { top, step, values };
+  let top = Math.ceil(v / step) * step;
+  // 三档刻度 60/30/0：把顶值抬到偶数，中线才是整数。
+  if (top % 2 !== 0) top += 1;
+  if (top < 2) top = 2;
+  return { top, step, values: [top, top / 2, 0] };
 }
 
 /**

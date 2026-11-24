@@ -69,6 +69,7 @@ function stubFetch() {
 }
 
 const count = (needle: string) => urls.filter((u) => u.includes(needle)).length;
+const rangeSelect = () => container.querySelector('[data-testid="ov6-range"]') as HTMLSelectElement;
 
 describe('OM-04 ?range= 深链与标题随窗', () => {
   it('?range=7d：趋势标题为「近 7 天」，卡内无「近 14 天」，活动腿按档位读一次', async () => {
@@ -77,7 +78,7 @@ describe('OM-04 ?range= 深链与标题随窗', () => {
     const trend = container.querySelector('[data-testid="ov6-trend"]')?.textContent ?? '';
     expect(trend).toContain('近 7 天运行趋势');
     expect(trend).not.toContain('近 14 天');
-    expect(container.querySelector('[data-testid="ov6-range-7d"]')?.getAttribute('aria-pressed')).toBe('true');
+    expect(rangeSelect().value).toBe('7d');
     expect(count('/workbench/timeseries')).toBe(1);
     expect(urls[urls.findIndex((u) => u.includes('/workbench/timeseries'))]).toContain('range=7d');
     // 行为变更（OM-17 申报）：总览新增 7×24 活动热力 ⇒ 活动腿不再是「死腿」，
@@ -91,9 +92,10 @@ describe('OM-04 ?range= 深链与标题随窗', () => {
     await render(<OverviewPage />, '/overview');
     expect(container.querySelector('[data-testid="ov6-trend"]')?.textContent).toContain('近 14 天运行趋势');
     const before = urls.length;
-    const btn = container.querySelector('[data-testid="ov6-range-30d"]') as HTMLButtonElement;
     await act(async () => {
-      btn.click();
+      const select = rangeSelect();
+      select.value = '30d';
+      select.dispatchEvent(new Event('change', { bubbles: true }));
     });
     await act(async () => {});
     const added = urls.slice(before);
@@ -112,14 +114,14 @@ describe('OM-04 ?range= 深链与标题随窗', () => {
     ['7d', '7d'],
     ['14d', '30d'],
     ['30d', '30d'],
-  ] as const)('四档深链 ?range=%s 可用（读腿参数 range=%s，档位钮按下）', async (id, tsRange) => {
+  ] as const)('四档深链 ?range=%s 可用（读腿参数 range=%s，下拉选中）', async (id, tsRange) => {
     stubFetch();
     await render(<OverviewPage />, `/overview?range=${id}`);
-    expect(container.querySelector(`[data-testid="ov6-range-${id}"]`)?.getAttribute('aria-pressed')).toBe('true');
+    expect(rangeSelect().value).toBe(id);
     const tsUrl = urls.find((u) => u.includes('/workbench/timeseries')) ?? '';
     expect(tsUrl).toContain(`range=${tsRange}`);
     expect(container.querySelector('[data-testid="ov6-trend"]')?.textContent).toContain(
-      container.querySelector(`[data-testid="ov6-range-${id}"]`)?.textContent ?? '',
+      rangeSelect().selectedOptions[0]?.textContent ?? '',
     );
   });
 
@@ -129,7 +131,7 @@ describe('OM-04 ?range= 深链与标题随窗', () => {
     const hint = container.querySelector('[data-testid="ov6-range-fallback"]');
     expect(hint).toBeTruthy();
     expect(hint?.getAttribute('title')).toContain('9d');
-    expect(container.querySelector('[data-testid="ov6-range-14d"]')?.getAttribute('aria-pressed')).toBe('true');
+    expect(rangeSelect().value).toBe('14d');
     expect(container.querySelector('[data-testid="ov6-trend"]')?.textContent).toContain('近 14 天运行趋势');
   });
 });

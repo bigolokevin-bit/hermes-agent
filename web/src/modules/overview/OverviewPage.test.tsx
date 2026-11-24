@@ -124,15 +124,13 @@ describe('OverviewView', () => {
     expect(facts).toContain('2 名数字员工');
     expect(facts).toContain('在跑');
 
-    await act(async () => {
-      (container.querySelector('[data-testid="ov6-search"]') as HTMLButtonElement).click();
-    });
-    expect(container.querySelector('[data-testid="ov6-action-hint"]')?.textContent).toContain('搜索接口未接入');
-
-    await act(async () => {
-      (container.querySelector('[data-testid="ov6-export"]') as HTMLButtonElement).click();
-    });
-    expect(container.querySelector('[data-testid="ov6-action-hint"]')?.textContent).toContain('导出接口未接入');
+    const search = container.querySelector('[data-testid="ov6-search"]') as HTMLButtonElement;
+    expect(search.disabled).toBe(true);
+    expect(search.getAttribute('title')).toContain('搜索读口未接入');
+    const exportBtn = container.querySelector('[data-testid="ov6-export"]') as HTMLButtonElement;
+    expect(exportBtn.disabled).toBe(true);
+    expect(exportBtn.getAttribute('title')).toContain('导出接口未接入');
+    expect(container.querySelector('[data-testid="ov6-action-hint"]')).toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -164,7 +162,7 @@ describe('OverviewView', () => {
     expect(text).not.toContain('读取于');
   });
 
-  it('shows 待核实 and a GAP note when the cost ledger does not cover every employee', async () => {
+  it('shows — and the missing-reader collapse when the cost ledger does not cover every employee', async () => {
     const data = dataFixture();
     data.budgetDay = ready({ items: [{ employeeId: 'emp_1', costUsd: 1.5 }], missingEmployeeIds: ['emp_2'] });
     await render(
@@ -176,11 +174,12 @@ describe('OverviewView', () => {
       />,
     );
     const cost = container.querySelector('[data-testid="ov6-kpi-cost"]')?.textContent ?? '';
-    expect(container.querySelector('[data-testid="ov6-kpi-cost"] .ov5-kpi-value')?.textContent).toBe('待核实');
+    expect(container.querySelector('[data-testid="ov6-kpi-cost"] .ov5-kpi-value')?.textContent).toBe('—');
     expect(cost).not.toContain('$1.50');
     const employeeCard = container.querySelector('[data-testid="ov6-kpi-employees"]');
     expect(employeeCard?.textContent).not.toContain('GAP-');
-    expect(employeeCard?.querySelector('.ov5-note')?.getAttribute('title')).toContain('GAP-OV5-RISK');
+    expect(employeeCard?.querySelector('.ov5-gaps')?.textContent).toContain('风险口径');
+    expect(employeeCard?.querySelector('[data-testid="ov6-kpi-employees-status"]')?.getAttribute('title')).toContain('数据源');
     expect(employeeCard?.querySelector('.ov5-kpi-issue')?.textContent).toContain('风险矩阵未接入');
     expect(employeeCard?.querySelector('[data-testid="ov6-kpi-employees-issue-retry"]')).toBeTruthy();
   });
