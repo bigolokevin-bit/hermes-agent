@@ -162,7 +162,7 @@ describe('OverviewView', () => {
       <OverviewView data={data} matrix={{ k: 'ready', data: { items: [] } }} loading={false} onRetry={() => {}} />,
     );
     const cost = container.querySelector('[data-testid="ov6-kpi-cost"]')?.textContent ?? '';
-    expect(cost).toContain('数据截至 时间未知 · 来源 成本账本');
+    expect(cost).toContain('采集时刻未返回 · 来源 成本账本');
     expect(cost).toContain('原因：上游响应没有带采集时间');
     expect(container.textContent ?? '').not.toContain('读取于');
   });

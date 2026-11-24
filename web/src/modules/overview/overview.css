@@ -91,7 +91,8 @@
 .ov5-homegrid {
   display: grid;
   gap: var(--space-ls-3);
-  align-items: stretch;
+  /* 每张卡按自己的内容收口：不再被邻居拉高后留出无解释空白。 */
+  align-items: start;
   min-width: 0;
 }
 
@@ -113,7 +114,6 @@
   flex-direction: column;
   gap: 6px;
   padding: 11px 13px 10px;
-  min-height: 100%;
 }
 
 .ov5-kpi-hd {
@@ -207,32 +207,6 @@
   margin-left: auto;
 }
 
-.ov5-spark {
-  display: block;
-  width: 92px;
-  height: 30px;
-}
-
-.ov5-spark-wide {
-  width: 100%;
-  height: 34px;
-}
-
-.ov5-mini {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  margin-top: auto;
-  padding-top: 4px;
-  border-top: 1px solid var(--color-border-subtle-ls);
-}
-
-.ov5-mini-note {
-  color: var(--color-text-faint-ls);
-  font-family: var(--font-family-mono-ls);
-  font-size: 9px;
-}
-
 .ov5-meter {
   display: flex;
   flex-direction: column;
@@ -310,8 +284,24 @@
   line-height: 1.5;
 }
 
-.ov5-kpi-bd .ov5-stamps {
-  margin-top: 4px;
+/* 三张 KPI 卡共用的唯一脚注行：口径说明 + 采集时刻（缺失写「采集时刻未返回」） */
+.ov5-kpi-footline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 12px;
+  margin-top: 2px;
+  padding-top: 5px;
+  border-top: 1px solid var(--color-border-subtle-ls);
+}
+
+.ov5-kpi-footline .ov5-note { flex: 0 1 auto; }
+
+.ov5-kpi-footline .ov5-stamps {
+  flex: 0 1 auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
 }
 
 .ov5-stamp {
@@ -632,7 +622,6 @@ a.ov5-cs:hover { border-color: var(--color-border-ls); }
   flex-direction: column;
   gap: 5px;
   padding: 11px 13px 10px;
-  min-height: 100%;
 }
 
 .ov5-block-hd {

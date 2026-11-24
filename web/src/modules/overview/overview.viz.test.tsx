@@ -82,15 +82,12 @@ function view(cells?: Array<{ dow: number; hour: number; count: number }>) {
 }
 
 describe('OM-17 视觉层：火花／点阵／趋势／热力', () => {
-  it('运行卡有面积火花线（闭合面积 + 折线 + 末点圆），员工卡无趋势源就不画点阵', async () => {
+  it('单卡不再画无轴火花小图；没有趋势源也不拿点阵占位', async () => {
     await render(view());
     const runs = container.querySelector('[data-testid="ov6-kpi-runs"]')!;
-    const area = runs.querySelector('.ov5-spark-area');
-    expect(area).toBeTruthy();
-    // 面积路径必须闭合到底边（Z 结尾），否则不是基线 spark() 的 area 分支。
-    expect(area?.getAttribute('d')).toMatch(/^M[-\d.]+ [-\d.]+( L[-\d.]+ [-\d.]+)+ L[-\d.]+ [-\d.]+ Z$/);
-    expect(runs.querySelector('.ov5-spark-line')?.getAttribute('stroke-width')).toBeNull();
-    expect(runs.querySelector('.ov5-spark-dot')?.getAttribute('r')).toBe('2.4');
+    // P0 修复：删掉看起来「图坏了」的 40px 小图，卡高按内容收紧。
+    expect(runs.querySelector('.ov5-spark')).toBeNull();
+    expect(runs.textContent).toContain('今天没有在跑或失败的 run');
 
     // 无趋势源的卡不拿点阵占位：员工卡换成一排四门真读数行。
     const employees = container.querySelector('[data-testid="ov6-kpi-employees"]')!;

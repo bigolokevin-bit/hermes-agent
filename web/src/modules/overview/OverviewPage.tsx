@@ -23,7 +23,7 @@ import {
 } from './overview';
 import { fetchHermesSummary, type HermesSummaryBody } from './api';
 import { COST_CALIBER_TEXT } from '../metrics/costCaliberNote';
-import { SPARK, TREND_H, TREND_PAD, sparkGeometry, trendGeometry } from './VizChart';
+import { TREND_H, TREND_PAD, trendGeometry } from './VizChart';
 import './overview.css';
 
 type Forced = 'loading' | 'empty' | 'error';
@@ -242,24 +242,6 @@ function IconRocket({ className }: IconProps) {
  * 图表基元
  * ========================================================================== */
 
-/** 面积火花线（真实逐日读数；没有读数就不画，不用点阵占位）。 */
-function SparkArea({ values, label, wide = false }: { values: number[]; label: string; wide?: boolean }) {
-  const geo = sparkGeometry(values);
-  if (!geo) return null;
-  return (
-    <svg
-      className={wide ? 'ov5-spark ov5-spark-wide' : 'ov5-spark'}
-      viewBox={`0 0 ${SPARK.w} ${SPARK.h}`}
-      role="img"
-      aria-label={label}
-    >
-      <path className="ov5-spark-area" d={geo.area} />
-      <path className="ov5-spark-line" d={geo.line} />
-      <circle className="ov5-spark-dot" cx={geo.last.x} cy={geo.last.y} r={2.4} />
-    </svg>
-  );
-}
-
 /** 量宽度只为趋势图定 viewBox；jsdom 没有布局，退回 720 不影响任何断言。 */
 function useMeasuredWidth(fallback: number): [RefObject<HTMLDivElement | null>, number] {
   const ref = useRef<HTMLDivElement | null>(null);
@@ -350,32 +332,23 @@ function AsofLine({ states }: { states: Array<Loadable<unknown> | null> }) {
 }
 
 /**
- * 每张卡只留一行弱色口径脚注：可见行报「主来源」的采集时刻，其余来源收进
- * 屏读文本（卡头已列全部来源），不再让 3 行「数据截至」把卡撑高。
+ * 每张卡只留一行弱色脚注：有采集时刻写「数据截至 X · 来源 A」；没有就写
+ * 「采集时刻未返回 · 来源 A」并附原因。其余来源只进 title，不在卡底重复
+ * 第二遍「数据截至」（信息量不增，只增高）。
  */
 function Freshness({ items, testid }: { items: StampSource[]; testid?: string }) {
   const stamps = items.map(({ source, state }) => ({ source, ...sourceStamp(state) }));
   const primary = stamps.find((stamp) => stamp.shown !== null) ?? stamps[0];
-  const rest = stamps.filter((stamp) => stamp !== primary);
   if (!primary) return <div className="ov5-stamps" data-testid={testid} />;
+  const title = stamps
+    .map((stamp) => `${stamp.source}：${stamp.shown ?? '采集时刻未返回'}${stamp.reason ? `（${stamp.reason}）` : ''}`)
+    .join(' · ');
   return (
-    <div className="ov5-stamps" data-testid={testid}>
+    <div className="ov5-stamps" data-testid={testid} title={items.length > 1 ? title : undefined}>
       <span className="ov5-stamp">
-        <span>
-          数据截至 {primary.shown ?? '时间未知'} · 来源 {primary.source}
-          {items.length > 1 ? `（等 ${items.length} 源，见卡头）` : ''}
-        </span>
+        <span>{primary.shown ? `数据截至 ${primary.shown}` : '采集时刻未返回'} · 来源 {primary.source}</span>
         {primary.reason ? <em>原因：{primary.reason}</em> : null}
       </span>
-      {rest.length > 0 ? (
-        <span className="ov5-sr">
-          {rest.map((stamp) => (
-            <span key={stamp.source}>
-              {`数据截至 ${stamp.shown ?? '时间未知'} · 来源 ${stamp.source}${stamp.reason ? `；原因：${stamp.reason}` : ''}；`}
-            </span>
-          ))}
-        </span>
-      ) : null}
     </div>
   );
 }
@@ -468,8 +441,10 @@ function KpiCard({
         {foot ? <p className="ov5-kpi-foot">{foot}</p> : null}
         {children}
         <IssueRows issues={issues} onRetry={onRetry} testid={testid} />
-        {note ? <div className="ov5-note" title={noteTitle}>{note}</div> : null}
-        <Freshness items={stamps} testid={`${testid}-stamp`} />
+        <div className="ov5-kpi-footline">
+          {note ? <span className="ov5-note" title={noteTitle}>{note}</span> : null}
+          <Freshness items={stamps} testid={`${testid}-stamp`} />
+        </div>
       </CardContent>
     </Card>
   );
@@ -611,14 +586,10 @@ function ReadyCard({
 function TodayRunsCard({
   data,
   kpis,
-  sparkValues,
-  rangeLabel,
   onRetry,
 }: {
   data: DutyData;
   kpis: ReturnType<typeof buildKpis>;
-  sparkValues: number[];
-  rangeLabel: string;
   onRetry: () => void;
 }) {
   const today = data.todayStats.k === 'ready' ? data.todayStats.data : null;
@@ -663,12 +634,6 @@ function TodayRunsCard({
           </div>
         )}
       </div>
-      {sparkValues.length >= 2 ? (
-        <div className="ov5-mini">
-          <SparkArea values={sparkValues} label={`${rangeLabel}每日运行次数火花线`} wide />
-          <span className="ov5-mini-note">近 {rangeLabel} 每日运行（有读数的日子）</span>
-        </div>
-      ) : null}
     </KpiCard>
   );
 }
@@ -1153,7 +1118,7 @@ function PendingCard({ data, onRetry }: { data: DutyData; onRetry: () => void })
         {rows.length === 0 ? (
           <div className="ov5-empty-line">
             <IconInbox className="ov5-i ov5-i-16" />
-            <span>{data.approvals.k === 'error' ? '审批列表没有读出来（见上方重试）' : '当前没有待我处理的审批。'}</span>
+            <span>{data.approvals.k === 'error' ? '审批列表没有读出来（见上方重试）' : '今天没有待你处理的审批。'}</span>
           </div>
         ) : (
           <ul className="ov5-rows">
@@ -1273,13 +1238,7 @@ export function OverviewView({
     matrix,
   });
   const costView = buildCost(budgetDay, budgetMonth, kpis.total);
-  // 只有「运行」卡有真时间序列（stats14 日桶）；其余卡不画假曲线、也不画点阵占位。
-  const sparkValues =
-    data.stats14.k === 'ready'
-      ? trendWindow(data.stats14.data, range.days)
-          .map((point) => point.runs)
-          .filter((value): value is number => value !== null)
-      : [];
+  // 单卡不再画无轴火花小图：14 天趋势只由下方的 Trend 块承担，避免「图坏了」的观感。
   const runningToday = data.todayStats.k === 'ready' ? data.todayStats.data?.totals?.running ?? null : null;
   const healthSources = [
     { label: '员工统计', state: data.employees },
@@ -1477,7 +1436,7 @@ export function OverviewView({
       {/* 首读时不盖整页骨架：每张卡各自有「读取中 / —」形制，页面不会先空一块再跳版。 */}
       <div className="ov5-homegrid r3" data-busy={anyLoading ? '1' : undefined}>
         <ReadyCard data={data} matrix={matrix} kpis={kpis} onRetry={onRetry} />
-        <TodayRunsCard data={data} kpis={kpis} sparkValues={sparkValues} rangeLabel={range.label} onRetry={onRetry} />
+        <TodayRunsCard data={data} kpis={kpis} onRetry={onRetry} />
         <CostCard data={data} kpis={kpis} matrix={matrix} monthUsd={costView.monthUsd} onRetry={onRetry} />
       </div>
 
