@@ -158,7 +158,11 @@ describe('OM-05 GAP-OV5-RUNS：运行统计缺与错', () => {
     zero.todayStats = ready({ totals: { runs: 0, failed: 0 }, asOf: '2026-11-19T04:21:00Z' }) as never;
     await render(view(zero));
     expect(valueText('ov6-kpi-runs')).toBe('0'); // 真 0 允许显示 0
-    expect(card('ov6-kpi-runs')!.querySelector('.ov5-kpi-foot')!.textContent).toContain('失败率 不计算');
+    // round9：失败率没有分母就整项不渲染（不写「不计算」），读数行只留在跑/失败。
+    const foot = card('ov6-kpi-runs')!.querySelector('.ov5-kpi-foot')!.textContent ?? '';
+    expect(foot).toContain('在跑 0');
+    expect(foot).toContain('失败 0');
+    expect(foot).not.toContain('失败率');
   });
 });
 
@@ -168,7 +172,7 @@ describe('OM-05 GAP-OV5-APPROVALS：审批统计缺与错', () => {
     const data = base();
     data.approvalStats = err(500, '审批统计读不到', 'req-ap-4') as never;
     await render(view(data, ready({ items: [] }), onRetry));
-    expect(valueText('ov6-kpi-pending')).toBe('—');
+    expect(card('ov6-kpi-pending')!.textContent).toContain('— 待批');
     const row = card('ov6-kpi-pending')!.querySelector('.ov5-kpi-issue') as HTMLElement;
     expect(row.title).toBe(OVERVIEW_GAP.approvals);
     expect(row.textContent).toContain('审批统计未接入：审批统计读不到');
@@ -180,7 +184,7 @@ describe('OM-05 GAP-OV5-APPROVALS：审批统计缺与错', () => {
     const data = base();
     data.approvalStats = ready({ dueSoon: 1 }) as never;
     await render(view(data));
-    expect(valueText('ov6-kpi-pending')).toBe('—');
+    expect(card('ov6-kpi-pending')!.textContent).toContain('— 待批');
   });
 });
 

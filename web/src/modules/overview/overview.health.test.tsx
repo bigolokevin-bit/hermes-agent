@@ -120,14 +120,19 @@ describe('OM-15 重放·健康卡两段式（服务探针 hermes-summary）', ()
     expect(healthValue()).toBe('—');
     const card = healthCard()?.textContent ?? '';
     expect(card).toContain('服务探针未返回状态；不以本页读数冒充。');
-    expect(card).toContain('原因：上游响应没有带采集时间');
+    // round9：同页同值——来源没带 asOf 时沿用本页采集时刻，原因留在 title。
+    expect(card).toContain('数据截至 2026-11-19 12:24 · 来源 服务探针');
+    const stamp = healthCard()?.querySelector('[data-testid="ov6-kpi-health-stamp"] .ov5-stamp');
+    expect(stamp?.getAttribute('title')).toContain('沿用本页采集时刻');
   });
 
   it('探针读取中：不给出任何健康断言，只说数据还在读取', async () => {
     await render(view({ k: 'loading' }));
     expect(healthValue()).toBe('—');
     const card = healthCard()?.textContent ?? '';
-    expect(card).toContain('原因：数据还在读取');
+    expect(card).toContain('数据截至 2026-11-19 12:24 · 来源 服务探针');
+    const stamp = healthCard()?.querySelector('[data-testid="ov6-kpi-health-stamp"] .ov5-stamp');
+    expect(stamp?.getAttribute('title')).toContain('沿用本页采集时刻');
     expect(card).not.toMatch(/正常|降级|异常/);
   });
 });

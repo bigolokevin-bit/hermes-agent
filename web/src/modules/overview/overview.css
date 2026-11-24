@@ -434,22 +434,17 @@
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-danger-ls) 16%, transparent);
 }
 
+/* 交集句：骨架没有描边提示框——一行 11px 弱色文字，允许两行换行，不做底色块。 */
 .ov5-hnarrow {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  overflow: hidden;
-  padding: 4px 8px;
-  border-left: 2px solid var(--color-warning-ls);
-  border-radius: 3px;
-  background: color-mix(in srgb, var(--color-warning-ls) 7%, transparent);
-  color: var(--color-text-muted-ls);
-  font-size: 10.5px;
+  margin: 2px 0 0;
+  padding: 0;
+  color: var(--color-text-faint-ls);
+  font-size: 11px;
   line-height: 1.45;
 }
 
 .ov5-hnarrow b {
-  color: var(--color-text-ls);
+  color: inherit;
   font-weight: var(--font-weight-ls-regular);
 }
 
@@ -476,6 +471,12 @@
   fill: var(--color-surface-raised-ls);
   stroke: var(--color-border-ls);
   stroke-width: 0.5;
+}
+/* 0 人段的导轨痕迹：中性 panel-2 填充 + 描边，不冒充计数。 */
+.ov5-stack-svg rect.rail {
+  fill: var(--panel-2);
+  stroke: var(--color-border-ls);
+  stroke-width: 0.6;
 }
 
 .ov5-legend {
@@ -524,6 +525,59 @@
   display: grid;
   min-width: 0;
 }
+
+/* 今日成本：本月一行 + 六组读数两列三行（骨架形制），空值留「—」。 */
+.ov5-cost-month {
+  margin: 1px 0 0;
+  color: var(--color-text-muted-ls);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+.ov5-cost-month b {
+  color: var(--color-text-ls);
+  font-family: var(--font-family-mono-ls);
+  font-weight: var(--font-weight-ls-regular);
+  font-variant-numeric: var(--tabular-ls);
+}
+
+.ov5-cost-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px 14px;
+  margin-top: 2px;
+  padding-top: 3px;
+  border-top: 1px solid var(--color-border-subtle-ls);
+  color: var(--color-text-faint-ls);
+  font-size: 10.5px;
+  line-height: 1.55;
+}
+
+.ov5-cost-grid span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ov5-cost-grid b {
+  color: var(--color-text-muted-ls);
+  font-family: var(--font-family-mono-ls);
+  font-weight: var(--font-weight-ls-regular);
+  font-variant-numeric: var(--tabular-ls);
+}
+
+/* 列表卡头右侧的计数入口（待我处理卡：N 待批）。 */
+.ov5-headcount {
+  color: var(--color-text-ls);
+  font-family: var(--font-family-mono-ls);
+  font-size: 11px;
+  font-variant-numeric: var(--tabular-ls);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.ov5-headcount:hover { text-decoration: underline; }
 
 .ov5-hrow {
   display: flex;
