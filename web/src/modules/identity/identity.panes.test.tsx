@@ -336,7 +336,10 @@ describe("人员与访问 · 角色与权限", () => {
     ]);
     const rows = [...host.querySelectorAll('[data-testid="identity-matrix-table"] tbody tr')];
     expect(rows).toHaveLength(1);
-    expect(cells(rows[0])).toEqual(["未读到角色定义", "—", "—", "—", "—", "—", "—", "—"]);
+    // 2026-11-24 评审口径：整行都没有数据时只写一次缺读事实，不逐格铺 `—`
+    // （逐格破折号会把页面画成报错图）。
+    expect(cells(rows[0])).toEqual(["未读到角色定义"]);
+    expect(rows[0].querySelector("td[colspan]")).toBeTruthy();
     expect(gaps("identity-matrix-card")).toEqual(["角色定义/权限矩阵"]);
     // 表头与副行里不出现破折号（缺值只进格内）。
     expect(headers('[data-testid="identity-matrix-table"]').some((h) => h.includes("—"))).toBe(false);

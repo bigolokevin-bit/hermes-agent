@@ -137,14 +137,14 @@ function DashCell({ right }: { right?: boolean }) {
 }
 
 /** 占位行首格：灰字承载列宽，后六格与成员格留破折号。 */
+/**
+ * 占位行只写一次缺读事实，**不逐格铺 `—`**：格内 `—` 是「这一格的值没读到」，
+ * 整行都没有数据时逐格铺破折号只会把页面画成报错图（2026-11-24 评审口径）。
+ */
 function EmptyRoleRow({ cols, children }: { cols: number; children: ReactNode }) {
   return (
     <tr className="id-row-empty">
-      <td>{children}</td>
-      {Array.from({ length: cols - 2 }, (_, index) => (
-        <DashCell key={index} />
-      ))}
-      <DashCell right />
+      <td colSpan={cols}>{children}</td>
     </tr>
   );
 }
@@ -446,10 +446,7 @@ export function IdentityRolesPage() {
                     <tbody>
                       {roles.length === 0 ? (
                         <tr className="id-row-empty">
-                          <td>未读到角色定义</td>
-                          <td>{DASH}</td>
-                          <td className="id-right id-mono">{DASH}</td>
-                          <td className="id-hidesm">{DASH}</td>
+                          <td colSpan={5}>未读到角色定义</td>
                         </tr>
                       ) : (
                         roles.map((role) => {
