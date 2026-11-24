@@ -16,7 +16,7 @@ import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 import { themedBody, themedChrome } from "@/lib/utils";
 import type { AuditChange, AuditDetail, AuditRow, VerifyResult } from "./model";
 import { beijingSeconds, maskSensitive } from "./model";
-import { AUDJ_TIME_ZONE, auditActorView, auditTimeView } from "./timeActor";
+import { AUDJ_TIME_MISSING, AUDJ_TIME_ZONE, auditActorView, auditTimeView } from "./timeActor";
 import {
   TRUNC_CELL,
   TRUNC_COLLAPSE_LABEL,
@@ -25,10 +25,13 @@ import {
   joinTitles,
   truncatedView,
 } from "./truncation";
-import { AuditContextChains, AuditResourceCell, AuditResourceLink, CopyValue, DetailCopy, DeniedPanel, ErrorPanel, LoadingPanel, PermalinkCopy, SummaryCopy, TechnicalDisclosure } from "./states";
+import { AuditContextChains, AuditResourceCell, AuditResourceLink, CopyValue, DetailCopy, DeniedPanel, ErrorPanel, LoadingPanel, PermalinkCopy, RequestIdLine, SummaryCopy, TechnicalDisclosure } from "./states";
 import { copyLinkGate } from "./auditGates";
 import type { FailureCopy } from "./copy";
 import { summaryFromDetail, summaryFromRow } from "./summary";
+import { useRunAside } from "./useRunAside";
+import { runCostWord, runStatusWord } from "./runAside";
+import { runChainOf } from "./contextLinks";
 
 const MISSING_VALUE = "服务未提供该信息";
 /** A change side that exists but is engineering text: pointed at the fold, not printed. */
@@ -482,6 +485,10 @@ export function AuditEventDetailBody({
         ) : null}
       </Section>
 
+      {/* AU-07: an event that names a run opens its own aside in this rail —
+          the run's read, not a repetition of the chain line. */}
+      <RunAsideSection detail={detail} />
+
       <Section title="完整性">
         {detail.integrity.present ? (
           <dl className="flex min-w-0 flex-wrap gap-x-5 gap-y-1 text-xs">
@@ -880,5 +887,96 @@ export function AuditTypeSummary({
         </>
       ) : null}
     </section>
+  );
+}
+
+/**
+ * AU-07 — 「这次运行」aside for events that name a run.
+ *
+ * Sits inside the record pane (which IS the page's right rail) right after the
+ * 关联 block: the chain line says where the run page is, this card says what
+ * the run itself answered. Mounted only when the record names a run — an event
+ * without a runId never sees a hollow card (the 无关联 chain line already
+ * answers that, honestly and once). Values come only from the run read口;
+ * missing keys say 「该字段未返回」,真 0 花费 shows $0.00, never a dash-as-zero.
+ * The footer way out asks AU-01's single table (runChainOf) — no second truth
+ * about where the run page lives.
+ */
+function RunAsideSection({ detail }: { detail: AuditDetail }): ReactNode {
+  const runLink = detail.links.find((link) => link.noun === "运行") ?? null;
+  const runId = runLink?.raw ?? null;
+  const api = useRunAside(runId, detail.rawId ?? "");
+  const chain = runId ? runChainOf(detail.links) : null;
+  if (!runId) return null;
+
+  const word = (value: string | null): string => value ?? AUDJ_TIME_MISSING;
+  if (api.phase === "loading") {
+    return (
+      <Section title="这次运行">
+        <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="aud3-run-loading">
+          正在读取这一条运行…
+        </p>
+      </Section>
+    );
+  }
+  if (api.phase === "error") {
+    return (
+      <Section title="这次运行">
+        <div className="flex min-w-0 flex-col gap-1" data-testid="aud3-run-aside-error">
+        <p className="min-w-0 break-words text-xs text-warning">{api.failure?.text ?? "运行详情没有回答。"}</p>
+        <RequestIdLine requestId={api.failure?.requestId ?? null} testId="aud3-run-aside-rid" />
+        <button
+          type="button"
+          onClick={api.retry}
+          className="min-w-0 break-words text-xs underline underline-offset-2"
+          data-testid="aud3-run-aside-retry"
+        >
+          重试这一问
+        </button>
+        </div>
+      </Section>
+    );
+  }
+  if (api.phase !== "ready" || !api.aside) return null;
+  return (
+    <Section title="这次运行">
+      <div className="flex min-w-0 flex-col gap-1" data-testid="aud3-run-aside">
+      <dl className="flex min-w-0 flex-wrap gap-x-5 gap-y-1 text-xs">
+        <dt className="shrink-0 text-muted-foreground">状态</dt>
+        <dd data-testid="aud3-run-status">{runStatusWord(api.aside.status)}</dd>
+        <dt className="shrink-0 text-muted-foreground">员工</dt>
+        <dd data-testid="aud3-run-employee" title={api.aside.employeeId ?? undefined}>
+          {word(api.aside.employeeId)}
+        </dd>
+        <dt className="shrink-0 text-muted-foreground">开始</dt>
+        <dd data-testid="aud3-run-start" title={api.aside.startedAt ?? undefined}>
+          {word(beijingSeconds(api.aside.startedAt))}
+        </dd>
+        <dt className="shrink-0 text-muted-foreground">结束</dt>
+        <dd data-testid="aud3-run-end" title={api.aside.endedAt ?? undefined}>
+          {word(beijingSeconds(api.aside.endedAt))}
+        </dd>
+        <dt className="shrink-0 text-muted-foreground">花费</dt>
+        <dd data-testid="aud3-run-cost">{runCostWord(api.aside.costUsd)}</dd>
+      </dl>
+      <p className="min-w-0 break-words text-xs text-muted-foreground">
+        这些是运行读口的原值（北京时间到秒）；本页不拿事件字段替运行补数。
+      </p>
+      {chain && chain.kind === "link" ? (
+        <p className="min-w-0 break-words text-xs" data-testid="aud3-run-open">
+          完整轨迹、事件流与重试入口都在运行页：{" "}
+          <a
+            href={chain.href}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="underline underline-offset-2"
+            title={chain.title}
+          >
+            打开这一条运行（{runId}）
+          </a>
+        </p>
+      ) : null}
+      </div>
+    </Section>
   );
 }
