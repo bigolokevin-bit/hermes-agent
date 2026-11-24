@@ -171,11 +171,12 @@ const rowCode = (id: string) => q(`employees-code-${id}`)?.textContent ?? "";
 /** 状态格=独立「可上岗」格子（骨架八列里的第三列）。 */
 const rowState = (id: string) => q(`emp-life-${id}`)?.textContent ?? "";
 
+/** 第四轮：chevron 列已删，行内预览入口 = 行链接上的 Enter。 */
 const openPreview = async (id: string) => {
-  const btn = q(`emp-row-preview-toggle-${id}`) as HTMLButtonElement | null;
-  expect(btn, `preview toggle of ${id}`).toBeTruthy();
+  const link = q(`emp-l-name-link-${id}`) as HTMLAnchorElement | null;
+  expect(link, `row link of ${id}`).toBeTruthy();
   await act(async () => {
-    btn!.click();
+    link!.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
   });
   await waitFor(() => !!q(`emp-row-preview-${id}`), `preview of ${id}`);
 };
@@ -190,7 +191,7 @@ const rowOrder = () =>
   );
 
 describe("R134 ① row cell joins the preview/detail verbatim matrix", () => {
-  it("name, masked code and lifecycle read the same in all three surfaces", async () => {
+  it("name, masked code and lifecycle read the same; the row 可上岗 pill is the derived三态", async () => {
     serve();
     await renderList();
     await openPreview(E1);
@@ -207,12 +208,12 @@ describe("R134 ① row cell joins the preview/detail verbatim matrix", () => {
     expect(pv[1], "preview code == row").toBe(code);
     expect(q("ed1-identity-code")?.textContent, "identity code == row").toBe(code);
 
-    // 生命周期人话：行徽标、预览状态位、identity 在职态三处逐字。
-    // 生命周期人话：行徽标格、预览在职态位、identity 在职态三处逐字。
-    const state = rowState(E1);
-    expect(state.length, "row lifecycle badge has a human label").toBeGreaterThan(0);
-    expect(pv[2], "preview state == row").toBe(state);
-    expect(q("ed1-identity-state")?.textContent, "identity state == row").toBe(state);
+    // 第四轮：行里那一列改成了三态「可上岗」，生命周期词只剩预览与身份卡两处逐字。
+    const state = pv[2];
+    expect(state.length, "preview lifecycle has a human label").toBeGreaterThan(0);
+    expect(q("ed1-identity-state")?.textContent, "identity state == preview").toBe(state);
+    const pill = rowState(E1);
+    expect(["可上岗", "受限", "停用", "—"].some((word) => pill.includes(word)), pill).toBe(true);
     const dept = rowCell(E1, "部门");
     expect(dept, "row department verbatim").toBe("增长组");
     expect(q("ed1-identity-department")?.textContent, "identity dept == row").toBe(dept);

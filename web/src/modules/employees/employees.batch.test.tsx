@@ -191,11 +191,14 @@ describe("PE-09 ② cursor paging clears the selection", () => {
     check(q("emp-row-select-emp_A001"), "row A", true);
     expect(selectedRead()).toBe("已选 1 / 2");
 
-    const before = fetchJSON.mock.calls.length;
+    // 列表腿单独数：门证据扇出（workstations/effective-config/approvals）不是续取。
+    const listLegs = () =>
+      fetchJSON.mock.calls.filter((c) => String(c[0]).includes("/api/employees?")).length;
+    const before = listLegs();
     click(q("emp-list-page-more"), "load more");
     await flush();
 
-    expect(fetchJSON.mock.calls.length, "翻页恰一次续取请求").toBe(before + 1);
+    expect(listLegs(), "翻页恰一次续取请求").toBe(before + 1);
     expect(selectedRead(), "翻页即清空选择").toBe("已选 0 / 3");
     const scope = q("emp-batch-scope")?.textContent ?? "";
     expect(scope).toContain("翻页即清空");

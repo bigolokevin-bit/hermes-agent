@@ -130,8 +130,9 @@
   align-items: center;
   gap: 6px;
   padding: 10px 14px;
+  /* 套框收敛：筛选行只是卡内的一条带 + 一条 1px 底线，不再自带填充与圆角。 */
   border-bottom: 1px solid var(--color-border-subtle-ls);
-  background: color-mix(in srgb, var(--color-text-ls) 1.2%, transparent);
+  background: transparent;
   min-width: 0;
 }
 
@@ -223,7 +224,8 @@
 }
 .emp-grid--head {
   min-height: 32px;
-  margin: 0 31px 0 56px;
+  /* 行内已无勾选/chevron/铅笔三列，表头与行同起同止（同 14px 内距）。 */
+  margin: 0;
   padding: 0 14px;
   border-bottom: 1px solid var(--color-border-subtle-ls);
   background: color-mix(in srgb, var(--color-text-ls) 1.8%, transparent);
@@ -326,30 +328,6 @@
 .emp-rowwrap { border-bottom: 1px solid var(--color-border-subtle-ls); }
 .emp-rowwrap:last-child { border-bottom: 0; }
 .emp-row { display: flex; align-items: stretch; min-width: 0; }
-.emp-row__pick,
-.emp-row__chev,
-.emp-row__edit {
-  display: flex;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  border: 0;
-  border-right: 1px solid var(--color-border-subtle-ls);
-  background: transparent;
-  color: var(--color-text-faint-ls);
-  padding: 0 8px;
-  cursor: pointer;
-}
-.emp-row__pick { width: 30px; }
-.emp-row__chev { width: 26px; }
-.emp-row__edit {
-  width: 30px;
-  border-right: 0;
-  border-left: 1px solid var(--color-border-subtle-ls);
-}
-.emp-row__chev:hover,
-.emp-row__edit:hover { color: var(--color-text-ls); }
-
 .emp-state__body { padding: 14px; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
 .emp-state__body--stack { align-items: flex-start; }
 .emp-state__body--center { align-items: center; text-align: center; }
@@ -399,6 +377,136 @@
 }
 .emp-dept-chip:disabled { opacity: var(--opacity-disabled-ls, 0.56); cursor: not-allowed; }
 
+/* ==========================================================================
+ * 第四轮（并排验收 C）：说明带 + 三段占比条 + 技能芯片 + 「更多」面板清单。
+ * ========================================================================== */
+
+/* 说明带：骨架原话一行 12px 弱色，右端等宽图例（同序：可上岗/受限/停用）。 */
+.emp-band {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  padding: 8px 14px 6px;
+  min-width: 0;
+}
+.emp-band__note {
+  flex: 1 1 320px;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--color-text-muted-ls);
+}
+.emp-band__legend {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--color-text-subtle-ls);
+  font-variant-numeric: var(--tabular-ls);
+  white-space: nowrap;
+}
+.emp-band__dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex: none;
+  margin-left: 6px;
+}
+.emp-band__dot:first-child { margin-left: 0; }
+.emp-band__dot.tone-ok { background: var(--color-success-ls); }
+.emp-band__dot.tone-warn { background: var(--color-warning-ls); }
+.emp-band__dot.tone-mut { background: var(--color-text-faint-ls); }
+
+/* seg3：6px 全宽，三段实心；占比为 0 的段由 SegBar 不渲染（宽 0），图例仍保留。 */
+.emp-seg3.console-segbar {
+  /* width:100% + 左右外边距会溢出卡宽（375 实测溢出 9px），这里按 auto 走内容宽。 */
+  width: auto;
+  height: 6px;
+  margin: 0 14px 8px;
+}
+
+/* 技能芯片：最多 3 枚 + 「+N」，不写 0。 */
+.emp-chiprow {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+}
+.emp-chip-more {
+  font-family: var(--font-family-mono-ls);
+  font-size: 10px;
+  line-height: 16px;
+  color: var(--color-text-faint-ls);
+  white-space: nowrap;
+}
+
+/* 卡底两行共用一条上边线（notes + 网关状态行）。 */
+.emp-cardfoot { border-top: 1px solid var(--color-border-subtle-ls); }
+.emp-cardfoot .emp-notes { border-top: 0; }
+.emp-cardfoot .emp-foot { border-top: 0; }
+
+/* 「更多」面板里的勾选/编辑清单（面板关着时整段 hidden）。 */
+.emp-picklist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 200px;
+  overflow-y: auto;
+  min-width: 0;
+}
+.emp-picklist__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 2px 4px;
+  border-radius: var(--radius-ls-1);
+}
+.emp-picklist__row:hover { background: color-mix(in srgb, var(--color-text-ls) 4%, transparent); }
+.emp-picklist__pick {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex: 1 1 auto;
+  cursor: pointer;
+  font-size: 11px;
+  color: var(--color-text-ls);
+}
+.emp-picklist__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.emp-picklist__code {
+  flex: none;
+  font-size: 11px;
+  color: var(--color-text-faint-ls);
+}
+.emp-picklist__edit {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--color-border-subtle-ls);
+  border-radius: var(--radius-ls-1);
+  background: transparent;
+  padding: 0 6px;
+  height: 22px;
+  font-size: 11px;
+  color: var(--color-text-muted-ls);
+  cursor: pointer;
+}
+.emp-picklist__edit:hover { border-color: var(--color-border-strong-ls); color: var(--color-text-ls); }
+
 @media (max-width: 720px) {
   .emp-pagehead { flex-direction: column; align-items: flex-start; gap: 8px; }
   .emp-toolbar { justify-content: flex-start; }
@@ -411,6 +519,11 @@
   .emp-filter-row .emp-grow { display: none; }
   .emp-filter-row .emp-meta { margin-left: auto; }
   .emp-notes { display: none; }
+  /* 面板在窄屏按左缘展开（挂在触发钮左侧会被裁出屏外）。 */
+  .emp-more__panel { left: 0; right: auto; width: min(340px, calc(100vw - 32px)); max-height: 70vh; }
+  .emp-band { padding: 6px 10px 4px; }
+  .emp-band__note { flex-basis: 100%; font-size: 11px; }
+  .emp-seg3.console-segbar { margin: 0 10px 8px; }
   .emp-grid {
     grid-template-columns: minmax(0, 1fr) 56px 52px;
     column-gap: 8px;
@@ -424,7 +537,6 @@
   .emp-sub { display: none; }
   .emp-head-who > :not(:first-child) { display: none; }
   .emp-nm { flex: 1 1 auto; min-width: 0; }
-  .emp-grid--head { margin: 0 31px 0 56px; }
+  .emp-grid--head { margin: 0; }
   .emp-grid--row { padding: 0 10px; }
-  .emp-row__pick { width: 26px; }
 }

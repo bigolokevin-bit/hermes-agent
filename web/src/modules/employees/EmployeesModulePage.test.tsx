@@ -68,6 +68,15 @@ afterEach(() => {
 
 const q = (id: string) => document.querySelector(`[data-testid="${id}"]`);
 
+/** 第四轮：chevron 列已删，行内预览的入口只剩行链接上的 Enter（骨架形制）。 */
+async function openPreview(id: string) {
+  const link = q(`emp-l-name-link-${id}`) as HTMLAnchorElement | null;
+  expect(link, `row link ${id}`).toBeTruthy();
+  await act(async () => {
+    link!.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+  });
+}
+
 async function render(entry: string) {
   // MemoryRouter ignores initialEntries updates on an existing tree — a
   // re-render must start from a fresh root (R39 rid case).
@@ -142,8 +151,10 @@ describe("EmployeesModulePage list depth", () => {
     expect(link.textContent).toContain("小鲤");
     expect(link.textContent).toContain("emp_217a91ba…");
     expect(link.textContent).not.toContain("emp_217A91BA995044DFBB3E2E940B");
-    // Unknown lifecycle states never get invented words.
-    expect(link.textContent).toContain("待核实");
+    // 「可上岗」列现在只出三态（门读数未到前是「—」），生命周期词不再占这一列。
+    const avail = q("emp-life-emp_217A91BA995044DFBB3E2E940B");
+    expect(["可上岗", "受限", "停用", "—"].some((word) => (avail?.textContent ?? "").includes(word))).toBe(true);
+    expect(link.textContent).not.toContain("待核实");
     const dept = document.querySelector('[data-label="部门"]');
     expect(dept?.textContent).toBe("未标注部门"); // R96：部门键在值为空=未标注口径（不再显 —）
     expect(dept?.getAttribute("title")).toContain("值为空");
@@ -398,12 +409,9 @@ describe("R63 inline row preview (emp-row-preview-*)", () => {
     fetchJSON.mockImplementation(() => Promise.resolve(twoRows));
     await render("/employees");
     const callsBefore = fetchJSON.mock.calls.length;
-    const toggle = q("emp-row-preview-toggle-emp_217A91BA995044DFBB3E2E940B") as HTMLButtonElement;
-    expect(toggle).toBeTruthy();
-    expect(toggle.getAttribute("aria-expanded")).toBe("false");
-    await act(async () => {
-      toggle.click();
-    });
+    const link = q("emp-l-name-link-emp_217A91BA995044DFBB3E2E940B") as HTMLAnchorElement;
+    expect(link.getAttribute("aria-expanded")).toBe("false");
+    await openPreview("emp_217A91BA995044DFBB3E2E940B");
     expect(fetchJSON.mock.calls.length).toBe(callsBefore); // 禁额外请求
     const preview = q("emp-row-preview-emp_217A91BA995044DFBB3E2E940B") as Element;
     expect(preview).toBeTruthy();
@@ -414,29 +422,23 @@ describe("R63 inline row preview (emp-row-preview-*)", () => {
     expect(preview.textContent).toContain("2026-11-17 13:52"); // BJT 到分
     expect(preview.textContent).toContain("请求编号：该字段未返回");
     expect(preview.textContent).not.toContain("emp_217A91BA995044DFBB3E2E940B "); // 屏上文本不铺裸全 id
-    expect(toggle.getAttribute("aria-expanded")).toBe("true");
-    // Esc 收起且焦点回原钮（键盘场景：焦点本就在钮上）
-    toggle.focus();
+    expect(link.getAttribute("aria-expanded")).toBe("true");
+    // Esc 收起且焦点回原行（键盘场景：焦点本就在行链接上）
+    link.focus();
     await act(async () => {
-      toggle.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+      link.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     });
     expect(q("emp-row-preview-emp_217A91BA995044DFBB3E2E940B")).toBeNull();
-    expect(document.activeElement).toBe(toggle);
+    expect(document.activeElement).toBe(link);
   });
 
   it("at most one row is open; the URL never moves; a missing title states 该字段未返回", async () => {
     fetchJSON.mockImplementation(() => Promise.resolve(twoRows));
     const searchBefore = document.body.getAttribute("data-last-search");
     await render("/employees");
-    const t1 = q("emp-row-preview-toggle-emp_217A91BA995044DFBB3E2E940B") as HTMLButtonElement;
-    const t2 = q("emp-row-preview-toggle-emp_CCCC3333DDDD4444EEEE5555") as HTMLButtonElement;
-    await act(async () => {
-      t1.click();
-    });
+    await openPreview("emp_217A91BA995044DFBB3E2E940B");
     expect(q("emp-row-preview-emp_217A91BA995044DFBB3E2E940B")).toBeTruthy();
-    await act(async () => {
-      t2.click();
-    });
+    await openPreview("emp_CCCC3333DDDD4444EEEE5555");
     expect(q("emp-row-preview-emp_217A91BA995044DFBB3E2E940B")).toBeNull(); // 同时仅一行
     const p2 = q("emp-row-preview-emp_CCCC3333DDDD4444EEEE5555") as Element;
     expect(p2).toBeTruthy();
@@ -852,10 +854,7 @@ describe("R68 preview wording parity", () => {
     await act(async () => {
       flushTimers();
     });
-    const toggle = q("emp-row-preview-toggle-emp_5E5F606162636465") as HTMLButtonElement;
-    await act(async () => {
-      toggle.click();
-    });
+    await openPreview("emp_5E5F606162636465");
     const pv = q("emp-row-preview-emp_5E5F606162636465");
     expect(pv?.textContent).toContain(FIELD_MISSING);
     expect(pv?.textContent).toContain("请求编号：该字段未返回");

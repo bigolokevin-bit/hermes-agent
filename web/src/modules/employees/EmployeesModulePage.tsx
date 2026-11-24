@@ -2,19 +2,24 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Link, useSearchParams } from "react-router";
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronRight, Clock, Inbox, Pencil, Plus, RefreshCw, Search, ShieldAlert, TriangleAlert } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Clock, Inbox, Pencil, Plus, RefreshCw, Search, ShieldAlert, TriangleAlert } from "lucide-react";
 import { Button } from "@nous-research/ui";
 import { useToast } from "@nous-research/ui/hooks/use-toast";
 import { Toast } from "@nous-research/ui/ui/components/toast";
 
 import { RequestIdCopy } from "@/components/RequestIdCopy";
+import { Chip } from "@/components/console/Chip";
 import { ConsoleCard } from "@/components/console/ConsoleCard";
 import { Pill } from "@/components/console/Pill";
+import { SegBar } from "@/components/console/SegBar";
 
 import { fetchJSON } from "@/lib/api";
 import { API_UNREACHABLE_MESSAGE, ApiError, errorMessage, humanizeStatus } from "@/lib/api-error";
 import { csrfWriteHeaders } from "@/lib/csrf";
 import { ConsoleSelect } from "@/shell/ConsoleSelect";
+import { fetchReadinessEvidence } from "@/modules/duty/api";
+import type { ReadinessEvidence } from "@/modules/duty/readiness";
+import { availabilityCounts, availabilityOf, AVAILABILITY_NOTE, type AvailabilityView } from "./employeeStatus";
 import { CreateEmployeeModal, EMP_NAME_MAX, type CreatedRef, type VerifyOutcome } from "./CreateEmployeeModal";
 import {
   BATCH_CONCURRENCY,
@@ -242,26 +247,36 @@ function SortHeader({
   );
 }
 
-function displayName(row: EmployeeRow): string {
-  return row.name?.trim() || "未命名员工";
+/** 显示名：上游把编号写进姓名（「QA2 契约验证 1794894768」）时，结尾 8 位以上的
+ *  连续数字只在显示层剥掉；原文保留在 title/aria（row.name）。剥完为空 → 「—」。 */
+export function displayName(row: EmployeeRow): string {
+  const raw = row.name?.trim() ?? "";
+  if (!raw) return "未命名员工";
+  return raw.replace(/[\s·\-—_()（）]*\d{8,}\s*$/u, "").trim() || "—";
 }
 
-/** 部门/岗位格的岗位段：`title` 里去掉落款式的姓名重复（姓名已在员工格），
- *  括注原样保留；去掉姓名后为空 = 只留部门，不写占位句。 */
+/** 括注里出现这些词就是运维/环境内务，不当岗位或部门信息上屏。 */
+const OPS_PAREN = /(dev|库|清理|数字员工|pilot|测试|沙箱|sandbox|staging|环境)/i;
+
+/** 去掉姓名重复与运维括注后的岗位段；为空 = 该行只留部门。 */
 export function roleLine(title: string | null | undefined, name: string): string {
   const raw = title?.trim() ?? "";
   if (!raw) return "";
+  const stripped = raw.replace(/[（(]([^（()）]*)[)）]/g, (whole, inner: string) =>
+    OPS_PAREN.test(inner) ? " " : whole,
+  );
   const strip = (text: string, needle: string) =>
     needle ? text.split(needle).join(" ") : text;
   const full = name.trim();
-  // 上游名字常带「… <编号>」尾巴（如「QA2 契约验证 1794894768」），两种都要剥。
   const base = full.replace(/[\s·\-—_/]*\d{4,}$/, "").trim();
-  let out = raw;
+  let out = stripped;
   for (const needle of [full, base]) {
     out = strip(out, needle);
   }
-  out = out.replace(/^[\s·\-—:|,，]+|[\s·\-—:|,，]+$/g, "").trim();
-  return out === full || out === base ? "" : out;
+  out = out.replace(/^[\s·\-—:|,，]+|[\s·\-—:|,，]+$/g, "").replace(/\s+/g, " ").trim();
+  // 剥完只剩空括号/分隔符也算空。
+  if (!out || /^[（()）·\-—\s]*$/.test(out) || out === full || out === base) return "";
+  return out;
 }
 
 export function lifecycleLabel(value?: string | null): string {
@@ -305,9 +320,11 @@ function money(value?: number | null): string {
  * 服务端还给了下一页游标时，次数前缀「≥」并在 title 里写明窗口未取全。
  * ------------------------------------------------------------------ */
 
-/** 矩阵读口一条：技能数与预算档（金额上限，不是已花金额）。 */
+/** 矩阵读口一条：技能引用与预算档（金额上限，不是已花金额）。 */
 type MatrixFacts = {
   skillCount: number | null;
+  /** 技能引用编号（只回编号；显示层按短标签渲染，原串进 title）。 */
+  skillRefs: string[];
   monthlyCostUsd: number | null;
   perRunMaxUsd: number | null;
   dailyTokens: number | null;
@@ -345,6 +362,7 @@ function readMatrixFacts(body: unknown): Map<string, MatrixFacts> {
     const declared = pickNumber(raw.skillCount);
     map.set(id, {
       skillCount: declared ?? (refs.length > 0 ? refs.length : 0),
+      skillRefs: refs,
       monthlyCostUsd: budget ? pickNumber(budget.monthlyCostUsd) : null,
       perRunMaxUsd: budget ? pickNumber(budget.perRunMaxUsd) : null,
       dailyTokens: budget ? pickNumber(budget.dailyTokens) : null,
@@ -419,6 +437,14 @@ export function readRosterCounts(body: unknown): RosterCounts | null {
 /** 网关读数：只认 sources[] 的 state 与条数；客户端数/队列长度没有读口，不显示也不编。 */
 export type GatewayFacts = { ok: boolean; services: number; asOf: string | null };
 
+/** 卡头微标签（骨架 `PILOT · AGENT` 形制）：口径取 /api/auth/me 的真租户 org_id，
+ *  没回就整条不渲染——绝不写死一个假租户。 */
+export function tenantTagOf(orgId: string | null | undefined): string | null {
+  const raw = (orgId ?? "").trim().replace(/^t_/i, "");
+  const parts = raw.split(/[_-]+/).filter(Boolean);
+  return parts.length > 0 ? parts.map((part) => part.toUpperCase()).join(" · ") : null;
+}
+
 export function readGatewayFacts(body: unknown): GatewayFacts | null {
   if (!isRecord(body) || !Array.isArray(body.sources) || body.sources.length === 0) return null;
   const states = body.sources.map((row) => (isRecord(row) ? pickString(row.state) : null));
@@ -435,26 +461,13 @@ function initialOf(row: EmployeeRow): string {
   return name ? Array.from(name)[0] ?? "?" : "?";
 }
 
-function lifeTone(value?: string | null): "ok" | "warn" | "mut" | "info" {
-  if (value === "active") return "ok";
-  if (value === "paused" || value === "offboarding") return "warn";
-  if (value === "suspended" || value === "archived") return "mut";
-  if (value === "draft" || value === "onboarding") return "info";
-  return "info";
+/** 技能芯片标签：引用编号取尾段当短标签；像哈希（纯十六进制）就用中性序号，
+ *  原串只进 title——编号本身不上屏。 */
+function skillChipLabel(ref: string, index: number): string {
+  const tail = ref.split(/[:/._-]+/).filter(Boolean).pop() ?? "";
+  const human = tail && !/^[0-9a-f]{6,}$/i.test(tail) && /[a-z\u4e00-\u9fff]/i.test(tail);
+  return human ? tail : `技能 ${index + 1}`;
 }
-
-function lifeTitle(value?: string | null): string {
-  if (value === "active") return "可上岗：状态正常且未超日配额。";
-  if (value === "paused") return "受限：已暂停，被策略挡在派工之外。";
-  if (value === "suspended") return "停用：保留配置与历史，不接新任务。";
-  if (value === "archived") return "已归档：保留历史，不出现在派工范围。";
-  if (value === "draft") return "草稿：尚未入职，不在派工范围。";
-  if (value === "onboarding") return "入职中：尚未进入派工范围。";
-  if (value === "offboarding") return "离职中：不再接新任务。";
-  return "该状态不在冻结六态内，按「待核实」展示，不猜语义。";
-}
-
-
 
 /** 最近活跃口径：上游只有 updatedAt，按北京时间切到分；缺值不假造。 */
 function beijingMinute(value?: string | null): string | null {
@@ -864,9 +877,16 @@ export function EmployeesModulePage() {
   // 取走它当恢复目标（之后由翻页写回，不再回读 URL），失败/换筛选即丢弃。
   const restoreTargetRef = useRef<string | null>(params.get("cursor"));
   const [restoreInfo, setRestoreInfo] = useState<RestoreInfo | null>(null);
-  // 密度车道③：页头摘要（名册全量）与页脚网关读数，两条独立读口。
+  // 密度车道③：页头摘要（名册全量，仅用于 title 里的对照）与页脚网关读数，两条独立读口。
   const [roster, setRoster] = useState<RosterCounts | null>(null);
   const [gateway, setGateway] = useState<GatewayFacts | null>(null);
+  const [tenantTag, setTenantTag] = useState<string | null>(null);
+  // 第四轮：可上岗三态的门证据（V1 工位 / V2 有效配置 / V6 审批）。独立读腿：
+  // 失败只让在岗行的格子「—」，不影响列表本身。
+  const [gates, setGates] = useState<{ phase: "idle" | "loading" | "ready" | "failed"; evidence: ReadinessEvidence | null }>({
+    phase: "idle",
+    evidence: null,
+  });
   // 已加载页数：页码位按真实加载页计（游标分页没有总页数，末页未知时显示 …）。
   const [pages, setPages] = useState(1);
   // 批量动作收进「更多」入口后，面板开合是页面本地状态。
@@ -1085,6 +1105,29 @@ export function EmployeesModulePage() {
     };
   }, [reload]);
 
+  // 第三腿：可上岗三态的门证据。只读已加载行的员工 id（与表格同一批行），
+  // 扇出上限与逐员工失败口径都在 duty/api 里（拿不到的门按 unknown 计）。
+  const gateKey = state.items.map((row) => row.employeeId).join(",");
+  useEffect(() => {
+    const ids = gateKey ? gateKey.split(",") : [];
+    if (state.phase !== "ready" || ids.length === 0) {
+      setGates({ phase: "idle", evidence: null });
+      return;
+    }
+    let cancelled = false;
+    setGates((prev) => ({ phase: "loading", evidence: prev.evidence }));
+    fetchReadinessEvidence(ids)
+      .then((evidence) => {
+        if (!cancelled) setGates({ phase: "ready", evidence });
+      })
+      .catch(() => {
+        if (!cancelled) setGates({ phase: "failed", evidence: null });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [gateKey, state.phase, reload]);
+
   // 密度车道③：页头摘要（名册全量）与页脚网关读数。两条独立读口，各自失败各自「—」：
   // 名册读口失败时不拿「已加载 N 人」冒充全量，网关读口失败时整段中性「—」。
   useEffect(() => {
@@ -1103,39 +1146,19 @@ export function EmployeesModulePage() {
       .catch(() => {
         if (!cancelled) setGateway(null);
       });
+    fetchJSON<{ org_id?: string }>("/agent-api/api/auth/me")
+      .then((body) => {
+        if (!cancelled) setTenantTag(tenantTagOf(body?.org_id));
+      })
+      .catch(() => {
+        if (!cancelled) setTenantTag(null);
+      });
     return () => {
       cancelled = true;
     };
   }, [reload]);
 
-  const counts = useMemo(() => {
-    let active = 0;
-    let limited = 0;
-    let stopped = 0;
-    for (const row of state.items) {
-      if (row.lifecycleState === "active") active += 1;
-      else if (row.lifecycleState === "suspended" || row.lifecycleState === "archived") stopped += 1;
-      else limited += 1;
-    }
-    return { active, limited, stopped };
-  }, [state.items]);
-
   const filtered = Boolean(q || lifecycle || dept);
-
-  /** 页头摘要：优先进名册全量读口；读口未回时按已加载行计数（title 写明范围）；
-   *  列表未就绪且无名册读数 → null（上屏「—」，不补 0）。 */
-  const summary = useMemo<RosterCounts | null>(() => {
-    if (roster) return roster;
-    if (state.phase === "ready" || state.phase === "empty") {
-      return {
-        total: state.items.length,
-        active: counts.active,
-        limited: counts.limited,
-        stopped: counts.stopped,
-      };
-    }
-    return null;
-  }, [roster, state.phase, state.items.length, counts]);
 
   // R62: column sorting. Measured GET /api/employees with sort=name&order=desc,
   // sortBy=lifecycleState or sort=createdAt&dir=asc all return the same order
@@ -1182,6 +1205,31 @@ export function EmployeesModulePage() {
         : sortedItems.filter((row) => (row.department?.trim() || NONE_DEPT) === dept),
     [sortedItems, dept],
   );
+
+  /* 第四轮：三态派生只此一处 —— 页头四个数、说明带图例、表内 pill 全吃它。 */
+  const availabilityViews = useMemo(
+    () => visibleItems.map((row) => availabilityOf(row, gates.evidence, Date.now())),
+    [visibleItems, gates.evidence],
+  );
+  const availabilityByKey = useMemo(() => {
+    const map = new Map<string, AvailabilityView>();
+    visibleItems.forEach((row, index) => map.set(row.employeeId, availabilityViews[index]));
+    return map;
+  }, [visibleItems, availabilityViews]);
+  const availability = useMemo(() => availabilityCounts(availabilityViews), [availabilityViews]);
+  const gatesReady = gates.phase === "ready" || gates.phase === "failed";
+  /** 页头副行：四个数同源；门读数未到时「可上岗/受限」位「—」，不补 0。 */
+  const summary = useMemo(() => {
+    if (state.phase !== "ready" && state.phase !== "empty") {
+      return { total: "—", ok: "—", limited: "—", stopped: "—" } as const;
+    }
+    return {
+      total: String(availability.total),
+      ok: gatesReady && availability.ok !== null ? String(availability.ok) : "—",
+      limited: gatesReady && availability.limited !== null ? String(availability.limited) : "—",
+      stopped: String(availability.stopped),
+    };
+  }, [state.phase, availability, gatesReady]);
 
   /* ------------------------------------------------------------------ *
    * PE-09①：选择模型。键=employeeId，计数只认屏上可见行——被部门桶滤掉的行
@@ -1343,203 +1391,244 @@ export function EmployeesModulePage() {
     }
   };
 
-  /* 密度车道④：批量动作（全选 / 复制所选 / 导出所选 / 批量流转）收进页头右端的
-     「更多」入口，不再占一整块高度；口径句随面板展开，默认屏上只有一枚入口钮。 */
-  const moreMenu =
-    state.phase === "ready" && visibleItems.length > 0 ? (
-      <span className="emp-more" data-testid="emp-more">
-        <Button
-          size="sm"
-          outlined
-          data-testid="emp-more-trigger"
-          aria-expanded={batchOpen}
-          aria-controls="emp-more-panel"
-          onClick={() => setBatchOpen((open) => !open)}
-          title="批量动作：全选 / 复制所选 / 导出所选 / 批量流转（写口未接入，禁用）"
-        >
-          更多
-        </Button>
-        {batchOpen ? (
-          <div className="emp-more__panel" id="emp-more-panel" data-testid="emp-more-panel">
-            <div className="emp-batch" data-testid="emp-batch-bar">
-              <div className="emp-batch__body">
-                <div className="emp-batch__row">
-                  <button
-                    type="button"
-                    data-testid="emp-batch-select-all"
-                    role="checkbox"
-                    aria-checked={allVisibleSelected}
-                    onClick={toggleAllVisible}
-                    title={`勾选或取消屏上全部 ${visibleItems.length} 行（只作用当前可见行；不发请求）`}
-                    className="emp-dept-chip"
-                  >
-                    {allVisibleSelected ? "取消全选" : "全选本页"}
-                  </button>
-                  <span className={COUNT_CHIP} data-testid="emp-batch-count">
-                    已选 {selectedCount} / {visibleItems.length}
-                  </span>
-                  <Button
-                    size="sm"
-                    outlined
-                    data-testid="emp-batch-copy"
-                    disabled={selectedCount === 0}
-                    onClick={copySelected}
-                    title={
-                      selectedCount === 0
-                        ? "没有勾选任何行：先在左侧勾选，再复制。"
-                        : `复制勾选的 ${selectedCount} 行（纯前端，按屏上行序，零新请求）；范围不含未勾选与未加载的人。`
-                    }
-                  >
-                    复制所选
-                  </Button>
-                  <Button
-                    size="sm"
-                    outlined
-                    data-testid="emp-batch-export"
-                    disabled={selectedCount === 0}
-                    onClick={exportSelected}
-                    title={
-                      selectedCount === 0
-                        ? "没有勾选任何行：先在左侧勾选，再导出。"
-                        : `导出勾选的 ${selectedCount} 行为 CSV（纯前端 Blob，零新端点）；导出的是所选，不是全量。`
-                    }
-                  >
-                    导出所选 CSV
-                  </Button>
-                </div>
-                <div className="emp-batch__row">
-                  <ConsoleSelect
-                    value={batchTarget}
-                    onChange={(next) => {
-                      setBatchTarget(next);
-                      setBatchSummary(null);
-                    }}
-                    options={[
-                      { value: "", label: "选择目标在职态", disabled: true },
-                      ...BATCH_TARGET_STATES.map((item) => ({
-                        value: item.value,
-                        label: item.label,
-                      })),
-                    ]}
-                    data-testid="emp-batch-target"
-                    aria-label="批量流转目标在职态"
-                    title={
-                      "目标态取自域冻结六态（employee_models.py），文案报的是目标态本身；" +
-                      `选到「草稿 / 入职中 / 已归档」会把该员工移出可上岗率分母。提交钮原因：${TRANSITION_WRITE_NOTE}`
-                    }
-                    className="emp-select"
-                  />
-                  <Button
-                    size="sm"
-                    data-testid="emp-batch-transition"
-                    disabled
-                    aria-disabled="true"
-                    title={
-                      `${TRANSITION_WRITE_NOTE}；` +
-                      (selectedCount === 0
-                        ? "并且没有勾选任何行。"
-                        : `已勾 ${selectedCount} 行，接入后按目标态${batchTargetLabel ? `「${batchTargetLabel}」` : "（未选）"}逐单提交。`)
-                    }
-                    onClick={() => {
-                      void submitBatchTransition();
-                    }}
-                  >
-                    批量流转
-                  </Button>
-                  {batchTarget && OUT_OF_DENOMINATOR.has(batchTarget) ? (
-                    <span data-testid="emp-batch-denominator-flag" className="emp-batch__prose emp-warn">
-                      已选目标态「{batchTargetLabel}」不入分母。
-                    </span>
-                  ) : null}
-                </div>
-                <span className="emp-batch__prose" data-testid="emp-batch-copy-status" aria-live="polite">
-                  {batchCopyStatus === "done"
-                    ? `已复制 ${selectedCount} 行`
-                    : batchCopyStatus === "failed"
-                      ? "剪贴板写入被拒绝，可用下方文本框手动复制。"
-                      : ""}
-                </span>
-                {batchCopyStatus === "failed" ? (
-                  <textarea
-                    data-testid="emp-batch-copy-fallback"
-                    readOnly
-                    rows={4}
-                    value={batchCopyText.text}
-                    onFocus={(e) => e.currentTarget.select()}
-                    className="w-full min-w-0 rounded-sm border border-[var(--color-border-ls)] bg-transparent p-2 font-mono text-xs"
-                    aria-label="批量复制兜底文本框"
-                    title="内容与点击复制的目标逐字相同；手动选择后复制。"
-                  />
-                ) : null}
-                <p className="emp-batch__prose" data-testid="emp-batch-write-note">
-                  {BATCH_TRANSITION_ENABLED
-                    ? `接入后逐单提交：并发上限 ${BATCH_CONCURRENCY}，一单失败不断整批，回执逐字附原因。`
-                    : `${TRANSITION_WRITE_NOTE}。按钮已禁用，点击不发请求也不报成功。`}
-                </p>
-                <p className="emp-batch__prose" data-testid="emp-batch-denominator">
-                  {BATCH_DENOMINATOR_NOTE}
-                </p>
-                <p className="emp-batch__prose" data-testid="emp-batch-scope">
-                  {BATCH_SELECTION_SCOPE} 勾选与批量动作都不出屏上所见：共 {state.items.length} 人已加载，
-                  其中 {visibleItems.length} 行可见、{selectedCount} 行已选。
-                </p>
-                {batchError ? (
-                  <p className="emp-batch__prose emp-warn" data-testid="emp-batch-error" role="alert">
-                    {batchError}
-                  </p>
-                ) : null}
-                {batchSummary ? (
-                  <div className="min-w-0 space-y-1" data-testid="emp-batch-result">
-                    <p className="text-xs" data-testid="emp-batch-result-headline">
-                      {batchRunning ? "提交中…" : batchHeadline(batchSummary)}
-                    </p>
-                    <ul className="min-w-0 space-y-0.5 text-xs text-[var(--color-text-faint-ls)]" data-testid="emp-batch-result-lines">
-                      {batchSummary.results.map((item) => (
-                        <li key={item.employeeId}>
-                          {batchLine(item, (id) => {
-                            const row = state.items.find((r) => r.employeeId === id);
-                            return row ? displayName(row) : employeeCode(id);
-                          })}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : null}
-              </div>
+  /* 第四轮并排验收 C：批量选择 / 行内编辑 / 复制 / 导出 / 刷新全部收进页头
+     这枚「更多」。表内不再常驻勾选列、chevron 列与铅笔列；面板关着时整段
+     `hidden`（不进 tab 序、不占位），点开才出现。 */
+  const moreMenu = (
+    <span className="emp-more" data-testid="emp-more">
+      <Button
+        size="sm"
+        outlined
+        data-testid="emp-more-trigger"
+        aria-expanded={batchOpen}
+        aria-controls="emp-more-panel"
+        onClick={() => setBatchOpen((open) => !open)}
+        title="复制 / 导出 / 刷新 / 勾选与批量流转 / 行内编辑，都在这枚「更多」里"
+      >
+        {batchOpen ? "收起" : "更多"}
+      </Button>
+      <div
+        className="emp-more__panel"
+        id="emp-more-panel"
+        data-testid="emp-more-panel"
+        hidden={!batchOpen}
+      >
+        <div className="emp-batch" data-testid="emp-batch-bar">
+          <div className="emp-batch__body">
+            <div className="emp-batch__row" data-testid="emp-more-actions">
+              <ListCopyButton rows={visibleItems} totalLoaded={state.items.length} phase={state.phase} />
+              <ListExportButton rows={visibleItems} totalLoaded={state.items.length} phase={state.phase} />
+              <Button size="sm" data-testid="employees-refresh" onClick={retry}>
+                <RefreshCw className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
+                刷新
+              </Button>
             </div>
+            <div className="emp-batch__row">
+              <button
+                type="button"
+                data-testid="emp-batch-select-all"
+                role="checkbox"
+                aria-checked={allVisibleSelected}
+                onClick={toggleAllVisible}
+                title={`勾选或取消屏上全部 ${visibleItems.length} 行（只作用当前可见行；不发请求）`}
+                className="emp-dept-chip"
+              >
+                {allVisibleSelected ? "取消全选" : "全选本页"}
+              </button>
+              <span className={COUNT_CHIP} data-testid="emp-batch-count">
+                已选 {selectedCount} / {visibleItems.length}
+              </span>
+              <Button
+                size="sm"
+                outlined
+                data-testid="emp-batch-copy"
+                disabled={selectedCount === 0}
+                onClick={copySelected}
+                title={
+                  selectedCount === 0
+                    ? "没有勾选任何行：先在上面的清单里勾选，再复制。"
+                    : `复制勾选的 ${selectedCount} 行（纯前端，按屏上行序，零新请求）；范围不含未勾选与未加载的人。`
+                }
+              >
+                复制所选
+              </Button>
+              <Button
+                size="sm"
+                outlined
+                data-testid="emp-batch-export"
+                disabled={selectedCount === 0}
+                onClick={exportSelected}
+                title={
+                  selectedCount === 0
+                    ? "没有勾选任何行：先在上面的清单里勾选，再导出。"
+                    : `导出勾选的 ${selectedCount} 行为 CSV（纯前端 Blob，零新端点）；导出的是所选，不是全量。`
+                }
+              >
+                导出所选 CSV
+              </Button>
+            </div>
+            <div className="emp-batch__row">
+              <ConsoleSelect
+                value={batchTarget}
+                onChange={(next) => {
+                  setBatchTarget(next);
+                  setBatchSummary(null);
+                }}
+                options={[
+                  { value: "", label: "选择目标在职态", disabled: true },
+                  ...BATCH_TARGET_STATES.map((item) => ({
+                    value: item.value,
+                    label: item.label,
+                  })),
+                ]}
+                data-testid="emp-batch-target"
+                aria-label="批量流转目标在职态"
+                title={
+                  "目标态取自域冻结六态（employee_models.py），文案报的是目标态本身；" +
+                  `选到「草稿 / 入职中 / 已归档」会把该员工移出可上岗率分母。提交钮原因：${TRANSITION_WRITE_NOTE}`
+                }
+                className="emp-select"
+              />
+              <Button
+                size="sm"
+                data-testid="emp-batch-transition"
+                disabled
+                aria-disabled="true"
+                title={
+                  `${TRANSITION_WRITE_NOTE}；` +
+                  (selectedCount === 0
+                    ? "并且没有勾选任何行。"
+                    : `已勾 ${selectedCount} 行，接入后按目标态${batchTargetLabel ? `「${batchTargetLabel}」` : "（未选）"}逐单提交。`)
+                }
+                onClick={() => {
+                  void submitBatchTransition();
+                }}
+              >
+                批量流转
+              </Button>
+              {batchTarget && OUT_OF_DENOMINATOR.has(batchTarget) ? (
+                <span data-testid="emp-batch-denominator-flag" className="emp-batch__prose emp-warn">
+                  已选目标态「{batchTargetLabel}」不入分母。
+                </span>
+              ) : null}
+            </div>
+            <span className="emp-batch__prose" data-testid="emp-batch-copy-status" aria-live="polite">
+              {batchCopyStatus === "done"
+                ? `已复制 ${selectedCount} 行`
+                : batchCopyStatus === "failed"
+                  ? "剪贴板写入被拒绝，可用下方文本框手动复制。"
+                  : ""}
+            </span>
+            {batchCopyStatus === "failed" ? (
+              <textarea
+                data-testid="emp-batch-copy-fallback"
+                readOnly
+                rows={4}
+                value={batchCopyText.text}
+                onFocus={(e) => e.currentTarget.select()}
+                className="w-full min-w-0 rounded-sm border border-[var(--color-border-ls)] bg-transparent p-2 font-mono text-xs"
+                aria-label="批量复制兜底文本框"
+                title="内容与点击复制的目标逐字相同；手动选择后复制。"
+              />
+            ) : null}
+            <p className="emp-batch__prose" data-testid="emp-batch-write-note">
+              {BATCH_TRANSITION_ENABLED
+                ? `接入后逐单提交：并发上限 ${BATCH_CONCURRENCY}，一单失败不断整批，回执逐字附原因。`
+                : `${TRANSITION_WRITE_NOTE}。按钮已禁用，点击不发请求也不报成功。`}
+            </p>
+            <p className="emp-batch__prose" data-testid="emp-batch-denominator">
+              {BATCH_DENOMINATOR_NOTE}
+            </p>
+            <p className="emp-batch__prose" data-testid="emp-batch-scope">
+              {BATCH_SELECTION_SCOPE} 勾选与批量动作都不出屏上所见：共 {state.items.length} 人已加载，
+              其中 {visibleItems.length} 行可见、{selectedCount} 行已选。
+            </p>
+            {state.phase === "ready" && visibleItems.length > 0 ? (
+              <ul className="emp-picklist" data-testid="emp-picklist">
+                {visibleItems.map((row) => (
+                  <li key={row.employeeId} className="emp-picklist__row">
+                    <label className="emp-picklist__pick">
+                      <input
+                        type="checkbox"
+                        data-testid={`emp-row-select-${row.employeeId}`}
+                        checked={selected.has(row.employeeId)}
+                        onChange={() => toggleRow(row.employeeId)}
+                        aria-label={`选择：${displayName(row)}`}
+                      />
+                      <span className="emp-picklist__name">{displayName(row)}</span>
+                    </label>
+                    <span className="emp-picklist__code mono" title={row.employeeId}>
+                      {employeeCode(row.employeeId)}
+                    </span>
+                    <button
+                      type="button"
+                      data-testid={`emp-row-edit-${row.employeeId}`}
+                      className="emp-picklist__edit"
+                      aria-label={`编辑：${displayName(row)}`}
+                      title={`打开编辑抽屉（${EDIT_WRITE_NOTE}）`}
+                      onClick={() => {
+                        setEditingRow(row);
+                        setBatchOpen(false);
+                      }}
+                    >
+                      <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+                      编辑
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            {batchError ? (
+              <p className="emp-batch__prose emp-warn" data-testid="emp-batch-error" role="alert">
+                {batchError}
+              </p>
+            ) : null}
+            {batchSummary ? (
+              <div className="min-w-0 space-y-1" data-testid="emp-batch-result">
+                <p className="text-xs" data-testid="emp-batch-result-headline">
+                  {batchRunning ? "提交中…" : batchHeadline(batchSummary)}
+                </p>
+                <ul className="min-w-0 space-y-0.5 text-xs text-[var(--color-text-faint-ls)]" data-testid="emp-batch-result-lines">
+                  {batchSummary.results.map((item) => (
+                    <li key={item.employeeId}>
+                      {batchLine(item, (id) => {
+                        const row = state.items.find((r) => r.employeeId === id);
+                        return row ? displayName(row) : employeeCode(id);
+                      })}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
           </div>
-        ) : null}
-      </span>
-    ) : null;
+        </div>
+      </div>
+    </span>
+  );
 
 return (
     <section className="employees-page" data-testid="employees-module">
-      {/* 页头：骨架的一行副行 = 名册真读数（不是第二个 h1，h1 只在 shell TopBar）+
-          右侧页面动作。读数来自 /api/employee-stats（全量名册），读口未回时按已加载行
-          计数并在 title 里写明范围。 */}
+      {/* 页头：骨架的一行副行 = 三态真读数（不是第二个 h1，h1 只在 shell TopBar）+
+          右侧页面动作。四个数由 availabilityOf/availabilityCounts 一处派生，与表格
+          逐行一致；名册全量（/api/employee-stats）只写进 title 作对照。 */}
       <div className="emp-pagehead" data-testid="emp-page-head">
         <p
           className="emp-pagehead__sum"
           data-testid="emp-page-summary"
           title={
-            roster
-              ? "口径：GET /api/employee-stats 全量名册，不受本页筛选影响。受限＝已暂停/离职中/草稿/入职中（都不在派工范围）；停用＝已停用/已归档。"
-              : summary
-                ? `统计读口未返回：这里按当前已加载 ${state.items.length} 人计数，不是全量名册。`
-                : "统计读口未返回，列表也还没就绪：数字位以「—」占位，不是 0。"
+            `口径：按当前已加载 ${state.items.length} 人逐行派生（与表格逐行一致）——可上岗=在岗且 V1 群@ · V2 ReBAC · V6 审批 全过；受限=在岗但至少一门未过或待核实；停用=生命周期不是在岗。` +
+            (roster ? `名册全量 ${roster.total} 名（GET /api/employee-stats，不受本页筛选影响）。` : "")
           }
         >
-          <b className="emp-pagehead__n">{summary ? summary.total : "—"}</b> 名
+          <b className="emp-pagehead__n">{summary.total}</b> 名
           <span className="emp-pagehead__sep" aria-hidden="true">·</span>
-          <b className="emp-pagehead__n">{summary ? summary.active : "—"}</b> 可上岗
+          <b className="emp-pagehead__n">{summary.ok}</b> 可上岗
           <span className="emp-pagehead__sep" aria-hidden="true">·</span>
-          <b className="emp-pagehead__n">{summary ? summary.limited : "—"}</b> 受限
+          <b className="emp-pagehead__n">{summary.limited}</b> 受限
           <span className="emp-pagehead__sep" aria-hidden="true">·</span>
-          <b className="emp-pagehead__n">{summary ? summary.stopped : "—"}</b> 停用
+          <b className="emp-pagehead__n">{summary.stopped}</b> 停用
         </p>
         <div className="emp-toolbar" role="group" aria-label="页面动作">
-          <ListCopyButton rows={visibleItems} totalLoaded={state.items.length} phase={state.phase} />
-          <ListExportButton rows={visibleItems} totalLoaded={state.items.length} phase={state.phase} />
           {moreMenu}
           <Button
             size="sm"
@@ -1556,14 +1645,18 @@ return (
             <Plus className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
             新建员工
           </Button>
-          <Button size="sm" data-testid="employees-refresh" onClick={retry}>
-            <RefreshCw className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
-            刷新
-          </Button>
         </div>
       </div>
 
-      <ConsoleCard data-testid="employees-list-card" flush>
+      <ConsoleCard
+        data-testid="employees-list-card"
+        label={
+          tenantTag ? (
+            <span data-testid="emp-tenant-tag">{tenantTag}</span>
+          ) : undefined
+        }
+        flush
+      >
         {/* filterbar —— 骨架一行：搜索 + 部门 + 状态 + 筛选 + 右侧条数与页码。
             部门保留本地过滤能力，但收成同一行里的下拉，不再占一行分段 chips。 */}
         <div className="emp-filterbar emp-filter-row" data-testid="emp-filter-row">
@@ -1657,6 +1750,34 @@ return (
             {state.phase === "ready" ? (state.nextCursor ? "…" : pages) : "—"} 页
           </span>
         </div>
+
+        {/* 说明带：骨架原话（可上岗/受限/停用）+ 右端等宽图例；下方 6px 三段实心占比条。 */}
+        {state.phase === "ready" && visibleItems.length > 0 ? (
+          <div className="emp-band" data-testid="emp-list-band">
+            <span className="emp-band__note" data-testid="emp-band-note">
+              {AVAILABILITY_NOTE}
+            </span>
+            <span className="emp-band__legend mono" data-testid="emp-band-legend">
+              <i className="emp-band__dot tone-ok" aria-hidden="true" />
+              {availability.ok ?? "—"} 可上岗
+              <i className="emp-band__dot tone-warn" aria-hidden="true" />
+              {availability.limited ?? "—"} 受限
+              <i className="emp-band__dot tone-mut" aria-hidden="true" />
+              {availability.stopped} 停用
+            </span>
+          </div>
+        ) : null}
+        {state.phase === "ready" && visibleItems.length > 0 ? (
+          <SegBar
+            className="emp-seg3"
+            segments={[
+              { value: availability.ok ?? 0, tone: "ok" },
+              { value: availability.limited ?? 0, tone: "warn" },
+              { value: availability.stopped, tone: "mut" },
+            ]}
+            label={`可上岗 ${availability.ok ?? "—"} · 受限 ${availability.limited ?? "—"} · 停用 ${availability.stopped}`}
+          />
+        ) : null}
 
         {/* R69: 四态+分页条统一容器，data-phase 供自动化锁定当前态。 */}
         <div className="emp-statewrap" data-testid="emp-list-state" data-phase={state.phase}>
@@ -1789,7 +1910,6 @@ return (
                     const mp = enrichment.matrix.get(empId) ?? null;
                     const run = enrichment.runs.get(empId) ?? null;
                     const runsReady = enrichment.runsPhase === "ready";
-                    const skillCount = mp?.skillCount ?? null;
                     const rate = runRate(run);
                     const rateText = rate === null ? "—" : `${Math.round(rate * 100)}%`;
                     // 今日花费：有运行行就读它；没有运行行且窗口已取全 = 真零；
@@ -1799,157 +1919,146 @@ return (
                     return (
                       <li key={empId} data-testid={`employees-row-${empId}`} className="emp-rowwrap">
                         <div className="emp-row">
-                          <label className="emp-row__pick" data-testid={`emp-row-select-label-${empId}`}>
-                            <input
-                              type="checkbox"
-                              data-testid={`emp-row-select-${empId}`}
-                              checked={selected.has(empId)}
-                              onChange={() => toggleRow(empId)}
-                              aria-label={`选择：${displayName(row)}`}
-                              title={
-                                selected.has(empId)
-                                  ? "取消勾选这一行"
-                                  : `勾选这一行进批量动作（当前已加载 ${state.items.length} 人内；翻页即清空）`
-                              }
-                              className="h-4 w-4 shrink-0 accent-[var(--color-text-ls)]"
-                            />
-                          </label>
-                          <button
-                            type="button"
-                            data-testid={`emp-row-preview-toggle-${empId}`}
+                          <span data-testid={`emp-l-row-${empId}`} className="contents">
+                          <Link
+                            to={`/employees/${encodeURIComponent(empId)}`}
+                            data-testid={`emp-l-name-link-${empId}`}
+                            ref={(el) => {
+                              if (el) rowRefs.current.set(empId, el);
+                              else rowRefs.current.delete(empId);
+                            }}
+                            tabIndex={(activeRowKey ?? visibleItems[0]?.employeeId) === empId ? 0 : -1}
                             aria-expanded={previewKey === empId}
-                            aria-label={`行内预览：${displayName(row)}`}
-                            title="就地展开预览（不跳转、不产生新请求；Esc 或再点收起）"
-                            className="emp-row__chev"
-                            onClick={() => setPreviewKey((k) => (k === empId ? null : empId))}
+                            onFocus={() => setActiveRowKey(empId)}
                             onKeyDown={(e) => {
-                              if (e.key === "Escape") {
+                              const ids = visibleItems.map((r) => r.employeeId);
+                              const i = ids.indexOf(empId);
+                              if (e.key === "ArrowDown") {
+                                e.preventDefault();
+                                focusRow(ids[Math.min(i + 1, ids.length - 1)]);
+                              } else if (e.key === "ArrowUp") {
+                                e.preventDefault();
+                                focusRow(ids[Math.max(i - 1, 0)]);
+                              } else if (e.key === "Home") {
+                                e.preventDefault();
+                                focusRow(ids[0]);
+                              } else if (e.key === "End") {
+                                e.preventDefault();
+                                focusRow(ids[ids.length - 1]);
+                              } else if (e.key === "Enter") {
+                                e.preventDefault();
+                                setPreviewKey((k) => (k === empId ? null : empId));
+                              } else if (e.key === "Escape" && previewKey !== null) {
                                 e.preventDefault();
                                 setPreviewKey(null);
+                                e.currentTarget.focus();
                               }
                             }}
+                            className="emp-grid emp-grid--row"
+                            title={
+                              beijingMinute(row.updatedAt)
+                                ? `Enter 展开行内预览 · 最近活跃 ${beijingMinute(row.updatedAt)}`
+                                : "Enter 展开行内预览"
+                            }
                           >
-                            <ChevronRight className={`h-3.5 w-3.5 transition-transform ${previewKey === empId ? "rotate-90" : ""}`} />
-                          </button>
-                          <span data-testid={`emp-l-row-${empId}`} className="contents">
-                            <Link
-                              to={`/employees/${encodeURIComponent(empId)}`}
-                              data-testid={`emp-l-name-link-${empId}`}
-                              ref={(el) => {
-                                if (el) rowRefs.current.set(empId, el);
-                                else rowRefs.current.delete(empId);
-                              }}
-                              tabIndex={(activeRowKey ?? visibleItems[0]?.employeeId) === empId ? 0 : -1}
-                              aria-expanded={previewKey === empId}
-                              onFocus={() => setActiveRowKey(empId)}
-                              onKeyDown={(e) => {
-                                const ids = visibleItems.map((r) => r.employeeId);
-                                const i = ids.indexOf(empId);
-                                if (e.key === "ArrowDown") {
-                                  e.preventDefault();
-                                  focusRow(ids[Math.min(i + 1, ids.length - 1)]);
-                                } else if (e.key === "ArrowUp") {
-                                  e.preventDefault();
-                                  focusRow(ids[Math.max(i - 1, 0)]);
-                                } else if (e.key === "Home") {
-                                  e.preventDefault();
-                                  focusRow(ids[0]);
-                                } else if (e.key === "End") {
-                                  e.preventDefault();
-                                  focusRow(ids[ids.length - 1]);
-                                } else if (e.key === "Enter") {
-                                  e.preventDefault();
-                                  setPreviewKey((k) => (k === empId ? null : empId));
-                                } else if (e.key === "Escape" && previewKey !== null) {
-                                  e.preventDefault();
-                                  setPreviewKey(null);
-                                  e.currentTarget.focus();
+                            <span className="emp-who">
+                              <b className="emp-ava" aria-hidden="true">
+                                {initialOf(row)}
+                              </b>
+                              <span className="emp-nm" title={row.name?.trim() || undefined}>
+                                {displayName(row)}
+                              </span>
+                              <span
+                                className="emp-sub mono"
+                                title={empId}
+                                data-testid={`employees-code-${empId}`}
+                              >
+                                {employeeCode(empId)}
+                              </span>
+                            </span>
+                            <span className="emp-dept emp-col-dept">
+                              <span
+                                data-label="部门"
+                                title={departmentView(row.department !== undefined, row.department ?? null).title ?? undefined}
+                              >
+                                {departmentView(row.department !== undefined, row.department ?? null).label}
+                              </span>
+                              {role ? (
+                                <span className="emp-dept__role" data-label="岗位" title={row.title?.trim() || undefined}>
+                                  {role}
+                                </span>
+                              ) : null}
+                            </span>
+                            <span className="emp-life" data-testid={`emp-life-${empId}`}>
+                              {(() => {
+                                const view = availabilityByKey.get(empId);
+                                if (!view || view.key === null) {
+                                  return (
+                                    <span className="emp-dim" title={view?.title ?? "三态还没判出来"}>
+                                      —
+                                    </span>
+                                  );
                                 }
-                              }}
-                              className="emp-grid emp-grid--row"
+                                return (
+                                  <Pill tone={view.tone} title={view.title}>
+                                    {view.label}
+                                  </Pill>
+                                );
+                              })()}
+                            </span>
+                            <span
+                              className="emp-skills emp-col-skills"
+                              data-testid={`emp-skills-${empId}`}
                               title={
-                                beijingMinute(row.updatedAt)
-                                  ? `最近活跃 ${beijingMinute(row.updatedAt)}`
-                                  : undefined
+                                mp === null
+                                  ? "矩阵读口没回传该员工的技能：不补 0。"
+                                  : mp.skillRefs.length === 0
+                                    ? "该员工未挂载技能"
+                                    : `技能引用 ${mp.skillRefs.length} 个（GET /api/matrix skillRefs）；清单以能力与权限页为准。`
                               }
                             >
-                              <span className="emp-who">
-                                <b className="emp-ava" aria-hidden="true">
-                                  {initialOf(row)}
-                                </b>
-                                <span className="emp-nm">{displayName(row)}</span>
-                                <span
-                                  className="emp-sub mono"
-                                  title={empId}
-                                  data-testid={`employees-code-${empId}`}
-                                >
-                                  {employeeCode(empId)}
+                              {mp === null ? (
+                                <span className="emp-dim">—</span>
+                              ) : mp.skillRefs.length === 0 ? (
+                                <span className="emp-dim">—</span>
+                              ) : (
+                                <span className="emp-chiprow">
+                                  {mp.skillRefs.slice(0, 3).map((ref, index) => (
+                                    <Chip key={`${empId}-${ref}-${index}`} title={ref}>
+                                      {skillChipLabel(ref, index)}
+                                    </Chip>
+                                  ))}
+                                  {mp.skillRefs.length > 3 ? (
+                                    <span className="emp-chip-more" title={`还有 ${mp.skillRefs.length - 3} 个技能引用`}>
+                                      +{mp.skillRefs.length - 3}
+                                    </span>
+                                  ) : null}
                                 </span>
-                              </span>
-                              <span className="emp-dept emp-col-dept">
-                                <span
-                                  data-label="部门"
-                                  title={departmentView(row.department !== undefined, row.department ?? null).title ?? undefined}
-                                >
-                                  {departmentView(row.department !== undefined, row.department ?? null).label}
-                                </span>
-                                {role ? (
-                                  <span className="emp-dept__role" data-label="岗位" title={role === row.title?.trim() ? undefined : row.title?.trim()}>
-                                    {role}
-                                  </span>
-                                ) : null}
-                              </span>
-                              <span className="emp-life" data-testid={`emp-life-${empId}`}>
-                                <Pill tone={lifeTone(row.lifecycleState)} title={lifeTitle(row.lifecycleState)}>
-                                  {lifecycleLabel(row.lifecycleState)}
-                                </Pill>
-                              </span>
-                              <span
-                                className="emp-skills emp-col-skills emp-num mono"
-                                data-testid={`emp-skills-${empId}`}
-                                title={
-                                  skillCount === null
-                                    ? "矩阵读口没回传该员工的技能数：不补 0。"
-                                    : skillCount === 0
-                                      ? "矩阵读口如实返回 0（技能引用为空）；清单以能力与权限页为准。"
-                                      : "技能引用数（GET /api/matrix skillCount）；引用只回编号，清单以能力与权限页为准。"
-                                }
-                              >
-                                {skillCount === null ? <span className="emp-dim">—</span> : skillCount}
-                              </span>
-                              <span
-                                className="emp-num emp-col-cost mono"
-                                data-testid={`emp-cost-${empId}`}
-                                title={`${enrichment.budgetNote}${costCovered ? " 今天没有该员工的运行记录即真零。" : " 运行窗口未取全，缺行时留「—」。"}`}
-                              >
-                                {todayCost === null ? <span className="emp-dim">—</span> : money(todayCost)}
-                              </span>
-                              <span
-                                className="emp-num emp-col-runs mono"
-                                data-testid={`emp-runs-${empId}`}
-                                title={enrichment.runsNote}
-                              >
-                                {runsReady ? `${enrichment.runsPartial ? "≥" : ""}${run?.runs ?? 0}` : <span className="emp-dim">—</span>}
-                              </span>
-                              <span
-                                className={`emp-num emp-col-rate mono${rate !== null && rate < 0.9 ? " emp-warn" : ""}`}
-                                data-testid={`emp-rate-${empId}`}
-                                title={rate === null ? "该员工维度没有已完成的运行样本，成功率不补 0。" : "口径：completed ÷（completed + failed），来自最近 7 天运行。"}
-                              >
-                                {rateText}
-                              </span>
-                            </Link>
+                              )}
+                            </span>
+                            <span
+                              className="emp-num emp-col-cost mono"
+                              data-testid={`emp-cost-${empId}`}
+                              title={`${enrichment.budgetNote}${costCovered ? " 今天没有该员工的运行记录即真零。" : " 运行窗口未取全，缺行时留「—」。"}`}
+                            >
+                              {todayCost === null ? <span className="emp-dim">—</span> : money(todayCost)}
+                            </span>
+                            <span
+                              className="emp-num emp-col-runs mono"
+                              data-testid={`emp-runs-${empId}`}
+                              title={enrichment.runsNote}
+                            >
+                              {runsReady ? `${enrichment.runsPartial ? "≥" : ""}${run?.runs ?? 0}` : <span className="emp-dim">—</span>}
+                            </span>
+                            <span
+                              className={`emp-num emp-col-rate mono${rate !== null && rate < 0.9 ? " emp-warn" : ""}`}
+                              data-testid={`emp-rate-${empId}`}
+                              title={rate === null ? "该员工维度没有已完成的运行样本，成功率不补 0。" : "口径：completed ÷（completed + failed），来自最近 7 天运行。"}
+                            >
+                              {rateText}
+                            </span>
+                          </Link>
                           </span>
-                          <button
-                            type="button"
-                            data-testid={`emp-row-edit-${empId}`}
-                            aria-label={`编辑：${displayName(row)}`}
-                            title={`打开编辑抽屉（${EDIT_WRITE_NOTE}）`}
-                            className="emp-row__edit"
-                            onClick={() => setEditingRow(row)}
-                          >
-                            <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
-                          </button>
                         </div>
                         {previewKey === empId ? <RowPreview row={row} /> : null}
                       </li>
@@ -1960,63 +2069,66 @@ return (
             </div>
           ) : null}
 
-          {/* 卡底一行 11px：只留口径与缺读口两句，实现说明退到 title。 */}
-          <div className="emp-notes" data-testid="emp-list-notes">
-            <span
-              className="emp-note"
-              data-testid="emp-list-scope-note"
-              title="读口不接受 sort/department 参数，也不为排序或部门筛选补发请求：排序与部门/状态筛选只在当前已加载的这些行内生效，统计口径同此，不是全量。"
-            >
-              按已加载 {state.items.length} 人统计
-            </span>
-            <span
-              className="emp-note"
-              data-testid="emp-list-col-note"
-              title="主模型：员工列表与 /api/matrix 都不回传模型路由，整列隐藏（以员工详情「模型路由」为准）；今日花费的日美元预算上限：读口未返回。"
-            >
-              缺读口：主模型 · 日预算上限
-            </span>
-          </div>
+          {/* 卡底两行共用一条 1px 上边线（不再各描一道框）：口径行 + 网关状态行。 */}
+          <div className="emp-cardfoot">
+            {/* 卡底一行 11px：只留口径与缺读口两句，实现说明退到 title。 */}
+            <div className="emp-notes" data-testid="emp-list-notes">
+              <span
+                className="emp-note"
+                data-testid="emp-list-scope-note"
+                title="读口不接受 sort/department 参数，也不为排序或部门筛选补发请求：排序与部门/状态筛选只在当前已加载的这些行内生效，统计口径同此，不是全量。"
+              >
+                按已加载 {state.items.length} 人统计
+              </span>
+              <span
+                className="emp-note"
+                data-testid="emp-list-col-note"
+                title="主模型：员工列表与 /api/matrix 都不回传模型路由，整列隐藏（以员工详情「模型路由」为准）；今日花费的日美元预算上限：读口未返回。"
+              >
+                缺读口：主模型 · 日预算上限
+              </span>
+            </div>
 
-          {/* 卡底：一条网关状态行；「加载更多」只在真有多页时出现。 */}
-          <div className="emp-foot">
-            <span
-              className="emp-foot__status"
-              data-testid="emp-foot-status"
-              title="GET /api/health/sources 浅探针：HTTP 应答即 ok。客户端数与队列长度没有读口，故不显示也不补数。"
-            >
-              {gateway === null ? (
-                <span className="emp-meta">—</span>
-              ) : (
-                <span className="emp-meta">
-                  {gateway.ok ? "网关在线" : "网关降级"} · {gateway.services} 服务
-                  {gateway.asOf ? ` · ${beijingMinute(gateway.asOf) ?? gateway.asOf}` : ""}
-                </span>
-              )}
-            </span>
-            <div className="emp-foot__right" data-testid="emp-list-page">
-              {restoreInfo ? (
-                <span
-                  data-testid="emp-list-cursor-restored"
-                  className="emp-meta"
-                  title="URL 里的 cursor 是「上一页响应的 nextCursor」。刷新后从第一页起，按服务端每页自己给出的游标逐页续取到该位置；链接里那枚游标本身从不发出去。数据变短时如实停在真实末页并清掉键位。"
-                >
-                  {restoreNoteText(restoreInfo)}
-                </span>
-              ) : null}
-              {state.phase === "ready" && state.nextCursor !== null ? (
-                <Button
-                  size="sm"
-                  outlined
-                  className="emp-foot__more"
-                  data-testid="emp-list-page-more"
-                  disabled={state.loadingMore}
-                  onClick={loadMore}
-                  title="带服务端游标续取下一页（追加按工号去重）"
-                >
-                  {state.loadingMore ? "加载中…" : "加载更多"}
-                </Button>
-              ) : null}
+            {/* 卡底：一条网关状态行；「加载更多」只在真有多页时出现。 */}
+            <div className="emp-foot">
+              <span
+                className="emp-foot__status"
+                data-testid="emp-foot-status"
+                title="GET /api/health/sources 浅探针：HTTP 应答即 ok。客户端数与队列长度没有读口，故不显示也不补数。"
+              >
+                {gateway === null ? (
+                  <span className="emp-meta">—</span>
+                ) : (
+                  <span className="emp-meta">
+                    {gateway.ok ? "网关在线" : "网关降级"} · {gateway.services} 服务
+                    {gateway.asOf ? ` · ${beijingMinute(gateway.asOf) ?? gateway.asOf}` : ""}
+                  </span>
+                )}
+              </span>
+              <div className="emp-foot__right" data-testid="emp-list-page">
+                {restoreInfo ? (
+                  <span
+                    data-testid="emp-list-cursor-restored"
+                    className="emp-meta"
+                    title="URL 里的 cursor 是「上一页响应的 nextCursor」。刷新后从第一页起，按服务端每页自己给出的游标逐页续取到该位置；链接里那枚游标本身从不发出去。数据变短时如实停在真实末页并清掉键位。"
+                  >
+                    {restoreNoteText(restoreInfo)}
+                  </span>
+                ) : null}
+                {state.phase === "ready" && state.nextCursor !== null ? (
+                  <Button
+                    size="sm"
+                    outlined
+                    className="emp-foot__more"
+                    data-testid="emp-list-page-more"
+                    disabled={state.loadingMore}
+                    onClick={loadMore}
+                    title="带服务端游标续取下一页（追加按工号去重）"
+                  >
+                    {state.loadingMore ? "加载中…" : "加载更多"}
+                  </Button>
+                ) : null}
+              </div>
             </div>
           </div>
         </div>
