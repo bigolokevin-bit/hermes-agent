@@ -116,10 +116,10 @@ describe('OM-07 最近活动三行与状态词表', () => {
     expect(listRows[1].querySelector('span[title*="上游状态"]')).toBeNull();
   });
 
-  it('空态文案精确「近 7 天没有运行记录。」且导向 /employees', async () => {
+  it('空态给一行灰条骨架行「尚无运行记录」且导向 /employees', async () => {
     await render(<OverviewView data={activityFixture(ready([]))} matrix={ready({ items: [] })} loading={false} onRetry={() => {}} />);
-    const empty = activityCard()!.querySelector('.ov5-empty-line');
-    expect(empty?.querySelector('span')?.textContent).toBe('近 7 天没有运行记录。');
+    const empty = activityCard()!.querySelector('.ov5-skelrow');
+    expect(empty?.querySelector('.ov5-skeltext')?.textContent).toBe('尚无运行记录');
     expect(empty?.querySelector('a')?.getAttribute('href')).toContain('/employees');
   });
 

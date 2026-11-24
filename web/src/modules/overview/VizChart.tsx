@@ -97,6 +97,19 @@ export interface TrendColumn {
   peak: boolean;
 }
 
+export interface TrendSegment {
+  /** 连续有读数的一段折线（缺读数处断开，不跨缺口连线）。 */
+  line: string;
+  /** 该段到绘图区底边的轻填充。 */
+  area: string;
+}
+
+export interface TrendPointXY {
+  index: number;
+  x: number;
+  y: number;
+}
+
 export interface TrendGeometry {
   w: number;
   h: number;
@@ -105,6 +118,13 @@ export interface TrendGeometry {
   bw: number;
   ticks: Array<{ y: number; label: number }>;
   columns: TrendColumn[];
+  /** 折线分段（缺读数断开）。 */
+  segments: TrendSegment[];
+  /** 跨缺读数的虚线连接（明确画成虚线，不冒充实测）。 */
+  connectors: Array<{ line: string }>;
+  /** 有读数的日格坐标（画小圆点）。 */
+  points: TrendPointXY[];
+  top: number;
   /** 峰值：列序号与读数；全零/全缺时为 null。 */
   peakAt: { index: number; value: number } | null;
   /** 合计（只累加有读数的桶）与失败合计（任一桶失败缺读即 null）。 */
@@ -113,29 +133,45 @@ export interface TrendGeometry {
 }
 
 /**
- * 趋势柱几何（基线 buildTrend()）。
- * 高度只用 runs；失败作为柱内子段（不叠加在柱顶），与既有「柱高＝当日运行次数」契约一致。
+ * 整数档 y 轴（0 / 20 / 40 / 60 这类）：峰值 44 → 60，步长 20；
+ * 峰值 8 → 10，步长 5。刻度从顶到底，末位必是 0。
  */
-export function trendGeometry(width: number, points: TrendPointView[]): TrendGeometry {
+export function niceTicks(peak: number): { top: number; step: number; values: number[] } {
+  const v = Math.max(1, peak);
+  const rough = v / 3;
+  const mag = Math.pow(10, Math.floor(Math.log10(rough)));
+  const norm = rough / mag;
+  const rawStep = (norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10) * mag;
+  const step = Math.max(1, Math.round(rawStep));
+  const top = Math.ceil(v / step) * step;
+  const values: number[] = [];
+  for (let value = top; value >= 0; value -= step) values.push(Math.round(value * 100) / 100);
+  return { top, step, values };
+}
+
+/**
+ * 趋势几何：折线为主线（缺读数处断开），轻填充到绘图区底边，
+ * 峰值点保留圆点；柱宽只用于悬停命中列（不再画柱）。
+ */
+export function trendGeometry(width: number, series: TrendPointView[]): TrendGeometry {
   const l = TREND_PAD.l;
   const t = TREND_PAD.t;
   const w = Math.max(240, Math.round(width));
   const ih = TREND_H - TREND_PAD.t - TREND_PAD.b;
   const iw = Math.max(1, w - TREND_PAD.l - TREND_PAD.r);
-  const n = points.length || 1;
+  const n = series.length || 1;
   const slot = iw / n;
-  // 骨架的柱/面积填满绘图区：柱宽取槽位一半以上，14 天档不再留大段空槽。
   const bw = Math.min(30, Math.max(3, slot * 0.56));
-  const peakValue = points.reduce<number>((best, p) => (p.runs !== null && p.runs > best ? p.runs : best), 0);
-  const top = niceCeil(peakValue);
-  const ticks = [0, 1, 2, 3].map((k) => ({ y: t + (ih * k) / 3, label: Math.round(top * (1 - k / 3)) }));
+  const peakValue = series.reduce<number>((best, p) => (p.runs !== null && p.runs > best ? p.runs : best), 0);
+  const { top, values } = niceTicks(peakValue);
+  const ticks = values.map((value) => ({ y: t + ih * (1 - value / top), label: value }));
   let peakIndex = -1;
-  points.forEach((p, i) => {
+  series.forEach((p, i) => {
     if (p.runs !== null && p.runs === peakValue && peakValue > 0 && peakIndex < 0) peakIndex = i;
   });
-  const columns: TrendColumn[] = points.map((p, i) => {
+  const bottom = t + ih;
+  const columns: TrendColumn[] = series.map((p, i) => {
     const cx = l + slot * i + slot / 2;
-    const x = cx - bw / 2;
     const missing = p.runs === null;
     const h = missing ? 0 : Math.max(1.5, (ih * (p.runs as number)) / top);
     const failed = missing ? null : p.failed;
@@ -145,19 +181,45 @@ export function trendGeometry(width: number, points: TrendPointView[]): TrendGeo
       label: p.label,
       runs: p.runs,
       failed: p.failed,
-      x,
+      x: cx - bw / 2,
       w: bw,
       cx,
-      y: missing ? null : t + ih - h,
+      y: missing ? null : bottom - h,
       h,
       failH,
       missing,
-      showLabel: i === 0 || i === Math.floor((points.length - 1) / 2) || i === points.length - 1,
+      showLabel: i === 0 || i === Math.floor((series.length - 1) / 2) || i === series.length - 1,
       peak: i === peakIndex,
     };
   });
-  const total = points.reduce((sum, p) => sum + (p.runs ?? 0), 0);
-  const failedTotal = points.some((p) => p.failed === null) ? null : points.reduce((sum, p) => sum + (p.failed ?? 0), 0);
+
+  const points: TrendPointXY[] = columns
+    .filter((col) => !col.missing && col.y !== null)
+    .map((col) => ({ index: col.index, x: col.cx, y: col.y as number }));
+  const segments: TrendSegment[] = [];
+  let run: TrendPointXY[] = [];
+  const flush = () => {
+    if (run.length === 0) return;
+    const line = run.length === 1
+      ? `M${run[0].x.toFixed(1)} ${run[0].y.toFixed(1)} L${run[0].x.toFixed(1)} ${run[0].y.toFixed(1)}`
+      : `M${run.map((pt) => `${pt.x.toFixed(1)} ${pt.y.toFixed(1)}`).join(' L')}`;
+    const area = `${line} L${run[run.length - 1].x.toFixed(1)} ${bottom} L${run[0].x.toFixed(1)} ${bottom} Z`;
+    segments.push({ line, area });
+    run = [];
+  };
+  for (const pt of points) {
+    if (run.length > 0 && pt.index !== run[run.length - 1].index + 1) flush();
+    run.push(pt);
+  }
+  flush();
+  const connectors = points.slice(1).flatMap((point, i) => {
+    const prev = points[i];
+    if (point.index <= prev.index + 1) return [];
+    return [{ line: `M${prev.x.toFixed(1)} ${prev.y.toFixed(1)} L${point.x.toFixed(1)} ${point.y.toFixed(1)}` }];
+  });
+
+  const total = series.reduce((sum, p) => sum + (p.runs ?? 0), 0);
+  const failedTotal = series.some((p) => p.failed === null) ? null : series.reduce((sum, p) => sum + (p.failed ?? 0), 0);
   return {
     w,
     h: TREND_H,
@@ -166,20 +228,22 @@ export function trendGeometry(width: number, points: TrendPointView[]): TrendGeo
     bw,
     ticks,
     columns,
+    segments,
+    connectors,
+    points,
+    top,
     peakAt: peakIndex >= 0 ? { index: peakIndex, value: peakValue } : null,
     total,
     failedTotal,
   };
 }
 
-/** 热力色阶（基线 lvl()）：0 次＝0 档，其余按绝对次数分 1–5 档。 */
+/** 热力色阶：0 / 1–2 / 3–4 / 5+ 四档，与图例逐档同序。 */
 export function heatLevel(count: number): number {
   if (count <= 0) return 0;
   if (count <= 2) return 1;
-  if (count <= 5) return 2;
-  if (count <= 9) return 3;
-  if (count <= 14) return 4;
-  return 5;
+  if (count <= 4) return 2;
+  return 3;
 }
 
 export interface HeatCellView {

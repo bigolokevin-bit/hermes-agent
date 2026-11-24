@@ -44,11 +44,12 @@ const BUCKETS = [
   { bucketStart: '2026-11-04T00:00:00Z', runs: 5, failed: 2 },
 ];
 
-// 同一个星期行内放三档读数，24 格热力取读数最多的一天，档位断言才落在同一行。
+// 同一个星期行内放四档读数（0/1–2/3–4/5+ 全覆盖），24 格热力取读数最多的一天。
 const HEAT_CELLS = [
-  { dow: 5, hour: 13, count: 1 },
-  { dow: 5, hour: 14, count: 8 },
-  { dow: 5, hour: 15, count: 5 },
+  { dow: 5, hour: 12, count: 1 },
+  { dow: 5, hour: 13, count: 3 },
+  { dow: 5, hour: 14, count: 5 },
+  { dow: 5, hour: 15, count: 8 },
 ];
 
 function fixture(cells: Array<{ dow: number; hour: number; count: number }> = HEAT_CELLS): DutyData {
@@ -95,18 +96,28 @@ describe('OM-17 视觉层：火花／点阵／趋势／热力', () => {
     expect(employees.querySelectorAll('.ov5-gate')).toHaveLength(4);
   });
 
-  it('趋势图：4 条网格线、逐桶柱、缺桶虚线框、峰值标记、失败子段', async () => {
+  it('趋势图：折线+轻填充、缺桶斜线断口、整数刻度、峰值点', async () => {
     await render(view());
     const svg = container.querySelector('.ov5-trend-svg');
     expect(svg).toBeTruthy();
-    expect(svg?.querySelectorAll('.ov5-grid-line')).toHaveLength(4);
-    // 逐桶：4 个桶 → 3 根柱 + 1 个虚线框；overlay 仍保持逐桶 4 列契约。
-    expect(container.querySelectorAll('[data-testid="ov6-trend"] .ov5-trend-bar')).toHaveLength(3);
-    expect(container.querySelectorAll('[data-testid="ov6-trend"] .ov5-trend-void')).toHaveLength(1);
+    // 峰值 8 → nice ticks 10/5/0（整数档），三条网格线。
+    const gridLines = svg?.querySelectorAll('.ov5-grid-line') ?? [];
+    expect(gridLines.length).toBeGreaterThanOrEqual(3);
+    const yLabels = Array.from(svg?.querySelectorAll('.ov5-axis-lbl') ?? [])
+      .map((el) => el.textContent ?? '')
+      .filter((text) => /^\d+(\.\d+)?$/.test(text));
+    expect(yLabels).toContain('0');
+    for (const label of yLabels) expect(Number.isInteger(Number(label))).toBe(true);
+    // 折线按缺读数断开：第 1 天单独一段、第 3–4 天一段。
+    expect(svg?.querySelectorAll('.ov5-trend-line')).toHaveLength(2);
+    expect(svg?.querySelectorAll('.ov5-trend-area')).toHaveLength(2);
+    // 跨缺读数的一段用虚线连接（不把插值冒充实测）。
+    expect(svg?.querySelectorAll('.ov5-trend-connector')).toHaveLength(1);
+    expect(svg?.querySelectorAll('.ov5-trend-pt')).toHaveLength(3);
+    expect(svg?.querySelectorAll('.ov5-trend-void')).toHaveLength(1);
+    // 悬停列仍逐桶 4 列（不画柱，只做命中层）。
     expect(container.querySelectorAll('[data-testid="ov6-trend"] .ov5-bar')).toHaveLength(4);
-    // 失败子段：failed 1 与 2 两根柱有，failed 0 那根没有。
-    expect(container.querySelectorAll('[data-testid="ov6-trend"] .ov5-trend-fail')).toHaveLength(2);
-    // 峰值柱（8 次）画虚线标记 + 圆点。
+    // 峰值点（8 次）保留圆点 + 标注。
     expect(container.querySelector('.ov5-peak-mark')).toBeTruthy();
     expect(container.querySelector('.ov5-peak-dot')).toBeTruthy();
   });
@@ -127,13 +138,13 @@ describe('OM-17 视觉层：火花／点阵／趋势／热力', () => {
     const grid = container.querySelector('[data-testid="ov6-heat"] svg.ov5-heat-svg');
     expect(grid).toBeTruthy();
     expect(grid?.querySelectorAll('rect.ov5-heat-cell')).toHaveLength(24);
-    expect(grid?.getAttribute('aria-label')).toContain('合计 14 次');
-    // 8 次 → 第 3 档；5 次 → 第 2 档；1 次 → 第 1 档；其余小时画斜线，不留白面。
-    expect(grid?.querySelectorAll('rect.ov5-heat-lv3')).toHaveLength(1);
+    expect(grid?.getAttribute('aria-label')).toContain('合计 17 次');
+    // 1 → 1 档；3 → 2 档；5 与 8 → 3 档（5+）；其余 20 个小时画斜线。
+    expect(grid?.querySelectorAll('rect.ov5-heat-lv3')).toHaveLength(2);
     expect(grid?.querySelectorAll('rect.ov5-heat-lv2')).toHaveLength(1);
     expect(grid?.querySelectorAll('rect.ov5-heat-lv1')).toHaveLength(1);
     expect(grid?.querySelectorAll('rect.ov5-heat-cell.is-peak')).toHaveLength(1);
-    expect(grid?.querySelectorAll('rect.ov5-heat-cell.is-void')).toHaveLength(24 - 3);
+    expect(grid?.querySelectorAll('rect.ov5-heat-cell.is-void')).toHaveLength(24 - 4);
   });
 
   it('活动腿没有读数时热力不画空格（24 格不出现），走诚实空态', async () => {

@@ -106,7 +106,7 @@ describe('OverviewView', () => {
     expect(container.querySelectorAll('[data-duty-testid^="duty-kpi-"]')).toHaveLength(5);
   });
 
-  it('页头：模块内大标题 + 真值元数据；搜索/导出无读口只给可见提示，不发请求', async () => {
+  it('页头：模块内不再重复标题/不多出 h1；元数据为真值；搜索/导出无读口只给可见提示', async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
     await render(
@@ -117,7 +117,9 @@ describe('OverviewView', () => {
         onRetry={() => {}}
       />,
     );
-    expect(container.querySelector('.ov5-title')?.textContent).toBe('运营总览');
+    // 外壳 TopBar 是全球唯一的 h1；模块内不得再出标题或第二个 h1。
+    expect(container.querySelector('.ov5-title')).toBeNull();
+    expect(container.querySelectorAll('h1')).toHaveLength(0);
     const facts = container.querySelector('.ov5-facts')?.textContent ?? '';
     expect(facts).toContain('2 名数字员工');
     expect(facts).toContain('在跑');
@@ -162,7 +164,7 @@ describe('OverviewView', () => {
     expect(text).not.toContain('读取于');
   });
 
-  it('shows — and a GAP note when the cost ledger does not cover every employee', async () => {
+  it('shows 待核实 and a GAP note when the cost ledger does not cover every employee', async () => {
     const data = dataFixture();
     data.budgetDay = ready({ items: [{ employeeId: 'emp_1', costUsd: 1.5 }], missingEmployeeIds: ['emp_2'] });
     await render(
@@ -174,7 +176,7 @@ describe('OverviewView', () => {
       />,
     );
     const cost = container.querySelector('[data-testid="ov6-kpi-cost"]')?.textContent ?? '';
-    expect(cost).toContain('—');
+    expect(container.querySelector('[data-testid="ov6-kpi-cost"] .ov5-kpi-value')?.textContent).toBe('待核实');
     expect(cost).not.toContain('$1.50');
     const employeeCard = container.querySelector('[data-testid="ov6-kpi-employees"]');
     expect(employeeCard?.textContent).not.toContain('GAP-');

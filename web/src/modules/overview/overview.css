@@ -11,11 +11,11 @@
   overflow-x: hidden;
 }
 
-/* ---------- 页头：外壳已有面包屑与 h1，这里只留副标题/采集时刻/时间窗/按钮 ---------- */
+/* ---------- 页头：外壳已有面包屑与唯一 h1，这里只留一行元数据 + 按钮 ---------- */
 .ov5-head {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: var(--space-ls-2) var(--space-ls-4);
   min-width: 0;
@@ -23,17 +23,7 @@
 
 .ov5-head-main {
   min-width: 0;
-  flex: 1 1 420px;
-}
-
-/* 页面内显示标题（外壳 TopBar 已有唯一的 h1，这里不再出第二个 h1） */
-.ov5-title {
-  margin: 0;
-  color: var(--color-text-ls);
-  font-size: 30px;
-  font-weight: var(--font-weight-ls-medium);
-  line-height: 1.12;
-  letter-spacing: -0.01em;
+  flex: 1 1 auto;
 }
 
 .ov5-act-hint {
@@ -57,7 +47,6 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-ls-1) var(--space-ls-3);
-  margin-top: 3px;
 }
 
 .ov5-fact {
@@ -171,6 +160,9 @@
 
 .ov5-kpi-meta a,
 .ov5-block-hd a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   color: var(--color-text-muted-ls);
   font-size: 10.5px;
   text-decoration: none;
@@ -194,6 +186,16 @@
   white-space: nowrap;
 }
 
+/* 卡顶右上的覆盖率小标（等宽 11px） */
+.ov5-coverage {
+  margin-left: auto;
+  color: var(--color-text-faint-ls);
+  font-family: var(--font-family-mono-ls);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
 .ov5-kr {
   display: flex;
   flex-wrap: wrap;
@@ -211,6 +213,22 @@
   line-height: 1.05;
   letter-spacing: -0.02em;
   overflow-wrap: anywhere;
+}
+
+/* 主数字未知态：小一号、弱色，不抢数字位 */
+.ov5-kpi-unknown {
+  font-family: var(--font-family-sans-ls);
+  font-size: 16px;
+  font-weight: var(--font-weight-ls-regular);
+  letter-spacing: 0.02em;
+  color: var(--color-text-subtle-ls);
+}
+
+.ov5-unknown-why {
+  margin: 0;
+  color: var(--color-text-faint-ls);
+  font-size: 9.5px;
+  line-height: 1.4;
 }
 
 .ov5-unit {
@@ -286,6 +304,42 @@
   padding: 0;
   border: 0;
 }
+
+/* 卡底折叠区：不可得读数默认收起，标题只报条数 */
+.ov5-gaps {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid var(--color-border-subtle-ls);
+  color: var(--color-text-faint-ls);
+  font-size: 9.5px;
+}
+
+.ov5-gaps summary {
+  cursor: pointer;
+  color: var(--color-text-subtle-ls);
+  font-family: var(--font-family-mono-ls);
+  font-size: 10px;
+  line-height: 1.5;
+  list-style-position: inside;
+}
+
+.ov5-gaps ul {
+  display: grid;
+  gap: 2px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ov5-gaps li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 6px;
+  line-height: 1.45;
+}
+
+.ov5-gap-field { color: var(--color-text-muted-ls); }
+.ov5-gap-why { color: var(--color-text-faint-ls); }
 
 .ov5-stamp {
   display: inline;
@@ -429,8 +483,12 @@
 }
 
 .ov5-stack-svg rect.ok { fill: var(--color-success-ls); }
-.ov5-stack-svg rect.warn { fill: var(--color-warning-ls); }
 .ov5-stack-svg rect.bad { fill: var(--color-danger-ls); }
+.ov5-stack-svg rect.unknown {
+  fill: color-mix(in srgb, var(--color-info-ls) 18%, transparent);
+  stroke: var(--color-border-ls);
+  stroke-dasharray: 2 2;
+}
 
 .ov5-legend {
   display: flex;
@@ -459,10 +517,14 @@
 .ov5-legend i.ok { background: var(--color-success-ls); }
 .ov5-legend i.warn { background: var(--color-warning-ls); }
 .ov5-legend i.bad { background: var(--color-danger-ls); }
+.ov5-legend i.unknown {
+  background: color-mix(in srgb, var(--color-info-ls) 18%, transparent);
+  box-shadow: inset 0 0 0 1px var(--color-border-ls);
+}
 .ov5-legend i.h0 { background: var(--color-surface-raised-ls); box-shadow: inset 0 0 0 1px var(--color-border-subtle-ls); }
 .ov5-legend i.h1 { background: color-mix(in srgb, var(--color-primary-ls) 22%, transparent); }
-.ov5-legend i.h2 { background: color-mix(in srgb, var(--color-primary-ls) 58%, transparent); }
-.ov5-legend i.h3 { background: var(--color-primary-ls); }
+.ov5-legend i.h2 { background: color-mix(in srgb, var(--color-primary-ls) 52%, transparent); }
+.ov5-legend i.h3 { background: color-mix(in srgb, var(--color-primary-ls) 82%, transparent); }
 
 .ov5-legend-note {
   margin-left: auto;
@@ -565,6 +627,9 @@ a.ov5-cs:hover { border-color: var(--color-border-ls); }
 }
 
 .ov5-cs-v {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   flex: 1;
   min-width: 0;
   overflow: hidden;
@@ -572,6 +637,30 @@ a.ov5-cs:hover { border-color: var(--color-border-ls); }
   white-space: nowrap;
   color: var(--color-text-muted-ls);
   font-size: 10.5px;
+}
+
+.ov5-cs-na {
+  color: var(--color-text-faint-ls);
+  font-family: var(--font-family-mono-ls);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+
+/* 语义点：在线=绿、降级=琥珀、异常=红、未接入=中性灰蓝 */
+.ov5-dot {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.ov5-dot.ok { background: var(--color-success-ls); }
+.ov5-dot.warn { background: var(--color-warning-ls); }
+.ov5-dot.bad { background: var(--color-danger-ls); }
+.ov5-dot.unknown {
+  background: color-mix(in srgb, var(--color-info-ls) 35%, transparent);
+  box-shadow: inset 0 0 0 1px var(--color-border-ls);
 }
 
 .ov5-cs-v b {
@@ -699,18 +788,44 @@ a.ov5-cs:hover { border-color: var(--color-border-ls); }
   font-size: 8.5px;
 }
 
-.ov5-trend-bar {
-  fill: color-mix(in srgb, var(--color-text-ls) 34%, transparent);
+.ov5-trend-area {
+  fill: color-mix(in srgb, var(--color-primary-ls) 8%, transparent);
 }
 
-.ov5-trend-fail {
-  fill: color-mix(in srgb, var(--color-danger-ls) 62%, transparent);
+.ov5-trend-line {
+  fill: none;
+  stroke: var(--color-primary-ls);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.ov5-trend-pt {
+  fill: var(--color-bg-ls);
+  stroke: var(--color-primary-ls);
+  stroke-width: 1.2;
+}
+
+/* 跨缺读数的连接线只画虚线：不把插值冒充实测 */
+.ov5-trend-connector {
+  fill: none;
+  stroke: var(--color-primary-ls);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  opacity: 0.55;
 }
 
 .ov5-trend-void {
-  fill: none;
+  fill: url(#ov5-trend-hatch);
   stroke: var(--color-border-ls);
   stroke-dasharray: 2 3;
+}
+
+.ov5-trend-hatch-line {
+  fill: none;
+  stroke: var(--color-border-ls);
+  stroke-width: 1;
+  opacity: 0.7;
 }
 
 .ov5-peak-mark {
@@ -806,6 +921,81 @@ a.ov5-cs:hover { border-color: var(--color-border-ls); }
   line-height: 1.45;
 }
 
+/* 阻塞卡顶部状态条：网关 / 服务 / 客户端 / 队列 */
+.ov5-statusline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 12px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--color-border-subtle-ls);
+}
+
+.ov5-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--color-text-faint-ls);
+  font-family: var(--font-family-mono-ls);
+  font-size: 9px;
+  white-space: nowrap;
+}
+
+.ov5-stat b {
+  color: var(--color-text-muted-ls);
+  font-weight: var(--font-weight-ls-regular);
+}
+
+/* 空态灰条骨架行：一行占位说明，不画假数据 */
+.ov5-skelrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 4px 0;
+  border-top: 1px solid var(--color-border-subtle-ls);
+}
+
+.ov5-skelbar {
+  width: 56px;
+  height: 8px;
+  flex: none;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--color-text-ls) 10%, transparent);
+}
+
+.ov5-skeltext {
+  color: var(--color-text-faint-ls);
+  font-size: 11px;
+}
+
+.ov5-skel-link {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--color-text-muted-ls);
+  font-size: 10px;
+  text-decoration: none;
+  border-bottom: 1px solid var(--color-border-subtle-ls);
+  white-space: nowrap;
+}
+
+/* 技术错误句降到卡脚 11px，不占正文行 */
+.ov5-block-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  padding-top: 5px;
+  border-top: 1px dashed var(--color-border-subtle-ls);
+  color: var(--color-text-muted-ls);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.ov5-count-warn { color: var(--color-warning-ls); }
+
 /* 口径句与采集时刻并成一块，避免卡底上下各占一行 */
 .ov5-block-footrow {
   display: flex;
@@ -847,17 +1037,23 @@ a.ov5-cs:hover { border-color: var(--color-border-ls); }
 }
 
 .ov5-heat-cell.is-void {
-  fill: transparent;
+  fill: url(#ov5-heat-na);
   stroke: var(--color-border-subtle-ls);
-  stroke-dasharray: 3 2;
+  stroke-dasharray: 2 2;
+}
+
+.ov5-heat-na-bg { fill: var(--color-surface-ls); }
+.ov5-heat-na-line {
+  fill: none;
+  stroke: var(--color-border-ls);
+  stroke-width: 1;
+  opacity: 0.55;
 }
 
 .ov5-heat-lv0 { fill: var(--color-surface-raised-ls); }
-.ov5-heat-lv1 { fill: color-mix(in srgb, var(--color-primary-ls) 18%, transparent); }
-.ov5-heat-lv2 { fill: color-mix(in srgb, var(--color-primary-ls) 36%, transparent); }
-.ov5-heat-lv3 { fill: color-mix(in srgb, var(--color-primary-ls) 58%, transparent); }
-.ov5-heat-lv4 { fill: color-mix(in srgb, var(--color-primary-ls) 78%, transparent); }
-.ov5-heat-lv5 { fill: var(--color-primary-ls); }
+.ov5-heat-lv1 { fill: color-mix(in srgb, var(--color-primary-ls) 22%, transparent); }
+.ov5-heat-lv2 { fill: color-mix(in srgb, var(--color-primary-ls) 52%, transparent); }
+.ov5-heat-lv3 { fill: color-mix(in srgb, var(--color-primary-ls) 82%, transparent); }
 
 .ov5-heat-cell.is-peak {
   stroke: var(--color-text-muted-ls);
