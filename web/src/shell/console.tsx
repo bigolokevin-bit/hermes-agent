@@ -613,17 +613,21 @@ export function ConsoleEmployeeDetailPage({
   // page) — stage-2 brief 5 fallback. The lane-A workbench (chat host +
   // rail) serves the EXPLICIT workbench forms (?zone=workbench plus the
   // ZONE_ALIAS overview/chat spellings).
-  const showWorkbench = zone === undefined && normalized === "workbench";
+  // 2026-11-24: 员工详情默认就是工作台（左侧 Hermes 原生对话），
+  // 档案/任职/权限/活动/运行/证据 五区仍由上方 zone 条切换。
+  // 裸路由此前落到 DetailModulePage，导致「对话」整块消失（用户实机投诉）。
+  const showWorkbench =
+    zone === undefined && (normalized === "workbench" || normalized === "");
 
-  const detailContent: ReactNode = DetailModulePage ? (
-    <Suspense fallback={<StateBlock state="loading" />}>
-      <DetailModulePage employeeId={employeeId} />
-    </Suspense>
-  ) : showWorkbench ? (
+  const detailContent: ReactNode = showWorkbench ? (
     <EmployeeDetailWorkbench
       employeeId={employeeId}
       renderChatHost={renderChatHost}
     />
+  ) : DetailModulePage ? (
+    <Suspense fallback={<StateBlock state="loading" />}>
+      <DetailModulePage employeeId={employeeId} />
+    </Suspense>
   ) : (
     fallback
   );
