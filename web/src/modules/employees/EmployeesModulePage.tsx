@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Link, useSearchParams } from "react-router";
@@ -19,7 +19,15 @@ import { csrfWriteHeaders } from "@/lib/csrf";
 import { ConsoleSelect } from "@/shell/ConsoleSelect";
 import { fetchReadinessEvidence } from "@/modules/duty/api";
 import type { ReadinessEvidence } from "@/modules/duty/readiness";
-import { availabilityCounts, availabilityOf, AVAILABILITY_NOTE, type AvailabilityView } from "./employeeStatus";
+import {
+  availabilityCounts,
+  availabilityLegendParts,
+  availabilityOf,
+  availabilitySegments,
+  availabilitySummaryParts,
+  AVAILABILITY_NOTE,
+  type AvailabilityView,
+} from "./employeeStatus";
 import { CreateEmployeeModal, EMP_NAME_MAX, type CreatedRef, type VerifyOutcome } from "./CreateEmployeeModal";
 import {
   BATCH_CONCURRENCY,
@@ -337,7 +345,7 @@ const RUNS_WINDOW_DAYS = 7;
 const RUNS_LIMIT = 100;
 
 const BUDGET_NOTE =
-  "今日预算＝今天（北京时间）运行记录里的 costUsd 求和；日成本上限读口未按员工维度返回，斜杠后留「—」，不拿 token 档冒充美元。";
+  "今日预算＝今天（北京时间）运行记录里的 costUsd 求和；格内只写已用金额（上限见卡底「数据可用性」）。";
 const RUNS_NOTE =
   `近 7 天运行次数：GET /api/runs 最近 ${RUNS_WINDOW_DAYS} 天窗口按 employeeId 归组；窗口未取全时前缀「≥」。`;
 
@@ -1217,19 +1225,19 @@ export function EmployeesModulePage() {
     return map;
   }, [visibleItems, availabilityViews]);
   const availability = useMemo(() => availabilityCounts(availabilityViews), [availabilityViews]);
-  const gatesReady = gates.phase === "ready" || gates.phase === "failed";
-  /** 页头副行：四个数同源；门读数未到时「可上岗/受限」位「—」，不补 0。 */
-  const summary = useMemo(() => {
-    if (state.phase !== "ready" && state.phase !== "empty") {
-      return { total: "—", ok: "—", limited: "—", stopped: "—" } as const;
-    }
-    return {
-      total: String(availability.total),
-      ok: gatesReady && availability.ok !== null ? String(availability.ok) : "—",
-      limited: gatesReady && availability.limited !== null ? String(availability.limited) : "—",
-      stopped: String(availability.stopped),
-    };
-  }, [state.phase, availability, gatesReady]);
+  /**
+   * 页头副行：与说明带图例吃同一个 availabilityCounts（同源同值），段由
+   * availabilitySummaryParts 拼；列表还没落地时整段不渲染（副行禁止出现「—」）。
+   */
+  const summaryParts = useMemo(
+    () =>
+      state.phase === "ready" || state.phase === "empty"
+        ? availabilitySummaryParts(availability)
+        : null,
+    [state.phase, availability],
+  );
+  /** 三段条只吃判全了的三态（缺一段整条不画，免得比例失真）。 */
+  const segmentMix = useMemo(() => availabilitySegments(availability), [availability]);
 
   /* ------------------------------------------------------------------ *
    * PE-09①：选择模型。键=employeeId，计数只认屏上可见行——被部门桶滤掉的行
@@ -1612,22 +1620,32 @@ return (
           右侧页面动作。四个数由 availabilityOf/availabilityCounts 一处派生，与表格
           逐行一致；名册全量（/api/employee-stats）只写进 title 作对照。 */}
       <div className="emp-pagehead" data-testid="emp-page-head">
-        <p
-          className="emp-pagehead__sum"
-          data-testid="emp-page-summary"
-          title={
-            `口径：按当前已加载 ${state.items.length} 人逐行派生（与表格逐行一致）——可上岗=在岗且 V1 群@ · V2 ReBAC · V6 审批 全过；受限=在岗但至少一门未过或待核实；停用=生命周期不是在岗。` +
-            (roster ? `名册全量 ${roster.total} 名（GET /api/employee-stats，不受本页筛选影响）。` : "")
-          }
-        >
-          <b className="emp-pagehead__n">{summary.total}</b> 名
-          <span className="emp-pagehead__sep" aria-hidden="true">·</span>
-          <b className="emp-pagehead__n">{summary.ok}</b> 可上岗
-          <span className="emp-pagehead__sep" aria-hidden="true">·</span>
-          <b className="emp-pagehead__n">{summary.limited}</b> 受限
-          <span className="emp-pagehead__sep" aria-hidden="true">·</span>
-          <b className="emp-pagehead__n">{summary.stopped}</b> 停用
-        </p>
+        {summaryParts ? (
+          <p
+            className="emp-pagehead__sum"
+            data-testid="emp-page-summary"
+            title={
+              `口径：按当前已加载 ${state.items.length} 人逐行派生（与表格逐行一致）——可上岗=在岗且 V1 群@ · V2 ReBAC · V6 审批 全过；受限=在岗但至少一门未过或待核实；停用=生命周期不是在岗。` +
+              (availability.ok === null
+                ? "还有在岗行的门读数没到，可上岗 / 受限两段暂整段不渲染（不补 0、不写「—」）。"
+                : "") +
+              (roster ? `名册全量 ${roster.total} 名（GET /api/employee-stats，不受本页筛选影响）。` : "")
+            }
+          >
+            {summaryParts.map((part, index) => (
+              <Fragment key={part.key}>
+                {index > 0 ? (
+                  <span className="emp-pagehead__sep" aria-hidden="true">
+                    ·
+                  </span>
+                ) : null}
+                <b className="emp-pagehead__n">{part.n}</b> {part.label}
+              </Fragment>
+            ))}
+          </p>
+        ) : (
+          <span aria-hidden="true" />
+        )}
         <div className="emp-toolbar" role="group" aria-label="页面动作">
           {moreMenu}
           <Button
@@ -1655,6 +1673,18 @@ return (
             <span data-testid="emp-tenant-tag">{tenantTag}</span>
           ) : undefined
         }
+        availability={[
+          {
+            label: "主模型",
+            reason:
+              "列表读口（/api/employees、/api/matrix）与 /api/effective-config、/api/employee-versions 都不回传模型字段，故整列留「—」；当前路由以员工详情「模型路由」为准。",
+          },
+          {
+            label: "今日预算上限",
+            reason:
+              "运行读口只回 costUsd（已花），没有按员工的日美元上限；格内只写已用金额，不拿 token 档折算美元。",
+          },
+        ]}
         flush
       >
         {/* filterbar —— 骨架一行：搜索 + 部门 + 状态 + 筛选 + 右侧条数与页码。
@@ -1751,31 +1781,32 @@ return (
           </span>
         </div>
 
-        {/* 说明带：骨架原话（可上岗/受限/停用）+ 右端等宽图例；下方 6px 三段实心占比条。 */}
+        {/* 说明带：骨架原话（可上岗/受限/停用）+ 右端等宽图例；下方 6px 三段实心占比条。
+            图例与副行同源（availabilityLegendParts），缺读数的那段整段不渲染。 */}
         {state.phase === "ready" && visibleItems.length > 0 ? (
           <div className="emp-band" data-testid="emp-list-band">
             <span className="emp-band__note" data-testid="emp-band-note">
               {AVAILABILITY_NOTE}
             </span>
             <span className="emp-band__legend mono" data-testid="emp-band-legend">
-              <i className="emp-band__dot tone-ok" aria-hidden="true" />
-              {availability.ok ?? "—"} 可上岗
-              <i className="emp-band__dot tone-warn" aria-hidden="true" />
-              {availability.limited ?? "—"} 受限
-              <i className="emp-band__dot tone-mut" aria-hidden="true" />
-              {availability.stopped} 停用
+              {availabilityLegendParts(availability).map((part) => (
+                <Fragment key={part.key}>
+                  <i className={`emp-band__dot tone-${part.tone ?? "mut"}`} aria-hidden="true" />
+                  {part.n} {part.label}
+                </Fragment>
+              ))}
             </span>
           </div>
         ) : null}
-        {state.phase === "ready" && visibleItems.length > 0 ? (
+        {state.phase === "ready" && visibleItems.length > 0 && segmentMix ? (
           <SegBar
             className="emp-seg3"
             segments={[
-              { value: availability.ok ?? 0, tone: "ok" },
-              { value: availability.limited ?? 0, tone: "warn" },
-              { value: availability.stopped, tone: "mut" },
+              { value: segmentMix.ok, tone: "ok" },
+              { value: segmentMix.limited, tone: "warn" },
+              { value: segmentMix.stopped, tone: "mut" },
             ]}
-            label={`可上岗 ${availability.ok ?? "—"} · 受限 ${availability.limited ?? "—"} · 停用 ${availability.stopped}`}
+            label={`可上岗 ${segmentMix.ok} · 受限 ${segmentMix.limited} · 停用 ${segmentMix.stopped}`}
           />
         ) : null}
 
@@ -1896,8 +1927,9 @@ return (
                 </span>
                 <span className="emp-col-dept">部门 / 岗位</span>
                 <SortHeader label="可上岗" sortKey="state" active={sort} dir={dir} onCycle={cycleSort} tip="按在职态原始值排序（本地：仅当前已加载行）" />
-                <span className="emp-col-skills emp-num">技能</span>
-                <span className="emp-col-cost emp-num">今日花费</span>
+                <span className="emp-col-model mono">主模型</span>
+                <span className="emp-col-skills">技能</span>
+                <span className="emp-col-cost emp-num">今日预算</span>
                 <span className="emp-col-runs emp-num">近 7 天</span>
                 <span className="emp-col-rate emp-num">成功率</span>
               </div>
@@ -2006,6 +2038,9 @@ return (
                                 );
                               })()}
                             </span>
+                            <span className="emp-model emp-col-model mono" data-testid={`emp-model-${empId}`}>
+                              <span className="emp-dim">—</span>
+                            </span>
                             <span
                               className="emp-skills emp-col-skills"
                               data-testid={`emp-skills-${empId}`}
@@ -2071,7 +2106,7 @@ return (
 
           {/* 卡底两行共用一条 1px 上边线（不再各描一道框）：口径行 + 网关状态行。 */}
           <div className="emp-cardfoot">
-            {/* 卡底一行 11px：只留口径与缺读口两句，实现说明退到 title。 */}
+            {/* 卡底一行 11px：只留统计范围一句；缺读口统一收进 ConsoleCard.availability。 */}
             <div className="emp-notes" data-testid="emp-list-notes">
               <span
                 className="emp-note"
@@ -2079,13 +2114,6 @@ return (
                 title="读口不接受 sort/department 参数，也不为排序或部门筛选补发请求：排序与部门/状态筛选只在当前已加载的这些行内生效，统计口径同此，不是全量。"
               >
                 按已加载 {state.items.length} 人统计
-              </span>
-              <span
-                className="emp-note"
-                data-testid="emp-list-col-note"
-                title="主模型：员工列表与 /api/matrix 都不回传模型路由，整列隐藏（以员工详情「模型路由」为准）；今日花费的日美元预算上限：读口未返回。"
-              >
-                缺读口：主模型 · 日预算上限
               </span>
             </div>
 

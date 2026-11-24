@@ -209,15 +209,17 @@
 }
 
 /* ==========================================================================
- * 表体：七列（员工 / 部门·岗位 / 可上岗 / 技能 / 今日花费 / 近7天 / 成功率）。
- * 主模型没有读口，整列不渲染（不是留白列）。行高 40，单元格单行。
+ * 表体：八列（员工 / 部门·岗位 / 可上岗 / 主模型 / 技能 / 今日预算 / 近7天 / 成功率）。
+ * 主模型没有读口：表头保留（骨架同级），格内「—」，缺读口只在卡底可用性块声明一次。
+ * 行高 40，单元格单行。
  * ========================================================================== */
 .emp-table { min-width: 0; }
 
 .emp-grid {
   display: grid;
   grid-template-columns:
-    minmax(150px, 1.5fr) minmax(120px, 1.4fr) 80px 52px 80px 56px 56px;
+    minmax(130px, 1.5fr) minmax(104px, 1.3fr) 76px minmax(72px, 0.9fr)
+    minmax(76px, 1.1fr) 80px 52px 48px;
   align-items: center;
   column-gap: 10px;
   min-width: 0;
@@ -314,6 +316,15 @@
 }
 
 .emp-skills { min-width: 0; }
+/* 主模型格：等宽、左对齐（骨架 `.mono xs`），单行省略；无读口时格内「—」。 */
+.emp-model {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  color: var(--color-text-muted-ls);
+}
 .emp-num {
   text-align: right;
   font-size: 11px;
@@ -518,7 +529,8 @@
   .emp-select { width: 100%; }
   .emp-filter-row .emp-grow { display: none; }
   .emp-filter-row .emp-meta { margin-left: auto; }
-  .emp-notes { display: none; }
+  /* 卡底仍然两行：统计范围一句 + 网关状态行（窄屏也保留，只让长句省略）。 */
+  .emp-notes { padding: 6px 10px; }
   /* 面板在窄屏按左缘展开（挂在触发钮左侧会被裁出屏外）。 */
   .emp-more__panel { left: 0; right: auto; width: min(340px, calc(100vw - 32px)); max-height: 70vh; }
   .emp-band { padding: 6px 10px 4px; }
@@ -530,6 +542,7 @@
   }
   .emp-grid--head > :last-child { text-align: right; }
   .emp-col-dept,
+  .emp-col-model,
   .emp-col-skills,
   .emp-col-cost,
   .emp-col-runs { display: none; }

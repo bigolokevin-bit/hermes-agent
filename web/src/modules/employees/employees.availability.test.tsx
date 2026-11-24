@@ -171,7 +171,19 @@ describe("第四轮 · 可上岗三态只此一处派生", () => {
     await render();
     await waitFor(() => !!q("employees-table"), "list settled");
     expect(pill(LIMITED_ID)).toBe("—");
-    expect(text("emp-page-summary")).toContain("— 可上岗");
+    // 副行禁止出现「—」：判不出「可上岗/受限」时那两段整段不渲染，只留能判的段。
+    const summaryText = text("emp-page-summary");
+    expect(summaryText).not.toContain("—");
+    expect(summaryText).toContain("2 名");
+    expect(summaryText).toContain("1 停用");
+    expect(summaryText).not.toContain("可上岗");
+    expect(summaryText).not.toContain("受限");
+    // 图例同源同值：缺读数的那两段同样不渲染，不写 0 也不写「—」。
+    const legendText = text("emp-band-legend");
+    expect(legendText).not.toContain("—");
+    expect(legendText).toContain("1 停用");
+    // 缺一段就不画三段条（避免拿 0 充数造出假比例）。
+    expect(document.querySelector(".emp-seg3")).toBeNull();
     // 停用行不需要门读数，照常可判。
     expect(pill(STOPPED_ID)).toBe("停用");
   });
@@ -239,5 +251,71 @@ describe("第四轮 · 技能芯片与「更多」面板", () => {
     await render();
     await waitFor(() => !!q("emp-tenant-tag"), "tenant tag");
     expect(text("emp-tenant-tag")).toBe("SEAKOI · PILOT");
+  });
+});
+
+describe("第五轮 · 列结构与说明带补到骨架同级", () => {
+  it("表头八列按骨架顺序，主模型列不许消失（无读口时格内「—」）", async () => {
+    serve();
+    await render();
+    await waitFor(() => !!q("employees-table-head"), "head");
+
+    const head = q("employees-table-head") as HTMLElement;
+    const labels = [...head.children].map((el) => el.textContent?.replace(/\s+/g, " ").trim() ?? "");
+    expect(labels).toEqual([
+      "员工",
+      "部门 / 岗位",
+      "可上岗",
+      "主模型",
+      "技能",
+      "今日预算",
+      "近 7 天",
+      "成功率",
+    ]);
+    // 表头禁止出现「—」。
+    expect(head.textContent).not.toContain("—");
+
+    // 行内也有这 8 格；主模型格留「—」，不编模型名。
+    const row = q(`emp-l-row-${OK_ID}`) as HTMLElement;
+    const cells = row.querySelector(".emp-grid--row") as HTMLElement;
+    expect(cells.children.length).toBe(8);
+    expect((q(`emp-model-${OK_ID}`) as HTMLElement).textContent?.trim()).toBe("—");
+    expect(text("emp-cost-" + OK_ID)).not.toContain("/");
+  });
+
+  it("缺读口只声明一次：卡底可用性块点名主模型与日预算上限，正文不再铺散文", async () => {
+    serve();
+    await render();
+    await waitFor(() => !!q("employees-list-card"), "card");
+
+    const block = q("employees-list-card")?.querySelector("details.console-card__availability");
+    expect(block).toBeTruthy();
+    expect(block?.getAttribute("data-availability-count")).toBe("2");
+    expect(block?.textContent).toContain("主模型");
+    expect(block?.textContent).toContain("今日预算上限");
+
+    const notes = q("emp-list-notes") as HTMLElement;
+    expect(notes.textContent).toContain("按已加载 3 人统计");
+    expect(notes.textContent).not.toContain("缺读口");
+  });
+
+  it("副行与图例同源同值，且副行不出现「—」", async () => {
+    serve();
+    await render();
+    await waitFor(() => text("emp-page-summary").includes("可上岗"), "gates settled");
+
+    const summary = text("emp-page-summary");
+    expect(summary).not.toContain("—");
+    expect(summary).toMatch(/\d+ 名/);
+    expect(summary).toMatch(/\d+ 可上岗/);
+    expect(summary).toMatch(/\d+ 受限/);
+    expect(summary).toMatch(/\d+ 停用/);
+    // 图例三段的数字逐字等于副行对应段（同一函数出的同一份数）。
+    const legend = text("emp-band-legend");
+    for (const label of ["可上岗", "受限", "停用"]) {
+      const fromSummary = summary.match(new RegExp(`(\\d+) ${label}`))?.[1];
+      const fromLegend = legend.match(new RegExp(`(\\d+) ${label}`))?.[1];
+      expect(fromLegend).toBe(fromSummary);
+    }
   });
 });

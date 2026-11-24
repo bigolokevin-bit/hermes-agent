@@ -185,3 +185,44 @@ export function availabilityCounts(views: AvailabilityView[]): AvailabilityCount
 /** 说明带那句口径（骨架原话的后两段 + 本页真实的第一段判据）。 */
 export const AVAILABILITY_NOTE =
   "可上岗=在岗且 V1 群@ · V2 ReBAC · V6 审批 三道可判定门全过；受限=被策略挡在派工之外；停用保留配置与历史";
+
+/** 页头副行 / 说明带图例的一段：数字 + 词，顺序与骨架一致。 */
+export interface AvailabilitySummaryPart {
+  key: "total" | "ok" | "limited" | "stopped";
+  n: number;
+  label: string;
+  /** 图例圆点的色调；总计段不画点（null）。 */
+  tone: AvailabilityTone | null;
+}
+
+/**
+ * 页头副行与说明带图例的唯一拼装处（骨架 `N 名 · A 可上岗 · B 受限 · C 停用`）。
+ *
+ * 门读数没覆盖到的行让 counts.ok / counts.limited 为 null：这两段整段不渲染——
+ * 副行禁止出现「—」，也不把「未知」写成 0；能判的段照常出数，欠缺原因写在
+ * 副行的 title 里。段值为 0 时照常出「0 可上岗」（真零 ≠ 未知），图例保留该点。
+ */
+export function availabilitySummaryParts(counts: AvailabilityCounts): AvailabilitySummaryPart[] {
+  const parts: AvailabilitySummaryPart[] = [
+    { key: "total", n: counts.total, label: "名", tone: null },
+  ];
+  if (counts.ok !== null) parts.push({ key: "ok", n: counts.ok, label: "可上岗", tone: "ok" });
+  if (counts.limited !== null) {
+    parts.push({ key: "limited", n: counts.limited, label: "受限", tone: "warn" });
+  }
+  parts.push({ key: "stopped", n: counts.stopped, label: "停用", tone: "mut" });
+  return parts;
+}
+
+/** 图例口径：与副行同源，去掉总计段。 */
+export function availabilityLegendParts(counts: AvailabilityCounts): AvailabilitySummaryPart[] {
+  return availabilitySummaryParts(counts).filter((part) => part.key !== "total");
+}
+
+/** 三段条的分母：只有 ok/limited 都判出来时才画（缺一段就整条不渲染，避免假比例）。 */
+export function availabilitySegments(
+  counts: AvailabilityCounts,
+): { ok: number; limited: number; stopped: number } | null {
+  if (counts.ok === null || counts.limited === null) return null;
+  return { ok: counts.ok, limited: counts.limited, stopped: counts.stopped };
+}
