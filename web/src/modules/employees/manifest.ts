@@ -27,7 +27,7 @@ const manifest: ModuleManifest = {
       group: 'employees',
       icon: 'Grid3x3',
       reuse: () => import('../matrix/MatrixModulePage').then((m) => ({ default: m.MatrixModulePage })),
-      dataSource: '员工能力矩阵接口（fixture 门 BOUNDARY-12）',
+      dataSource: '员工能力矩阵读口（/api/matrix、/api/skills、/api/knowledge/spaces）',
     },
   ],
 };

@@ -1738,3 +1738,201 @@
 .knw5-surface-title:empty {
   display: none;
 }
+
+/* ------------------------------------------------------------------ *
+ * 空间台账面（/knowledge 知识空间）密度：公共卡式基元 + 骨架行高。
+ * 2026-11-24 按 console-v4-skeleton.html spaces pane 重排：卡头 11px 微标签、
+ * 卡体 12px 内距、表行 38px、数字等宽右对齐。全部走 tokens 语义层，不写裸 hex。
+ * ------------------------------------------------------------------ */
+
+.knv-cardbox .console-card__body {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+}
+
+/* 整宽表格：左右内距交给单元格，表头与行贴卡片边。 */
+.knv-cardbox--flush .console-card__body {
+  padding: 0;
+  gap: 0;
+}
+
+.knv-cardbox--flush .console-card__body > .knw5-scroll {
+  border-radius: 0 0 6px 6px;
+}
+
+.knv-cardbox--flush .console-card__body > .knw5-surface > .knw5-source {
+  padding: 8px 14px 0;
+}
+
+.knv-cardbox--flush .console-card__body > .knw5-surface > .knw5-empty,
+.knv-cardbox--flush .console-card__body > .knw5-surface > .knw5-unwired,
+.knv-cardbox--flush .console-card__body > .knw5-surface > .knw5-error,
+.knv-cardbox--flush .console-card__body > .knw5-surface > .knw5-skeleton {
+  margin: 0 14px 12px;
+}
+
+.knv-cardbox--flush .knw5-table th {
+  height: 28px;
+  padding: 0 14px;
+  font-family: var(--font-family-mono-ls);
+  font-size: 11px;
+  font-weight: var(--font-weight-ls-regular);
+  letter-spacing: 0.04em;
+  color: var(--color-text-subtle-ls);
+  vertical-align: middle;
+}
+
+.knv-cardbox--flush .knw5-table td {
+  height: 38px;
+  padding: 0 14px;
+  vertical-align: middle;
+  font-size: var(--font-size-ls-1);
+}
+
+/* 卡内表格的行高只在桌面档生效：≤720 是堆叠卡片，不能被固定高度压扁。 */
+@media (max-width: 720px) {
+  .knv-cardbox--flush .knw5-table th,
+  .knv-cardbox--flush .knw5-table td {
+    height: auto;
+    padding: 4px 12px;
+  }
+
+  .knv-cardbox--flush .knw5-table th {
+    display: none;
+  }
+}
+
+/* 数字一律等宽、右对齐。 */
+.knv-mono {
+  font-family: var(--font-family-mono-ls);
+  font-variant-numeric: var(--tabular-ls);
+  white-space: nowrap;
+}
+
+.knw5-table .num,
+.knw5-table th.num {
+  text-align: right;
+  font-variant-numeric: var(--tabular-ls);
+}
+
+/* KPI 条：四格读数，11px 微标签 + 24px 等宽数字。 */
+.knv-kpi {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px 14px;
+}
+
+.knv-kpi--pair {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.knv-kpi-cell {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+  padding: 2px 0;
+}
+
+.knv-kpi-label {
+  color: var(--color-text-subtle-ls);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+}
+
+/* 缺读口/口径清单：一行一条，左列名称固定宽，右列说明可换行。 */
+.knv-gaplist {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.knv-gapline {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 7.5rem minmax(0, 1fr);
+  gap: 4px 12px;
+  align-items: baseline;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--color-border-subtle-ls);
+}
+
+.knv-gapline:last-child {
+  border-bottom: 0;
+}
+
+.knv-gaplabel {
+  color: var(--color-text-ls);
+  font-size: var(--font-size-ls-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.knv-gapwhy {
+  min-width: 0;
+  color: var(--color-text-muted-ls);
+  font-size: var(--font-size-ls-1);
+  line-height: var(--line-height-ls-2);
+  overflow-wrap: anywhere;
+}
+
+/* 键值对：左列名、右列值，等宽数字。 */
+.knv-kv {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 5px 14px;
+  margin: 0;
+  font-size: var(--font-size-ls-1);
+}
+
+.knv-kv dt {
+  color: var(--color-text-subtle-ls);
+  white-space: nowrap;
+}
+
+.knv-kv dd {
+  margin: 0;
+  min-width: 0;
+  color: var(--color-text-ls);
+  overflow-wrap: anywhere;
+}
+
+/* 名字格里的状态胶囊：与名字同一行，11px。 */
+.knv-cell-pill {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+@media (max-width: 900px) {
+  .knv-kpi {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .knv-gapline {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .knv-gaplabel {
+    white-space: normal;
+  }
+}
+
+/* 行内预览的容器常在（aria-controls 永远指得到真节点），收起时不占行高。 */
+.knv-cardbox .knw5-table tr.kn-row-preview[data-open="0"] > td {
+  height: 0;
+  padding: 0;
+  border-bottom: 0;
+}

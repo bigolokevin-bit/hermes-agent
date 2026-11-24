@@ -518,3 +518,74 @@
   .console-board { grid-template-columns: minmax(0, 1fr); }
   .console-input { max-width: none; flex-basis: 100%; }
 }
+/* 卡底口径行：骨架做法是卡内最后一行 11px 弱色，只有一条上分隔线。 */
+.console-card__note {
+  padding: 6px var(--space-ls-3);
+  border-top: 1px solid var(--color-border-subtle-ls);
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--color-text-subtle-ls);
+  display: flex;
+  align-items: center;
+  gap: var(--space-ls-2);
+  flex-wrap: wrap;
+}
+
+/* 数据可用性：缺读口统一收进可折叠块，正文只留 —。
+   默认收起（summary 一行 11px），展开后逐条列出缺哪个读口。 */
+.console-card__availability {
+  border-top: 1px solid var(--color-border-subtle-ls);
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--color-text-subtle-ls);
+}
+
+.console-card__availability > summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-ls-2);
+  padding: 6px var(--space-ls-3);
+  cursor: pointer;
+  list-style: none;
+}
+
+.console-card__availability > summary::-webkit-details-marker {
+  display: none;
+}
+
+.console-card__availability > summary::before {
+  content: "▸";
+  color: var(--color-text-faint-ls);
+  font-size: 10px;
+}
+
+.console-card__availability[open] > summary::before {
+  content: "▾";
+}
+
+.console-card__availability-badge {
+  font-family: var(--font-family-mono-ls);
+  color: var(--color-text-faint-ls);
+}
+
+.console-card__availability > ul {
+  margin: 0;
+  padding: 0 var(--space-ls-3) var(--space-ls-2) calc(var(--space-ls-3) + 12px);
+  list-style: none;
+  display: grid;
+  gap: 2px;
+}
+
+.console-card__availability > ul > li {
+  display: flex;
+  gap: var(--space-ls-2);
+  align-items: baseline;
+}
+
+.console-card__availability-label {
+  color: var(--color-text-muted-ls);
+}
+
+.console-card__availability-reason {
+  color: var(--color-text-faint-ls);
+}

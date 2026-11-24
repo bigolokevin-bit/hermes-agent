@@ -10,10 +10,18 @@ export interface ConsoleCardProps extends HTMLAttributes<HTMLDivElement> {
   children?: ReactNode;
   /** 卡体不加内距（整宽表格用）。 */
   flush?: boolean;
+  /** 卡底一行 11px 弱色口径行（数据截至/来源/统计范围）。 */
+  note?: ReactNode;
+  /**
+   * 缺读口清单：有值即渲染可折叠的「数据可用性」卡底块。
+   * 缺读口只在这里声明一次，正文一律只留 `—`，不再往版面里铺散文。
+   */
+  availability?: { label: string; reason?: string }[];
 }
 
 /** 公共卡式基元：--panel 底 + 1px --line + 6px 圆角。 */
-export function ConsoleCard({ label, action, children, flush, ...rest }: ConsoleCardProps) {
+export function ConsoleCard({ label, action, children, flush, note, availability, ...rest }: ConsoleCardProps) {
+  const missing = availability?.filter((item) => item.label) ?? [];
   return (
     <div className="console-card" {...rest}>
       {label || action ? (
@@ -23,6 +31,23 @@ export function ConsoleCard({ label, action, children, flush, ...rest }: Console
         </div>
       ) : null}
       {flush ? children : <div className="console-card__body">{children}</div>}
+      {note ? <div className="console-card__note">{note}</div> : null}
+      {missing.length ? (
+        <details className="console-card__availability" data-availability-count={missing.length}>
+          <summary>
+            数据可用性
+            <span className="console-card__availability-badge">{missing.length} 项无读口</span>
+          </summary>
+          <ul>
+            {missing.map((item) => (
+              <li key={item.label}>
+                <span className="console-card__availability-label">{item.label}</span>
+                {item.reason ? <span className="console-card__availability-reason">{item.reason}</span> : null}
+              </li>
+            ))}
+          </ul>
+        </details>
+      ) : null}
     </div>
   );
 }

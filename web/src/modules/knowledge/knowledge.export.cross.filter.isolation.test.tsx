@@ -40,6 +40,7 @@ import KnowledgeModulePage from "./KnowledgeModulePage";
 
 const SPACES = "/agent-api/api/knowledge/spaces?limit=20";
 const DOCUMENTS_PLAIN = "/agent-api/api/documents?limit=50";
+const CITATIONS = "/agent-api/api/knowledge/citations?limit=20";
 const docsUrlFor = (id: string) => `/agent-api/api/documents?limit=50&spaceId=${id}`;
 
 function fail(status: number, message: string, requestId?: string): Promise<never> {
@@ -146,7 +147,8 @@ describe("knowledge export cross-face filter isolation loop (R255)", () => {
     await clickNode(q("knG-copy"), "knG phase-A");
     const textG0 = String(writeText.mock.calls[0][0]);
     const readsA = urls().length;
-    expect(readsA).toBe(2); // spaces + plain
+    // 全局面自身的既有读取：空间登记 + 文档登记 + 可引用读数（三读，链接/导出不增）
+    expect(readsA).toBe(3);
     // 阶段 B：点空间行开详情（**合法触发该空间既有 documents 读**——禁全零话术）
     const opener = [...document.querySelectorAll('[data-testid="kn-space-open"]')].find((a) => (a.closest("tr")?.textContent ?? "").includes("空间甲"));
     await clickNode(opener, "open space 甲");
@@ -170,8 +172,9 @@ describe("knowledge export cross-face filter isolation loop (R255)", () => {
     writeText.mockClear();
     await clickNode(q("knG-copy"), "knG phase-A2");
     expect(String(writeText.mock.calls[0][0])).toBe(textG0); // 闭环零残留（桶/ktype 不回染全局面）
-    expect(urls().length).toBe(readsB + 1); // 导出本身 0 请求——读账本闭环：open+2、back+1、三次复制共 +0
-    expect(urls().slice(readsB)).toEqual([SPACES]); // 实测返回亦 +1 既存 spaces 重读（面板级合法读）
+    expect(urls().length).toBe(readsB + 2); // 导出本身 0 请求——读账本闭环：open+2、back+2、三次复制共 +0
+    // 返回时面板重挂：spaces 复读（面板级合法读）+ 可引用读数复读；文档登记由页面根挂，不重读
+    expect(urls().slice(readsB)).toEqual([CITATIONS, SPACES]);
   });
 
   it("② 反向：详情态（space+ktype 深链）导出后返回全局——knG 恢复全行集（含 xlsx，若 ktype 串写必被剔）、链==屏上、逐位行钮与清单互等（引用 R226①-b 不重写）", async () => {

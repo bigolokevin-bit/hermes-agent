@@ -677,6 +677,9 @@ function kindLabel(raw: string | null, tab: KnowledgeTab): string {
   if (["team", "group", "department", "dept"].includes(lower)) return "团队空间";
   if (["tenant", "global", "all", "shared"].includes(lower)) return "租户空间";
   if (["knowledge", "kb", "space"].includes(lower)) return "知识空间";
+  // 活体契约（BFF per-id 扇出）实测：上游把普通库写成 kind="normal"。「常规空间」是它
+  // 自己的分类，不夸大成「团队可见」；认不出的词仍落「其他类型」。
+  if (["normal", "standard", "general"].includes(lower)) return "常规空间";
   if (["pdf", "application/pdf"].includes(lower)) return "PDF";
   if (["doc", "docx", "word", "application/msword"].includes(lower)) return "Word 文档";
   if (["md", "markdown", "text/markdown"].includes(lower)) return "Markdown";
@@ -1104,6 +1107,50 @@ export function readCitations(body: unknown): SurfaceValue<CitationRow> {
   return referencesOf(body);
 }
 
+/**
+ * 可引用文档的读数（骨架 spaces pane 的「引用」块）：上游把「可引用」定义成
+ * 已发布文档，所以这里的两个数就是 count/total 本身——0 是上游真给的 0，
+ * 不是「没读到」。缺字段返回 null，屏面写「未返回」，不补 0、不拿行数推总数。
+ * 强制引用策略在上游没有读口：本函数只报 `policyWired`，不给执行结论。
+ */
+export interface CiteDigestRow {
+  id: "citable" | "registered";
+  label: string;
+  value: string;
+  hint: string | null;
+}
+
+export interface CiteDigest extends SurfaceValue<CiteDigestRow> {
+  citable: number | null;
+  registered: number | null;
+  policyWired: boolean | null;
+}
+
+export function readCiteDigest(body: unknown): CiteDigest {
+  const envelope = stampOf(body);
+  const record = isRecord(body) ? body : null;
+  const countOf = (raw: unknown): number | null => (typeof raw === "number" && Number.isFinite(raw) ? raw : null);
+  const citable = countOf(record?.count);
+  const registered = countOf(record?.total);
+  const policy = isRecord(record?.policy) ? record.policy : null;
+  const policyWired = typeof policy?.wired === "boolean" ? policy.wired : null;
+  const rows: CiteDigestRow[] = [
+    {
+      id: "citable",
+      label: "可引用文档",
+      value: citable === null ? "未返回" : `${citable.toLocaleString("zh-CN")} 篇`,
+      hint: citable === null ? "上游没有给出可引用文档数" : null,
+    },
+    {
+      id: "registered",
+      label: "登记总数",
+      value: registered === null ? "未返回" : `${registered.toLocaleString("zh-CN")} 篇`,
+      hint: registered === null ? "上游没有给出登记总数" : null,
+    },
+  ];
+  return { rows, ...envelope, scanned: null, citable, registered, policyWired };
+}
+
 /** Space / document rows from their own reads. */
 export function readRows(body: unknown, tab: KnowledgeTab): SurfaceValue<KnowledgeRow> {
   const envelope = stampOf(body);
@@ -1502,6 +1549,12 @@ export interface DocRow {
   href: string | null;
   /** 打不开时这一条自己的原因（屏面可见）。 */
   unreachable: string | null;
+  /**
+   * 发布态：可引用 = 已发布文档。上游没给这个字段就是 null（屏面写「未返回」，
+   * 不把「没给」冒充成「未发布」）。
+   */
+  release: "已发布" | "未发布" | null;
+  releaseHint: string | null;
 }
 
 /** 文档类型的人话；认不出的值原样留着（它就是运营认得的扩展名）。 */
@@ -1554,6 +1607,14 @@ function docOf(row: Rec): DocRow {
   const moment = syncMomentOf(row);
   const at = updatedText(moment.atRaw).value; // R75 单点（docOf）
   const link = linkOf(row);
+  const released =
+    typeof row.is_released === "boolean"
+      ? row.is_released
+      : typeof row.isReleased === "boolean"
+        ? row.isReleased
+        : typeof row.released === "boolean"
+          ? row.released
+          : null;
   return {
     id,
     name: name ?? "—",
@@ -1574,6 +1635,8 @@ function docOf(row: Rec): DocRow {
         ? `空间 · ${shortCode(pickString(row.spaceId, row.space_id))}`
         : null),
     spaceRaw: pickString(row.spaceId, row.space_id) ?? null,
+    release: released === null ? null : released ? "已发布" : "未发布",
+    releaseHint: released === null ? "上游没有给出这份文档的发布状态" : null,
   };
 }
 

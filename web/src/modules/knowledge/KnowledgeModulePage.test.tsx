@@ -84,7 +84,12 @@ async function render(path = "/knowledge") {
       </MemoryRouter>,
     );
   });
-  await act(async () => {});
+  // 这一页有 3 条读（空间 → 文档清单/引用在空间落定后才挂），每条都是
+  // 「解决 → 重渲染 → 再发一条」的链。多放几拍，让读数在用例取值前全部落定；
+  // 用不解决桩的加载态用例不受影响（它们本来就停在骨架态）。
+  for (let flush = 0; flush < 4; flush += 1) {
+    await act(async () => {});
+  }
 }
 
 async function click(testid: string) {
@@ -404,8 +409,11 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     expect(container.textContent).toContain("请求编号：rid-sp-busy");
 
     // 骨架
-    let release: (value: unknown) => void = () => {};
-    fetchMock.mockImplementation(() => new Promise((resolve) => { release = resolve; }));
+    // 这一页现在有 3 条读（空间/文档/引用），同一个「挂起后统一放行」的桩要放行全部：
+    // 只放最后一条会让空间面永远停在骨架态。
+    const releases: ((value: unknown) => void)[] = [];
+    const release = (value: unknown) => { for (const settle of releases) settle(value); };
+    fetchMock.mockImplementation(() => new Promise((resolve) => { releases.push(resolve); }));
     await render("/knowledge?tab=spaces");
     expect(attr("knw5-spaces", "data-state")).toBe("loading");
     expect(byTestid("knw5-spaces-loading")).toBeTruthy();
@@ -483,8 +491,9 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     expect(text).toContain("待核实");
     const statusCells = [...container.querySelectorAll('[data-testid="knw5-space-status"]')];
     expect(statusCells.map((n) => n.getAttribute("title"))).toContain("上游没有给出空间状态");
-    // 缺名字的那一行也不放样例。
-    expect(byTestid("knw5-space-name")?.getAttribute("title")).toContain("上游没有给出这个空间叫什么");
+    // 缺名字的那一行也不放样例：屏上直说「空间名未返回」，不拿标识或样例充名字。
+    const namelessRow = [...container.querySelectorAll('[data-testid="knw5-spaces-row"]')][4];
+    expect((namelessRow?.textContent ?? "").replace(/\s+/g, " ")).toContain("空间名未返回");
     // 原始值与英文状态词不上屏。
     for (const raw of ["space_123456789", "space_zero", "space_thin", "indexed", "indexing", "tenant"]) {
       expect(text, raw).not.toContain(raw);
@@ -928,8 +937,11 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     expect(byTestid("kn3-docs-retry")).toBeTruthy();
 
     // 骨架
-    let release: (value: unknown) => void = () => {};
-    fetchMock.mockImplementation(() => new Promise((resolve) => { release = resolve; }));
+    // 这一页现在有 3 条读（空间/文档/引用），同一个「挂起后统一放行」的桩要放行全部：
+    // 只放最后一条会让空间面永远停在骨架态。
+    const releases: ((value: unknown) => void)[] = [];
+    const release = (value: unknown) => { for (const settle of releases) settle(value); };
+    fetchMock.mockImplementation(() => new Promise((resolve) => { releases.push(resolve); }));
     await render("/knowledge?tab=spaces&space=sp_slow");
     expect(byTestid("kn3-docs-loading")).toBeTruthy();
     expect(attr("kn3-docs", "data-state")).toBe("loading");
@@ -1200,8 +1212,11 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
   });
 
   it("shows a skeleton while a surface reads, then its rows", async () => {
-    let release: (value: unknown) => void = () => {};
-    fetchMock.mockImplementation(() => new Promise((resolve) => { release = resolve; }));
+    // 这一页现在有 3 条读（空间/文档/引用），同一个「挂起后统一放行」的桩要放行全部：
+    // 只放最后一条会让空间面永远停在骨架态。
+    const releases: ((value: unknown) => void)[] = [];
+    const release = (value: unknown) => { for (const settle of releases) settle(value); };
+    fetchMock.mockImplementation(() => new Promise((resolve) => { releases.push(resolve); }));
 
     await render();
     expect(byTestid("knw5-spaces-loading")).toBeTruthy();
@@ -2924,6 +2939,7 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     await click("knI-copy");
     expect(iStatus()).toContain("复制失败");
     expect(byTestid("knI-copy-fallback")).toBeTruthy();
+    console.log("URLS", JSON.stringify(fetchMock.mock.calls.map((c) => String(c[0]))));
     expect(fetchMock.mock.calls.length).toBe(urlsBefore);
 
     // ---------- 6. 真空集（200+空 items）：控件出现但 disabled，空态文案仍在 ----------
@@ -4757,7 +4773,8 @@ describe("R102 — space row deep link (kn-space-open / kn-space-nolink)", () =>
     wire();
     await render("/knowledge?tab=spaces");
     const u0 = urlsCalled().slice().sort().join("|");
-    expect(u0).toBe([DOCUMENTS_PLAIN, SPACES].sort().join("|")); // 列表面既有两条读取（R52 预载口径），链接不增
+    // 列表面自身的既有读取：空间登记 + 文档登记（R52 预载）+ 可引用读数；链接本身不增一条
+    expect(u0).toBe([DOCUMENTS_PLAIN, SPACES, CITATIONS].sort().join("|"));
     // 只读交互不产生任何新请求
     await click("kn-space-toggle-0");
     await click("kn-space-toggle-0");
@@ -4768,7 +4785,7 @@ describe("R102 — space row deep link (kn-space-open / kn-space-nolink)", () =>
     const u1 = urlsCalled();
     // 点链后新增的读取全部是详情槽位自身的既有读取（spaces 复读给面包屑 + 该空间文档表，
     // R52/R73 口径）；未知 URL 零出现——链接本身不引入任何新请求
-    expect([...new Set(u1)].sort()).toEqual([DOCUMENTS_PLAIN, DOCS_SPACE, SPACES].sort());
+    expect([...new Set(u1)].sort()).toEqual([DOCUMENTS_PLAIN, DOCS_SPACE, SPACES, CITATIONS].sort());
     expect(u1.filter((x) => x === DOCS_SPACE)).toHaveLength(1);
   });
 });
