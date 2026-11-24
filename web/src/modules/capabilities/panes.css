@@ -347,3 +347,24 @@
     grid-template-columns: 80px minmax(0, 1fr);
   }
 }
+/* ---------- 卡头 h2（2026-11-24 技能/工具页） ----------
+ * 卡头标题用 h2 承载（模块内标题层级不再是平的），形制沿用
+ * .console-card__label 的 11px 等宽大写微标签，这里只复位元素默认值。 */
+.console-card__label.cap-card-title {
+  margin: 0;
+  font-weight: var(--font-weight-ls-regular);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* 无表格的卡：卡体里先一行缺读口，再一行口径；行距按 1.55 收，不叠第二层框。 */
+.cap-gap-note + .cap-para {
+  margin-top: 6px;
+}
+
+/* 筛选条的搜索框：按场景给一个伸缩基宽，别让 placeholder 被挤成半句
+ * （375 下端为 min-width:0，仍可换行到下一行）。 */
+.cap-search {
+  flex: 1 1 240px;
+  max-width: 460px;
+}

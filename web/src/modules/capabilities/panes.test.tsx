@@ -82,14 +82,28 @@ function shapeGuards() {
 }
 
 describe("能力与接入 · 技能", () => {
-  it("七块、副行与列名对齐骨架，缺读口的列写「—」", async () => {
+  it("七块、副行对齐骨架；台账回传的列照实画，没有读口的列整列不画", async () => {
     stub({
       "/api/skills": {
         status: 200,
         body: {
           items: [
-            { name: "检索增强", version: "2.1.0", provenance: "bundled", enabled: true },
-            { name: "表格计算", version: "0.3.0", provenance: "agent", enabled: false },
+            {
+              skillId: "skl_1",
+              name: "检索增强",
+              version: "2.1.0",
+              sharedCount: 6,
+              scope: "tenant-shared",
+              enabled: true,
+            },
+            {
+              skillId: "skl_2",
+              name: "表格计算",
+              version: "0.3.0",
+              sharedCount: 0,
+              scope: "unused",
+              enabled: false,
+            },
           ],
           asOf: "2026-11-24T06:30:00Z",
         },
@@ -100,23 +114,40 @@ describe("能力与接入 · 技能", () => {
 
     expect(cards()).toBe(7);
     expect(q(".cap-sub")!.textContent).toBe("2 个已发布 · — 个提案 · — 个可发现");
-    expect(headers(0)).toEqual(["技能", "版本", "来源", "能力", "挂载", "7 天调用", "状态"]);
-    expect(headers(1)).toEqual(["提案", "类型", "提出人", "影响", "状态"]);
+    // 骨架列序：技能 | 版本 | 来源 | 能力 | 挂载 | 7 天调用 | 状态
+    // 台账只回传名称、版本、共享范围、挂载与启用状态，其余三列整列不出现。
+    expect(headers(0)).toEqual(["技能", "版本", "共享范围", "挂载", "状态"]);
+    expect(headers(1)).toEqual([]);
 
     const row = all('[data-testid="cap-skill-row"]');
     expect(row).toHaveLength(2);
     const cells = Array.from(row[0]!.querySelectorAll("td")).map((td) => td.textContent?.trim());
-    expect(cells[0]).toBe("检索增强");
-    expect(cells[1]).toBe("2.1.0");
-    expect(cells[2]).toBe("官方");
-    expect(cells[3]).toBe("—");
-    expect(cells[5]).toBe("—");
-    expect(cells[6]).toBe("可用");
+    expect(cells).toEqual(["检索增强", "2.1.0", "团队共享", "6", "可用"]);
 
     // 提案端点未接线：队列里只有一行缺读口，没有编造的提案
-    expect(all('[data-testid="cap-skill-row"]')).toHaveLength(2);
     expect(text()).toContain("缺读口：上游端点未接线");
+    expect(text()).toContain("缺读口：来源、能力标签、7 天调用");
     shapeGuards();
+  });
+
+  it("台账只回名称与版本时，其余列连表头都不出现", async () => {
+    stub({
+      "/api/skills": {
+        status: 200,
+        body: {
+          items: [{ skillId: "skl_1", name: "检索增强", version: "2.1.0" }],
+          asOf: "2026-11-24T06:30:00Z",
+        },
+      },
+      "/api/skill-proposals": { status: 404, body: { detail: "Not Found" } },
+    });
+    await mount(<CapSkillsPane />);
+
+    expect(headers(0)).toEqual(["技能", "版本"]);
+    const cells = Array.from(
+      all('[data-testid="cap-skill-row"]')[0]!.querySelectorAll("td"),
+    ).map((td) => td.textContent?.trim());
+    expect(cells).toEqual(["检索增强", "2.1.0"]);
   });
 
   it("技能台账真零时写「真零」而不是编一行", async () => {
@@ -127,11 +158,12 @@ describe("能力与接入 · 技能", () => {
     await mount(<CapSkillsPane />);
     expect(q(".cap-sub")!.textContent).toBe("0 个已发布 · — 个提案 · — 个可发现");
     expect(text()).toContain("技能台账里还没有已发布的技能");
+    expect(cards()).toBe(7);
   });
 });
 
 describe("能力与接入 · 工具与 MCP", () => {
-  it("四块、副行与列名对齐骨架；上游不可达时整表缺读口", async () => {
+  it("四块、副行对齐骨架；上游不可达时不摆空表，只写缺读口", async () => {
     stub({
       "/api/tools": { status: 502, body: { code: "console.upstream_unavailable" } },
       "/api/mcp/servers": { status: 404, body: { code: "mcp.read_not_wired" } },
@@ -140,10 +172,45 @@ describe("能力与接入 · 工具与 MCP", () => {
 
     expect(cards()).toBe(4);
     expect(q(".cap-sub")!.textContent).toBe("— 个内置工具 · — 个 MCP 服务器 · — 个已授权工具");
-    expect(headers(0)).toEqual(["工具", "作用", "风险", "沙箱", "7 天调用", "默认"]);
-    expect(headers(1)).toEqual(["名称", "传输", "工具", "出站", "7 天调用", "状态"]);
+    expect(all("table")).toHaveLength(0);
     expect(text()).toContain("缺读口：上游服务此刻不可达");
     expect(text()).toContain("缺读口：接入请求队列未接线");
+    shapeGuards();
+  });
+
+  it("工具登记回数时按读口裁列：沙箱与 7 天调用没有源就不画", async () => {
+    stub({
+      "/api/tools": {
+        status: 200,
+        body: {
+          items: [
+            { name: "web_fetch", description: "抓取公开网页", risk: "low", default: true },
+            { name: "shell", description: "执行命令", risk: "high", default: false },
+          ],
+          asOf: "2026-11-24T06:30:00Z",
+        },
+      },
+      "/api/mcp/servers": {
+        status: 200,
+        body: {
+          servers: [{ id: "srv_1", name: "notion-mcp", transport: "stdio", tools: ["search"], state: "connected" }],
+          asOf: "2026-11-24T06:30:00Z",
+        },
+      },
+    });
+    await mount(<CapToolsPane />);
+
+    expect(q(".cap-sub")!.textContent).toBe("2 个内置工具 · 1 个 MCP 服务器 · — 个已授权工具");
+    expect(headers(0)).toEqual(["工具", "作用", "风险", "默认"]);
+    expect(headers(1)).toEqual(["名称", "传输", "工具", "状态"]);
+    const toolRow = Array.from(
+      all('[data-testid="cap-tool-row"]')[0]!.querySelectorAll("td"),
+    ).map((td) => td.textContent?.trim());
+    expect(toolRow).toEqual(["web_fetch", "抓取公开网页", "低", "开"]);
+    const serverRow = Array.from(
+      all('[data-testid="cap-server-row"]')[0]!.querySelectorAll("td"),
+    ).map((td) => td.textContent?.trim());
+    expect(serverRow).toEqual(["notion-mcp", "stdio", "1", "已连接"]);
     shapeGuards();
   });
 });

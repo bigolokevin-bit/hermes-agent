@@ -173,7 +173,7 @@ export function listOf(body: unknown): unknown[] | null {
   if (Array.isArray(body)) return body;
   if (body !== null && typeof body === "object") {
     const record = body as Record<string, unknown>;
-    for (const key of ["items", "rows", "servers", "tools", "data"]) {
+    for (const key of ["items", "rows", "servers", "tools", "toolsets", "data"]) {
       const value = record[key];
       if (Array.isArray(value)) return value;
     }

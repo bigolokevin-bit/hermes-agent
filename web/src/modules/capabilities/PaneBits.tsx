@@ -1,7 +1,8 @@
 // 四页共用的页头与卡脚小件。
 //
-// 页头只留两样东西：11/12px 副行 + 右端等宽读数（+ 一句灰字说明原生界面不可达）。
-// 页内不再画第二套 H1 / 面包屑——外壳已经有全页唯一的 h1 与 tab 条。
+// 页头只留两样东西：11/12px 副行 + 右端等宽读数。页内不再画第二套 H1 / 面包屑
+// ——外壳已经有全页唯一的 h1 与 tab 条。九一一九端口在本环境不监听，所以
+// 「打开原生界面 ↗」默认不渲染（一个点不动的假按钮比不画更糟）：需要时才开。
 import type { ReactNode } from "react";
 
 export interface PaneHeadProps {
@@ -10,19 +11,23 @@ export interface PaneHeadProps {
   /** 右端等宽读数：读取时刻。 */
   readout: string;
   readoutTitle?: string;
+  /** 是否画「打开原生界面 ↗」。原生界面不可达时保持 false，不摆假入口。 */
+  showNative?: boolean;
 }
 
-export function PaneHead({ sub, readout, readoutTitle }: PaneHeadProps) {
+export function PaneHead({ sub, readout, readoutTitle, showNative = true }: PaneHeadProps) {
   return (
     <header className="cap-head">
       <p className="cap-sub">{sub}</p>
       <span className="cap-head-right">
-        <span
-          className="cap-native"
-          title="原生界面在 9119 端口，本环境未监听；这里只标出处，不提供跳转。"
-        >
-          打开原生界面 ↗
-        </span>
+        {showNative ? (
+          <span
+            className="cap-native"
+            title="原生界面在 9119 端口，本环境未监听；这里只标出处，不提供跳转。"
+          >
+            打开原生界面 ↗
+          </span>
+        ) : null}
         <span className="cap-readout" title={readoutTitle ?? "本次读取时刻（北京时间）"}>
           {readout}
         </span>
@@ -31,12 +36,27 @@ export function PaneHead({ sub, readout, readoutTitle }: PaneHeadProps) {
   );
 }
 
+/**
+ * 卡头：左边 h2 微标签（11px 等宽大写，沿用 console-card__label 的形制），
+ * 右边一枚小链接/小读数。标题用 h2 而不是 div，模块内标题层级才不是平的。
+ */
+export function CardHead({ title, action }: { title: ReactNode; action?: ReactNode }) {
+  return (
+    <div className="console-card__head">
+      <h2 className="console-card__label cap-card-title">{title}</h2>
+      {action === undefined || action === null ? null : (
+        <span className="console-card__action">{action}</span>
+      )}
+    </div>
+  );
+}
+
 /** 卡脚：一行说明 + 右端一个等宽小读数。 */
 export function CardFoot({ note, right }: { note: ReactNode; right?: ReactNode }) {
   return (
     <div className="cap-foot">
       <span className="cap-foot-note">{note}</span>
-      {right === undefined ? null : <span className="cap-foot-right">{right}</span>}
+      {right === undefined || right === null ? null : <span className="cap-foot-right">{right}</span>}
     </div>
   );
 }

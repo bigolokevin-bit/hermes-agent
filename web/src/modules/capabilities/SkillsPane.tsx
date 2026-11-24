@@ -1,34 +1,32 @@
-// 能力与接入 · 技能（骨架 #/capabilities 第一页）
+// 能力与接入 · 技能（骨架 console-v4-skeleton.html `data-mod="capabilities"` 第一页）
 //
 // 骨架给了 7 块：筛选条 / 技能账本 / 提案队列 / 提案差异 / 准入线 / 发现筛选条 / 发现。
-// 本页 7 块都画出来，块里只放真读数；没有读口的块照实写缺读口。
+// 七块都立起来，块里只放真读数：没有读口的列整列不画（不留空列），缺了哪几项在卡底
+// 用一行 11px 写清，正文里不出现路由名与状态码。
 //
-// 真读口只有一个：技能台账。它给的字段（名称、版本、来源、启用状态）如实上屏；
-// 它没给的（能力标签、挂载数、7 天调用）一律「—」，并在卡脚说清缺哪一项。
+// 真读口只有一个：技能台账。它回传 skillId / name / displayName / version /
+// sharedCount（sharedWith 兜底）/ scope / enabled；它没回的（来源、能力标签、
+// 7 天调用、提案、发现索引）一律不当 0，也不摆示例行。
 import { useMemo, useState } from "react";
-import { ConsoleCard } from "@/components/console/ConsoleCard";
 import { Pill } from "@/components/console/Pill";
-import { CardFoot, GapNote, GapRow, PaneHead } from "./PaneBits";
+import { CardFoot, CardHead, GapNote, GapRow, PaneHead } from "./PaneBits";
 import { DASH, asOfLabel, count, gapText, listOf, recordOf, textOf, usePort } from "./paneApi";
 
 type SkillRow = {
   id: string;
   name: string | null;
   version: string | null;
-  source: string | null;
-  status: "可用" | "已停用" | null;
+  /** 挂载 = 引用这个技能的员工数（台账的 sharedCount）。 */
+  mounted: number | null;
+  /** 共享范围的原始值，供筛选用。 */
+  scopeKey: string | null;
   scope: string | null;
+  status: "可用" | "已停用" | null;
 };
 
-const SOURCE_LABEL: Record<string, string> = {
-  bundled: "官方",
-  builtin: "官方",
-  platform: "官方",
-  hub: "社区",
-  external: "外部",
-  agent: "自建",
-  custom: "自建",
-  tenant: "自建",
+type ProposalRow = {
+  id: string;
+  cells: Record<string, string | null>;
 };
 
 const SCOPE_LABEL: Record<string, string> = {
@@ -37,67 +35,129 @@ const SCOPE_LABEL: Record<string, string> = {
   unused: "未被引用",
 };
 
+const PROPOSAL_COLS = [
+  { key: "title", label: "提案" },
+  { key: "kind", label: "类型" },
+  { key: "author", label: "提出人" },
+  { key: "impact", label: "影响" },
+  { key: "status", label: "状态" },
+] as const;
+
 function parseSkills(body: unknown): SkillRow[] | null {
   const items = listOf(body);
   if (items === null) return null;
   return items.map((item, index) => {
     const row = recordOf(item);
-    const rawSource = textOf(row.provenance) ?? textOf(row.source);
+    const rawScope = (textOf(row.scope) ?? "").toLowerCase() || null;
+    const rawMounted = row.sharedCount ?? row.shared_count;
+    const sharedWith = Array.isArray(row.sharedWith) ? row.sharedWith.length : null;
     const enabled = row.enabled;
-    const rawScope = textOf(row.scope);
     return {
-      id: textOf(row.id) ?? textOf(row.name) ?? `skill-${index}`,
-      name: textOf(row.name),
+      id: textOf(row.skillId) ?? textOf(row.skill_id) ?? textOf(row.id) ?? `skill-${index}`,
+      name: textOf(row.displayName) ?? textOf(row.name),
       version: textOf(row.version),
-      source: rawSource ? SOURCE_LABEL[rawSource.toLowerCase()] ?? "其他来源" : null,
+      mounted:
+        typeof rawMounted === "number" && Number.isFinite(rawMounted)
+          ? rawMounted
+          : sharedWith,
+      scopeKey: rawScope,
+      scope: rawScope ? SCOPE_LABEL[rawScope] ?? "其他范围" : null,
       status: enabled === true ? "可用" : enabled === false ? "已停用" : null,
-      scope: rawScope ? SCOPE_LABEL[rawScope.toLowerCase()] ?? "其他范围" : null,
     };
   });
 }
 
+function parseProposals(body: unknown): ProposalRow[] | null {
+  const items = listOf(body);
+  if (items === null) return null;
+  return items.map((item, index) => {
+    const row = recordOf(item);
+    return {
+      id: textOf(row.id) ?? textOf(row.proposalId) ?? `proposal-${index}`,
+      cells: {
+        title: textOf(row.title) ?? textOf(row.summary),
+        kind: textOf(row.kind) ?? textOf(row.type),
+        author: textOf(row.author) ?? textOf(row.proposedBy),
+        impact: textOf(row.impact) ?? textOf(row.impactLabel),
+        status: textOf(row.status),
+      },
+    };
+  });
+}
+
+const STATUS_TONE = { 可用: "ok", 已停用: "mut" } as const;
+const SCOPE_TONE: Record<string, "info" | "mut" | "warn"> = {
+  团队共享: "info",
+  员工专属: "mut",
+  未被引用: "warn",
+};
+const PROPOSAL_TONE: Record<string, "ok" | "warn" | "mut" | "info" | "bad"> = {
+  待审: "warn",
+  草稿: "mut",
+  已批准: "ok",
+  已驳回: "bad",
+  升级: "info",
+};
+
 export function CapSkillsPane() {
   const skills = usePort("/api/skills", parseSkills, (rows) => rows.length === 0);
-  const proposals = usePort("/api/skill-proposals", (body) => listOf(body), (rows) => rows.length === 0);
+  const proposals = usePort("/api/skill-proposals", parseProposals, (rows) => rows.length === 0);
 
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
-  const [source, setSource] = useState("all");
+  const [scope, setScope] = useState("all");
 
   const rows = skills.read.k === "ready" ? skills.read.data : [];
-  const proposed = proposals.read.k === "ready" ? proposals.read.data.length : null;
+  const proposalRows = proposals.read.k === "ready" ? proposals.read.data : [];
+  const proposed =
+    proposals.read.k === "ready"
+      ? proposalRows.length
+      : proposals.read.k === "empty"
+        ? 0
+        : null;
 
   const visible = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return rows.filter((row) => {
       if (status === "可用" && row.status !== "可用") return false;
       if (status === "已停用" && row.status !== "已停用") return false;
-      if (source !== "all" && row.source !== source) return false;
+      if (scope === "团队共享" && row.scope !== "团队共享") return false;
+      if (scope === "员工专属" && row.scope !== "员工专属") return false;
+      if (scope === "未被引用" && row.scope !== "未被引用") return false;
       if (!needle) return true;
-      return [row.name, row.source, row.scope].some((v) => (v ?? "").toLowerCase().includes(needle));
+      return [row.name, row.version, row.scope].some((v) => (v ?? "").toLowerCase().includes(needle));
     });
-  }, [rows, query, status, source]);
+  }, [rows, query, status, scope]);
 
-  const missingCalls = "缺读口：调用计数未按 7 天窗口回传";
-  const published =
-    skills.read.k === "ready" ? rows.length : skills.read.k === "empty" ? 0 : null;
+  const published = skills.read.k === "ready" ? rows.length : skills.read.k === "empty" ? 0 : null;
+
+  // 列只在有源时才画：台账没有来源、能力标签、7 天调用三项，这三列整列不出现。
+  const showScope = rows.some((row) => row.scope !== null);
+  const showMounted = rows.some((row) => row.mounted !== null);
+  const showStatus = rows.some((row) => row.status !== null);
+  const skillCols = 2 + (showScope ? 1 : 0) + (showMounted ? 1 : 0) + (showStatus ? 1 : 0);
+
+  const proposalCols = PROPOSAL_COLS.filter((col) =>
+    proposalRows.some((row) => row.cells[col.key] !== null),
+  );
 
   return (
     <div className="cap-pane" data-testid="cap-skills">
       <PaneHead
+        showNative={false}
         sub={`${count(published)} 个已发布 · ${count(proposed)} 个提案 · ${DASH} 个可发现`}
         readout={asOfLabel(skills.read)}
         readoutTitle="技能台账的读取时刻（北京时间）"
       />
 
       {/* 1 筛选条 */}
-      <ConsoleCard flush>
+      <div className="console-card">
         <div className="cap-filters">
           <input
-            className="cap-input"
+            className="cap-input cap-search"
             type="search"
             value={query}
-            placeholder="搜索技能、来源、共享范围"
+            placeholder="搜索技能、版本、共享范围"
             aria-label="搜索技能"
             onChange={(event) => setQuery(event.target.value)}
           />
@@ -113,34 +173,32 @@ export function CapSkillsPane() {
           </select>
           <select
             className="cap-input cap-select"
-            aria-label="来源"
-            value={source}
-            onChange={(event) => setSource(event.target.value)}
+            aria-label="共享范围"
+            value={scope}
+            onChange={(event) => setScope(event.target.value)}
           >
-            <option value="all">全部来源</option>
-            <option value="官方">官方</option>
-            <option value="自建">自建</option>
-            <option value="社区">社区</option>
-            <option value="外部">外部</option>
+            <option value="all">全部范围</option>
+            <option value="团队共享">团队共享</option>
+            <option value="员工专属">员工专属</option>
+            <option value="未被引用">未被引用</option>
           </select>
           <span className="cap-grow" />
           <span className="cap-note">只读账本 · 写入按权限</span>
         </div>
-      </ConsoleCard>
+      </div>
 
       {/* 2 技能账本 */}
-      <ConsoleCard label="技能账本" action={<span className="cap-action">版本与来源</span>} flush>
+      <div className="console-card">
+        <CardHead title="技能账本" action="版本与挂载" />
         <div className="cap-tw">
           <table className="cap-t">
             <thead>
               <tr>
                 <th>技能</th>
                 <th>版本</th>
-                <th>来源</th>
-                <th>能力</th>
-                <th className="cap-num">挂载</th>
-                <th className="cap-num cap-sm-hide">7 天调用</th>
-                <th>状态</th>
+                {showScope ? <th className="cap-sm-hide">共享范围</th> : null}
+                {showMounted ? <th className="cap-num">挂载</th> : null}
+                {showStatus ? <th>状态</th> : null}
               </tr>
             </thead>
             <tbody>
@@ -148,27 +206,33 @@ export function CapSkillsPane() {
                 <tr key={row.id} data-testid="cap-skill-row">
                   <td>{row.name ?? DASH}</td>
                   <td className="cap-mono cap-mut">{row.version ?? DASH}</td>
-                  <td className="cap-mut">{row.source ?? DASH}</td>
-                  <td className="cap-mut" title="技能台账没有能力标签字段">
-                    {DASH}
-                  </td>
-                  <td className="cap-num" title="技能台账没有挂载数">
-                    {DASH}
-                  </td>
-                  <td className="cap-num cap-sm-hide" title={missingCalls}>
-                    {DASH}
-                  </td>
-                  <td>
-                    {row.status ? (
-                      <Pill tone={row.status === "可用" ? "ok" : "mut"}>{row.status}</Pill>
-                    ) : (
-                      <span className="cap-mut">{DASH}</span>
-                    )}
-                  </td>
+                  {showScope ? (
+                    <td className="cap-sm-hide">
+                      {row.scope ? (
+                        <Pill tone={SCOPE_TONE[row.scope] ?? "mut"}>{row.scope}</Pill>
+                      ) : (
+                        <span className="cap-mut">{DASH}</span>
+                      )}
+                    </td>
+                  ) : null}
+                  {showMounted ? (
+                    <td className="cap-num" title="引用这个技能的员工数">
+                      {row.mounted === null ? DASH : count(row.mounted)}
+                    </td>
+                  ) : null}
+                  {showStatus ? (
+                    <td>
+                      {row.status ? (
+                        <Pill tone={STATUS_TONE[row.status]}>{row.status}</Pill>
+                      ) : (
+                        <span className="cap-mut">{DASH}</span>
+                      )}
+                    </td>
+                  ) : null}
                 </tr>
               ))}
               {visible.length === 0 ? (
-                <GapRow colSpan={7}>
+                <GapRow colSpan={skillCols}>
                   {gapText(
                     skills.read,
                     "正在读取技能台账…",
@@ -182,70 +246,111 @@ export function CapSkillsPane() {
           </table>
         </div>
         <CardFoot
-          note="能力、挂载、7 天调用三列没有读口；台账只回传名称、版本、来源与启用状态"
+          note="缺读口：来源、能力标签、7 天调用（台账只回传名称、版本、共享范围与挂载数，缺的列整列不画）"
           right={`${visible.length} / ${published === null ? DASH : published} 行`}
         />
-      </ConsoleCard>
+      </div>
 
       {/* 3 + 4 提案队列 / 提案差异，5 准入线 */}
       <div className="cap-split">
         <div className="cap-stack">
-          <ConsoleCard label="提案队列" action={<span className="cap-action">按影响面排序</span>} flush>
-            <div className="cap-tw">
-              <table className="cap-t">
-                <thead>
-                  <tr>
-                    <th>提案</th>
-                    <th>类型</th>
-                    <th>提出人</th>
-                    <th className="cap-num">影响</th>
-                    <th className="cap-num">状态</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {proposals.read.k === "ready" && proposals.read.data.length > 0 ? (
-                    proposals.read.data.map((item, index) => {
-                      const row = recordOf(item);
-                      return (
-                        <tr key={textOf(row.id) ?? `proposal-${index}`}>
-                          <td>{textOf(row.title) ?? DASH}</td>
-                          <td className="cap-mut">{textOf(row.kind) ?? DASH}</td>
-                          <td className="cap-mut">{textOf(row.author) ?? DASH}</td>
-                          <td className="cap-num">{textOf(row.impact) ?? DASH}</td>
-                          <td className="cap-num">
-                            <Pill tone="warn">{textOf(row.status) ?? "待审"}</Pill>
+          <div className="console-card">
+            <CardHead title="提案队列" action="按影响面排序" />
+            {proposalCols.length > 0 ? (
+              <div className="cap-tw">
+                <table className="cap-t">
+                  <thead>
+                    <tr>
+                      {proposalCols.map((col) => (
+                        <th
+                          key={col.key}
+                          className={col.key === "impact" || col.key === "status" ? "cap-num" : undefined}
+                        >
+                          {col.label}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {proposalRows.map((row) => (
+                      <tr key={row.id} data-testid="cap-proposal-row">
+                        {proposalCols.map((col) => (
+                          <td
+                            key={col.key}
+                            className={
+                              col.key === "status"
+                                ? "cap-num"
+                                : col.key === "impact"
+                                  ? "cap-num cap-mut"
+                                  : col.key === "title"
+                                    ? undefined
+                                    : "cap-mut"
+                            }
+                          >
+                            {col.key === "status" && row.cells.status ? (
+                              <Pill tone={PROPOSAL_TONE[row.cells.status] ?? "mut"}>
+                                {row.cells.status}
+                              </Pill>
+                            ) : (
+                              row.cells[col.key] ?? DASH
+                            )}
                           </td>
-                        </tr>
-                      );
-                    })
-                  ) : (
-                    <GapRow colSpan={5}>
-                      {gapText(proposals.read, "正在读取提案队列…", "提案队列是空的（真零）")}
-                    </GapRow>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="console-card__body">
+                <GapNote>
+                  {gapText(
+                    proposals.read,
+                    "正在读取提案队列…",
+                    "提案队列是空的（真零，不是加载失败）",
                   )}
-                </tbody>
-              </table>
-            </div>
-            <CardFoot note="提案端点未接线时，队列为空不代表没有提案" right={DASH} />
-          </ConsoleCard>
+                </GapNote>
+              </div>
+            )}
+            <CardFoot
+              note="提案只能来自提案台账；本页只读，审核动作在治理面完成"
+              right={
+                proposals.read.k === "ready" || proposals.read.k === "empty"
+                  ? `${count(proposed)} 条`
+                  : undefined
+              }
+            />
+          </div>
 
-          <ConsoleCard label="提案差异" action={<span className="cap-action">版本对照</span>}>
-            <GapNote>缺读口：提案详情端点未接线，这一页没有可对照的两版内容与评测读数。</GapNote>
-          </ConsoleCard>
+          <div className="console-card">
+            <CardHead title="提案差异" action="版本对照" />
+            <div className="console-card__body">
+              <GapNote>缺读口：提案详情端点未接线，这一卡没有可对照的两版内容与评测读数。</GapNote>
+              <p className="cap-para">
+                接入后这里逐行给出两版的增删行，并按命中、延迟、单次成本三项读数对照。
+              </p>
+            </div>
+          </div>
         </div>
 
         <div className="cap-rail">
-          <ConsoleCard label="准入线" action={<span className="cap-action">技能升级</span>}>
-            <GapNote>缺读口：准入评测、成本与延迟门槛都由提案详情回传，本控制台读不到。</GapNote>
-          </ConsoleCard>
+          <div className="console-card">
+            <CardHead title="准入线" action="技能升级" />
+            <div className="console-card__body">
+              <GapNote>缺读口：准入评测与门槛读数都由提案详情回传，本控制台读不到。</GapNote>
+              <p className="cap-para">
+                批准前要看五项：评测得分、成本增幅、延迟增幅、回滚方案、影响员工通知。
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* 6 发现筛选条 */}
-      <ConsoleCard flush>
+      <div className="console-card">
         <div className="cap-filters">
           <input
-            className="cap-input"
+            className="cap-input cap-search"
             type="search"
             placeholder="搜索可发现的技能、来源"
             aria-label="搜索可发现的技能"
@@ -258,15 +363,18 @@ export function CapSkillsPane() {
           <span className="cap-grow" />
           <span className="cap-note">复制后进入草稿，不直接生效</span>
         </div>
-      </ConsoleCard>
+      </div>
 
       {/* 7 发现 */}
-      <ConsoleCard label="发现" action={<span className="cap-action">外部来源 · 许可证已标</span>}>
-        <GapNote>缺读口：外部技能索引未接线，这里既没有可复制的候选，也没有来源与许可证。</GapNote>
-        <p className="cap-para">
-          这里不做官方技能商店：复制只创建本租户草稿，二开与审批都在本租户内完成。
-        </p>
-      </ConsoleCard>
+      <div className="console-card">
+        <CardHead title="发现" action="外部来源 · 许可证已标" />
+        <div className="console-card__body">
+          <GapNote>缺读口：外部技能索引未接线，这里既没有可复制的候选，也没有来源与许可证。</GapNote>
+          <p className="cap-para">
+            这里不做官方技能商店：复制只创建本租户草稿，二开与审批都在本租户内完成。
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
