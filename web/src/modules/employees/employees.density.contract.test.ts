@@ -43,10 +43,10 @@ describe('employees list density contract (L0 13:05)', () => {
     expect(ruleBody('.emp-filter-row')).toContain('flex-wrap: nowrap');
     // 单行不等于溢出看不见：行内必须有横滚壳兜底。
     expect(ruleBody('.emp-filter-row')).toContain('overflow-x: auto');
-    // 部门 rail 自己不再换行成第二排，胶囊不收缩、不折字。
-    expect(page).toContain('emp-dept-rail');
-    expect(ruleBody('.emp-dept-rail')).toContain('flex-wrap: nowrap');
-    expect(ruleBody('.emp-dept-rail > button')).toContain('flex-shrink: 0');
+    // 部门保留本地过滤能力，但收成同一行里的下拉（不再是一行分段 chips）。
+    expect(page).toContain('emp-list-dept-select');
+    expect(page).not.toContain('emp-dept-rail');
+    expect(page).toContain('emp-filter-select');
   });
 
   it('serves control heights from the tokens, not from utility guesses', () => {

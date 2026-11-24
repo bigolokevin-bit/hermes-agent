@@ -8,10 +8,8 @@ import { useToast } from "@nous-research/ui/hooks/use-toast";
 import { Toast } from "@nous-research/ui/ui/components/toast";
 
 import { RequestIdCopy } from "@/components/RequestIdCopy";
-import { Chip } from "@/components/console/Chip";
 import { ConsoleCard } from "@/components/console/ConsoleCard";
 import { Pill } from "@/components/console/Pill";
-import { SegBar } from "@/components/console/SegBar";
 
 import { fetchJSON } from "@/lib/api";
 import { API_UNREACHABLE_MESSAGE, ApiError, errorMessage, humanizeStatus } from "@/lib/api-error";
@@ -367,6 +365,44 @@ function runRate(run: RunFacts | null): number | null {
   if (!run) return null;
   const denom = run.completed + run.failed;
   return denom > 0 ? run.completed / denom : null;
+}
+
+/* ------------------------------------------------------------------ *
+ * 2026-11-24 密度车道③：页头摘要与页脚状态的真读数。
+ * 名册口径取 GET /api/employee-stats（E14，全量、不受本页筛选影响），
+ * 网关读数取 GET /api/health/sources。任一读口失败：数字位「—」，
+ * 绝不拿已加载行数冒充全量之前先写明范围（见 title）。
+ * ------------------------------------------------------------------ */
+
+/** 名册四桶：与骨架 `N 名 · N 可上岗 · N 受限 · N 停用` 同序、同分母（合计=名册总数）。 */
+export type RosterCounts = { total: number; active: number; limited: number; stopped: number };
+
+export function readRosterCounts(body: unknown): RosterCounts | null {
+  if (!isRecord(body)) return null;
+  const total = pickNumber(body.total);
+  const by = isRecord(body.byLifecycle) ? body.byLifecycle : null;
+  if (total === null || by === null) return null;
+  const at = (key: string) => pickNumber(by[key]) ?? 0;
+  // 受限＝已暂停/离职中/草稿/入职中：四者都在派工之外，并起来才与名册总数对得上。
+  return {
+    total,
+    active: at("active"),
+    limited: at("paused") + at("offboarding") + at("draft") + at("onboarding"),
+    stopped: at("suspended") + at("archived"),
+  };
+}
+
+/** 网关读数：只认 sources[] 的 state 与条数；客户端数/队列长度没有读口，不显示也不编。 */
+export type GatewayFacts = { ok: boolean; services: number; asOf: string | null };
+
+export function readGatewayFacts(body: unknown): GatewayFacts | null {
+  if (!isRecord(body) || !Array.isArray(body.sources) || body.sources.length === 0) return null;
+  const states = body.sources.map((row) => (isRecord(row) ? pickString(row.state) : null));
+  return {
+    ok: states.every((state) => state === "ok"),
+    services: states.length,
+    asOf: pickString(body.asOf),
+  };
 }
 
 /** 头像字：姓名首字（中文姓氏直接取第一个字符）。 */
@@ -804,6 +840,13 @@ export function EmployeesModulePage() {
   // 取走它当恢复目标（之后由翻页写回，不再回读 URL），失败/换筛选即丢弃。
   const restoreTargetRef = useRef<string | null>(params.get("cursor"));
   const [restoreInfo, setRestoreInfo] = useState<RestoreInfo | null>(null);
+  // 密度车道③：页头摘要（名册全量）与页脚网关读数，两条独立读口。
+  const [roster, setRoster] = useState<RosterCounts | null>(null);
+  const [gateway, setGateway] = useState<GatewayFacts | null>(null);
+  // 已加载页数：页码位按真实加载页计（游标分页没有总页数，末页未知时显示 …）。
+  const [pages, setPages] = useState(1);
+  // 批量动作收进「更多」入口后，面板开合是页面本地状态。
+  const [batchOpen, setBatchOpen] = useState(false);
   // R63: at most one row carries the inline preview (page-local state:
   // the URL is untouched and a reload collapses everything back).
   const [previewKey, setPreviewKey] = useState<string | null>(null);
@@ -873,6 +916,7 @@ export function EmployeesModulePage() {
    *  PE-09：翻页即清空选择（口径句 BATCH_SELECTION_SCOPE 同步上屏）。 */
   const mergeAppended = (parsed: ReturnType<typeof readRows>) => {
     clearSelection();
+    setPages((n) => n + 1);
     setState((prev) => {
       const seen = new Set(prev.items.map((row) => row.employeeId));
       const fresh = parsed.rows.filter((row) => !seen.has(row.employeeId));
@@ -954,6 +998,7 @@ export function EmployeesModulePage() {
     }
     let cancelled = false;
     setState((prev) => ({ ...prev, phase: "loading" }));
+    setPages(1);
     fetchJSON<unknown>(pageQuery(null))
       .then((body) => {
         if (cancelled) return;
@@ -1016,6 +1061,29 @@ export function EmployeesModulePage() {
     };
   }, [reload]);
 
+  // 密度车道③：页头摘要（名册全量）与页脚网关读数。两条独立读口，各自失败各自「—」：
+  // 名册读口失败时不拿「已加载 N 人」冒充全量，网关读口失败时整段中性「—」。
+  useEffect(() => {
+    let cancelled = false;
+    fetchJSON<unknown>("/agent-api/api/employee-stats")
+      .then((body) => {
+        if (!cancelled) setRoster(readRosterCounts(body));
+      })
+      .catch(() => {
+        if (!cancelled) setRoster(null);
+      });
+    fetchJSON<unknown>("/agent-api/api/health/sources")
+      .then((body) => {
+        if (!cancelled) setGateway(readGatewayFacts(body));
+      })
+      .catch(() => {
+        if (!cancelled) setGateway(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [reload]);
+
   const counts = useMemo(() => {
     let active = 0;
     let limited = 0;
@@ -1029,6 +1097,21 @@ export function EmployeesModulePage() {
   }, [state.items]);
 
   const filtered = Boolean(q || lifecycle || dept);
+
+  /** 页头摘要：优先进名册全量读口；读口未回时按已加载行计数（title 写明范围）；
+   *  列表未就绪且无名册读数 → null（上屏「—」，不补 0）。 */
+  const summary = useMemo<RosterCounts | null>(() => {
+    if (roster) return roster;
+    if (state.phase === "ready" || state.phase === "empty") {
+      return {
+        total: state.items.length,
+        active: counts.active,
+        limited: counts.limited,
+        stopped: counts.stopped,
+      };
+    }
+    return null;
+  }, [roster, state.phase, state.items.length, counts]);
 
   // R62: column sorting. Measured GET /api/employees with sort=name&order=desc,
   // sortBy=lifecycleState or sort=createdAt&dir=asc all return the same order
@@ -1218,6 +1301,7 @@ export function EmployeesModulePage() {
     try {
       const body = await fetchJSON<unknown>(pageQuery(null));
       const parsed = readRows(body);
+      setPages(1);
       setState({
         phase: parsed.rows.length ? "ready" : "empty",
         items: parsed.rows,
@@ -1236,36 +1320,229 @@ export function EmployeesModulePage() {
     }
   };
 
-return (
-    <section className="employees-page" data-testid="employees-module">
-      {/* 页面动作条：骨架里这段属页头（导入/新建），外壳 TopBar 只管 h1，
-          这里以 11.5px ghost 档就近承载真能用的动作，不再画第二枚 H1。 */}
-      <div className="emp-toolbar">
-        <ListCopyButton rows={visibleItems} totalLoaded={state.items.length} phase={state.phase} />
-        <ListExportButton rows={visibleItems} totalLoaded={state.items.length} phase={state.phase} />
+  /* 密度车道④：批量动作（全选 / 复制所选 / 导出所选 / 批量流转）收进页头右端的
+     「更多」入口，不再占一整块高度；口径句随面板展开，默认屏上只有一枚入口钮。 */
+  const moreMenu =
+    state.phase === "ready" && visibleItems.length > 0 ? (
+      <span className="emp-more" data-testid="emp-more">
         <Button
           size="sm"
           outlined
-          data-testid="employees-create-open"
-          disabled={state.phase !== "ready" && state.phase !== "empty"}
-          title={
-            state.phase === "ready" || state.phase === "empty"
-              ? "打开新建员工模态（POST 走员工服务真接口）"
-              : `暂不能新建：${phaseReason(state.phase) ?? ""}列表恢复后自动可用。`
-          }
-          onClick={() => setCreateOpen(true)}
+          data-testid="emp-more-trigger"
+          aria-expanded={batchOpen}
+          aria-controls="emp-more-panel"
+          onClick={() => setBatchOpen((open) => !open)}
+          title="批量动作：全选 / 复制所选 / 导出所选 / 批量流转（写口未接入，禁用）"
         >
-          <Plus className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
-          新建员工
+          更多
         </Button>
-        <Button size="sm" data-testid="employees-refresh" onClick={retry}>
-          <RefreshCw className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
-          刷新
-        </Button>
+        {batchOpen ? (
+          <div className="emp-more__panel" id="emp-more-panel" data-testid="emp-more-panel">
+            <div className="emp-batch" data-testid="emp-batch-bar">
+              <div className="emp-batch__body">
+                <div className="emp-batch__row">
+                  <button
+                    type="button"
+                    data-testid="emp-batch-select-all"
+                    role="checkbox"
+                    aria-checked={allVisibleSelected}
+                    onClick={toggleAllVisible}
+                    title={`勾选或取消屏上全部 ${visibleItems.length} 行（只作用当前可见行；不发请求）`}
+                    className="emp-dept-chip"
+                  >
+                    {allVisibleSelected ? "取消全选" : "全选本页"}
+                  </button>
+                  <span className={COUNT_CHIP} data-testid="emp-batch-count">
+                    已选 {selectedCount} / {visibleItems.length}
+                  </span>
+                  <Button
+                    size="sm"
+                    outlined
+                    data-testid="emp-batch-copy"
+                    disabled={selectedCount === 0}
+                    onClick={copySelected}
+                    title={
+                      selectedCount === 0
+                        ? "没有勾选任何行：先在左侧勾选，再复制。"
+                        : `复制勾选的 ${selectedCount} 行（纯前端，按屏上行序，零新请求）；范围不含未勾选与未加载的人。`
+                    }
+                  >
+                    复制所选
+                  </Button>
+                  <Button
+                    size="sm"
+                    outlined
+                    data-testid="emp-batch-export"
+                    disabled={selectedCount === 0}
+                    onClick={exportSelected}
+                    title={
+                      selectedCount === 0
+                        ? "没有勾选任何行：先在左侧勾选，再导出。"
+                        : `导出勾选的 ${selectedCount} 行为 CSV（纯前端 Blob，零新端点）；导出的是所选，不是全量。`
+                    }
+                  >
+                    导出所选 CSV
+                  </Button>
+                </div>
+                <div className="emp-batch__row">
+                  <ConsoleSelect
+                    value={batchTarget}
+                    onChange={(next) => {
+                      setBatchTarget(next);
+                      setBatchSummary(null);
+                    }}
+                    options={[
+                      { value: "", label: "选择目标在职态", disabled: true },
+                      ...BATCH_TARGET_STATES.map((item) => ({
+                        value: item.value,
+                        label: item.label,
+                      })),
+                    ]}
+                    data-testid="emp-batch-target"
+                    aria-label="批量流转目标在职态"
+                    title={
+                      "目标态取自域冻结六态（employee_models.py），文案报的是目标态本身；" +
+                      `选到「草稿 / 入职中 / 已归档」会把该员工移出可上岗率分母。提交钮原因：${TRANSITION_WRITE_NOTE}`
+                    }
+                    className="emp-select"
+                  />
+                  <Button
+                    size="sm"
+                    data-testid="emp-batch-transition"
+                    disabled
+                    aria-disabled="true"
+                    title={
+                      `${TRANSITION_WRITE_NOTE}；` +
+                      (selectedCount === 0
+                        ? "并且没有勾选任何行。"
+                        : `已勾 ${selectedCount} 行，接入后按目标态${batchTargetLabel ? `「${batchTargetLabel}」` : "（未选）"}逐单提交。`)
+                    }
+                    onClick={() => {
+                      void submitBatchTransition();
+                    }}
+                  >
+                    批量流转
+                  </Button>
+                  {batchTarget && OUT_OF_DENOMINATOR.has(batchTarget) ? (
+                    <span data-testid="emp-batch-denominator-flag" className="emp-batch__prose emp-warn">
+                      已选目标态「{batchTargetLabel}」不入分母。
+                    </span>
+                  ) : null}
+                </div>
+                <span className="emp-batch__prose" data-testid="emp-batch-copy-status" aria-live="polite">
+                  {batchCopyStatus === "done"
+                    ? `已复制 ${selectedCount} 行`
+                    : batchCopyStatus === "failed"
+                      ? "剪贴板写入被拒绝，可用下方文本框手动复制。"
+                      : ""}
+                </span>
+                {batchCopyStatus === "failed" ? (
+                  <textarea
+                    data-testid="emp-batch-copy-fallback"
+                    readOnly
+                    rows={4}
+                    value={batchCopyText.text}
+                    onFocus={(e) => e.currentTarget.select()}
+                    className="w-full min-w-0 rounded-sm border border-[var(--color-border-ls)] bg-transparent p-2 font-mono text-xs"
+                    aria-label="批量复制兜底文本框"
+                    title="内容与点击复制的目标逐字相同；手动选择后复制。"
+                  />
+                ) : null}
+                <p className="emp-batch__prose" data-testid="emp-batch-write-note">
+                  {BATCH_TRANSITION_ENABLED
+                    ? `接入后逐单提交：并发上限 ${BATCH_CONCURRENCY}，一单失败不断整批，回执逐字附原因。`
+                    : `${TRANSITION_WRITE_NOTE}。按钮已禁用，点击不发请求也不报成功。`}
+                </p>
+                <p className="emp-batch__prose" data-testid="emp-batch-denominator">
+                  {BATCH_DENOMINATOR_NOTE}
+                </p>
+                <p className="emp-batch__prose" data-testid="emp-batch-scope">
+                  {BATCH_SELECTION_SCOPE} 勾选与批量动作都不出屏上所见：共 {state.items.length} 人已加载，
+                  其中 {visibleItems.length} 行可见、{selectedCount} 行已选。
+                </p>
+                {batchError ? (
+                  <p className="emp-batch__prose emp-warn" data-testid="emp-batch-error" role="alert">
+                    {batchError}
+                  </p>
+                ) : null}
+                {batchSummary ? (
+                  <div className="min-w-0 space-y-1" data-testid="emp-batch-result">
+                    <p className="text-xs" data-testid="emp-batch-result-headline">
+                      {batchRunning ? "提交中…" : batchHeadline(batchSummary)}
+                    </p>
+                    <ul className="min-w-0 space-y-0.5 text-xs text-[var(--color-text-faint-ls)]" data-testid="emp-batch-result-lines">
+                      {batchSummary.results.map((item) => (
+                        <li key={item.employeeId}>
+                          {batchLine(item, (id) => {
+                            const row = state.items.find((r) => r.employeeId === id);
+                            return row ? displayName(row) : shortCode(id);
+                          })}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </span>
+    ) : null;
+
+return (
+    <section className="employees-page" data-testid="employees-module">
+      {/* 页头：骨架的一行副行 = 名册真读数（不是第二个 h1，h1 只在 shell TopBar）+
+          右侧页面动作。读数来自 /api/employee-stats（全量名册），读口未回时按已加载行
+          计数并在 title 里写明范围。 */}
+      <div className="emp-pagehead" data-testid="emp-page-head">
+        <p
+          className="emp-pagehead__sum"
+          data-testid="emp-page-summary"
+          title={
+            roster
+              ? "口径：GET /api/employee-stats 全量名册，不受本页筛选影响。受限＝已暂停/离职中/草稿/入职中（都不在派工范围）；停用＝已停用/已归档。"
+              : summary
+                ? `统计读口未返回：这里按当前已加载 ${state.items.length} 人计数，不是全量名册。`
+                : "统计读口未返回，列表也还没就绪：数字位以「—」占位，不是 0。"
+          }
+        >
+          <b className="emp-pagehead__n">{summary ? summary.total : "—"}</b> 名
+          <span className="emp-pagehead__sep" aria-hidden="true">·</span>
+          <b className="emp-pagehead__n">{summary ? summary.active : "—"}</b> 可上岗
+          <span className="emp-pagehead__sep" aria-hidden="true">·</span>
+          <b className="emp-pagehead__n">{summary ? summary.limited : "—"}</b> 受限
+          <span className="emp-pagehead__sep" aria-hidden="true">·</span>
+          <b className="emp-pagehead__n">{summary ? summary.stopped : "—"}</b> 停用
+        </p>
+        <div className="emp-toolbar" role="group" aria-label="页面动作">
+          <ListCopyButton rows={visibleItems} totalLoaded={state.items.length} phase={state.phase} />
+          <ListExportButton rows={visibleItems} totalLoaded={state.items.length} phase={state.phase} />
+          {moreMenu}
+          <Button
+            size="sm"
+            outlined
+            data-testid="employees-create-open"
+            disabled={state.phase !== "ready" && state.phase !== "empty"}
+            title={
+              state.phase === "ready" || state.phase === "empty"
+                ? "打开新建员工模态（POST 走员工服务真接口）"
+                : `暂不能新建：${phaseReason(state.phase) ?? ""}列表恢复后自动可用。`
+            }
+            onClick={() => setCreateOpen(true)}
+          >
+            <Plus className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
+            新建员工
+          </Button>
+          <Button size="sm" data-testid="employees-refresh" onClick={retry}>
+            <RefreshCw className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
+            刷新
+          </Button>
+        </div>
       </div>
 
       <ConsoleCard data-testid="employees-list-card" flush>
-        {/* filterbar —— 骨架一行：搜索 + 部门 + 状态 + 筛选 + 右侧条数。 */}
+        {/* filterbar —— 骨架一行：搜索 + 部门 + 状态 + 筛选 + 右侧条数与页码。
+            部门保留本地过滤能力，但收成同一行里的下拉，不再占一行分段 chips。 */}
         <div className="emp-filterbar emp-filter-row" data-testid="emp-filter-row">
           <span data-testid="emp-l-search" className="emp-filter-search">
             <label className="emp-search">
@@ -1280,12 +1557,35 @@ return (
               />
             </label>
           </span>
+          <span data-testid="emp-l-filter-dept" className="emp-filter-select">
+            <ConsoleSelect
+              value={dept ?? ""}
+              onChange={(next) => patchParams({ dept: next || null, cursor: null })}
+              className="emp-select"
+              data-testid="emp-list-dept-select"
+              aria-label="按部门筛选"
+              disabled={state.phase !== "ready"}
+              title={
+                state.phase !== "ready"
+                  ? `不能按部门筛选：${phaseReason(state.phase)}；恢复列表后自动可用。`
+                  : "部门桶按当前已加载行现算；切换是前端本地过滤，不发新请求，也不影响服务端游标。"
+              }
+              options={[
+                { value: "", label: "全部部门" },
+                ...deptBuckets.map(([key, count]) => ({
+                  value: key,
+                  label: `${key === NONE_DEPT ? DEPT_UNLABELED_LABEL : key} · ${count}`,
+                })),
+              ]}
+            />
+          </span>
           <span data-testid="emp-l-filter-lifecycle" className="emp-filter-select">
             <ConsoleSelect
               value={lifecycle}
               onChange={(next) => patchParams({ lifecycle: next || null, cursor: null })}
               className="emp-select"
               data-testid="employees-lifecycle"
+              aria-label="按在职态筛选"
               options={[
                 { value: "", label: "全部状态" },
                 { value: "active", label: "在岗" },
@@ -1319,87 +1619,20 @@ return (
             </Button>
           ) : null}
           <span className="emp-grow" />
-          <span
-            className="emp-meta mono"
-            data-testid="emp-list-page-count-top"
-          >
+          <span className="emp-meta mono" data-testid="emp-list-page-count-top">
             <span
               data-testid="emp-list-count"
               title={
                 state.phase === "ready"
-                  ? "计数与列表同源：当前屏上行数（服务端返回经本地部门过滤）"
+                  ? "计数与列表同源：当前屏上可见行数（服务端返回经本地部门过滤）"
                   : phaseReason(state.phase) ?? undefined
               }
             >
               {state.phase === "ready" ? visibleItems.length : "—"}
-            </span> 条
+            </span>{" "}
+            条 · 第 {state.phase === "ready" ? pages : "—"}/
+            {state.phase === "ready" ? (state.nextCursor ? "…" : pages) : "—"} 页
           </span>
-        </div>
-
-        {/* 部门桶：读口实测 dict 参数丢参，这里是「已加载行」的本地过滤（零请求）。 */}
-        <div className="emp-deptrow">
-          <span className="emp-deptrow__label">部门</span>
-          <div className="emp-dept-rail" role="group" aria-label="部门" data-testid="emp-list-dept-rail">
-            <button
-              type="button"
-              data-testid="emp-list-dept-all"
-              aria-pressed={dept === null}
-              disabled={state.phase !== "ready"}
-              title={state.phase === "ready" ? "显示全部部门" : `不能按部门筛选：${phaseReason(state.phase)}；恢复列表后自动可用。`}
-              onClick={() => patchParams({ dept: null, cursor: null })}
-              className="emp-dept-chip"
-            >
-              全部
-            </button>
-            {deptBuckets.map(([key, count], i) => (
-              <button
-                key={key}
-                type="button"
-                data-testid={`emp-list-dept-${i}`}
-                aria-pressed={dept === key}
-                disabled={state.phase !== "ready"}
-                title={
-                  state.phase !== "ready"
-                    ? `不能按部门筛选：${phaseReason(state.phase)}；恢复列表后自动可用。`
-                    : key === NONE_DEPT
-                      ? "只看没有部门信息的行（本地过滤，不发新请求）"
-                      : `筛选部门「${key}」（本地过滤，不发新请求）`
-                }
-                onClick={() => patchParams({ dept: dept === key ? null : key, cursor: null })}
-                className="emp-dept-chip"
-              >
-                {key === NONE_DEPT ? DEPT_UNLABELED_LABEL : key}{" "}
-                <b className="mono">{state.phase === "ready" ? count : "—"}</b>
-              </button>
-            ))}
-          </div>
-          <p
-            className="emp-meta emp-deptrow__note"
-            data-testid="emp-list-dept-scope-note"
-            title="实测 GET /api/employees 带 department= 或 dept= 都返回同一全量（200，3 条同集合），后台不做部门过滤；为避免假筛选，这里只对已加载的行做前端本地过滤，切换不产生新请求、也不影响服务端游标。"
-          >
-            按当前已加载 {state.items.length} 人统计，不是全量；部门切换是前端本地过滤，不发新请求。
-          </p>
-        </div>
-
-        {/* 说明带 + seg3：三段按真实计数，分母 0 时整条不渲染。 */}
-        <div className="emp-band" data-testid="employees-summary">
-          <div className="emp-band__row">
-            <span className="emp-band__note">可上岗=状态正常且未超日配额；受限=被策略挡在派工之外；停用保留配置与历史</span>
-            <span className="emp-band__counts mono">
-              <span data-testid="emp-status-active">{state.phase === "ready" ? counts.active : "—"}</span> 可上岗 ·{" "}
-              <span data-testid="emp-status-limited">{state.phase === "ready" ? counts.limited : "—"}</span> 受限 ·{" "}
-              <span data-testid="emp-status-stopped">{state.phase === "ready" ? counts.stopped : "—"}</span> 停用
-            </span>
-          </div>
-          <SegBar
-            segments={[
-              { value: counts.active, tone: "ok" },
-              { value: counts.limited, tone: "warn" },
-              { value: counts.stopped, tone: "mut" },
-            ]}
-            label={`${counts.active} 可上岗 · ${counts.limited} 受限 · ${counts.stopped} 停用`}
-          />
         </div>
 
         {/* R69: 四态+分页条统一容器，data-phase 供自动化锁定当前态。 */}
@@ -1520,11 +1753,10 @@ return (
                 </span>
                 <span className="emp-col-dept">部门 / 岗位</span>
                 <SortHeader label="可上岗" sortKey="state" active={sort} dir={dir} onCycle={cycleSort} tip="按在职态原始值排序（本地：仅当前已加载行）" />
-                <span className="emp-col-model">主模型</span>
-                <span className="emp-col-skills">技能</span>
-                <span className="emp-col-budget emp-num">今日预算</span>
+                <span className="emp-col-skills emp-num">技能</span>
+                <span className="emp-col-cost emp-num">今日花费</span>
                 <span className="emp-col-runs emp-num">近 7 天</span>
-                <span className="emp-num">成功率</span>
+                <span className="emp-col-rate emp-num">成功率</span>
               </div>
 
               <div data-testid="emp-list-nav" role="grid" aria-label="员工列表（方向键浏览行，Enter 展开预览）">
@@ -1537,7 +1769,10 @@ return (
                     const skillCount = mp?.skillCount ?? null;
                     const rate = runRate(run);
                     const rateText = rate === null ? "—" : `${Math.round(rate * 100)}%`;
-                    const todayCost = run ? run.costToday : null;
+                    // 今日花费：有运行行就读它；没有运行行且窗口已取全 = 真零；
+                    // 窗口未取全（游标未完）时不能断言零，留「—」。
+                    const costCovered = runsReady && !enrichment.runsPartial;
+                    const todayCost = run ? run.costToday : costCovered ? 0 : null;
                     return (
                       <li key={empId} data-testid={`employees-row-${empId}`} className="emp-rowwrap">
                         <div className="emp-row">
@@ -1643,27 +1878,35 @@ return (
                                 </Pill>
                               </span>
                               <span
-                                className="emp-model mono emp-col-model"
-                                title="列表读口不回传模型路由；以员工详情「模型路由」为准。"
+                                className="emp-skills emp-col-skills emp-num mono"
+                                data-testid={`emp-skills-${empId}`}
+                                title={
+                                  skillCount === null
+                                    ? "矩阵读口没回传该员工的技能数：不补 0。"
+                                    : skillCount === 0
+                                      ? "矩阵读口如实返回 0（技能引用为空）；清单以能力与权限页为准。"
+                                      : "技能引用数（GET /api/matrix skillCount）；引用只回编号，清单以能力与权限页为准。"
+                                }
                               >
-                                —
-                              </span>
-                              <span className="emp-skills emp-col-skills">
-                                {skillCount && skillCount > 0 ? (
-                                  <Chip title="技能引用只返回编号，清单以能力与权限页为准">{`技能 ×${skillCount}`}</Chip>
-                                ) : (
-                                  <span className="emp-dim">—</span>
-                                )}
-                              </span>
-                              <span className="emp-num emp-col-budget mono" title={enrichment.budgetNote}>
-                                {todayCost === null ? "—" : money(todayCost)}
-                                <span className="emp-dim"> / —</span>
-                              </span>
-                              <span className="emp-num emp-col-runs mono" title={enrichment.runsNote}>
-                                {runsReady ? `${enrichment.runsPartial ? "≥" : ""}${run?.runs ?? 0}` : "—"}
+                                {skillCount === null ? <span className="emp-dim">—</span> : skillCount}
                               </span>
                               <span
-                                className={`emp-num mono${rate !== null && rate < 0.9 ? " emp-warn" : ""}`}
+                                className="emp-num emp-col-cost mono"
+                                data-testid={`emp-cost-${empId}`}
+                                title={`${enrichment.budgetNote}${costCovered ? " 今天没有该员工的运行记录即真零。" : " 运行窗口未取全，缺行时留「—」。"}`}
+                              >
+                                {todayCost === null ? <span className="emp-dim">—</span> : money(todayCost)}
+                              </span>
+                              <span
+                                className="emp-num emp-col-runs mono"
+                                data-testid={`emp-runs-${empId}`}
+                                title={enrichment.runsNote}
+                              >
+                                {runsReady ? `${enrichment.runsPartial ? "≥" : ""}${run?.runs ?? 0}` : <span className="emp-dim">—</span>}
+                              </span>
+                              <span
+                                className={`emp-num emp-col-rate mono${rate !== null && rate < 0.9 ? " emp-warn" : ""}`}
+                                data-testid={`emp-rate-${empId}`}
                                 title={rate === null ? "该员工维度没有已完成的运行样本，成功率不补 0。" : "口径：completed ÷（completed + failed），来自最近 7 天运行。"}
                               >
                                 {rateText}
@@ -1690,24 +1933,54 @@ return (
             </div>
           ) : null}
 
-          <p
-                className="emp-note"
-                data-testid="emp-list-scope-note"
-                title="白名单参数 keyword、lifecycleState 由服务端过滤；q/query/name 不被该读口接受（实测均返回全量），因此不存在本地过滤口径，也不会为搜索补发额外请求。"
-              >
-                关键字与在职态筛选走服务端真参数（命中数与本页计数同源）；不是「仅在当前已加载 N 人内搜索」的本地过滤。
-              </p>
-              <p
-                className="emp-note"
-                data-testid="emp-list-sort-scope-note"
-                title="实测：GET /api/employees 带 sort=name&order=desc、sortBy=lifecycleState、sort=createdAt&dir=asc 任一参数，均返回同一顺序的同一全量（200，3 条）——后台读口不支持排序参数。为避免假的服务端排序，这里只对已加载行做本地排序。"
-              >
-                排序仅在当前已加载 {state.items.length} 条内生效（本地排序；后台排序参数实测被忽略，不是全量排序）。
-              </p>
+          {/* 卡底一行 11px：把口径与缺读口压成一条，不再用段落压屏。 */}
+          <div className="emp-notes" data-testid="emp-list-notes">
+            <span
+              className="emp-note"
+              data-testid="emp-list-scope-note"
+              title="白名单参数 keyword、lifecycleState 由服务端过滤；q/query/name 不被该读口接受（实测均返回全量），因此不存在本地过滤口径，也不会为搜索补发额外请求。"
+            >
+              关键字与状态筛选走服务端真参数
+            </span>
+            <span
+              className="emp-note"
+              data-testid="emp-list-sort-scope-note"
+              title="实测：GET /api/employees 带 sort=name&order=desc、sortBy=lifecycleState、sort=createdAt&dir=asc 任一参数，均返回同一顺序的同一全量（200，3 条）——后台读口不支持排序参数。为避免假的服务端排序，这里只对已加载行做本地排序。"
+            >
+              排序仅在当前已加载 {state.items.length} 条内生效
+            </span>
+            <span
+              className="emp-note"
+              data-testid="emp-list-dept-scope-note"
+              title="实测 GET /api/employees 带 department= 或 dept= 都返回同一全量（200），后台不做部门过滤；为避免假筛选，这里只对已加载的行做前端本地过滤，切换不产生新请求、也不影响服务端游标。"
+            >
+              按当前已加载 {state.items.length} 人统计，不是全量
+            </span>
+            <span
+              className="emp-note"
+              data-testid="emp-list-col-note"
+              title="主模型：员工列表与 /api/matrix 都不回传模型路由，整列隐藏（以员工详情「模型路由」为准）；今日花费的日美元预算上限：读口未返回；客户端数与队列长度：无读口。"
+            >
+              缺读口：主模型 · 日预算上限
+            </span>
+          </div>
 
           {/* R69: 分页条常驻——非 ready 态下「加载更多」以 disabled+原因存在，不隐身。 */}
           <div className="emp-foot">
-            <span className="emp-foot__note">停用员工保留配置与历史运行，不可被派发新任务</span>
+            <span
+              className="emp-foot__status"
+              data-testid="emp-foot-status"
+              title="GET /api/health/sources 浅探针：HTTP 应答即 ok。客户端数与队列长度没有读口，故不显示也不补数。"
+            >
+              {gateway === null ? (
+                <span className="emp-meta">—</span>
+              ) : (
+                <span className="emp-meta">
+                  {gateway.ok ? "网关在线" : "网关降级"} · {gateway.services} 服务
+                  {gateway.asOf ? ` · ${beijingMinute(gateway.asOf) ?? gateway.asOf}` : ""}
+                </span>
+              )}
+            </span>
             <div className="emp-foot__right" data-testid="emp-list-page">
               <span
                 data-testid="emp-list-page-count"
@@ -1761,157 +2034,6 @@ return (
           </div>
         </div>
       </ConsoleCard>
-
-      {/* PE-09①②③：批量动作条（勾选范围内零新请求；流转写路径未接入期禁用+原因）。 */}
-        {state.phase === "ready" && visibleItems.length > 0 ? (
-          <div className="emp-batch" data-testid="emp-batch-bar">
-            <div className="emp-batch__body">
-              <div className="flex min-w-0 flex-wrap items-center gap-[var(--space-2)]">
-                <button
-                  type="button"
-                  data-testid="emp-batch-select-all"
-                  role="checkbox"
-                  aria-checked={allVisibleSelected}
-                  onClick={toggleAllVisible}
-                  title={`勾选或取消屏上全部 ${visibleItems.length} 行（只作用当前可见行；不发请求）`}
-                  className="emp-dept-chip"
-                >
-                  {allVisibleSelected ? "取消全选" : "全选本页"}
-                </button>
-                <span className={COUNT_CHIP} data-testid="emp-batch-count">
-                  已选 {selectedCount} / {visibleItems.length}
-                </span>
-                <Button
-                  size="sm"
-                  outlined
-                  data-testid="emp-batch-copy"
-                  disabled={selectedCount === 0}
-                  onClick={copySelected}
-                  title={
-                    selectedCount === 0
-                      ? "没有勾选任何行：先在左侧勾选，再复制。"
-                      : `复制勾选的 ${selectedCount} 行（纯前端，按屏上行序，零新请求）；范围不含未勾选与未加载的人。`
-                  }
-                >
-                  复制所选
-                </Button>
-                <Button
-                  size="sm"
-                  outlined
-                  data-testid="emp-batch-export"
-                  disabled={selectedCount === 0}
-                  onClick={exportSelected}
-                  title={
-                    selectedCount === 0
-                      ? "没有勾选任何行：先在左侧勾选，再导出。"
-                      : `导出勾选的 ${selectedCount} 行为 CSV（纯前端 Blob，零新端点）；导出的是所选，不是全量。`
-                  }
-                >
-                  导出所选 CSV
-                </Button>
-                <span data-testid="emp-batch-copy-status" aria-live="polite" className="text-xs text-[var(--color-text-faint-ls)]">
-                  {batchCopyStatus === "done"
-                    ? `已复制 ${selectedCount} 行`
-                    : batchCopyStatus === "failed"
-                      ? "剪贴板写入被拒绝，可下方文本框手动复制。"
-                      : ""}
-                </span>
-                {batchCopyStatus === "failed" ? (
-                  <textarea
-                    data-testid="emp-batch-copy-fallback"
-                    readOnly
-                    rows={4}
-                    value={batchCopyText.text}
-                    onFocus={(e) => e.currentTarget.select()}
-                    className="w-full min-w-0 rounded-sm border border-[var(--color-border-ls)] bg-transparent p-2 font-mono text-xs"
-                    aria-label="批量复制兜底文本框"
-                    title="内容与点击复制的目标逐字相同；手动选择后复制。"
-                  />
-                ) : null}
-              </div>
-              <div className="flex min-w-0 flex-wrap items-center gap-[var(--space-2)]">
-                <ConsoleSelect
-                  value={batchTarget}
-                  onChange={(next) => {
-                    setBatchTarget(next);
-                    setBatchSummary(null);
-                  }}
-                  options={[
-                    { value: "", label: "选择目标在职态", disabled: true },
-                    ...BATCH_TARGET_STATES.map((item) => ({
-                      value: item.value,
-                      label: item.label,
-                    })),
-                  ]}
-                  data-testid="emp-batch-target"
-                  aria-label="批量流转目标在职态"
-                  title={
-                    "目标态取自域冻结六态（employee_models.py），文案报的是目标态本身；" +
-                    `选到「草稿 / 入职中 / 已归档」会把该员工移出可上岗率分母。提交钮原因：${TRANSITION_WRITE_NOTE}`
-                  }
-                  className="emp-select"
-                />
-                <Button
-                  size="sm"
-                  data-testid="emp-batch-transition"
-                  disabled
-                  aria-disabled="true"
-                  title={
-                    `${TRANSITION_WRITE_NOTE}；` +
-                    (selectedCount === 0
-                      ? "并且没有勾选任何行。"
-                      : `已勾 ${selectedCount} 行，接入后按目标态${batchTargetLabel ? `「${batchTargetLabel}」` : "（未选）"}逐单提交。`)
-                  }
-                  onClick={() => {
-                    void submitBatchTransition();
-                  }}
-                >
-                  批量流转
-                </Button>
-                <span data-testid="emp-batch-write-note" className="min-w-0 break-words text-xs text-[var(--color-warning-ls)]">
-                  {BATCH_TRANSITION_ENABLED
-                    ? `接入后逐单提交：并发上限 ${BATCH_CONCURRENCY}，一单失败不断整批，回执逐字附原因。`
-                    : `${TRANSITION_WRITE_NOTE}。按钮已禁用，点击不发请求也不报成功。`}
-                </span>
-                <span data-testid="emp-batch-denominator" className="text-xs text-[var(--color-text-faint-ls)]">
-                  {BATCH_DENOMINATOR_NOTE}
-                </span>
-                {batchTarget && OUT_OF_DENOMINATOR.has(batchTarget) ? (
-                  <span data-testid="emp-batch-denominator-flag" className="text-xs text-[var(--color-warning-ls)]">
-                    已选目标态「{batchTargetLabel}」不入分母。
-                  </span>
-                ) : null}
-              </div>
-              <p className="min-w-0 break-words text-xs text-[var(--color-text-subtle-ls)]" data-testid="emp-batch-scope">
-                {BATCH_SELECTION_SCOPE} 勾选与批量动作都不出屏上所见：共 {state.items.length} 人已加载，
-                其中 {visibleItems.length} 行可见、{selectedCount} 行已选。
-              </p>
-              {batchError ? (
-                <p className="text-xs text-[var(--color-danger-ls)]" data-testid="emp-batch-error" role="alert">
-                  {batchError}
-                </p>
-              ) : null}
-              {batchSummary ? (
-                <div className="min-w-0 space-y-1" data-testid="emp-batch-result">
-                  <p className="text-xs" data-testid="emp-batch-result-headline">
-                    {batchRunning ? "提交中…" : batchHeadline(batchSummary)}
-                  </p>
-                  <ul className="min-w-0 space-y-0.5 text-xs text-[var(--color-text-faint-ls)]" data-testid="emp-batch-result-lines">
-                    {batchSummary.results.map((item) => (
-                      <li key={item.employeeId}>
-                        {batchLine(item, (id) => {
-                          const row = state.items.find((r) => r.employeeId === id);
-                          return row ? displayName(row) : shortCode(id);
-                        })}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-            </div>
-          </div>
-        ) : null}
-
 
       {createOpen ? (
         <CreateEmployeeModal

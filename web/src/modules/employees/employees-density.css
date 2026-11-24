@@ -1,11 +1,13 @@
 /* UI-A 2026-11-21：/employees 列表密度收编（UI-RUBRIC 3 节）。
- * 本仓 /employees 无 HTML table：行壳是 li（employees-row-*），列是
- * data-label 网格单元格。契约映射：行壳 min-height 40；表头 13px 次级色
- * （压页面 utility，需 !important）；数字/时间/预算列在 md 断点（列可见
- * 的 768px 起）右对齐 + tabular-nums；列表容器补 overflow-x 壳，375 横滚
- * 不撑破。斑马纹：基线仅 divide-y 分隔线，无条纹背景源（禁则天然成立）。
- * 未锚项（口径已报）：SortHeader 按钮内右对齐（无钩子属性）、预览子表面
- * 36px 档（testid 未证实）。 */
+ * 2026-11-24 /employees 并排复审（判 D：稀疏线框）后的第四轮：
+ *   ① 页头补一行名册真读数（不是第二个 h1，h1 只在 shell TopBar）；
+ *   ② 表行 72 → 40（列单行，不再堆两行说明）；
+ *   ③ 无读口的列整列隐藏（主模型），有读口的列填真值（技能/今日花费/近7天/成功率）；
+ *   ④ 工程说明压成卡底一行 11px；批量动作收进页头右端「更多」入口，不再占整块高度；
+ *   ⑤ 工具条一行：搜索 + 部门（下拉）+ 状态 + 筛选 + 右侧条数/页码；
+ *   ⑥ 页脚状态用 /api/health/sources 真值；表格自然高，不撑满。
+ * 契约映射：行壳 height 40（--table-row-h）；数字列右对齐 + tabular-nums；
+ * 375 只留 员工 / 可上岗 / 成功率；斑马纹仅分隔线（无条纹源）。 */
 [data-testid="emp-list-nav"] {
   max-width: 100%;
   overflow-x: auto;
@@ -15,12 +17,6 @@
   min-height: var(--table-row-h);
 }
 
-/* 表头行 = 排序口径说明段落的前一个兄弟 div（无 testid，:has 邻接锚定）。 */
-[data-testid="employees-table"] div:has(+ [data-testid="emp-list-sort-scope-note"]) {
-  font-size: var(--font-size-2) !important;
-  color: var(--color-text-muted) !important;
-}
-
 @media (min-width: 768px) {
   [data-label="最近活跃"],
   [data-label="知识"],
@@ -28,22 +24,6 @@
     text-align: right;
     font-variant-numeric: tabular-nums;
   }
-}
-
-/* L0 13:05 密度收敛首码腿：筛选行只允许一行。控件挤不下时在本行内横滚，
- * 部门胶囊不收缩、不换行成第二行——计数、状态、动作各归各的排。 */
-.emp-filter-row {
-  flex-wrap: nowrap;
-  overflow-x: auto;
-}
-
-.emp-dept-rail {
-  flex-wrap: nowrap;
-}
-
-.emp-dept-rail > button {
-  flex-shrink: 0;
-  white-space: nowrap;
 }
 
 /* 页面级控件高收口到令牌档（行内控件的命中区由 40px 行壳保障，例外 E4）。 */
@@ -71,9 +51,7 @@
 }
 
 /* ==========================================================================
- * 2026-11-24 列表页 ↔ 骨架信息密度（console-v4-skeleton.html 2086–2400）
- * 单卡三段：filterbar / 说明带+seg3 / 表格。列宽照骨架 19-18-11-13-20-9-5-5。
- * 375 按骨架裁列：只留 员工 / 可上岗 / 成功率。
+ * 页头：一行副行（名册真读数）+ 右侧动作。读数 12px，数字用 tabular。
  * ========================================================================== */
 .employees-page {
   --emp-card-gap: var(--space-ls-3, 12px);
@@ -83,6 +61,37 @@
   min-width: 0;
 }
 
+.emp-pagehead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-ls-3, 12px);
+  min-width: 0;
+}
+
+.emp-pagehead__sum {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-width: 0;
+  font-size: var(--font-size-ls-1);
+  line-height: 1.4;
+  color: var(--color-text-subtle-ls);
+  font-variant-numeric: var(--tabular-ls);
+}
+.emp-pagehead__n {
+  font-weight: var(--font-weight-ls-medium, 500);
+  color: var(--color-text-ls);
+  font-variant-numeric: var(--tabular-ls);
+}
+.emp-pagehead__sep {
+  color: var(--color-text-faint-ls);
+  padding: 0 2px;
+}
+
+/* 页头右侧动作：等宽小号控件，同一行；窄屏自然折行。 */
 .emp-toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -92,6 +101,30 @@
   min-width: 0;
 }
 
+/* 「更多」：批量动作的单一入口。面板浮在页头上，不占文档流高度。 */
+.emp-more {
+  position: relative;
+  display: inline-flex;
+  min-width: 0;
+}
+.emp-more__panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 40;
+  width: min(420px, calc(100vw - 48px));
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: var(--space-ls-2, 8px) var(--space-ls-3, 12px);
+  border: var(--border-ls-1);
+  border-radius: var(--radius-ls-2);
+  background: var(--color-surface-ls);
+  box-shadow: var(--shadow-ls-2, 0 12px 32px rgba(0, 0, 0, 0.55));
+}
+
+/* ==========================================================================
+ * 工具条（filterbar）：一行：搜索 + 部门 + 状态 + 筛选 + 右侧条数/页码。
+ * ========================================================================== */
 .emp-filterbar {
   display: flex;
   align-items: center;
@@ -102,7 +135,13 @@
   min-width: 0;
 }
 
-.emp-filter-search { flex: 0 1 260px; min-width: 120px; }
+/* 控件挤不下时在本行内横滚，不折成第二排。 */
+.emp-filter-row {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+}
+
+.emp-filter-search { flex: 0 1 240px; min-width: 120px; }
 .emp-search { position: relative; display: block; }
 .emp-search__icon {
   position: absolute;
@@ -124,106 +163,60 @@
   outline: none;
 }
 .emp-search__input:focus-visible { border-color: var(--color-border-strong-ls); }
-.emp-filter-select { flex: 0 0 auto; min-width: 0; }
+.emp-filter-select { flex: 0 0 auto; min-width: 0; width: auto; }
 .emp-select {
   height: 28px;
+  min-width: 104px;
+  padding: 0 8px;
+  border: 1px solid var(--color-border-subtle-ls);
+  border-radius: var(--radius-ls-1);
+  background: transparent;
   font-size: var(--font-size-ls-1);
   color: var(--color-text-muted-ls);
 }
-.emp-filter-apply { height: 28px; font-size: var(--font-size-ls-1); }
+.emp-select:hover { border-color: var(--color-border-ls); color: var(--color-text-ls); }
+.emp-filter-apply { height: 28px; font-size: var(--font-size-ls-1); flex: none; }
 .emp-grow { flex: 1 1 auto; }
 .emp-meta {
   font-size: var(--font-size-ls-1);
   line-height: 1.4;
   color: var(--color-text-subtle-ls);
   font-variant-numeric: var(--tabular-ls);
+  white-space: nowrap;
 }
 .mono { font-family: var(--font-family-mono-ls); }
 
-.emp-deptrow {
+/* 卡底一行 11px：口径与缺读口并排，超宽省略，详细原因在 title。 */
+.emp-notes {
   display: flex;
   align-items: center;
-  gap: var(--space-ls-2, 8px);
-  padding: 5px 14px;
-  border-bottom: 1px solid var(--color-border-subtle-ls);
+  gap: var(--space-ls-3, 12px);
+  padding: 6px 14px;
+  border-top: 1px solid var(--color-border-subtle-ls);
   min-width: 0;
   overflow: hidden;
 }
-.emp-deptrow__label {
-  flex: none;
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--color-text-faint-ls);
-}
-.emp-dept-rail {
-  display: flex;
-  flex-wrap: nowrap;
-  align-items: center;
-  gap: 4px;
-  min-width: 0;
-  overflow-x: auto;
-}
-.emp-dept-rail > button { flex-shrink: 0; white-space: nowrap; }
-.emp-dept-chip {
-  height: 22px;
-  min-width: 0;
-  padding: 0 7px;
-  border: 1px solid var(--color-border-subtle-ls);
-  border-radius: var(--radius-ls-1);
-  background: transparent;
-  color: var(--color-text-muted-ls);
-  font-size: 11px;
-  line-height: 20px;
-  cursor: pointer;
-}
-.emp-dept-chip:hover { border-color: var(--color-border-ls); color: var(--color-text-ls); }
-.emp-dept-chip[aria-pressed="true"] {
-  border-color: var(--color-border-strong-ls);
-  background: color-mix(in srgb, var(--color-text-ls) 10%, transparent);
-  color: var(--color-text-ls);
-}
-.emp-dept-chip:disabled { opacity: var(--opacity-disabled-ls, 0.56); cursor: not-allowed; }
-.emp-deptrow__note { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-.emp-band {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 9px 14px;
-  border-bottom: 1px solid var(--color-border-subtle-ls);
-}
-.emp-band__row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-.emp-band__note { font-size: 11px; color: var(--color-text-subtle-ls); }
-.emp-band__counts {
-  font-size: 10px;
-  letter-spacing: 0.03em;
-  color: var(--color-text-faint-ls);
-}
-
-.emp-batch { border-bottom: 1px solid var(--color-border-subtle-ls); }
-.emp-batch__body { display: flex; flex-direction: column; gap: 6px; padding: 9px 14px; min-width: 0; }
-
-.emp-table { min-width: 0; }
 .emp-note {
   margin: 0;
-  padding: 4px 14px;
-  font-size: 10px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  line-height: 1.4;
   color: var(--color-text-faint-ls);
 }
-.emp-note + .emp-note { padding-top: 0; }
+
+/* ==========================================================================
+ * 表体：七列（员工 / 部门·岗位 / 可上岗 / 技能 / 今日花费 / 近7天 / 成功率）。
+ * 主模型没有读口，整列不渲染（不是留白列）。行高 40，单元格单行。
+ * ========================================================================== */
+.emp-table { min-width: 0; }
 
 .emp-grid {
   display: grid;
   grid-template-columns:
-    minmax(150px, 1.6fr) minmax(120px, 1.5fr) 80px 96px
-    minmax(110px, 1.7fr) 84px 52px 52px;
+    minmax(150px, 1.5fr) minmax(120px, 1.4fr) 80px 52px 80px 56px 56px;
   align-items: center;
   column-gap: 10px;
   min-width: 0;
@@ -235,77 +228,82 @@
   border-bottom: 1px solid var(--color-border-subtle-ls);
   background: color-mix(in srgb, var(--color-text-ls) 1.8%, transparent);
   font-family: var(--font-family-mono-ls);
-  font-size: 9px;
-  letter-spacing: 0.11em;
+  font-size: 10px;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--color-text-subtle-ls);
 }
 .emp-head-who { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
 .emp-grid--row {
   flex: 1 1 auto;
-  min-height: var(--table-row-h);
+  height: var(--table-row-h);
   padding: 0 14px;
   color: inherit;
   text-decoration: none;
 }
 .emp-grid--row:hover { background: color-mix(in srgb, var(--color-text-ls) 3.2%, transparent); }
 
+/* 员工格：头像 + 姓名 + 工号短码，一行到底。 */
 .emp-who {
-  display: grid;
-  grid-template-columns: 30px minmax(0, 1fr);
-  grid-template-rows: auto auto;
-  grid-template-areas: "ava nm" "ava sub";
-  column-gap: 8px;
+  display: flex;
   align-items: center;
+  gap: 8px;
   min-width: 0;
+  overflow: hidden;
 }
 .emp-ava {
-  grid-area: ava;
-  width: 30px;
-  height: 30px;
+  flex: none;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   border: 1px solid var(--color-border-ls);
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: var(--font-family-mono-ls);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: var(--font-weight-ls-regular, 400);
   color: var(--color-text-muted-ls);
   background: color-mix(in srgb, var(--color-text-ls) 5%, transparent);
 }
 .emp-nm {
-  grid-area: nm;
   font-size: var(--font-size-ls-1);
-  line-height: 1.25;
+  line-height: 1.3;
   color: var(--color-text-ls);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .emp-sub {
-  grid-area: sub;
+  flex: none;
   font-size: 10px;
-  line-height: 1.25;
-  color: var(--color-text-subtle-ls);
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.3;
+  color: var(--color-text-faint-ls);
   white-space: nowrap;
 }
+
+/* 部门/岗位格：一行「部门 · 岗位」，两段各自省略。 */
 .emp-dept {
   display: flex;
-  flex-direction: column;
-  gap: 1px;
+  align-items: center;
+  gap: 5px;
   min-width: 0;
+  overflow: hidden;
   font-size: 11px;
+  line-height: 1.3;
   color: var(--color-text-muted-ls);
+  white-space: nowrap;
 }
 .emp-dept > span:first-child,
-.emp-dept__role { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.emp-dept__role { font-size: 10px; color: var(--color-text-faint-ls); }
+.emp-dept__role { overflow: hidden; text-overflow: ellipsis; }
+.emp-dept__role { color: var(--color-text-faint-ls); }
+.emp-dept__role::before {
+  content: "·";
+  color: var(--color-text-faint-ls);
+  margin-right: 5px;
+}
 
-.emp-model { font-size: 10px; color: var(--color-text-muted-ls); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.emp-skills { display: flex; flex-wrap: wrap; gap: 4px; min-width: 0; overflow: hidden; }
+.emp-skills { min-width: 0; }
 .emp-num {
   text-align: right;
   font-size: 11px;
@@ -349,43 +347,76 @@
 .emp-state__body--center { align-items: center; text-align: center; }
 .emp-skeleton { height: 34px; border-radius: var(--radius-ls-1); background: color-mix(in srgb, var(--color-text-ls) 5%, transparent); }
 
+/* 页脚状态：左侧网关真值，右侧条数/翻页。 */
 .emp-foot {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 8px 14px;
+  padding: 7px 14px;
   border-top: 1px solid var(--color-border-subtle-ls);
 }
-.emp-foot__note { font-size: 10px; color: var(--color-text-faint-ls); }
+.emp-foot__status { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .emp-foot__right { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
 .emp-foot__more { height: 26px; font-size: 11px; }
 
-@media (max-width: 900px) {
-  .emp-deptrow__note { display: none; }
+/* 批量面板内部（默认收起，只在「更多」展开时可见）。 */
+.emp-batch__body { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.emp-batch__row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.emp-batch__prose {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--color-text-faint-ls);
+  overflow-wrap: anywhere;
 }
+.emp-dept-chip {
+  height: 22px;
+  min-width: 0;
+  padding: 0 7px;
+  border: 1px solid var(--color-border-subtle-ls);
+  border-radius: var(--radius-ls-1);
+  background: transparent;
+  color: var(--color-text-muted-ls);
+  font-size: 11px;
+  line-height: 20px;
+  cursor: pointer;
+}
+.emp-dept-chip:hover { border-color: var(--color-border-ls); color: var(--color-text-ls); }
+.emp-dept-chip[aria-pressed="true"] {
+  border-color: var(--color-border-strong-ls);
+  background: color-mix(in srgb, var(--color-text-ls) 10%, transparent);
+  color: var(--color-text-ls);
+}
+.emp-dept-chip:disabled { opacity: var(--opacity-disabled-ls, 0.56); cursor: not-allowed; }
 
 @media (max-width: 720px) {
+  .emp-pagehead { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .emp-toolbar { justify-content: flex-start; }
+  /* 窄屏：工具条折成两行（搜索独占一行；部门/状态/筛选并排），行内不再横溢出屏。 */
   .emp-filterbar { flex-wrap: wrap; overflow-x: visible; }
   .emp-filter-search { flex: 1 1 100%; }
-  .emp-filter-select { flex: 1 1 calc(50% - 6px); }
-  .emp-filter-select .emp-select { width: 100%; }
-  .emp-meta { flex: none; white-space: nowrap; }
-  .emp-note { display: none; }
-  .emp-deptrow { overflow-x: auto; }
-  .emp-band__note { display: none; }
+  .emp-filter-select { flex: 0 1 calc(50% - 6px); }
+  .emp-filter-select > div { width: 100%; }
+  .emp-select { width: 100%; }
+  .emp-filter-row .emp-grow { display: none; }
+  .emp-filter-row .emp-meta { margin-left: auto; }
+  .emp-notes { display: none; }
   .emp-grid {
-    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-columns: minmax(0, 1fr) 56px 52px;
     column-gap: 8px;
   }
+  .emp-grid--head > :last-child { text-align: right; }
   .emp-col-dept,
-  .emp-col-model,
   .emp-col-skills,
-  .emp-col-budget,
+  .emp-col-cost,
   .emp-col-runs { display: none; }
+  /* 375 只留 员工 / 可上岗 / 成功率：姓名让出宽度，工号短码与多余排序钮收起。 */
+  .emp-sub { display: none; }
+  .emp-head-who > :not(:first-child) { display: none; }
+  .emp-nm { flex: 1 1 auto; min-width: 0; }
   .emp-grid--head { margin: 0 31px 0 56px; }
-  .emp-grid--row { min-height: 44px; padding: 0 10px; }
-  .emp-toolbar { justify-content: flex-start; }
+  .emp-grid--row { padding: 0 10px; }
   .emp-row__pick { width: 26px; }
 }

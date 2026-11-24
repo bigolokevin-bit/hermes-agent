@@ -238,9 +238,7 @@ describe("PE-01 cursor position in the URL", () => {
     };
 
     await wipe("部门筛选", "/employees", async () => {
-      await act(async () => {
-        (q("emp-list-dept-all") as HTMLButtonElement).click();
-      });
+      await pickOption("emp-list-dept-select", "增长组");
     });
 
     await wipe("排序", "/employees", async () => {

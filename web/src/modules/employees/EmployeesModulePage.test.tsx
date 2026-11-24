@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ApiError } from "@/lib/api-error";
 import { csvTimestamp } from "@/modules/employees/EmployeesModulePage";
-import { pickOption, selectText, selectValue } from "@/shell/selectHarness";
+import { pickOption, selectText, selectValue, openSelect, closeSelect, optionTexts } from "@/shell/selectHarness";
 
 // The ui barrel pulls in .webp assets that node cannot load; stub the four
 // primitives the page uses (deep-path imports would change product code).
@@ -947,7 +947,7 @@ describe("R69 list state consistency (emp-list-state-*)", () => {
   });
 });
 
-describe("R81 department filter (emp-list-dept-*)", () => {
+describe("R81 department filter (emp-list-dept-select)", () => {
   const deptRows = {
     items: [
       { employeeId: "emp_217A91BA995044DFBB3E2E940B", name: "小鲤", title: "内容编辑", lifecycleState: "active", updatedAt: "2026-11-17T05:52:48.030Z", department: null },
@@ -955,17 +955,14 @@ describe("R81 department filter (emp-list-dept-*)", () => {
     ],
   };
   const rowCount = () => document.querySelectorAll('[data-testid^="emp-l-row-emp_"]').length;
-  const bucketFor = (label: string) =>
-    Array.from(document.querySelectorAll('[data-testid^="emp-list-dept-"]')).find(
-      (b) => (b.getAttribute("title") ?? "").includes(label),
-    ) as HTMLButtonElement | undefined;
 
   it("buckets count loaded rows and switching filters locally with zero new requests", async () => {
     fetchJSON.mockImplementation(async () => deptRows);
     await render("/employees?lifecycle=active");
     await flushTimers();
-    expect(q("emp-list-dept-rail")).toBeTruthy();
-    expect(q("emp-list-dept-all")?.getAttribute("aria-pressed")).toBe("true");
+    // 部门是同一行里的下拉（不再占一行分段 chips），「全部部门」是未过滤态。
+    expect(q("emp-list-dept-select")).toBeTruthy();
+    expect(selectValue("emp-list-dept-select")).toBe("");
     expect(q("emp-list-dept-scope-note")?.textContent).toContain("按当前已加载 2 人统计，不是全量");
     const urlsBefore = fetchJSON.mock.calls.map((c) => String(c[0]));
     expect(
@@ -974,25 +971,20 @@ describe("R81 department filter (emp-list-dept-*)", () => {
         .every((u) => !u.includes("dept=") && u.includes("lifecycleState=active")),
     ).toBe(true);
     const n0 = fetchJSON.mock.calls.length;
-    const chao = bucketFor("筛选部门「增长组」");
-    expect(chao, "增长组 bucket").toBeTruthy();
-    await act(async () => {
-      chao!.click();
-    });
+    await pickOption("emp-list-dept-select", "增长组");
     await act(async () => {});
     expect(fetchJSON.mock.calls.length, "dept switch never refetches").toBe(n0);
     expect(rowCount()).toBe(1);
     expect(q("emp-l-row-emp_2B2C2D2E4F506172")).toBeTruthy();
     expect(q("emp-list-count")?.textContent).toBe("1");
-    expect(q("emp-list-dept-all")?.getAttribute("aria-pressed")).toBe("false");
+    expect(selectValue("emp-list-dept-select")).toBe("增长组");
     expect(lastSearch()).toContain("lifecycle=active");
     expect(lastSearch()).toContain("dept=");
-    // 「全部」回到未过滤视图；未标注部门桶也在轨上（缺部门=一桶并计数）
-    const none = bucketFor("只看没有部门信息的行");
-    expect(none, "unlabeled bucket").toBeTruthy();
-    await act(async () => {
-      (q("emp-list-dept-all") as HTMLButtonElement).click();
-    });
+    // 「全部部门」回到未过滤视图；未标注部门桶也在选项里（缺部门=一桶并计数）
+    await openSelect("emp-list-dept-select");
+    expect(optionTexts().some((t) => t.startsWith(DEPT_UNLABELED_LABEL))).toBe(true);
+    await closeSelect("emp-list-dept-select");
+    await pickOption("emp-list-dept-select", "全部部门");
     await act(async () => {});
     expect(rowCount()).toBe(2);
     expect(fetchJSON.mock.calls.length).toBe(n0);
@@ -1016,16 +1008,16 @@ describe("R81 department filter (emp-list-dept-*)", () => {
     expect(q("emp-list-dept-empty")).toBeNull();
   });
 
-  it("non-ready phases disable the rail with the single-source reason sentence", async () => {
+  it("non-ready phases disable the select with the single-source reason sentence", async () => {
     fetchJSON.mockImplementation(() =>
       Promise.reject(new ApiError("boom", { status: 500, body: "{}", url: "/agent-api/api/employees", requestId: "req-r81-500" })),
     );
     await render("/employees");
     await flushTimers();
-    const all = q("emp-list-dept-all") as HTMLButtonElement | null;
-    expect(all, "rail present in error").toBeTruthy();
-    expect(all!.disabled).toBe(true);
-    expect(all!.getAttribute("title")).toContain("不能按部门筛选");
+    const select = q("emp-list-dept-select") as HTMLButtonElement | null;
+    expect(select, "dept select present in error").toBeTruthy();
+    expect(select!.hasAttribute("disabled")).toBe(true);
+    expect(select!.getAttribute("title")).toContain("不能按部门筛选");
     expect(q("emp-list-dept-scope-note")?.textContent).toContain("按当前已加载 0 人");
   });
 });
@@ -1041,7 +1033,7 @@ describe("R96 department caliber parity (emp-list-dept-*)", () => {
   const cell = (id: string) =>
     document.querySelector(`[data-testid="emp-l-row-${id}"] [data-label="部门"]`);
 
-  it("row cells and rail buckets read the same three-state helper output", async () => {
+  it("row cells and the department options read the same three-state helper output", async () => {
     fetchJSON.mockImplementation(async () => deptRows);
     await render("/employees");
     await flushTimers();
@@ -1054,12 +1046,11 @@ describe("R96 department caliber parity (emp-list-dept-*)", () => {
     expect(cell("emp_3C3D3E3F40414243")?.textContent).toBe(FIELD_MISSING);
     expect(cell("emp_3C3D3E3F40414243")?.getAttribute("title")).toBe(FIELD_MISSING_TITLE);
     // 桶名与文案共用判据：null 与缺键都归「未标注部门」桶（2 人）
-    const unlabeled = Array.from(document.querySelectorAll('[data-testid^="emp-list-dept-"]')).find(
-      (b) => (b.textContent ?? "").startsWith(DEPT_UNLABELED_LABEL),
-    );
-    expect(unlabeled, "unlabeled bucket").toBeTruthy();
-    expect(unlabeled?.textContent).toContain("2");
-    expect(unlabeled?.getAttribute("title")).toContain("只看没有部门信息的行");
+    await openSelect("emp-list-dept-select");
+    const unlabeled = optionTexts().find((t) => t.startsWith(DEPT_UNLABELED_LABEL));
+    expect(unlabeled, "unlabeled bucket option").toBeTruthy();
+    expect(unlabeled).toContain("2");
+    await closeSelect("emp-list-dept-select");
   });
 });
 

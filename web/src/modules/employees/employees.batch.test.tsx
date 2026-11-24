@@ -46,6 +46,7 @@ vi.mock("@/lib/api", () => ({
 }));
 
 import { ApiError } from "@/lib/api-error";
+import { pickOption } from "@/shell/selectHarness";
 import { EmployeesModulePage } from "./EmployeesModulePage";
 import {
   BATCH_CONCURRENCY,
@@ -125,6 +126,9 @@ async function render(entry = "/employees") {
     );
   });
   await flush();
+  // 批量动作默认收在页头「更多」入口里（不再占一块整高）：测试先展开再断言。
+  click(q("emp-more-trigger"), "more menu");
+  await flush();
 }
 
 async function flush() {
@@ -203,7 +207,7 @@ describe("PE-09 ② cursor paging clears the selection", () => {
     await render();
     check(q("emp-row-select-emp_A001"), "row A", true);
     expect(selectedRead()).toBe("已选 1 / 2");
-    click(q("emp-list-dept-0"), "dept rail");
+    await pickOption("emp-list-dept-select", "运维组");
     await flush();
     expect(
       fetchJSON.mock.calls.filter((c) => String(c[0]).includes("/api/employees?")).length,
