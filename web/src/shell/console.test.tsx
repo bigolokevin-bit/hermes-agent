@@ -490,7 +490,7 @@ describe("ConsoleEmployeeDetailPage (hidden 23rd pane)", () => {
     </Routes>
   );
 
-  it("bare detail: the probe's module page serves the hidetab pane (T18 landed; fallback shadowed)", async () => {
+  it("bare detail: the workbench pane owns it (chat host on the left), fallback stays shadowed", async () => {
     await renderAtAsync(
       detailRoute({ fallback: <div data-testid="existing-detail" /> }),
       "/employees/emp_9f3a4b7c",
@@ -499,16 +499,16 @@ describe("ConsoleEmployeeDetailPage (hidden 23rd pane)", () => {
     expect(pane?.getAttribute("data-tabname")).toBe("详情");
     expect(pane?.getAttribute("data-hidetab")).toBe("1");
     expect(pane?.getAttribute("data-state")).toBe("ready");
-    // Probe hit → module page wins over the legacy fallback (stage-2 brief 5
-    // fallback stays for trees without the page, see console.tsx L464-475).
-    expect(
-      container.querySelector('[data-testid="probe-detail-page"]'),
-    ).toBeTruthy();
+    // 2026-11-24: 裸地址默认工作台（左侧 Hermes 原生对话）；旧壳/旧页都不挂。
+    expect(container.querySelector('[data-testid="ed5-workbench"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="existing-detail"]')).toBeFalsy();
+    expect(container.querySelector('[data-testid="probe-detail-page"]')).toBeFalsy();
     expect(container.querySelectorAll('[role="tab"][data-zone]').length).toBe(5);
+    // 详情页任意 URL 只允许一排 tablist（外壳 zone 条）。
+    expect(container.querySelectorAll('[role="tablist"]').length).toBe(1);
   });
 
-  it("?zone=workbench: probe page owns the workbench surface (60/40 + chat host moved into T18's page in wave 2)", async () => {
+  it("?zone=workbench: the module page owns the zone surface (no chat host slot)", async () => {
     // The real App wrapper carries the host attribute; the stub uses a
     // testid so this shell/ file stays marker-free for the assert-ia scan.
     const renderChatHost = (employeeId: string) => (
@@ -523,19 +523,17 @@ describe("ConsoleEmployeeDetailPage (hidden 23rd pane)", () => {
       }),
       "/employees/emp_9f3a4b7c?zone=workbench",
     );
-    // Probe resolves for every zone query (T18 header note), so the shell's
-    // legacy EmployeeDetailWorkbench + App-injected chat-host slot are NOT
-    // mounted here anymore; the module page carries the single
-    // [data-chat-host] itself (T40 moved the marker into ChatModulePage;
-    // assert-ia counts exactly one static host). The hidden-详情 pane and
-    // zone strip are still shell-owned and must hold:
+    // 2026-11-24: 显式 ?zone= 一律交给模块页（工作台只服务裸地址），
+    // 因此 App 注入的 chat-host 槽位在这里不挂载。
     expect(
       container.querySelector('[data-testid="probe-detail-page"]'),
     ).toBeTruthy();
     expect(container.querySelectorAll('[data-testid="chat-host-slot"]').length).toBe(0);
+    expect(container.querySelector('[data-testid="ed5-workbench"]')).toBeFalsy();
     const pane = container.querySelector(".pane");
     expect(pane?.getAttribute("data-tabname")).toBe("详情");
     expect(container.querySelectorAll('[role="tab"][data-zone]').length).toBe(5);
+    expect(container.querySelectorAll('[role="tablist"]').length).toBe(1);
   });
 
   // n5 (unified rule, zone family): same table as the outer leg, driven over

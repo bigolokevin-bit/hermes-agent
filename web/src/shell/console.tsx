@@ -52,7 +52,6 @@ import { allTabs } from "./registry";
 import {
   DetailModulePage,
   RunsModulePage,
-  normalizeZone,
   searchFor,
 } from "./bridge";
 import {
@@ -596,6 +595,32 @@ export interface ConsoleEmployeeDetailPageProps {
   renderChatHost?: (employeeId: string) => ReactNode;
 }
 
+/** `?zone=` 词 → 外壳 zone 条上应该亮着的那一格（族归位）。
+ * 裸地址=工作台；能力与权限归「配置」；审批/审计归「证据」；
+ * 成本归「运行」；任务列表归「任务」；未知词不亮任何一格。 */
+function stripZoneOf(raw: string): DetailZone | null {
+  switch (raw) {
+    case "":
+    case "workbench":
+      return "workbench";
+    case "config":
+    case "capability":
+      return "config";
+    case "tasks":
+    case "tasklist":
+      return "tasks";
+    case "runs":
+    case "usage":
+      return "runs";
+    case "evidence":
+    case "audit":
+    case "approvals":
+      return "evidence";
+    default:
+      return null;
+  }
+}
+
 export function ConsoleEmployeeDetailPage({
   fallback,
   zone,
@@ -605,7 +630,6 @@ export function ConsoleEmployeeDetailPage({
   const employeeId = params.employeeId ? decodeURIComponent(params.employeeId) : "";
   const [sp] = useSearchParams();
   const zoneQuery = sp.get("zone") ?? "";
-  const normalized = zone !== undefined ? zone : normalizeZone(zoneQuery);
   const forced = usePaneForced();
   const rid = usePaneRid();
 
@@ -616,8 +640,9 @@ export function ConsoleEmployeeDetailPage({
   // 2026-11-24: 员工详情默认就是工作台（左侧 Hermes 原生对话），
   // 档案/任职/权限/活动/运行/证据 五区仍由上方 zone 条切换。
   // 裸路由此前落到 DetailModulePage，导致「对话」整块消失（用户实机投诉）。
-  const showWorkbench =
-    zone === undefined && (normalized === "workbench" || normalized === "");
+  // 只有完全不带 ?zone= 的裸地址才是工作台；显式 ?zone=<分区>（含
+  // ?zone=workbench）一律交给模块页，避免工作台与分区视图互相顶替。
+  const showWorkbench = zone === undefined && zoneQuery === "";
 
   const detailContent: ReactNode = showWorkbench ? (
     <EmployeeDetailWorkbench
@@ -646,7 +671,9 @@ export function ConsoleEmployeeDetailPage({
         className="console-tablist flex min-w-0 flex-wrap gap-1 border-b pb-1"
       >
         {ZONE_ORDER.map((z) => {
-          const activeZone = normalized !== "" && z === normalized;
+          // 显式分区路由（zone prop）优先；否则按 ?zone= 词归位，
+          // 裸地址亮「工作台」。
+          const activeZone = (zone ?? stripZoneOf(zoneQuery)) === z;
           return (
             <NavLink
               key={z}

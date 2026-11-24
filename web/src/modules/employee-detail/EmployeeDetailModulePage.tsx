@@ -21,7 +21,7 @@
  * visible text — they live in `title` attributes only.
  */
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams, useSearchParams } from "react-router";
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router";
 import { ClipboardCheck, Gauge, Inbox, RefreshCw, ShieldAlert, TriangleAlert, Wallet } from "lucide-react";
 import { Badge, Button, Card, CardContent } from "@nous-research/ui";
 
@@ -327,23 +327,28 @@ function readAudit(body: unknown): AuditRow[] {
  * zone ids ↔ shell `?zone=` spellings
  * ------------------------------------------------------------------ */
 
-/** R51: 四区直达条的词表（任务区走 ?zone=tasks → tasklist 视图）。 */
-const NAV_ZONES = [
-  { id: "overview", label: "总览" },
-  { id: "tasks", label: "任务" },
-  { id: "runs", label: "运行" },
-  { id: "approvals", label: "审批" },
-] as const;
-
-const ZONES = [
+/** R51: 四区直达条的词表（任务区走 ?zone=tasks → tasklist 视图）。
+ *  2026-11-24 收尾：与下方五区合并成一排「分段」导航（SEGMENTS），
+ *  不再各自渲染一条 tab 条；外层 zone 条是详情页唯一的 tablist。 */
+const SEGMENTS = [
   { id: "overview", label: "概览" },
   { id: "capability", label: "能力与权限" },
   { id: "approvals", label: "审批" },
   { id: "runs", label: "运行" },
   { id: "audit", label: "审计" },
+  { id: "tasklist", label: "任务" },
 ] as const;
 
-type ZoneId = (typeof ZONES)[number]["id"] | "chat" | "tasklist" | "sessions" | "usage";
+type ZoneId =
+  | "overview"
+  | "capability"
+  | "approvals"
+  | "runs"
+  | "audit"
+  | "chat"
+  | "tasklist"
+  | "sessions"
+  | "usage";
 
 function mapShellZone(raw: string): ZoneId {
   switch (raw) {
@@ -1024,7 +1029,14 @@ export default function EmployeeDetailModulePage({ employeeId }: { employeeId?: 
     (params.employeeId ? decodeURIComponent(params.employeeId) : "") ||
     (params.id ? decodeURIComponent(params.id) : "");
   const enc = encodeURIComponent(empId);
-  const zone = mapShellZone(sp.get("zone") ?? "");
+  // 分区来源两处：?zone= 查询词，以及外壳的分段路由
+  // /employees/:id/config|tasks|runs|evidence（那里没有查询词，
+  // 全靠路径段；不读它就会出现「外壳亮着配置、内容却是概览」）。
+  const location = useLocation();
+  const segmentZone = location.pathname.split("/").filter(Boolean).pop() ?? "";
+  const zone = mapShellZone(
+    sp.get("zone") ?? (["config", "tasks", "runs", "evidence"].includes(segmentZone) ? segmentZone : ""),
+  );
 
   const [reload, setReload] = useState<Record<ZoneId, number>>({ overview: 0, capability: 0, approvals: 0, runs: 0, audit: 0, chat: 0, tasklist: 0, sessions: 0, usage: 0 });
   const retry = (z: ZoneId) => setReload((prev) => ({ ...prev, [z]: prev[z] + 1 }));
@@ -1109,82 +1121,42 @@ export default function EmployeeDetailModulePage({ employeeId }: { employeeId?: 
     <section className="min-w-0 space-y-4" data-testid="ed5-module">
       {header}
 
-      {/* R51: 四区直达导航。每个条目都映射到本版本真实接线的分区；
-          万一某区不在，渲 aria-disabled+原因，绝不假装可点。键盘走
-          tab 序即可达（Link 原生），焦点样式显式给 outline。 */}
-      <div
-        role="tablist"
-        aria-label="分区直达（总览 / 任务 / 运行 / 审批）"
-        className="flex min-w-0 flex-wrap gap-1"
-        data-testid="edz-nav"
-      >
-        {NAV_ZONES.map((n) => {
-          const reachable = (["overview", "tasks", "runs", "approvals"] as const).includes(
-            n.id as "overview" | "tasks" | "runs" | "approvals",
-          );
-          const active = mapShellZone(n.id) === zone;
-          if (!reachable) {
-            return (
-              <span
-                key={n.id}
-                role="tab"
-                aria-disabled="true"
-                aria-selected={false}
-                data-testid={`edz-nav-${n.id}`}
-                title="该分区在本版本尚未接线，不提供假入口。"
-                className="cursor-not-allowed rounded px-3 py-1.5 text-sm edw-muted"
-              >
-                {n.label}
-              </span>
-            );
-          }
-          return (
-            <Link
-              key={n.id}
-              to={`/employees/${empId ? encodeURIComponent(empId) : ""}${n.id === "overview" ? "" : `?zone=${n.id}`}`}
-              role="tab"
-              aria-selected={active}
-              data-testid={`edz-nav-${n.id}`}
-              className={`rounded px-3 py-1.5 text-sm no-underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${active ? "edz-active" : "edz-idle"}`}
-            >
-              {n.label}
-            </Link>
-          );
-        })}
-      </div>
-
-      <div
-        role="tablist"
-        aria-label="详情分区"
-        className="flex min-w-0 flex-wrap gap-1 border-b pb-1 edz-tablist"
+      {/* 2026-11-24 收口：模块内原先的两级 tab（edz-nav + ed5-tabs）合并成
+          一排「分段」链接。详情页唯一的 role="tablist" 是外层 zone 条，
+          这里只用普通 <nav>/<Link>，不再出现第二个 tablist（用户投诉
+          「三排 tab 叠在一起」）。六个分区入口全部是真链接，功能一个不少。 */}
+      <nav
+        aria-label="员工详情分段"
+        className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-white/45"
         data-testid="ed5-tabs"
       >
-        {ZONES.map((z) => {
+        <span className="shrink-0">分区：</span>
+        {SEGMENTS.map((z) => {
           const active = z.id === zone;
-          const search = z.id === "overview" ? "" : `?zone=${z.id}`;
           return (
             <Link
               key={z.id}
-              to={`/employees/${enc}${search}`}
-              role="tab"
-              aria-selected={active}
+              to={`/employees/${enc}?zone=${z.id}`}
+              aria-current={active ? "page" : undefined}
               data-zone={z.id}
-              className={`rounded-t-[var(--r-sm)] border border-b-0 px-3 py-1.5 text-sm no-underline ${active ? "edz-active" : "edz-idle"}`}
+              data-testid={`edz-nav-${z.id}`}
+              className={`rounded-sm underline underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${active ? "text-white" : "hover:text-white"}`}
             >
               {z.label}
             </Link>
           );
         })}
-      </div>
+      </nav>
 
       {/* UI-C2 权限区回条：其余四区承载在总览页，如实回链总览顶部（不在本页造假锚）。 */}
       {zone === "capability" ? (
-        <nav aria-label="分区回条（权限区）" className="ui-c-anchors">
-          <span className="ui-c-anchor ui-c-anchor--active" aria-current="true">权限</span>
-          <Link className="ui-c-anchor" to={`/employees/${enc}`}>身份</Link>
-          <Link className="ui-c-anchor" to={`/employees/${enc}`}>组织</Link>
-          <Link className="ui-c-anchor" to={`/employees/${enc}`}>生命周期</Link>
-          <Link className="ui-c-anchor" to={`/employees/${enc}`}>最近活跃</Link>
+        <nav aria-label="分区回条（权限区）" className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-white/45">
+          <span className="shrink-0">小节：</span>
+          <span className="text-white" aria-current="true">权限</span>
+          <Link className="rounded-sm underline underline-offset-4 hover:text-white" to={`/employees/${enc}?zone=overview`}>身份</Link>
+          <Link className="rounded-sm underline underline-offset-4 hover:text-white" to={`/employees/${enc}?zone=overview`}>组织</Link>
+          <Link className="rounded-sm underline underline-offset-4 hover:text-white" to={`/employees/${enc}?zone=overview`}>生命周期</Link>
+          <Link className="rounded-sm underline underline-offset-4 hover:text-white" to={`/employees/${enc}?zone=overview`}>最近活跃</Link>
         </nav>
       ) : null}
 
@@ -1392,7 +1364,7 @@ function AnchorChip({ targetId, label }: { targetId: string; label: string }) {
   return (
     <button
       type="button"
-      className="ui-c-anchor"
+      className="rounded-sm underline underline-offset-4 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
       onClick={() =>
         document.getElementById(targetId)?.scrollIntoView({ behavior: "smooth", block: "start" })
       }
@@ -1458,12 +1430,13 @@ function OverviewZone({ state, onRetry, empId }: { state: OverviewState; onRetry
   return (
     <div className="min-w-0 space-y-4" data-testid="ed5-overview-wrap">
       {/* UI-C2: 五区锚点条（身份/组织/生命周期/权限/最近活跃）。 */}
-      <nav aria-label="详情五区锚点" className="ui-c-anchors">
+      <nav aria-label="详情五区锚点" className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-white/45">
+        <span className="shrink-0">小节：</span>
         <AnchorChip targetId="uic2-zone-identity" label="身份" />
         <AnchorChip targetId="uic2-zone-org" label="组织" />
         <AnchorChip targetId="uic2-zone-lifecycle" label="生命周期" />
         <Link
-          className="ui-c-anchor ui-c-anchor--link"
+          className="rounded-sm underline underline-offset-4 hover:text-white"
           title="该区的承载在 HEAD 是独立分区，这里直达「能力与权限」真数据面。"
           to={`/employees/${encodeURIComponent(empId)}?zone=capability`}
         >
