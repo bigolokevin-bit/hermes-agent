@@ -1,0 +1,14 @@
+whoami status=200 user=opsadmin
+  au01-1440.png chains块=谁：系统 · worker（本控制台没有该页面）哪次运行：运行 · KKTEVZG1哪次判定：策略判定 · 42A78328（本控制台没有该页面）
+  au01-1440.png 链kind actor/run/decision=谁：系统 · worker（本控制台没有该页面） | 哪次运行：运行 · KKTEVZG1 | 哪次判定：策略判定 · 42A78328（本控制台没有该页面）
+  au01-1440.png run锚href=/runs?run=rn_01M81AZV6P7TAX8KGXKKTEVZG1
+  au01-1440.png 横向溢出(px)=0
+  au01-1440.png 审计读口: 200 /agent-api/api/audit?limit=25&from=2026-10-25T00%3A19%3A53.000Z&to=2026-11-24T00%3A19%3A53.000Z | 200 /agent-api/api/audit-detail?id=ev-dispatch-8af0c2546ed788cf251aeebe04
+saved au01-1440.png
+whoami status=200 user=opsadmin
+  au01-375.png chains块=谁：系统 · worker（本控制台没有该页面）哪次运行：运行 · KKTEVZG1哪次判定：策略判定 · 42A78328（本控制台没有该页面）
+  au01-375.png 链kind actor/run/decision=谁：系统 · worker（本控制台没有该页面） | 哪次运行：运行 · KKTEVZG1 | 哪次判定：策略判定 · 42A78328（本控制台没有该页面）
+  au01-375.png run锚href=/runs?run=rn_01M81AZV6P7TAX8KGXKKTEVZG1
+  au01-375.png 横向溢出(px)=0
+  au01-375.png 审计读口: 200 /agent-api/api/audit-detail?id=ev-dispatch-8af0c2546ed788cf251aeebe04 | 200 /agent-api/api/audit?limit=25&from=2026-10-25T00%3A19%3A53.000Z&to=2026-11-24T00%3A19%3A53.000Z
+saved au01-375.png

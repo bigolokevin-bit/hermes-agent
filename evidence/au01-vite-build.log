@@ -1,0 +1,134 @@
+vite v8.3.4 building client environment for production...
+transforming...
+✓ 3646 modules transformed.
+rendering chunks...
+computing gzip size...
+../hermes_cli/web_dist/index.html                                        1.08 kB │ gzip:   0.48 kB
+../hermes_cli/web_dist/assets/Mondwest-Regular-CWscgue7.woff2           23.82 kB
+../hermes_cli/web_dist/assets/RulesExpanded-Regular-l8uVympt.woff2      33.82 kB
+../hermes_cli/web_dist/assets/RulesExpanded-Bold-DZA7s8Pa.woff2         35.01 kB
+../hermes_cli/web_dist/assets/RulesCompressed-Regular-BSXFyF4x.woff2    37.76 kB
+../hermes_cli/web_dist/assets/RulesCompressed-Medium-CA76_CrB.woff2     38.84 kB
+../hermes_cli/web_dist/assets/Collapse-Bold-mgICk9-_.woff2              59.14 kB
+../hermes_cli/web_dist/assets/Collapse-Regular-DysayoTY.woff2           62.81 kB
+../hermes_cli/web_dist/assets/filler-bg0-DxMaWJpb.webp                 185.27 kB
+../hermes_cli/web_dist/assets/CronModulePage-BvNVr92Q.css                0.06 kB │ gzip:   0.07 kB
+../hermes_cli/web_dist/assets/SettingsPage-Dss3DVYF.css                  0.07 kB │ gzip:   0.09 kB
+../hermes_cli/web_dist/assets/MatrixModulePage-BtD1oKaq.css              0.13 kB │ gzip:   0.12 kB
+../hermes_cli/web_dist/assets/EvidenceModulePage-BwchnPy_.css            0.19 kB │ gzip:   0.12 kB
+../hermes_cli/web_dist/assets/ToolsPage-DbvXqQEt.css                     0.35 kB │ gzip:   0.22 kB
+../hermes_cli/web_dist/assets/TasksBoardModulePage-CvjO5dGL.css          0.48 kB │ gzip:   0.24 kB
+../hermes_cli/web_dist/assets/RunsModulePage-D2zKldN-.css                0.55 kB │ gzip:   0.26 kB
+../hermes_cli/web_dist/assets/EmployeesModulePage-6ETrNq9H.css           0.91 kB │ gzip:   0.44 kB
+../hermes_cli/web_dist/assets/SessionsList-DXZZirhE.css                  1.25 kB │ gzip:   0.46 kB
+../hermes_cli/web_dist/assets/SkillsPage-DkgbMCxb.css                    2.54 kB │ gzip:   0.89 kB
+../hermes_cli/web_dist/assets/SecurityModulePage-D3u500su.css            2.89 kB │ gzip:   0.88 kB
+../hermes_cli/web_dist/assets/xterm-BrP-ENHg.css                         3.93 kB │ gzip:   1.01 kB
+../hermes_cli/web_dist/assets/OrgModulePage-MgGYxWHe.css                 5.09 kB │ gzip:   1.44 kB
+../hermes_cli/web_dist/assets/OverviewPage-DgXBLtiY.css                  5.76 kB │ gzip:   1.55 kB
+../hermes_cli/web_dist/assets/AccessModulePage-AcA0clkm.css              6.10 kB │ gzip:   1.55 kB
+../hermes_cli/web_dist/assets/rowCopyText-B60CBkzJ.css                   6.59 kB │ gzip:   1.49 kB
+../hermes_cli/web_dist/assets/PeopleModulePage-DNVrmIFu.css              7.18 kB │ gzip:   1.54 kB
+../hermes_cli/web_dist/assets/approvals-density-B--IdMWx.css             9.42 kB │ gzip:   1.90 kB
+../hermes_cli/web_dist/assets/HealthPage-Cx0O1WdJ.css                   15.74 kB │ gzip:   2.98 kB
+../hermes_cli/web_dist/assets/MetricsModulePage-EuKvr4u3.css            18.90 kB │ gzip:   3.62 kB
+../hermes_cli/web_dist/assets/KnowledgeModulePage-Cnf7gdPn.css          20.27 kB │ gzip:   3.70 kB
+../hermes_cli/web_dist/assets/index-BQP2WEjq.css                       152.99 kB │ gzip:  23.42 kB
+../hermes_cli/web_dist/assets/usePageHeader-CxGhR3I9.js                  0.28 kB │ gzip:   0.22 kB
+../hermes_cli/web_dist/assets/utils-3PR4A82B.js                          0.56 kB │ gzip:   0.31 kB
+../hermes_cli/web_dist/assets/DeleteConfirmDialog-DAGwlmB2.js            0.61 kB │ gzip:   0.37 kB
+../hermes_cli/web_dist/assets/useModalBehavior-ae_h4lqq.js               0.62 kB │ gzip:   0.39 kB
+../hermes_cli/web_dist/assets/pty-attach-token-BEyKweeP.js               0.64 kB │ gzip:   0.41 kB
+../hermes_cli/web_dist/assets/costCaliberNote-BJhkW9ik.js                0.67 kB │ gzip:   0.42 kB
+../hermes_cli/web_dist/assets/terminal-font-refit-Dmois6_8.js            0.83 kB │ gzip:   0.44 kB
+../hermes_cli/web_dist/assets/mcp-server-create-B0VgoYzF.js              0.92 kB │ gzip:   0.46 kB
+../hermes_cli/web_dist/assets/csrf-CtsQ1zbE.js                           1.03 kB │ gzip:   0.61 kB
+../hermes_cli/web_dist/assets/asof-BysqPw6T.js                           1.07 kB │ gzip:   0.66 kB
+../hermes_cli/web_dist/assets/fetchJson-DFEKfnY1.js                      1.28 kB │ gzip:   0.80 kB
+../hermes_cli/web_dist/assets/window-DqrrZxRt.js                         1.44 kB │ gzip:   0.74 kB
+../hermes_cli/web_dist/assets/LoadErrorNotice-oY4ID0J8.js                1.77 kB │ gzip:   0.91 kB
+../hermes_cli/web_dist/assets/DocsPage-B4lX6tSq.js                       1.95 kB │ gzip:   1.07 kB
+../hermes_cli/web_dist/assets/ConfirmDialog-Baxr2LlD.js                  2.09 kB │ gzip:   1.00 kB
+../hermes_cli/web_dist/assets/api-error-BLmGh8VE.js                      2.96 kB │ gzip:   1.48 kB
+../hermes_cli/web_dist/assets/AuditDetailModulePage-CEoOt2w-.js          3.29 kB │ gzip:   1.54 kB
+../hermes_cli/web_dist/assets/ConsoleSelect-D5I0oFN4.js                  3.36 kB │ gzip:   1.54 kB
+../hermes_cli/web_dist/assets/models-BxWNnWmk.js                         3.70 kB │ gzip:   1.43 kB
+../hermes_cli/web_dist/assets/PairingPage-AvOmJaa4.js                    4.88 kB │ gzip:   1.66 kB
+../hermes_cli/web_dist/assets/ChatModulePage-B8Sblw3B.js                 5.42 kB │ gzip:   2.36 kB
+../hermes_cli/web_dist/assets/systemHealth-CEUueHW8.js                   5.65 kB │ gzip:   2.65 kB
+../hermes_cli/web_dist/assets/tasksBoard-bRGlQOxa.js                     6.17 kB │ gzip:   2.70 kB
+../hermes_cli/web_dist/assets/LogsPage-C-b-Nsxv.js                       7.50 kB │ gzip:   3.29 kB
+../hermes_cli/web_dist/assets/AuditVerifyModulePage-ntZwccuU.js          8.17 kB │ gzip:   3.42 kB
+../hermes_cli/web_dist/assets/SessionsList-DDwF-o9j.js                   8.36 kB │ gzip:   3.47 kB
+../hermes_cli/web_dist/assets/SettingsPage-BuP45aNF.js                   8.39 kB │ gzip:   3.02 kB
+../hermes_cli/web_dist/assets/FilesPage-Bphj4ALN.js                     10.15 kB │ gzip:   3.35 kB
+../hermes_cli/web_dist/assets/api-BaBy0ydD.js                           10.42 kB │ gzip:   4.14 kB
+../hermes_cli/web_dist/assets/systemRefresh-DoEeAGYj.js                 12.65 kB │ gzip:   5.03 kB
+../hermes_cli/web_dist/assets/WebhooksPage-BHIJBvUv.js                  12.67 kB │ gzip:   3.95 kB
+../hermes_cli/web_dist/assets/ModelReloadConfirm-CcV0dLXW.js            12.97 kB │ gzip:   4.96 kB
+../hermes_cli/web_dist/assets/SecurityModulePage-BgF0XBsm.js            14.65 kB │ gzip:   5.61 kB
+../hermes_cli/web_dist/assets/ProfileBuilderPage-C2X4pnsa.js            14.86 kB │ gzip:   4.49 kB
+../hermes_cli/web_dist/assets/SkillsPage-B858sCkb.js                    15.96 kB │ gzip:   5.62 kB
+../hermes_cli/web_dist/assets/RunsPage-DTc0jzVN.js                      16.32 kB │ gzip:   6.56 kB
+../hermes_cli/web_dist/assets/ApprovalsPage-6jngOATy.js                 16.53 kB │ gzip:   6.48 kB
+../hermes_cli/web_dist/assets/EvidenceModulePage-DXS0EsD7.js            16.83 kB │ gzip:   6.71 kB
+../hermes_cli/web_dist/assets/CronModulePage-B1PhnYUN.js                17.39 kB │ gzip:   6.75 kB
+../hermes_cli/web_dist/assets/McpPage-CRosB3Zz.js                       17.81 kB │ gzip:   5.23 kB
+../hermes_cli/web_dist/assets/ConfigPage-Tr-Y_bCv.js                    18.00 kB │ gzip:   6.02 kB
+../hermes_cli/web_dist/assets/permalink-B_l92pMT.js                     18.27 kB │ gzip:   7.18 kB
+../hermes_cli/web_dist/assets/EmployeesPage-pN_bGnDo.js                 18.31 kB │ gzip:   7.05 kB
+../hermes_cli/web_dist/assets/ApprovalsHistoryModulePage-CcelgabP.js    18.54 kB │ gzip:   6.46 kB
+../hermes_cli/web_dist/assets/MatrixModulePage-2SAtBfXn.js              19.12 kB │ gzip:   6.88 kB
+../hermes_cli/web_dist/assets/OrgModulePage-DskgMEve.js                 19.19 kB │ gzip:   7.23 kB
+../hermes_cli/web_dist/assets/ModelsModulePage-D9jfoGI2.js              19.75 kB │ gzip:   5.96 kB
+../hermes_cli/web_dist/assets/stateCopy-wivnFhR7.js                     19.98 kB │ gzip:   8.16 kB
+../hermes_cli/web_dist/assets/AnalyticsPage-BmsGDLvy.js                 20.00 kB │ gzip:   5.91 kB
+../hermes_cli/web_dist/assets/RetentionModulePage-D0uau-hM.js           20.41 kB │ gzip:   7.78 kB
+../hermes_cli/web_dist/assets/VersionPage-0es7p7sj.js                   22.34 kB │ gzip:   6.97 kB
+../hermes_cli/web_dist/assets/UsagePage-BlCgwC7i.js                     24.57 kB │ gzip:   8.42 kB
+../hermes_cli/web_dist/assets/ProfilesPage-Dgo-WT6M.js                  25.18 kB │ gzip:   7.08 kB
+../hermes_cli/web_dist/assets/ApprovalsPendingModulePage-W1Wa9P6G.js    28.69 kB │ gzip:   9.95 kB
+../hermes_cli/web_dist/assets/EnvPage-DFTKqtq5.js                       29.71 kB │ gzip:   7.96 kB
+../hermes_cli/web_dist/assets/ToolsPage-CykIKN86.js                     29.99 kB │ gzip:  10.68 kB
+../hermes_cli/web_dist/assets/AccessModulePage-Cowx1Z_y.js              31.50 kB │ gzip:   9.38 kB
+../hermes_cli/web_dist/assets/TasksBoardModulePage-D6oYgHtE.js          32.62 kB │ gzip:  10.66 kB
+../hermes_cli/web_dist/assets/states-Cv2ujpPq.js                        34.23 kB │ gzip:  10.79 kB
+../hermes_cli/web_dist/assets/useAuditData-Dgw9EfLv.js                  35.08 kB │ gzip:  12.19 kB
+../hermes_cli/web_dist/assets/ModelsPage-K95cr6I5.js                    35.08 kB │ gzip:  10.83 kB
+../hermes_cli/web_dist/assets/PluginsPage-BMvKDYjN.js                   36.93 kB │ gzip:  10.89 kB
+../hermes_cli/web_dist/assets/rowCopyText-CjWTpk3d.js                   37.05 kB │ gzip:  14.03 kB
+../hermes_cli/web_dist/assets/ChannelsPage-BBNwQDN4.js                  37.89 kB │ gzip:  10.72 kB
+../hermes_cli/web_dist/assets/ChannelsPage-DyZjiIR4.js                  38.20 kB │ gzip:  13.36 kB
+../hermes_cli/web_dist/assets/OverviewPage-z3nQnR_S.js                  40.24 kB │ gzip:  13.26 kB
+../hermes_cli/web_dist/assets/CollabDelegationsModulePage-BWCjJYeR.js   42.34 kB │ gzip:  14.64 kB
+../hermes_cli/web_dist/assets/PeopleModulePage-NfWwMMVP.js              43.90 kB │ gzip:  14.44 kB
+../hermes_cli/web_dist/assets/SkillsPage-jzsj1gxE.js                    45.48 kB │ gzip:  12.97 kB
+../hermes_cli/web_dist/assets/CronPage-eTEQwPe7.js                      45.49 kB │ gzip:  14.77 kB
+../hermes_cli/web_dist/assets/SystemPage-f1v_tsGI.js                    46.19 kB │ gzip:  13.17 kB
+../hermes_cli/web_dist/assets/EmployeeDetailPage-C3b9l0Qe.js            47.84 kB │ gzip:  15.72 kB
+../hermes_cli/web_dist/assets/ChatPage-BRPRH4XZ.js                      53.79 kB │ gzip:  18.81 kB
+../hermes_cli/web_dist/assets/api-mDXZHoyt.js                           53.83 kB │ gzip:  14.31 kB
+../hermes_cli/web_dist/assets/EmployeesModulePage-BaRPOztH.js           54.12 kB │ gzip:  17.42 kB
+../hermes_cli/web_dist/assets/HealthPage-PuHbLojy.js                    54.92 kB │ gzip:  16.66 kB
+../hermes_cli/web_dist/assets/vendor-Blj_LhcE.js                        55.35 kB │ gzip:  19.35 kB
+../hermes_cli/web_dist/assets/AuditEventsModulePage-CYe9l-CL.js         62.39 kB │ gzip:  22.12 kB
+../hermes_cli/web_dist/assets/approvals-density-BCZa9bIp.js             91.27 kB │ gzip:  28.97 kB
+../hermes_cli/web_dist/assets/EmployeeDetailModulePage-4S6nGZeD.js      92.31 kB │ gzip:  28.29 kB
+../hermes_cli/web_dist/assets/RunsModulePage-CphIlRMH.js                93.32 kB │ gzip:  30.31 kB
+../hermes_cli/web_dist/assets/MetricsModulePage-FBaSHjcN.js            133.04 kB │ gzip:  35.42 kB
+../hermes_cli/web_dist/assets/KnowledgeModulePage-8rdawWUW.js          141.84 kB │ gzip:  43.02 kB
+../hermes_cli/web_dist/assets/index-Ba7hC9Wo.js                        175.12 kB │ gzip:  56.07 kB
+../hermes_cli/web_dist/assets/react-vendor-BJD0jftt.js                 257.75 kB │ gzip:  81.89 kB
+../hermes_cli/web_dist/assets/ui-BgBM5l3M.js                           292.18 kB │ gzip:  95.65 kB
+../hermes_cli/web_dist/assets/xterm-DL6ywjCu.js                        473.46 kB │ gzip: 122.31 kB
+../hermes_cli/web_dist/assets/i18n-Cho4Jw6X.js                         509.43 kB │ gzip: 152.31 kB
+
+✓ built in 6.03s
+[33m[PLUGIN_TIMINGS] [0mJavaScript callbacks ran for 5.9s of this 6.0s build (98%).
+The slowest callbacks, timed inside each callback (the wait before a callback starts is excluded, the time it awaits is included):
+  - plugin @rolldown/plugin-babel transform (94%, 5.6s, 183 calls)
+Additional callback time came from the callbacks below and from callbacks under 1s.
+1 callback is listed without a time. Its calls overlapped, so the time inside one call includes work from other calls. To find its cost, profile the build with `node --cpu-prof`:
+  - plugin @tailwindcss/vite:generate:build transform (29 calls)
+See https://rolldown.rs/reference/InputOptions.checks#bundlertimings for more details.
+
