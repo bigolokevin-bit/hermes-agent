@@ -171,22 +171,22 @@ const EvidenceConsolePage = lazy(() =>
   })),
 );
 const CapSkillsConsolePage = lazy(() =>
-  import("@/modules/skills/SkillsPage").then((m) => ({ default: m.SkillsPage })),
+  import("@/modules/capabilities/panes.tsx").then((m) => ({ default: m.CapSkillsPane })),
 );
 const CapToolsConsolePage = lazy(() =>
-  import("@/modules/tools/ToolsPage").then((m) => ({ default: m.ToolsPage })),
+  import("@/modules/capabilities/panes.tsx").then((m) => ({ default: m.CapToolsPane })),
 );
 const CapModelsConsolePage = lazy(() =>
-  import("@/modules/models/ModelsModulePage").then((m) => ({
-    default: m.ModelsModulePage,
+  import("@/modules/capabilities/panes.tsx").then((m) => ({
+    default: m.CapModelsPane,
   })),
 );
 /* R11 item 3: V4 channels page body (lane aud contract: named export
  * ChannelsPage from @/modules/channels/ChannelsPage) replaces the bare
  * upstream English shell in the capabilities live slot. */
 const CapChannelsConsolePage = lazy(() =>
-  import("@/modules/channels/ChannelsPage").then((m) => ({
-    default: m.ChannelsPage,
+  import("@/modules/capabilities/panes.tsx").then((m) => ({
+    default: m.CapChannelsPane,
   })),
 );
 const HealthConsolePage = lazy(() =>
