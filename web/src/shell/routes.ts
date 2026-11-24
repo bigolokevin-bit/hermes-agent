@@ -265,7 +265,12 @@ const COMPAT_TABS: readonly ConsoleRoute[] = [
 const COMPAT_MODULES: readonly ConsoleRoute[] = [
   // #47-#51 — 5 module-level compat (ALIAS rows without sub-tab mapping,
   // skeleton L5276-5283: metrics/sessions/org/access/audit).
-  { hash: '#/metrics', path: '/metrics', module: 'overview', tabId: 'usage', kind: 'compat-module', visible: false, label: '用量与成本', dataSource: '随目标', to: '#/overview?tab=usage', conflict: "existing App route '/analytics' (upstream AnalyticsPage) is the same surface the usage tab reuses — stage 2 decides which path serves it" },
+  // MT-06（2026-11-23 回写，B 形态）：path '/metrics' 由 App 直挂自研 MetricsModulePage
+  // （h1「运行分析」，resolve-page-title RESIDUAL_ZH 同值）；hash '#/metrics' 由 bridge
+  // 特例解析到 '/analytics'（上游 AnalyticsPage=usage 面复用源）。compat-module 规律是
+  // 桥先于表、App path 权威（同 '#/sessions'，bridge.test 钉死），故 to 字段保留为登记
+  // 形式而不改行为；rail 可见性 A1/A2 仍是老板另批。routeContract 有三方一致断言。
+  { hash: '#/metrics', path: '/metrics', module: 'overview', tabId: 'usage', kind: 'compat-module', visible: false, label: '用量与成本', dataSource: "App 直挂 MetricsModulePage（path '/metrics' 由 App 路由服务，页内 h1「运行分析」）；hash '#/metrics' 由 bridge 特例解析到 /analytics（App path 权威，同 '#/sessions' 规律）", to: '#/overview?tab=usage', conflict: "registered 2026-11-23 (backlog MT-06, option B): path '/metrics' is the App-mounted MetricsModulePage; the hash alias resolves to upstream /analytics via the bridge special-case (bridge.test pins it). Promoting /metrics to a visible rail tab (A1/A2) remains a separate owner decision." },
   { hash: '#/sessions', path: '/sessions', module: 'employees', tabId: 'list', kind: 'compat-module', visible: false, label: '列表', dataSource: '随目标', to: '#/employees', conflict: "path '/sessions' is an existing App route (upstream SessionsPage); the compat form wants to redirect it to the employees list — stage 2 decides precedence" },
   { hash: '#/org', path: '/org', module: 'identity', tabId: 'people', kind: 'compat-module', visible: false, label: '人员目录', dataSource: '随目标', to: '#/identity' },
   { hash: '#/access', path: '/access', module: 'identity', tabId: 'roles', kind: 'compat-module', visible: false, label: '角色与权限', dataSource: '随目标', to: '#/identity?tab=roles' },

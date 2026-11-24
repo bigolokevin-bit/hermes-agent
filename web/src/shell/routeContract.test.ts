@@ -42,6 +42,8 @@ import {
   initialTab,
   type KnowledgeTab,
 } from "../modules/knowledge/knowledge";
+import { resolvePageTitle } from "@/lib/resolve-page-title";
+import type { Translations } from "@/i18n/types";
 
 /** Same authoritative set bridge.test.ts pins (existing App routes). */
 const AUTH = new Set([
@@ -400,5 +402,34 @@ describe("n8 cold chain: outer highlight equals the panel surface", () => {
         direct.live,
       );
     }
+  });
+});
+
+/**
+ * MT-06（2026-11-23 回写，B 形态）：#/metrics 曾有三处互斥说法——
+ * routes 行的 to 指向 overview?tab=usage、bridge 特例实际落 /analytics、
+ * 标题表与页内 h1 又叫「运行分析」。本节把终态登记钉成一致：登记形式保留、
+ * 行为以桥为准（桥先于表是 compat-module 规律，bridge.test 已钉 '/sessions'
+ * 同型）、path 直挂自研模块且标题与 h1 对齐。零行为改动。
+ */
+describe("MT-06 /metrics registration: routes, bridge, and page title tell one story", () => {
+  const row = ROUTE_TABLE.find((entry) => entry.hash === "#/metrics");
+
+  it("the hash alias lands where the bridge pins it, not on the stale to field", () => {
+    expect(row, "#/metrics compat row missing").toBeDefined();
+    expect(row?.kind).toBe("compat-module");
+    expect(row?.visible).toBe(false);
+    // to 是登记形式（保持不动）；真正生效的落点在 bridge 特例。
+    expect(row?.to).toBe("#/overview?tab=usage");
+    expect(resolveHashTarget("#/metrics", AUTH).pathname).toBe("/analytics");
+  });
+
+  it("path, title map and row registration agree", () => {
+    expect(row?.dataSource, "dataSource 仍写「随目标」——与桥行为脱节").not.toBe(
+      "随目标",
+    );
+    expect(row?.dataSource).toContain("App 直挂");
+    expect(row?.conflict).toContain("2026-11-23");
+    expect(resolvePageTitle("/metrics", {} as Translations, [])).toBe("运行分析");
   });
 });
