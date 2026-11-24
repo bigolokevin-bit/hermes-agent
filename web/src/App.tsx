@@ -159,11 +159,12 @@ const CollabConsolePage = lazy(() =>
   })),
 );
 const UsageConsolePage = lazy(() => import("@/modules/duty/UsagePage"));
-const PeopleConsolePage = lazy(() => import("@/modules/people/PeopleModulePage"));
-const OrgConsolePage = lazy(() => import("@/modules/org/OrgModulePage"));
+const PeopleConsolePage = lazy(() => import("@/modules/identity/IdentityPeoplePage"));
+const OrgConsolePage = lazy(() => import("@/modules/identity/IdentityDepartmentsPage"));
 /* R13 item 1: governance page bodies delivered by lane gov — default
- * exports, wired straight into the identity/knowledge live slots. */
-const AccessConsolePage = lazy(() => import("@/modules/access/AccessModulePage"));
+ * exports, wired straight into the identity/knowledge live slots.
+ * identity 三屏统一由 modules/identity/** 承接（人员与访问重做车道）。 */
+const AccessConsolePage = lazy(() => import("@/modules/identity/IdentityRolesPage"));
 const KnowledgeConsolePage = lazy(() => import("@/modules/knowledge/KnowledgeModulePage"));
 const EvidenceConsolePage = lazy(() =>
   import("@/modules/evidence/EvidenceModulePage").then((m) => ({
