@@ -11,7 +11,7 @@
 import { Link } from "react-router";
 import { ConsoleCard } from "@/components/console/ConsoleCard";
 import { Pill } from "@/components/console/Pill";
-import { GapRow, PaneHead, cardLabel } from "./PaneBits";
+import { CardTitle, GapRow, PaneHead } from "./PaneBits";
 import { DASH, beijingMinute, count, gapText, recordOf, textOf, usePort } from "./paneApi";
 
 type Platform = { key: string; name: string; connected: boolean | null };
@@ -93,7 +93,7 @@ export function CapChannelsPane() {
 
       {/* 2 平台凭据（网关级）：四项都没有读口，整卡一行「—」，缺的项在卡底点名 */}
       <ConsoleCard
-        label={cardLabel("平台凭据")}
+        label={<CardTitle title="平台凭据" />}
         action={<span className="cap-action">网关级 · 员工侧不持有</span>}
         availability={[
           { label: "App ID" },
@@ -141,7 +141,7 @@ export function CapChannelsPane() {
 
       {/* 4 凭证明细：除平台名外整列无读口，保留骨架表头 + 一行声明 */}
       <ConsoleCard
-        label={cardLabel("凭证明细")}
+        label={<CardTitle title="凭证明细" />}
         action={
           <span className="cap-action">
             {grounded ? `${count(connected)} / ${count(platforms.length)} 已连接` : "已连接读数无"}
@@ -184,7 +184,7 @@ export function CapChannelsPane() {
 
       {/* 5 可接入的渠道 */}
       <ConsoleCard
-        label={cardLabel("可接入的渠道")}
+        label={<CardTitle title="可接入的渠道" />}
         action={<span className="cap-action">需管理员开通</span>}
         availability={[{ label: "渠道目录", reason: "可开通平台与其准入条件没有读口" }]}
       >
@@ -195,7 +195,7 @@ export function CapChannelsPane() {
       <div className="cap-g2">
         {/* 6 发送门 */}
         <ConsoleCard
-          label={cardLabel("发送门")}
+          label={<CardTitle title="发送门" />}
           action={<span className="cap-action">全部对外消息</span>}
           availability={[
             { label: "放行计数" },
@@ -209,7 +209,7 @@ export function CapChannelsPane() {
 
         {/* 7 熔断 */}
         <ConsoleCard
-          label={cardLabel("熔断")}
+          label={<CardTitle title="熔断" />}
           availability={[
             { label: "熔断状态与触发史" },
             { label: "冷却与恢复策略", reason: "阈值未经证，不写触发与否" },
@@ -221,7 +221,7 @@ export function CapChannelsPane() {
 
       {/* 8 最近拦截明细（骨架：发送状态段下的表）：整表无读口，保留骨架表头 + 一行声明 */}
       <ConsoleCard
-        label={cardLabel("最近拦截明细")}
+        label={<CardTitle title="最近拦截明细" />}
         action={<span className="cap-action">近 24 小时</span>}
         flush
         availability={[{ label: "拦截台账", reason: "拦截事件清单没有读口" }]}

@@ -10,7 +10,7 @@
 import { Link } from "react-router";
 import { ConsoleCard } from "@/components/console/ConsoleCard";
 import { Pill } from "@/components/console/Pill";
-import { GapRow, PaneHead, cardLabel } from "./PaneBits";
+import { CardTitle, GapRow, PaneHead } from "./PaneBits";
 import { DASH, asOfLabel, count, gapText, listOf, recordOf, textOf, usd, usePort } from "./paneApi";
 
 type ModelRow = {
@@ -192,7 +192,7 @@ export function CapModelsPane() {
 
       {/* 1 可用模型 */}
       <ConsoleCard
-        label={cardLabel("可用模型")}
+        label={<CardTitle title="可用模型" />}
         action={<span className="cap-action">美元 / 1M token</span>}
         flush
         availability={[
@@ -256,7 +256,7 @@ export function CapModelsPane() {
       <div className="cap-g3">
         {/* 2 调用分布 */}
         <ConsoleCard
-          label={cardLabel("调用分布")}
+          label={<CardTitle title="调用分布" />}
           action={<span className="cap-action">近 7 天</span>}
           availability={dist ? [] : [{ label: "按模型拆分的调用数", reason: "用量读数没有模型维度" }]}
         >
@@ -279,7 +279,7 @@ export function CapModelsPane() {
 
         {/* 3 健康 */}
         <ConsoleCard
-          label={cardLabel("健康")}
+          label={<CardTitle title="健康" />}
           action={<span className="cap-action">成功率 · 限流 · 首字</span>}
           availability={[
             { label: "成功率", reason: "没有按模型的探测读数" },
@@ -292,7 +292,7 @@ export function CapModelsPane() {
 
         {/* 4 未接入 */}
         <ConsoleCard
-          label={cardLabel("未接入")}
+          label={<CardTitle title="未接入" />}
           action={<span className="cap-action">有密钥未启用</span>}
           availability={[{ label: "密钥与启用状态清单", reason: "模型目录没有读口" }]}
         >
@@ -302,7 +302,7 @@ export function CapModelsPane() {
 
       {/* 5 当前单价 */}
       <ConsoleCard
-        label={cardLabel("当前单价")}
+        label={<CardTitle title="当前单价" />}
         action={<span className="cap-action">只用于估算与预检</span>}
         flush
         availability={[
@@ -350,7 +350,7 @@ export function CapModelsPane() {
 
       {/* 6 用量与账本 */}
       <ConsoleCard
-        label={cardLabel("用量与账本")}
+        label={<CardTitle title="用量与账本" />}
         action={<span className="cap-action">明细在总览</span>}
         availability={[
           { label: "浪费拆账", reason: "失败与重试没有单独入账" },
