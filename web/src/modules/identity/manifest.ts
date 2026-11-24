@@ -1,7 +1,9 @@
 /**
  * identity 治理·身份组 manifests — IA group 5/8 (PRD §3 rows 9-11, GAP-02).
- * All three read 毕升 user/department/role endpoints; none live yet — honest
- * placeholders with per-tab 数据来源, never blank dead links.
+ *
+ * 三屏都由本目录页面承接（人员目录 / 组织与部门 / 角色与权限）。数据来源写的是
+ * 本轮实测的真实读数面：成员台账 + 部门名册试读；角色与权限矩阵没有读口，
+ * 页面按「—」+ 卡底缺读口声明，不补样例。
  */
 import type { ModuleManifest } from '../../shell/registry';
 
@@ -15,8 +17,8 @@ const manifest: ModuleManifest = {
       kind: 'reuse',
       group: 'identity',
       icon: 'Users',
-      reuse: () => import('../people/PeopleModulePage'),
-      dataSource: '人员目录来自统一用户体系（接口对接核实中）',
+      reuse: () => import('./IdentityPeoplePage'),
+      dataSource: '人员目录来自数字员工台账（成员姓名、岗位、部门、生命周期态）',
     },
     {
       id: 'departments',
@@ -25,17 +27,18 @@ const manifest: ModuleManifest = {
       kind: 'reuse',
       group: 'identity',
       icon: 'Building2',
-      reuse: () => import('../org/OrgModulePage'),
-      dataSource: '组织架构数据（接口对接核实中）',
+      reuse: () => import('./IdentityDepartmentsPage'),
+      dataSource: '部门按成员台账的部门字段现算；部门名册读口未接线',
     },
     {
       id: 'roles',
       label: '角色与权限',
       route: '#/identity?tab=roles',
-      kind: 'planned',
+      kind: 'reuse',
       group: 'identity',
       icon: 'ShieldCheck',
-      dataSource: '角色与权限数据（接口对接核实中）',
+      reuse: () => import('./IdentityRolesPage'),
+      dataSource: '角色定义与权限矩阵没有读口；成员侧取成员台账，角色与范围显示「—」',
     },
   ],
 };
