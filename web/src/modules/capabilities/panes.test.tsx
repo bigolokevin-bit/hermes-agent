@@ -216,26 +216,73 @@ describe("能力与接入 · 工具与 MCP", () => {
 });
 
 describe("能力与接入 · 模型与单价", () => {
-  it("六块、两条表的列名对齐骨架；价目端点未接线时单价列全「—」", async () => {
-    stub({
-      "/api/models": {
-        status: 200,
-        body: { items: [{ id: "qwen3-max", name: "qwen3-max", provider: "dashscope", context_window: 131072 }] },
-      },
-      "/api/models/pricing": { status: 404, body: { code: "models.pricing_not_wired" } },
-      "/api/hermes-usage?days=1": {
-        status: 200,
-        body: { period_days: 1, cost: { cost_usd: null, rows: 0 }, by_model: null },
-      },
-      "/api/hermes-usage?days=30": {
-        status: 200,
-        body: { period_days: 30, cost: { cost_usd: 1.27, rows: 85 }, by_model: null },
-      },
-    });
+  const liveStubs = {
+    "/api/models": {
+      status: 200,
+      body: { items: [{ id: "qwen3-max", name: "qwen3-max", provider: "dashscope", context_window: 131072, status: "ok" }] },
+    },
+    "/api/models/pricing": { status: 404, body: { code: "models.pricing_not_wired" } },
+    "/api/hermes-usage?days=1": {
+      status: 200,
+      body: { period_days: 1, cost: { cost_usd: null, rows: 0 }, by_model: null },
+    },
+    "/api/hermes-usage?days=7": {
+      status: 200,
+      body: { period_days: 7, cost: { cost_usd: 0.9, rows: 12 }, by_model: null },
+    },
+    "/api/hermes-usage?days=30": {
+      status: 200,
+      body: { period_days: 30, cost: { cost_usd: 1.27, rows: 85 }, by_model: null },
+    },
+  };
+
+  /** 与 parity-probe 同一口径的破折号计数（— / 未接入 / 待核实）。 */
+  function dashCount(): number {
+    const t = text();
+    return (t.match(/—/g) ?? []).length + (t.match(/未接入/g) ?? []).length + (t.match(/待核实/g) ?? []).length;
+  }
+
+  it("六块；价目未接线时单价整列不画、缺列在卡底可用性点名，真读数照实上屏", async () => {
+    stub(liveStubs);
     await mount(<CapModelsPane />);
 
     expect(cards()).toBe(6);
     expect(q(".cap-sub")!.textContent).toBe("1 个可用模型 · — 条单价");
+    // 台账回了名称/供应商/上下文/状态；输入、输出、7 天调用整列无读口，不画。
+    expect(headers(0)).toEqual(["模型", "Provider", "上下文", "状态"]);
+    // 价目零行：保留骨架表头同序（含来源列；写口「编辑」在卡底点名）。
+    expect(headers(1)).toEqual([
+      "供应商",
+      "模型",
+      "输入 $/1M",
+      "输出 $/1M",
+      "货币",
+      "生效日期",
+      "版本",
+      "来源",
+    ]);
+    const modelCells = Array.from(
+      all('[data-testid="cap-model-row"]')[0]!.querySelectorAll("td"),
+    ).map((td) => td.textContent?.trim());
+    expect(modelCells).toEqual(["qwen3-max", "dashscope", "128k", "可用"]);
+
+    expect(text()).toContain("数据可用性");
+    expect(text()).toContain("列「输入 $/1M」");
+    expect(text()).toContain("列「7 天调用」");
+    expect(text()).toContain("$1.27");
+    expect(text()).toContain("近 24 小时");
+    expect(text()).toContain("无行");
+    expect(dashCount()).toBeLessThanOrEqual(8);
+    shapeGuards();
+  });
+
+  it("模型目录没有读口时保留骨架表头 + 一行声明，不抹掉整表", async () => {
+    stub({
+      ...liveStubs,
+      "/api/models": { status: 404, body: { code: "console.unknown_route" } },
+    });
+    await mount(<CapModelsPane />);
+
     expect(headers(0)).toEqual([
       "模型",
       "Provider",
@@ -245,23 +292,20 @@ describe("能力与接入 · 模型与单价", () => {
       "7 天调用",
       "状态",
     ]);
-    expect(headers(1)).toEqual(["供应商", "模型", "输入 $/1M", "输出 $/1M", "货币", "生效日期", "版本"]);
-
-    const modelCells = Array.from(
-      all('[data-testid="cap-model-row"]')[0]!.querySelectorAll("td"),
-    ).map((td) => td.textContent?.trim());
-    expect(modelCells[3]).toBe("—");
-    expect(modelCells[4]).toBe("—");
-
-    expect(text()).toContain("缺读口：上游价目端点未接线");
-    expect(text()).toContain("$1.27");
-    expect(text()).toContain("近 24 小时");
-    shapeGuards();
+    expect(all('[data-testid="cap-model-row"]')).toHaveLength(0);
+    expect(text()).toContain("缺读口：上游端点未接线");
+    expect(dashCount()).toBeLessThanOrEqual(8);
   });
 });
 
 describe("能力与接入 · 平台接入", () => {
-  it("七块、副行与列名对齐骨架；凭证与限流没有读口时写「—」", async () => {
+  /** 与 parity-probe 同一口径的破折号计数。 */
+  function dashCount(): number {
+    const t = text();
+    return (t.match(/—/g) ?? []).length + (t.match(/未接入/g) ?? []).length + (t.match(/待核实/g) ?? []).length;
+  }
+
+  it("七块；瓷片只画网关真报的平台，无读口的列整列不填、在卡底点名", async () => {
     stub({
       "/api/hermes-summary": {
         status: 200,
@@ -284,13 +328,26 @@ describe("能力与接入 · 平台接入", () => {
       "网关级凭证与运行状态 · 员工侧绑定在「员工配置 · 通信与身份」",
     );
     expect(all(".cap-readout")[0]!.textContent).toBe("平台 2 · 已连接 2");
-    expect(headers(0)).toEqual(["平台", "凭证", "模式", "限流 / 分钟", "最近调用", "操作"]);
 
-    const rows = all('[data-testid="cap-channel-row"]');
-    expect(rows).toHaveLength(2);
-    expect(rows.map((tr) => tr.querySelector("td")!.textContent)).toEqual(["API 服务", "飞书"]);
-    expect(rows[0]!.querySelectorAll("td")[1]!.textContent).toBe("—");
-    expect(text()).toContain("缺读口：网关级凭证与发送开关未接线");
+    // 瓷片只画真平台，状态与更新时刻都是网关真读数。
+    const tiles = all('[data-testid="cap-channel-row"]');
+    expect(tiles).toHaveLength(2);
+    expect(tiles.map((tile) => tile.querySelector(".cap-tile-name")!.textContent)).toEqual([
+      "API 服务",
+      "飞书",
+    ]);
+    expect(tiles[0]!.textContent).toContain("已连接");
+    expect(tiles[0]!.textContent).not.toContain("—");
+
+    // 凭证明细：除平台名外整列无读口 ⇒ 骨架表头 + 一行声明，缺列卡底点名。
+    expect(headers(0)).toEqual(["平台", "凭证", "模式", "限流 / 分钟", "最近调用", "操作"]);
+    expect(text()).toContain("凭证、模式、限流与调用时刻都没有读口");
+    expect(all("table")[0]!.querySelectorAll("tbody tr")).toHaveLength(1);
+    expect(text()).toContain("5 项无读口");
+    // 拦截明细同样保留骨架表头。
+    expect(headers(1)).toEqual(["时间", "员工", "动作", "对象", "原因", "结果"]);
+
+    expect(dashCount()).toBeLessThanOrEqual(8);
     shapeGuards();
   });
 });

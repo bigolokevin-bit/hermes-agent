@@ -1,21 +1,23 @@
 // 能力与接入 · 平台接入（骨架 #/capabilities?tab=channels）
 //
-// 骨架 7 块：说明条 / 平台凭据 / 平台状态(6 块瓷片) / 凭证明细 / 可接入的渠道 /
-// 发送门 / 熔断 / 最近拦截明细。本页 7 张卡都在，瓷片只画网关真实报上来的平台。
+// 骨架 7 块 + 瓷片区：说明条 / 平台凭据 / 平台状态(瓷片) / 凭证明细 / 可接入的渠道 /
+// 发送门 / 熔断 / 最近拦截明细。
 //
-// 唯一的真读口是网关自己的运行摘要：它报平台名、连接状态与网关状态更新时刻。
-// 凭证、限流、逐条调用时刻、拦截明细都没有读口，一律「—」+ 卡底写明。
+// 读口真相（2026-11-24 实测）：唯一真读口是网关运行摘要 —— 平台名、连接状态、
+// 状态更新时刻、网关级当日计数（进程启动后计数，不按平台拆分）。凭证、模式、限流、
+// 逐平台消息数与调用时刻、渠道目录、发送门计数、熔断状态、拦截台账都没有读口。
+// 规则：整列/整行无读口就不画，缺失只在卡底「数据可用性」声明一次，正文只留「—」；
+// 一行真读数都没有的表保留骨架表头 + 一行声明，不把整表抹掉。
 import { Link } from "react-router";
 import { ConsoleCard } from "@/components/console/ConsoleCard";
 import { Pill } from "@/components/console/Pill";
-import { CardFoot, GapNote, GapRow, PaneHead } from "./PaneBits";
+import { GapRow, PaneHead, cardLabel } from "./PaneBits";
 import { DASH, beijingMinute, count, gapText, recordOf, textOf, usePort } from "./paneApi";
 
-type Platform = { key: string; name: string; connected: boolean | null; attention: boolean | null };
+type Platform = { key: string; name: string; connected: boolean | null };
 type Gateway = {
   platforms: Platform[];
   updatedAt: string | null;
-  state: string | null;
 };
 
 const PLATFORM_LABEL: Record<string, string> = {
@@ -39,7 +41,7 @@ function parseGateway(body: unknown): Gateway | null {
   if (platforms === null || Object.keys(platforms).length === 0) {
     // 网关没有报平台也算读到了：平台清单为空是真零，不是解析失败。
     if (body === null) return null;
-    return { platforms: [], updatedAt: textOf(gateway.updated_at), state: textOf(gateway.state) };
+    return { platforms: [], updatedAt: textOf(gateway.updated_at) };
   }
   const rows = Object.entries(platforms).map(([key, value]) => {
     const entry = recordOf(value);
@@ -48,10 +50,9 @@ function parseGateway(body: unknown): Gateway | null {
       key,
       name: PLATFORM_LABEL[key.toLowerCase()] ?? key,
       connected: state === "connected" || state === "ok" || state === "running" ? true : state ? false : null,
-      attention: entry.needs_attention === true ? true : entry.needs_attention === false ? false : null,
     };
   });
-  return { platforms: rows, updatedAt: textOf(gateway.updated_at), state: textOf(gateway.state) };
+  return { platforms: rows, updatedAt: textOf(gateway.updated_at) };
 }
 
 function emptyGateway(data: Gateway): boolean {
@@ -69,6 +70,7 @@ export function CapChannelsPane() {
   return (
     <div className="cap-pane" data-testid="cap-channels">
       <PaneHead
+        showNative={false}
         sub="网关级凭证与运行状态 · 员工侧绑定在「员工配置 · 通信与身份」"
         readout={
           grounded
@@ -89,33 +91,25 @@ export function CapChannelsPane() {
         </div>
       </ConsoleCard>
 
-      {/* 2 平台凭据（网关级） */}
-      <ConsoleCard label="平台凭据" action={<span className="cap-action">网关级 · 员工侧不持有</span>}>
-        <div className="cap-kv">
-          <span className="cap-k">App ID</span>
-          <span className="cap-v cap-mono" title="网关级应用凭据没有读口">
-            {DASH}
-          </span>
-          <span className="cap-k">App Secret</span>
-          <span className="cap-v cap-mono" title="密钥只在密钥库里，页面不返回明文，也没有读口">
-            {DASH}
-          </span>
-          <span className="cap-k">全局发送开关</span>
-          <span className="cap-v" title="全局发送开关没有读口">
-            {DASH}
-          </span>
-          <span className="cap-k">限流</span>
-          <span className="cap-v cap-mono" title="平台限流没有读口">
-            {DASH}
-          </span>
-        </div>
-        <CardFoot note="缺读口：网关级凭证与发送开关未接线" right={DASH} />
+      {/* 2 平台凭据（网关级）：四项都没有读口，整卡一行「—」，缺的项在卡底点名 */}
+      <ConsoleCard
+        label={cardLabel("平台凭据")}
+        action={<span className="cap-action">网关级 · 员工侧不持有</span>}
+        availability={[
+          { label: "App ID" },
+          { label: "App Secret" },
+          { label: "全局发送开关" },
+          { label: "限流" },
+        ]}
+        note="网关级凭证与开关不在本控制台的读口范围，页面也不返回任何明文"
+      >
+        <p className="cap-dash">—</p>
       </ConsoleCard>
 
-      {/* 3 平台状态瓷片 */}
-      <div className="cap-tiles">
+      {/* 3 平台状态瓷片：只画网关真报上来的平台 */}
+      <div className="cap-tiles" data-testid="cap-channel-tiles">
         {platforms.map((platform) => (
-          <div className="cap-tile" key={platform.key}>
+          <div className="cap-tile" key={platform.key} data-testid="cap-channel-row">
             <div className="cap-tile-head">
               <span className="cap-tile-name">{platform.name}</span>
               {platform.connected === true ? (
@@ -123,7 +117,7 @@ export function CapChannelsPane() {
               ) : platform.connected === false ? (
                 <Pill tone="warn">未连接</Pill>
               ) : (
-                <Pill tone="mut">待核实</Pill>
+                <Pill tone="mut">状态未知</Pill>
               )}
             </div>
             <div className="cap-inline">
@@ -131,20 +125,12 @@ export function CapChannelsPane() {
               <span className="cap-grow" />
               <span className="cap-mono cap-mut">{updated}</span>
             </div>
-            <div className="cap-inline">
-              <span className="cap-note">24h 消息</span>
-              <span className="cap-grow" />
-              <span className="cap-mono cap-mut" title="网关只报进程启动后的当日计数，不按平台拆分">
-                {DASH}
-              </span>
-            </div>
           </div>
         ))}
         {platforms.length === 0 ? (
           <div className="cap-tile">
             <div className="cap-tile-head">
               <span className="cap-tile-name">平台</span>
-              <Pill tone="mut">待核实</Pill>
             </div>
             <p className="cap-para">
               {gapText(gateway.read, "正在读取网关运行摘要…", "网关没有报出任何平台（真零）")}
@@ -153,8 +139,24 @@ export function CapChannelsPane() {
         ) : null}
       </div>
 
-      {/* 4 凭证明细 */}
-      <ConsoleCard label="凭证明细" action={<span className="cap-action">密钥只显示末四位</span>} flush>
+      {/* 4 凭证明细：除平台名外整列无读口，保留骨架表头 + 一行声明 */}
+      <ConsoleCard
+        label={cardLabel("凭证明细")}
+        action={
+          <span className="cap-action">
+            {grounded ? `${count(connected)} / ${count(platforms.length)} 已连接` : "已连接读数无"}
+          </span>
+        }
+        flush
+        availability={[
+          { label: "列「凭证」", reason: "页面不返回明文，也没有末四位读数" },
+          { label: "列「模式」" },
+          { label: "列「限流 / 分钟」" },
+          { label: "列「最近调用」", reason: "网关只报全局当日计数，不按平台拆消息数与回调时刻" },
+          { label: "列「操作」", reason: "轮换与验证写口未开放" },
+        ]}
+        note="已连接平台与状态见上方瓷片；连接状态来自网关运行摘要"
+      >
         <div className="cap-tw">
           <table className="cap-t">
             <thead>
@@ -164,60 +166,77 @@ export function CapChannelsPane() {
                 <th>模式</th>
                 <th className="cap-num cap-sm-hide">限流 / 分钟</th>
                 <th>最近调用</th>
-                <th className="cap-num">操作</th>
+                <th>操作</th>
               </tr>
             </thead>
             <tbody>
-              {platforms.map((platform) => (
-                <tr key={platform.key} data-testid="cap-channel-row">
-                  <td>{platform.name}</td>
-                  <td className="cap-mono cap-mut" title="凭证没有读口，本页也不返回明文">
-                    {DASH}
-                  </td>
-                  <td className="cap-mut">{DASH}</td>
-                  <td className="cap-num cap-sm-hide">{DASH}</td>
-                  <td>
-                    <Pill tone={platform.connected === true ? "ok" : platform.connected === false ? "warn" : "mut"}>
-                      {platform.connected === true ? "已连接" : platform.connected === false ? "未连接" : "待核实"}
-                    </Pill>
-                  </td>
-                  <td className="cap-num cap-mut">{DASH}</td>
-                </tr>
-              ))}
-              {platforms.length === 0 ? (
-                <GapRow colSpan={6}>
-                  {gapText(gateway.read, "正在读取平台清单…", "网关没有报出任何平台（真零）")}
-                </GapRow>
-              ) : null}
+              <GapRow colSpan={6}>
+                {gateway.read.k === "loading"
+                  ? "正在读取网关运行摘要…"
+                  : grounded
+                    ? "凭证、模式、限流与调用时刻都没有读口，本表没有可填真读数的行。"
+                    : gapText(gateway.read, "正在读取网关运行摘要…", "网关没有报出任何平台（真零）")}
+              </GapRow>
             </tbody>
           </table>
         </div>
-        <CardFoot
-          note="凭证、模式、限流与逐条调用时刻都没有读口；连接状态来自网关运行摘要"
-          right={grounded ? `${count(connected)} / ${count(platforms.length)} 已连接` : DASH}
-        />
       </ConsoleCard>
 
       {/* 5 可接入的渠道 */}
-      <ConsoleCard label="可接入的渠道" action={<span className="cap-action">需管理员开通</span>}>
-        <GapNote>缺读口：可接入渠道目录未接线，这里没有列出可开通的平台与其准入条件。</GapNote>
+      <ConsoleCard
+        label={cardLabel("可接入的渠道")}
+        action={<span className="cap-action">需管理员开通</span>}
+        availability={[{ label: "渠道目录", reason: "可开通平台与其准入条件没有读口" }]}
+      >
+        <p className="cap-dash">—</p>
         <p className="cap-para">接入后仍需在「员工身份绑定」里绑定账号，凭证本身不绑定员工。</p>
       </ConsoleCard>
 
       <div className="cap-g2">
         {/* 6 发送门 */}
-        <ConsoleCard label="发送门" action={<Pill tone="warn">人工确认</Pill>}>
-          <GapNote>缺读口：放行、拦截与超时退回都没有读口，这一块不显示任何次数。</GapNote>
+        <ConsoleCard
+          label={cardLabel("发送门")}
+          action={<span className="cap-action">全部对外消息</span>}
+          availability={[
+            { label: "放行计数" },
+            { label: "拦截计数" },
+            { label: "超时退回计数" },
+            { label: "管理员代发开关", reason: "写口未开放" },
+          ]}
+        >
+          <p className="cap-dash">—</p>
         </ConsoleCard>
 
         {/* 7 熔断 */}
-        <ConsoleCard label="熔断" action={<Pill tone="mut">待核实</Pill>}>
-          <GapNote>缺读口：熔断状态、冷却与恢复策略未接线，本页不写「已触发」或「未触发」。</GapNote>
+        <ConsoleCard
+          label={cardLabel("熔断")}
+          availability={[
+            { label: "熔断状态与触发史" },
+            { label: "冷却与恢复策略", reason: "阈值未经证，不写触发与否" },
+          ]}
+        >
+          <p className="cap-dash">—</p>
         </ConsoleCard>
       </div>
 
-      {/* 8 最近拦截明细（骨架：发送状态段下的表） */}
-      <ConsoleCard label="最近拦截明细" action={<span className="cap-action">近 24 小时</span>} flush>
+      {/* 8 最近拦截明细（骨架：发送状态段下的表）：整表无读口，保留骨架表头 + 一行声明 */}
+      <ConsoleCard
+        label={cardLabel("最近拦截明细")}
+        action={<span className="cap-action">近 24 小时</span>}
+        flush
+        availability={[{ label: "拦截台账", reason: "拦截事件清单没有读口" }]}
+        note={
+          <span className="cap-inline">
+            <span className="cap-note">审批与拦截明细另有两处入口</span>
+            <Link className="cap-link" to="/approvals">
+              审批与发布门 →
+            </Link>
+            <Link className="cap-link" to="/work?tab=runs">
+              运行证据 →
+            </Link>
+          </span>
+        }
+      >
         <div className="cap-tw">
           <table className="cap-t">
             <thead>
@@ -231,14 +250,10 @@ export function CapChannelsPane() {
               </tr>
             </thead>
             <tbody>
-              <GapRow colSpan={6}>缺读口：拦截台账未接线；审批与运行证据在「审批」与「运行」两页。</GapRow>
+              <GapRow colSpan={6}>拦截台账没有读口，本表没有可填真读数的行。</GapRow>
             </tbody>
           </table>
         </div>
-        <CardFoot
-          note="审批与拦截明细另有两处入口"
-          right="审批 · 运行"
-        />
       </ConsoleCard>
     </div>
   );

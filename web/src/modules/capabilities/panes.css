@@ -242,6 +242,18 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+/* 只剩两块 KPI 时的两档网格（浪费/对账无读口后不占空位）。 */
+.cap-minis--2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+/* 整卡无读口时的正文一行「—」：等宽弱色，缺的项在卡底可用性点名。 */
+.cap-dash {
+  margin: 0;
+  font-family: var(--font-family-mono-ls);
+  font-size: var(--font-size-ls-2);
+  line-height: var(--line-height-ls-2);
+  color: var(--color-text-faint-ls);
+}
 .cap-mini {
   display: flex;
   flex-direction: column;
@@ -255,11 +267,19 @@
 }
 .cap-num-big {
   font-family: var(--font-family-mono-ls);
-  font-size: var(--font-size-ls-3);
+  font-size: var(--font-size-ls-6);
   font-weight: var(--font-weight-ls-medium);
   line-height: var(--line-height-ls-1);
   color: var(--color-text-ls);
   font-variant-numeric: var(--tabular-ls);
+}
+
+/* 非金额的大字占位（如账本「无行」）：比数字小一档，弱色，不冒充读数。 */
+.cap-mini-text {
+  font-size: var(--font-size-ls-4);
+  font-weight: var(--font-weight-ls-regular);
+  line-height: var(--line-height-ls-1);
+  color: var(--color-text-muted-ls);
 }
 
 /* ---------- 行内小件 ---------- */

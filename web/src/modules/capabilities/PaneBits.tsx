@@ -37,6 +37,14 @@ export function PaneHead({ sub, readout, readoutTitle, showNative = true }: Pane
 }
 
 /**
+ * ConsoleCard 的 label 槽用：h2 承载卡标题（模块内标题层级不再是平的），
+ * 形制沿用 .console-card__label 的 11px 等宽大写微标签（2026-11-24 与身份页同一形制）。
+ */
+export const cardLabel = (title: ReactNode) => (
+  <h2 className="console-card__label cap-card-title">{title}</h2>
+);
+
+/**
  * 卡头：左边 h2 微标签（11px 等宽大写，沿用 console-card__label 的形制），
  * 右边一枚小链接/小读数。标题用 h2 而不是 div，模块内标题层级才不是平的。
  */
