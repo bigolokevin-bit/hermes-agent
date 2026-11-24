@@ -34,3 +34,164 @@
   border-color: var(--line-2);
 }
 
+/* ------------------------------------------------------------------ *
+ * 信息轨 20 卡（骨架 detail pane，2026-11-24）
+ * 卡体只放卡头微标签 + dl 字段行 / 行分隔线；不写裸 hex，全部取 tokens。
+ * ------------------------------------------------------------------ */
+
+.edw-rail-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.edw-rail-toggle:focus-visible {
+  outline: 2px solid var(--fg-3);
+  outline-offset: 2px;
+}
+
+.edw-rail-chev {
+  flex: none;
+  font-size: 9px;
+  font-style: normal;
+  color: var(--fg-3);
+}
+
+.edw-rail-actions {
+  display: flex;
+  min-width: 0;
+  flex: 0 1 auto;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.edw-rail-meta {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+  color: var(--fg-3);
+}
+
+.edw-rail-link {
+  flex: none;
+  font-size: 11px;
+  color: var(--fg-2);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  white-space: nowrap;
+}
+
+.edw-rail-link:hover {
+  color: var(--fg);
+}
+
+/* dl 里每对 dt/dd 交给父级网格排版（不改 console-kv 的栅格口径）。 */
+.edw-rail-pair {
+  display: contents;
+}
+
+.edw-rail-list {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 11px;
+}
+
+.edw-rail-list > li {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-ls-2);
+  padding: 5px 0;
+  border-top: 1px solid var(--line-3);
+  color: var(--fg-2);
+}
+
+.edw-rail-list > li:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.edw-rail-main {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.edw-rail-aside {
+  flex: none;
+  font-size: 10px;
+  color: var(--fg-3);
+  white-space: nowrap;
+}
+
+.edw-rail-mono {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: var(--fg);
+}
+
+.edw-rail-dim {
+  flex: none;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--fg-3);
+}
+
+.edw-rail-prose {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--fg-2);
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* 卡底缺读口说明：11px，弱色，不另套框。 */
+.edw-rail-missing {
+  margin: 6px 0 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--fg-3);
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 1023px) {
+  /* 375：信息轨是对话下方的一列，卡头长 meta 先截断，绝不撑宽页面。 */
+  .edw-rail-meta {
+    max-width: 46%;
+  }
+}
+
+/* 预算卡的量表：值列按内容取宽（console-bar 默认 40px 会把
+   「$1.26 / $100.00」折成三行），轨道仍吃剩余宽度。 */
+.edw-rail-meter {
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+}
+
+.edw-rail-meter .console-bar__value {
+  white-space: nowrap;
+}
+

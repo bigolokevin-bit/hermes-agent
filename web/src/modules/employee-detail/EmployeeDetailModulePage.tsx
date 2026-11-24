@@ -1087,10 +1087,11 @@ export default function EmployeeDetailModulePage({ employeeId }: { employeeId?: 
 
   const header = (
     <header className="flex min-w-0 flex-wrap items-center gap-3">
+      {/* 全页唯一 h1 归外壳页面标题；分区页标题同为 h2，视觉与文本契约不变。 */}
       <div className="min-w-0">
-        <h1 className="truncate font-mondwest text-xl" title={empId || undefined}>
+        <h2 className="truncate font-mondwest text-xl" title={empId || undefined}>
           {name ? `${name} · ${shortCode(empId)}` : empId ? `员工 · ${shortCode(empId)}` : "员工详情"}
-        </h1>
+        </h2>
         <p className="flex min-w-0 flex-wrap gap-x-2 text-xs text-white/50">
           <span className="min-w-0">{dash(titleJob)}</span>
           {headerDept ? (

@@ -17,10 +17,10 @@
  *    (assert-ia scans shell/** + modules/** for the marker, where
  *    ChatModulePage's <ChatHost> mount is the single counted host — a
  *    second literal here would push chatHosts to 2);
- *  - right = wbrail, four collapsible groups (id 身份与四道门 / budget 预算
- *    expanded by default; cap 能力 / runs 最近运行 collapsed), per skeleton
- *    L2444-2505. Every unlanded field shows 待核实 — no fake values, and
- *    unknown ≠ pass (§4 duty law repeats here).
+ *  - right = wbrail：20 卡信息轨（EmployeeDetailRail，骨架 detail pane 的
+ *    15 张配置/任务/运行/事件卡 + 工作台 4 组 + 版本链卡），卡头一律 11px
+ *    微标签；取不到的字段写 —，卡底 11px「缺读口：…」，不编数字、不吃
+ *    别人员工的行（unknown ≠ pass，§4 duty law 在这里重复）。
  *
  * When `renderChatHost` is absent (App wiring missing) or the employee id is
  * blank, the left cell degrades to the honest mount-point notice from the
@@ -31,6 +31,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router";
 
 import { fetchJSON } from "@/lib/api";
+import EmployeeDetailRail from "./EmployeeDetailRail";
 import "./employee-detail.css";
 
 export interface EmployeeDetailWorkbenchProps {
@@ -38,42 +39,6 @@ export interface EmployeeDetailWorkbenchProps {
   /** App-provided element wrapper carrying the chat-host contract. */
   renderChatHost?: (employeeId: string) => ReactNode;
 }
-
-interface RailGroup {
-  key: "id" | "budget" | "cap" | "runs";
-  label: string;
-  lines: string[];
-}
-
-const RAIL_GROUPS: readonly RailGroup[] = [
-  {
-    key: "id",
-    label: "身份与上岗检查",
-    lines: [
-      "身份绑定：待核实（上游用户中心接口尚未接入）",
-      "上岗检查：待核实（汇总数据尚未接入，核实前不判定可上岗）",
-      "汇总结论：数据接入前不判定",
-    ],
-  },
-  {
-    key: "budget",
-    label: "预算",
-    lines: [
-      "额度/消耗：待核实（金额以计费账本为准，估算一律标「预估」）",
-      "汇总数据接入前保持本提示",
-    ],
-  },
-  {
-    key: "cap",
-    label: "能力",
-    lines: ["技能/工具/知识覆盖：待核实（数据源尚未接入）"],
-  },
-  {
-    key: "runs",
-    label: "最近运行",
-    lines: ["最近运行：接入后显示最近记录；费用缺失标「—」"],
-  },
-];
 
 /** 与模块页同一口径：emp_A3F1B2C4… → "A3F1B2C4"；取不出码就「—」。 */
 function shortCode(value: string): string {
@@ -146,17 +111,7 @@ export default function EmployeeDetailWorkbench({
   employeeId,
   renderChatHost,
 }: EmployeeDetailWorkbenchProps) {
-  const [open, setOpen] = useState<Record<RailGroup["key"], boolean>>(() => {
-    // 375：信息轨默认收起（身份/预算两组也折叠），桌面维持原来的展开档。
-    const wide =
-      typeof window !== "undefined" &&
-      typeof window.matchMedia === "function" &&
-      window.matchMedia("(min-width: 1024px)").matches;
-    return { id: wide, budget: wide, cap: false, runs: false };
-  });
   const [chatOnly, setChatOnly] = useState(false);
-  const toggle = (key: RailGroup["key"]) =>
-    setOpen((prev) => ({ ...prev, [key]: !prev[key] }));
   const header = useHeaderInfo(employeeId);
   const code = employeeId ? shortCode(employeeId) : "—";
   const title = header.name ? `${header.name} · ${code}` : `员工 · ${code}`;
@@ -192,13 +147,15 @@ export default function EmployeeDetailWorkbench({
     >
       <header className="flex min-w-0 flex-wrap items-center gap-3">
         <div className="min-w-0">
-          <h1
+          {/* 全页唯一 h1 是外壳的页面标题「数字员工」；本页标题降为 h2，
+              视觉不变（同一组类），标题文本契约仍是「姓名 · 短码」。 */}
+          <h2
             className="truncate font-mondwest text-xl"
             data-testid="ed5-workbench-title"
             title={employeeId || undefined}
           >
             {title}
-          </h1>
+          </h2>
           <p className="flex min-w-0 flex-wrap gap-x-2 text-xs edw-muted">
             <span className="min-w-0">{header.role ?? "岗位待核实"}</span>
             {header.department ? (
@@ -266,45 +223,11 @@ export default function EmployeeDetailWorkbench({
           {chatCell}
         </div>
         <aside
-          className={
-            chatOnly ? "hidden" : "flex min-w-0 flex-col gap-2"
-          }
+          className={chatOnly ? "hidden" : "min-w-0"}
           aria-label="工作台侧栏"
-          data-testid="ed5-workbench-rail"
+          data-testid="ed5-workbench-rail-slot"
         >
-          {RAIL_GROUPS.map((group) => (
-            <div
-              key={group.key}
-              className="rounded-[var(--r)] border edw-panel"
-            >
-              <button
-                type="button"
-                onClick={() => toggle(group.key)}
-                aria-expanded={open[group.key]}
-                className="flex w-full items-center justify-between px-4 py-2 text-sm edw-toggle"
-              >
-                <span>{group.label}</span>
-                <i aria-hidden className="edw-muted">
-                  {open[group.key] ? "▾" : "▸"}
-                </i>
-              </button>
-              {open[group.key] && (
-                <ul className="flex flex-col gap-1 px-4 pb-3 text-xs">
-                  {group.lines.map((line) => (
-                    <li
-                      key={line}
-                      className="edw-muted break-words"
-                      {...(line.includes("待核实")
-                        ? { "data-planned": "规划中：上游数据源未落地" }
-                        : {})}
-                    >
-                      {line}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          ))}
+          <EmployeeDetailRail employeeId={employeeId} hidden={chatOnly} />
         </aside>
       </div>
     </section>
