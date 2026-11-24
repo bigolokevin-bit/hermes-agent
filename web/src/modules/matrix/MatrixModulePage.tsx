@@ -143,11 +143,16 @@ export function MatrixModulePage() {
     [payload, view],
   );
 
-  const setView = (next: MatrixView) => {
+  // 2026-11-24 收口：视角切换从 `role="tablist"` 降级成普通 <nav> 链接。
+  // 全站唯一一排 tab 归外壳（shell/console.tsx 的 ConsoleTabStrip）；模块内
+  // 再排一排会让每页出现两个 tablist（用户实机投诉「两排 tab」）。视角本来
+  // 就是 ?view= 地址，换成真链接后语义与原状态完全一致，且可直开/可分享。
+  const viewSearch = (next: MatrixView): string => {
     const search = new URLSearchParams(params);
     if (next === "people") search.delete("view");
     else search.set("view", next);
-    setParams(search, { replace: true });
+    const qs = search.toString();
+    return qs ? `?${qs}` : "";
   };
 
   const retry = () => {
@@ -204,34 +209,30 @@ export function MatrixModulePage() {
       <Card>
         <CardContent className="space-y-3 p-4">
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1 rounded-lg border border-white/10 p-1" role="tablist" aria-label="视角">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={view === "people"}
-                onClick={() => setView("people")}
-                className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs ${
+            <nav className="flex items-center gap-1 rounded-lg border border-white/10 p-1" aria-label="视角">
+              <Link
+                to={{ search: viewSearch("people") }}
+                aria-current={view === "people" ? "page" : undefined}
+                className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs no-underline ${
                   view === "people" ? "bg-white/10 text-white" : "text-white/55 hover:text-white/80"
                 }`}
                 data-testid="mtx5-view-people"
               >
                 <Users className="size-3.5" aria-hidden="true" />
                 按员工
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={view === "resource"}
-                onClick={() => setView("resource")}
-                className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs ${
+              </Link>
+              <Link
+                to={{ search: viewSearch("resource") }}
+                aria-current={view === "resource" ? "page" : undefined}
+                className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs no-underline ${
                   view === "resource" ? "bg-white/10 text-white" : "text-white/55 hover:text-white/80"
                 }`}
                 data-testid="mtx5-view-resource"
               >
                 <LayoutGrid className="size-3.5" aria-hidden="true" />
                 按能力
-              </button>
-            </div>
+              </Link>
+            </nav>
             {phase === "ready" ? (
               <p className="flex min-w-0 flex-wrap gap-x-2 text-xs text-white/45" data-testid="mtx5-summary">
                 <span>员工 {payload?.employees.length ?? 0}</span>

@@ -118,6 +118,23 @@ describe("MatrixModulePage (R7.1 item 2, restated by P0 n3 — live is live, sam
     expect(fetchJSON).toHaveBeenCalledWith("/agent-api/api/matrix");
   });
 
+  // 2026-11-24 结构性 P0：模块内不许再有第二排 tab。视角切换是普通 <nav> 链接，
+  // 当前视角用 aria-current 标；整页 tablist 数必须为 0（唯一一排归外壳）。
+  it("视角切换是普通链接：页内 0 个 tablist，当前项 aria-current", async () => {
+    fetchJSON.mockResolvedValue({ employees: [], capabilities: [] });
+    await renderPage();
+    expect(container.querySelectorAll('[role="tablist"]')).toHaveLength(0);
+    expect(container.querySelectorAll('[role="tab"]')).toHaveLength(0);
+    const people = container.querySelector('[data-testid="mtx5-view-people"]');
+    expect(people?.tagName).toBe("A");
+    expect(people?.getAttribute("aria-current")).toBe("page");
+    expect(people?.getAttribute("href")).not.toContain("view=");
+    const resource = container.querySelector('[data-testid="mtx5-view-resource"]');
+    expect(resource?.tagName).toBe("A");
+    expect(resource?.getAttribute("aria-current")).toBeNull();
+    expect(resource?.getAttribute("href")).toContain("view=resource");
+  });
+
   // 复述，不删除：这条腿钉的是 R7.1 item 2「404 不许出样例表」。P0 n3 按
   // PRD §12 把这扇门反过来接上（404／连不上 = 接口未接入 → 样例门），所以
   // 原断言里「不许有样例」的一半改成「样例必须被明确标成样例」：根节点

@@ -215,7 +215,10 @@ describe("AccessModulePage admins and high-risk operations", () => {
       return Promise.resolve({ items: [] });
     });
     await render("/access?tab=admins");
-    expect(container.querySelector('[data-testid="ac3-tab-admins"]')?.getAttribute("aria-selected")).toBe("true");
+    // 2026-11-24：分组条已从 role="tablist" 降级成普通 nav 链接，当前项用 aria-current 标，
+    // 且整页 tablist 必须为 0（唯一一排归外壳）。
+    expect(container.querySelector('[data-testid="ac3-tab-admins"]')?.getAttribute("aria-current")).toBe("page");
+    expect(container.querySelectorAll('[role="tablist"]')).toHaveLength(0);
     expect(container.querySelector('[data-testid="adm5-page"]')).toBeTruthy();
     const adminTable = container.querySelector('[data-testid="adm5-admin-table"]');
     expect(adminTable?.textContent).toContain("林一舟 · 34567890");
@@ -305,7 +308,10 @@ describe("AccessModulePage admins and high-risk operations", () => {
     await act(async () => {});
     expect(container.querySelector('[data-testid="adm5-page"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="adm5-admin-row"]')).toBeTruthy();
-    expect(container.querySelector('[data-testid="ac3-tab-admins"]')?.getAttribute("aria-selected")).toBe("true");
+    // 2026-11-24：分组条已从 role="tablist" 降级成普通 nav 链接，当前项用 aria-current 标，
+    // 且整页 tablist 必须为 0（唯一一排归外壳）。
+    expect(container.querySelector('[data-testid="ac3-tab-admins"]')?.getAttribute("aria-current")).toBe("page");
+    expect(container.querySelectorAll('[role="tablist"]')).toHaveLength(0);
   });
 
 });

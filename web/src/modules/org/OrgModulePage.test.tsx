@@ -363,4 +363,40 @@ describe("PE-10 组织树按名搜索", () => {
     await typeTerm("归档房");
     expect(container.textContent).toContain("临时部门");
   });
+
+  // 2026-11-24：部门接口无读口时，页面不能只剩一张「未接入」卡（用户视角=空壳）。
+  // 允许上屏的只有员工档案里已存在的 department 字段归拢，且必须明说「不是组织树」。
+  it("未接入腿补一块员工档案部门分布（真数据），不编层级", async () => {
+    mockApi((url) => {
+      if (url.includes("/api/employees")) {
+        return Promise.resolve({
+          items: [
+            { employeeId: "emp_1", name: "甲", department: "产品部" },
+            { employeeId: "emp_2", name: "乙", department: "产品部" },
+            { employeeId: "emp_3", name: "丙", department: "工程部" },
+            { employeeId: "emp_4", name: "丁", department: null },
+          ],
+        });
+      }
+      return missing(url);
+    });
+    await renderPage();
+    const facts = container.querySelector('[data-testid="org5-facts"]');
+    expect(facts).toBeTruthy();
+    expect(facts?.textContent).toContain("这不是组织树");
+    expect(container.querySelector('[data-testid="org5-facts-summary"]')?.textContent).toContain("员工 4 人");
+    const rows = [...container.querySelectorAll('[data-testid="org5-facts-row"]')].map((row) => row.textContent ?? "");
+    expect(rows[0]).toContain("产品部");
+    expect(rows[0]).toContain("2 人");
+    expect(rows[1]).toContain("工程部");
+    expect(facts?.textContent).toContain("未标注部门");
+    // 不造假层级：没有任何 tree/toggle 控件出现在事实块里。
+    expect(facts?.querySelector('[aria-expanded]')).toBeNull();
+  });
+
+  it("未接入腿读不到员工名录时如实说不代表 0", async () => {
+    mockApi((url) => missing(url));
+    await renderPage();
+    expect(container.querySelector('[data-testid="org5-facts-unavailable"]')?.textContent).toContain("不代表 0");
+  });
 });

@@ -26,6 +26,7 @@ import { Button, Card, CardContent } from "@nous-research/ui";
 import { fetchJSON } from "@/lib/api";
 import { API_UNREACHABLE_MESSAGE, ApiError, SESSION_REQUIRED_GUIDANCE } from "@/lib/api-error";
 
+import DeptFacts from "./DeptFacts";
 import "./org.css";
 
 /* ------------------------------------------------------------------ *
@@ -735,22 +736,28 @@ export default function OrgModulePage() {
   }
 
   if (org.phase === "unavailable") {
+    // 2026-11-24：部门接口没有读口时，页面不能只剩一张「未接入」卡（用户视角
+    // 就是空壳）。下面补一块**只读事实**：员工档案里已写着的 department 字段
+    // 按人数归拢；不编层级、不编负责人、不补 0。见 DeptFacts.tsx。
     return shell(
-      <StateShell
-        testid="org5-denied"
-        icon={<ShieldAlert className="h-4 w-4 text-amber-300/80" aria-hidden />}
-        title="组织与部门未接入"
-        reason={org.reason}
-        gapTitle={GAP02}
-        extra={
-          <>
-            <a className="org5-apply" data-testid="org5-apply" href="#/approvals">
-              去审批中心提交开通申请
-            </a>
-            <RequestId id={org.requestId} />
-          </>
-        }
-      />,
+      <>
+        <StateShell
+          testid="org5-denied"
+          icon={<ShieldAlert className="h-4 w-4 text-amber-300/80" aria-hidden />}
+          title="组织与部门未接入"
+          reason={org.reason}
+          gapTitle={GAP02}
+          extra={
+            <>
+              <a className="org5-apply" data-testid="org5-apply" href="#/approvals">
+                去审批中心提交开通申请
+              </a>
+              <RequestId id={org.requestId} />
+            </>
+          }
+        />
+        <DeptFacts />
+      </>,
     );
   }
 

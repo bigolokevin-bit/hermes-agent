@@ -455,10 +455,13 @@ export default function AccessModulePage() {
   const [risk, setRisk] = useState<AdminState>({ phase: "loading" });
   const [expanded, setExpanded] = useState<string | null>(null);
 
-  const selectView = (next: View) => {
+  // 2026-11-24：分组切换不再是 tab 状态机，而是地址（?view=roles|members|admins）
+  // 的真链接；aria-current 标当前。外壳是唯一 tab 所有者，见文件头注释。
+  const viewSearch = (next: View): string => {
     const params = new URLSearchParams(sp);
     params.set("view", next);
-    setSp(params);
+    const qs = params.toString();
+    return qs ? `?${qs}` : "";
   };
 
   const reload = useCallback(() => {
@@ -545,25 +548,27 @@ export default function AccessModulePage() {
         </Button>
       </header>
 
-      <div className="acc4-seg" role="tablist" aria-label="访问控制分组">
+      {/* 2026-11-24 收口：分组切换降级成普通 <nav> 链接。外壳已拥有全站唯一的
+          一排 tab（shell/console.tsx ConsoleTabStrip），这里再排一排 tablist
+          会让 /identity?tab=roles 出现两个（用户实机投诉）。分组本就是
+          ?view= 地址，真链接后语义/直开/分享全保留，只是不再是 tab 角色。 */}
+      <nav className="acc4-seg" aria-label="访问控制分组">
         {([
           ["roles", "角色", "ac3-tab-roles"],
           ["members", "成员", "ac3-tab-members"],
           ["admins", "管理员", "ac3-tab-admins"],
         ] as const).map(([id, label, testid]) => (
-          <button
+          <Link
             key={id}
-            type="button"
-            role="tab"
-            aria-selected={view === id}
+            to={{ search: viewSearch(id) }}
+            aria-current={view === id ? "page" : undefined}
             data-testid={testid}
-            onClick={() => selectView(id)}
           >
             {label}
             <em>{counts[id] === null ? "—" : counts[id]}</em>
-          </button>
+          </Link>
         ))}
-      </div>
+      </nav>
 
       <Card>
         <CardContent className="acc4-body">

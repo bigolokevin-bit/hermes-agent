@@ -42,7 +42,7 @@
   border-radius: 8px;
 }
 
-.acc4-seg button {
+.acc4-seg a {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -51,14 +51,15 @@
   cursor: pointer;
   font-size: 0.76rem;
   padding: 6px 12px;
+  text-decoration: none;
 }
 
-.acc4-seg button[aria-selected="true"] {
+.acc4-seg a[aria-current="page"] {
   background: var(--color-primary);
   color: var(--color-primary-foreground);
 }
 
-.acc4-seg button em {
+.acc4-seg a em {
   font-style: normal;
   font-variant-numeric: tabular-nums;
   opacity: 0.75;
@@ -164,7 +165,7 @@
 @media (max-width: 560px) {
   .acc4-head > button { width: 100%; }
   .acc4-seg { width: 100%; }
-  .acc4-seg button { flex: 1 1 0; justify-content: center; }
+  .acc4-seg a { flex: 1 1 0; justify-content: center; }
   .acc4-row { grid-template-columns: minmax(0, 1fr) auto; }
   .acc4-meta { grid-column: 1 / -1; white-space: normal; overflow-wrap: anywhere; }
 }

@@ -70,4 +70,50 @@ describe("SettingsPage", () => {
     await render();
     expect(container.querySelector('[data-testid="set4-empty"]')).toBeTruthy();
   });
+
+  // 2026-11-24：/system?tab=defaults 不许是空壳。读口 404 时也要摊开这台控制台
+  // 真实读得到的只读事实（运行时摘要），且不造假开关。
+  it("paints real read-only facts even when the config read port is absent", async () => {
+    fetchJSON.mockImplementation((url: string) => {
+      if (url.includes("/api/config")) {
+        return Promise.reject(new ApiError("missing", { status: 404, body: "", url: "config", requestId: "req-config" }));
+      }
+      return Promise.resolve({
+        schema: "runtime.hermes.summary.v1",
+        sources: { gateway_health: { state: "ok" }, dashboard_system: { state: "degraded", reason: "timeout" } },
+        gateway: {
+          status: "ok",
+          platform: "hermes-agent",
+          version: "unknown",
+          gateway_state: "running",
+          updated_at: "2026-11-24T04:40:26.349578+00:00",
+          platforms: { api_server: { state: "connected" }, feishu: { state: "connected" } },
+          metrics_today: { day: "2026-11-24", requests: 0, messages: 0, tokens: 0 },
+          note: "metrics_today 为进程启动后当日计数，重启归零；不回填历史",
+        },
+      });
+    });
+    await render();
+    const facts = container.querySelector('[data-testid="set4-facts"]');
+    expect(facts).toBeTruthy();
+    expect(container.querySelector('[data-testid="set4-fact-read-port"]')?.textContent).toContain("未接入");
+    expect(container.querySelector('[data-testid="set4-fact-gateway"]')?.textContent).toContain("running");
+    expect(container.querySelector('[data-testid="set4-fact-platforms"]')?.textContent).toContain("api_server=connected");
+    expect(container.querySelector('[data-testid="set4-fact-metrics-today"]')?.textContent).toContain("请求 0");
+    expect(container.querySelector('[data-testid="set4-fact-sources"]')?.textContent).toContain("dashboard_system=degraded（timeout）");
+    expect(container.querySelector('[data-testid="set4-facts-stamp"]')?.textContent).toContain("2026-11-24");
+    // 诚实纪律：没有假开关、没有写入口。
+    expect(container.querySelectorAll('input, [role="switch"]')).toHaveLength(0);
+    expect(container.querySelector('[data-testid="set4-fact-writable"]')?.textContent).toContain("0");
+  });
+
+  it("says the runtime summary was unreadable instead of showing zeros", async () => {
+    fetchJSON.mockImplementation((url: string) =>
+      url.includes("/api/config")
+        ? Promise.reject(new ApiError("missing", { status: 404, body: "", url: "config" }))
+        : Promise.reject(new ApiError("boom", { status: 502, body: "", url: "summary" })),
+    );
+    await render();
+    expect(container.querySelector('[data-testid="set4-facts-unavailable"]')?.textContent).toContain("不代表 0");
+  });
 });
