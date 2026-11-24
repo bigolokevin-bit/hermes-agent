@@ -19,10 +19,9 @@
  */
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useSearchParams } from "react-router";
-import { ChevronDown, ChevronUp, History, RefreshCw } from "lucide-react";
+import { ChevronDown, ChevronUp, RefreshCw, Search } from "lucide-react";
 
 import { Button } from "@nous-research/ui/ui/components/button";
-import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 import { Spinner } from "@nous-research/ui/ui/components/spinner";
 
 import { STATUS_FILTERS, approvalSortKeyOf, approvalsRowSearchText, isKnownStatus, sortApprovalRows, type ApprovalSortDir, type ApprovalSortKey } from "./model";
@@ -31,18 +30,21 @@ import { QueueSummaryBar, denominatorReadout } from "./QueueSummaryBar";
 import { clearFilterParams, hasActiveFilters, resetTitle } from "./FilterReset";
 import { FilterSummary } from "./FilterSummary";
 import { PermalinkCopy } from "./PermalinkCopy";
+import { RowDetailCopy } from "./RowDetailCopy";
 import { dropCorrelationReturn, peekCorrelationReturn } from "./correlationReturn";
 import { BackToList, restoreListScroll, saveListScroll } from "./BackToList";
 import { QueueCsvExport } from "./QueueCsvExport";
 import { QueueSortBar } from "./QueueSortBar";
 import { ActorBuckets } from "./ActorBuckets";
-import { RowDetailCopy } from "./RowDetailCopy";
 import { SinceQuickFilter, isSinceValue, withinSince } from "./SinceQuickFilter";
 import { RiskQuickFilter, isRiskValue, withinRisk, type RiskValue } from "./RiskQuickFilter";
-import { DeniedPanel, EmptyPanel, ErrorPanel, InlineFailure, LoadingPanel } from "./states";
+import { DeniedPanel, ErrorPanel, InlineFailure, LoadingPanel } from "./states";
 import { APPROVAL_EMPTY_SENTENCE } from "./stateCopy";
 import { useApprovalDetail, useApprovalsList, type ForcedState } from "./useApprovalsData";
-import { ApprovalDetailBody, ApprovalRowCard } from "./views";
+import { ApprovalDetailBody } from "./views";
+import { ApprovalLedgerRow } from "./ApprovalLedgerRow";
+import { LedgerEmpty } from "./LedgerEmpty";
+import { ConsoleCard } from "@/components/console/ConsoleCard";
 import { ConsoleSelect } from "@/shell/ConsoleSelect";
 import "./approvals-density.css";
 
@@ -173,10 +175,25 @@ export function ApprovalsHistoryModulePage(): ReactNode {
     () => (risk ? actorBaseRows.filter((row) => withinRisk(row, risk)) : actorBaseRows),
     [actorBaseRows, risk],
   );
+  // 2026-11-24 密度车道：骨架 filterbar 的「类型」下拉＝本地变更类型维
+  // （读口不支持 kind 过滤，实测只发 status/limit/cursor，故只在已加载行内筛）。
+  const [kind, setKind] = useState<string>("");
+  const kindOptions = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const row of list.rows) {
+      const raw = row.changeKind.raw;
+      if (raw) seen.set(raw, row.changeKind.label);
+    }
+    return [{ value: "", label: "全部类型" }, ...[...seen].map(([value, label]) => ({ value, label }))];
+  }, [list.rows]);
+  const kindBaseRows = useMemo(
+    () => (kind ? riskBaseRows.filter((row) => row.changeKind.raw === kind) : riskBaseRows),
+    [riskBaseRows, kind],
+  );
   const visibleRows = useMemo(() => {
-    const byActor = actor ? riskBaseRows.filter((row) => row.approverIds.includes(actor)) : riskBaseRows;
+    const byActor = actor ? kindBaseRows.filter((row) => row.approverIds.includes(actor)) : kindBaseRows;
     return sortApprovalRows(byActor, asort, adir);
-  }, [riskBaseRows, actor, asort, adir]);
+  }, [kindBaseRows, actor, asort, adir]);
   const [selected, setSelected] = useState<string | null>(() => params.get("id"));
   const [unaddressable, setUnaddressable] = useState(false);
   // R60: at most one row shows its inline preview; it never touches URL/filters.
@@ -342,17 +359,8 @@ export function ApprovalsHistoryModulePage(): ReactNode {
       );
     }
     if (!selected) {
-      return (
-        <Card className="border-border bg-card" data-testid="apr5-detail-empty">
-          <CardContent className="flex min-w-0 flex-col items-center gap-2 px-4 py-10 text-center">
-            <History className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
-            <p className="text-sm text-muted-foreground">还没有选中记录</p>
-            <p className="max-w-prose break-words text-xs text-muted-foreground">
-              点开一条记录可以看到它当时的结论。要给结论，请去「待处理」里那张还没处理的单。
-            </p>
-          </CardContent>
-        </Card>
-      );
+      // 骨架历史页没有常驻空详情卡；未选中时整块详情不挂载。
+      return null;
     }
     if (detail.phase === "loading") {
       return <LoadingPanel testId="apr5-detail-loading" />;
@@ -403,15 +411,31 @@ export function ApprovalsHistoryModulePage(): ReactNode {
   // AP-07①: 服务端给了下一页游标＝本地过滤作用域还没到底，各过滤器作用域句据此追加
   // 「需先加载」提示；status 是唯一真服务端筛选（读口实测只发 status/limit/cursor）。
   const hasMore = list.next !== null;
+  // 页头副行的状态分布：只数已加载行（读口无 total），分档按真实状态人话，
+  // 0 条不写（骨架副行不列空桶），未就绪时整段不出。
+  const statusParts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const row of list.rows) {
+      if (row.status.label === "状态未识别") continue;
+      counts.set(row.status.label, (counts.get(row.status.label) ?? 0) + 1);
+    }
+    return [...counts.entries()]
+      .filter(([, count]) => count > 0)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([label, count]) => `${label} ${count}`);
+  }, [list.rows]);
   return (
-    <div className="flex min-w-0 w-full max-w-full flex-col gap-3" data-testid="apr5-page-history">
-      <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
-        {/* R86: 播报单点=下方 sr-only apv-live；这行只是屏上读数，不再自带
-            aria-live（同一变化只播一次）。 */}
-        <p className="sr-only" role="status" aria-live="polite" data-testid="apv-live">
-          {announcement(list.phase, visibleRows.length)}
-        </p>
-        <p className="min-w-0 break-words text-xs text-muted-foreground">
+    <div className="apr5-history min-w-0 w-full max-w-full" data-testid="apr5-page-history">
+      {/* R86: 播报单点=下方 sr-only apv-live；屏上读数不自带 aria-live。 */}
+      <p className="sr-only" role="status" aria-live="polite" data-testid="apv-live">
+        {announcement(list.phase, visibleRows.length)}
+      </p>
+
+      {/* 骨架页头副行：真读数（已显示句 + 状态分布）；拿不到真值就只剩已显示句，
+          不写 0。右侧＝页面动作（导出 CSV / 筛选 / 刷新）。 */}
+      <div className="apr5-pagehead" data-testid="apr5-page-head">
+        <p className="apr5-pagehead__sum">
           {list.phase === "loading"
             ? `正在按「${summary}」读取历史决策…`
             : list.phase === "empty"
@@ -423,218 +447,270 @@ export function ApprovalsHistoryModulePage(): ReactNode {
                   : q
                     ? `已显示 ${visibleRows.length} / ${list.rows.length} 条「${summary}」记录（关键字过滤中）`
                     : `已显示 ${list.rows.length} 条「${summary}」记录${list.next ? "，下面还有更多" : ""}`}
+          {list.phase === "ready" && statusParts.length > 0 ? (
+            <span className="apr5-pagehead__counts"> · {statusParts.join(" · ")}</span>
+          ) : null}
         </p>
-        {list.phase === "ready" ? (
-          <span className="font-mono text-xs text-muted-foreground" data-testid="apv5-count" title={q ? "计数与下方列表同源（关键字过滤后）" : "计数与下方列表同源：同一份服务端返回的行数"}>
-            {visibleRows.length}
+        <div className="apr5-pagehead__acts" role="group" aria-label="页面动作">
+          <span className="apr5-pagehead__export">
+            <QueueCsvExport rows={visibleRows} tab="history" status={status} phase={list.phase} sort={asort} dir={asort ? adir : null} />
           </span>
-        ) : null}
-        {list.phase !== "denied" ? (
-          <Button
-            size="sm"
-            outlined
-            className="shrink-0 whitespace-nowrap"
-            onClick={list.reload}
-            data-testid="apv-gates-refresh"
-            title={actionGates(list.phase, list.rows.length).retry.title}
-            aria-disabled={!actionGates(list.phase, list.rows.length).retry.enabled}
-            disabled={!actionGates(list.phase, list.rows.length).retry.enabled}
-            prefix={
-              list.phase === "loading" ? (
-                <Spinner className="h-3.5 w-3.5" />
-              ) : (
-                <RefreshCw className="h-3.5 w-3.5" />
-              )
-            }
+          <button
+            type="button"
+            data-testid="apv-h-filter-toggle"
+            aria-expanded={filtersOpen}
+            aria-controls="apv-history-filter-panel"
+            onClick={() => setFiltersOpen((value) => !value)}
+            className="apr5-linkbtn"
           >
-            刷新
-          </Button>
-        ) : null}
+            {filtersOpen ? <ChevronUp className="h-3 w-3" aria-hidden="true" /> : <ChevronDown className="h-3 w-3" aria-hidden="true" />}
+            筛选条件（{secondaryCount > 0 ? secondaryCount : "无"}）
+          </button>
+          {list.phase !== "denied" ? (
+            <Button
+              size="sm"
+              outlined
+              className="apr5-refresh shrink-0 whitespace-nowrap"
+              onClick={list.reload}
+              data-testid="apv-gates-refresh"
+              title={actionGates(list.phase, list.rows.length).retry.title}
+              aria-disabled={!actionGates(list.phase, list.rows.length).retry.enabled}
+              disabled={!actionGates(list.phase, list.rows.length).retry.enabled}
+              prefix={
+                list.phase === "loading" ? (
+                  <Spinner className="h-3.5 w-3.5" />
+                ) : (
+                  <RefreshCw className="h-3.5 w-3.5" />
+                )
+              }
+            >
+              刷新
+            </Button>
+          ) : null}
+        </div>
       </div>
 
-      {/* 页面车道 B: 与待处理页（apv-filter-toggle，3651ca6d）同一方言——
-          收起时面板整体卸载，键盘序里不留空位；生效条件的读数在下方
-          汇总条与 chips 行，常显不折叠。 */}
-      <div className="flex min-w-0 flex-wrap items-center gap-2" data-testid="apv-h-filter-toggle-row">
-        <button
-          type="button"
-          data-testid="apv-h-filter-toggle"
-          aria-expanded={filtersOpen}
-          aria-controls="apv-history-filter-panel"
-          onClick={() => setFiltersOpen((value) => !value)}
-          className="inline-flex h-6 items-center gap-1 rounded-md border border-white/15 px-2 text-xs text-muted-foreground hover:bg-white/5 focus-visible:outline focus-visible:outline-1 focus-visible:outline-white/60"
+      <div className="apr5-main" data-testid="apv-state" data-phase={list.phase}>
+        <ConsoleCard
+          flush
+          data-testid="apr5-list"
+          data-apv-nav="true"
+          aria-label="历史决策列表"
         >
-          {filtersOpen ? (
-            <ChevronUp className="h-3 w-3" aria-hidden="true" />
-          ) : (
-            <ChevronDown className="h-3 w-3" aria-hidden="true" />
-          )}
-          筛选条件（{secondaryCount > 0 ? secondaryCount : "无"}）
-        </button>
-      </div>
-
-      <div className="flex min-w-0 flex-wrap items-center gap-2" data-testid="apv-reset-row">
-        <button
-          type="button"
-          data-testid="apv-reset-filters"
-          disabled={!filterState.active}
-          title={resetTitle(filterState.count)}
-          onClick={clearFilters}
-          className="h-6 rounded-md border border-white/15 px-2 text-xs text-muted-foreground hover:bg-white/5 focus-visible:outline focus-visible:outline-1 focus-visible:outline-white/60 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          重置筛选{filterState.active ? `（${filterState.count}）` : ""}
-        </button>
-        <FilterSummary params={params} onRemove={removeFilterKeys} phase={list.phase} />
-      </div>
-      <QueueSummaryBar
-        phase={list.phase}
-        rows={visibleRows}
-        scope="history"
-        singleStatus={status}
-        denominator={denominator}
-        unreadable={list.unreadable}
-      />
-      <QueueCsvExport rows={visibleRows} tab="history" status={status} phase={list.phase} sort={asort} dir={asort ? adir : null} />
-      {filtersOpen ? (
-        <div
-          id="apv-history-filter-panel"
-          data-testid="apv-h-filter-panel"
-          className="apv-h-filter-panel flex min-w-0 flex-col gap-2"
-        >
-          <div className="flex min-w-0 flex-wrap items-center gap-1.5" role="group" data-testid="apv8-search-group" aria-label="搜索审批">
-            <input
-              type="search"
-              aria-label="搜索审批"
-              data-testid="apv8-search"
-              className="min-w-0 flex-1 rounded-sm border border-border bg-transparent px-2 py-1 text-xs"
-              placeholder="关键字（标题/理由/编号）"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
+          {/* 骨架 filterbar：搜索 + 结果 + 类型 + 右侧同源读数。 */}
+          <div className="apr5-filterbar" data-testid="apr5-filterbar">
+            <label className="apr5-search">
+              <Search className="apr5-search__icon h-3.5 w-3.5" aria-hidden="true" />
+              <input
+                type="search"
+                aria-label="搜索审批"
+                data-testid="apr5-h-search"
+                className="apr5-search__input"
+                placeholder="搜索事项、发起人、审批人"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+              />
+            </label>
+            <ConsoleSelect
+              aria-label="按处理结果筛选"
+              data-testid="apr5-status-select"
+              value={activeValue}
+              onChange={(value) => choose(value === "all" ? null : value)}
+              className="apr5-select"
+              title="结果＝服务端 status 筛选（切换会重新请求）；「全部」不发 status 参数。"
+              options={CHOICES.map((choice) => ({ value: choice.value, label: choice.label === "全部" ? "全部结果" : choice.label }))}
             />
-            {q ? (
-              <Button size="sm" outlined data-testid="apv8-search-clear" onClick={() => setQ("")}>
-                清空搜索
-              </Button>
+            <ConsoleSelect
+              aria-label="按类型筛选"
+              data-testid="apr5-kind-select"
+              value={kind}
+              onChange={(value) => setKind(value)}
+              className="apr5-select"
+              title="类型＝当前已加载行内的变更类型过滤（读口不支持 kind 参数，本地筛选不产生新请求）。"
+              options={kindOptions}
+            />
+            <span className="apr5-filterbar__grow" />
+            {list.phase === "ready" ? (
+              <>
+                <span
+                  className="apr5-filterbar__meta"
+                  data-testid="apv5-count"
+                  title={q ? "计数与下方列表同源（关键字过滤后）" : "计数与下方列表同源：同一份服务端返回的行数"}
+                >
+                  {visibleRows.length}
+                </span>
+                <span className="apr5-filterbar__meta" data-testid="apr5-count-note">
+                  {list.rows.length} 条 · 显示 {visibleRows.length}
+                </span>
+              </>
             ) : null}
           </div>
-          <p
-            className="min-w-0 break-words text-xs text-muted-foreground"
-            data-testid="apv8-scope-note"
-            data-apv8-scope-note="local-search"
-            title="实测：本页读口带 q/keyword/title 任一参数都与不带时返回同一全量（同集合），后台不做关键字过滤；为避免「假服务端搜索」，这里只做前端本地过滤。"
+
+          {/* 生效筛选：一行文字 + chips，可逐项移除；无筛选时这行视觉收起。 */}
+          <div
+            className={`apr5-eff${filterState.active ? "" : " is-idle"}`}
+            data-testid="apv-reset-row"
           >
-            仅在当前已加载 {list.rows.length} 条内搜索；关键字是前端本地过滤，不产生新请求（实测后台 q/keyword/title 参数被忽略）。
-            {hasMore ? (
-              <span data-testid="apv8-search-crosspage" data-apv8-search-crosspage="needs-load">
-                {` ${crossPageLoadHint(true)}`}
-              </span>
-            ) : null}
-          </p>
-          <p
-            className="min-w-0 break-words text-xs text-muted-foreground"
-            data-testid="apv-h-status-note"
-            data-apv-h-status-scope="server"
-            title="本页的「按处理结果筛选」八态组是真正发到服务端的 status 维度（实测 listUrl 只发 status/limit/cursor）；上面搜索/审批人/时间/风险与排序都是当前已加载行上的本地过滤，二者不同源。"
-          >
-            下面的「按处理结果筛选」八态＝服务端 status 筛选（切换会重新请求）；搜索、审批人、时间窗、风险档、排序都是本地过滤，只在已加载行内生效。
-          </p>
-          <ActorBuckets rows={riskBaseRows} phase={list.phase} actor={actor} onPick={pickActor} hasMore={hasMore} />
-          <SinceQuickFilter phase={list.phase} since={since} loadedCount={list.rows.length} onPick={pickSince} hasMore={hasMore} />
-          <RiskQuickFilter rows={actorBaseRows} phase={list.phase} risk={risk} onPick={pickRisk} hasMore={hasMore} />
-        </div>
-      ) : null}
-
-      <QueueSortBar phase={list.phase} sort={asort} dir={adir} loadedCount={list.rows.length} onCycle={cycleSort} hasMore={hasMore} />
-      <RowDetailCopy row={visibleRows.find((r) => r.key === previewKey) ?? null} />
-
-
-      {/* 折叠收尾·375：Button size=xs 房规 aspect-square 会把文字 chip 撑成方框
-        * （实测最宽「已被更新替代」99×99 方格，九钮成表格状）。此两枚状态快捷钮组
-        * 用 className 覆盖回 h-6 内容宽窄条钮；仅本 History 页，Pending 不动。 */}
-      <div className="flex min-w-0 flex-wrap gap-1.5" role="group" data-testid="apr5-filter" aria-label="按处理结果筛选">
-        {CHOICES.map((choice) => {
-          const active = choice.value === activeValue;
-          return (
-            <Button
-              key={choice.value}
-              size="xs"
-              outlined
-              invert={active}
-              aria-pressed={active}
-              onClick={() => choose(choice.sends)}
-              data-testid={`apr5-filter-${choice.value}`}
-              className="aspect-auto h-6 w-auto shrink-0 whitespace-nowrap px-2 leading-none"
+            <button
+              type="button"
+              data-testid="apv-reset-filters"
+              disabled={!filterState.active}
+              title={resetTitle(filterState.count)}
+              onClick={clearFilters}
+              className="apr5-linkbtn"
             >
-              {choice.label}
-            </Button>
-          );
-        })}
-      </div>
+              重置筛选{filterState.active ? `（${filterState.count}）` : ""}
+            </button>
+            <FilterSummary params={params} onRemove={removeFilterKeys} phase={list.phase} />
+          </div>
 
-      {/* R44: risk and time-window axes are stated, not faked. The BFF
-        * whitelist (status, limit, cursor) drops risk/window/since — live
-        * probe measured the same set with and without them — so no client
-        * side filtering happens here. */}
-      <div className="flex min-w-0 flex-wrap items-center gap-1.5" role="group" aria-label="队列筛选（可分享）" data-testid="apv5-filter">
-        {QUEUE_SHORTCUTS.map((choice) => {
-          const active = choice.sends === null ? activeValue === "all" : activeValue === choice.sends;
-          return (
-            <Button
-              key={choice.value}
-              size="xs"
-              outlined
-              invert={active}
-              aria-pressed={active}
-              onClick={() => choose(choice.sends)}
-              data-testid={`apv5-filter-${choice.value}`}
-              className="aspect-auto h-6 w-auto shrink-0 whitespace-nowrap px-2 leading-none"
+          {/* 汇总/八态组/队列快捷钮：既有能力与读数保留在无障碍树
+              （屏上由 filterbar 的下拉与页头真读数承担同一选择）。 */}
+          <div className="apr5-sr">
+            <QueueSummaryBar
+              phase={list.phase}
+              rows={visibleRows}
+              scope="history"
+              singleStatus={status}
+              denominator={denominator}
+              unreadable={list.unreadable}
+            />
+            <div className="flex min-w-0 flex-wrap gap-1.5" role="group" data-testid="apr5-filter" aria-label="按处理结果筛选">
+              {CHOICES.map((choice) => {
+                const active = choice.value === activeValue;
+                return (
+                  <button
+                    key={choice.value}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => choose(choice.sends)}
+                    data-testid={`apr5-filter-${choice.value}`}
+                  >
+                    {choice.label}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="flex min-w-0 flex-wrap items-center gap-1.5" role="group" aria-label="队列筛选（可分享）" data-testid="apv5-filter">
+              {QUEUE_SHORTCUTS.map((choice) => {
+                const active = choice.sends === null ? activeValue === "all" : activeValue === choice.sends;
+                return (
+                  <button
+                    key={choice.value}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => choose(choice.sends)}
+                    data-testid={`apv5-filter-${choice.value}`}
+                  >
+                    {choice.label}
+                  </button>
+                );
+              })}
+              <ConsoleSelect
+                aria-label="按时间窗筛选"
+                data-testid="apv5-filter-window"
+                value=""
+                onChange={() => undefined}
+                disabled
+                title="后台尚未开放时间窗筛选：带 window=24h/since=… 实测与不带参同集合，为避免假过滤此项暂不提供。"
+                className="apr5-select"
+                options={[{ value: "", label: "时间窗：暂不可筛" }]}
+              />
+            </div>
+            <RowDetailCopy row={visibleRows.find((r) => r.key === previewKey) ?? null} />
+          </div>
+
+          {/* 列排序：骨架表头的排序能力收成一行微标签；三行元说明留给读屏。 */}
+          <div className="apr5-sortbar">
+            <QueueSortBar phase={list.phase} sort={asort} dir={adir} loadedCount={list.rows.length} onCycle={cycleSort} hasMore={hasMore} />
+          </div>
+
+          {filtersOpen ? (
+            <div
+              id="apv-history-filter-panel"
+              data-testid="apv-h-filter-panel"
+              className="apv-h-filter-panel apr5-panel"
             >
-              {choice.label}
-            </Button>
-          );
-        })}
-        <ConsoleSelect
-          aria-label="按时间窗筛选"
-          data-testid="apv5-filter-window"
-          value=""
-          onChange={() => undefined}
-          disabled
-          title="后台尚未开放时间窗筛选：带 window=24h/since=… 实测与不带参同集合，为避免假过滤此项暂不提供。"
-          className="rounded-md border border-white/15 bg-transparent px-2 py-1 text-xs text-muted-foreground opacity-60"
-          options={[{ value: "", label: "时间窗：暂不可筛" }]}
-        />
-      </div>
+              <div className="flex min-w-0 flex-wrap items-center gap-1.5" role="group" data-testid="apv8-search-group" aria-label="搜索审批">
+                <input
+                  type="search"
+                  aria-label="搜索审批（面板内镜像）"
+                  data-testid="apv8-search"
+                  className="min-w-0 flex-1 rounded-sm border border-border bg-transparent px-2 py-1 text-xs"
+                  placeholder="关键字（标题/理由/编号）"
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                />
+                {q ? (
+                  <Button size="sm" outlined data-testid="apv8-search-clear" onClick={() => setQ("")}>
+                    清空搜索
+                  </Button>
+                ) : null}
+              </div>
+              <p
+                className="min-w-0 break-words text-xs text-muted-foreground"
+                data-testid="apv8-scope-note"
+                data-apv8-scope-note="local-search"
+                title="实测：本页读口带 q/keyword/title 任一参数都与不带时返回同一全量（同集合），后台不做关键字过滤；为避免「假服务端搜索」，这里只做前端本地过滤。"
+              >
+                仅在当前已加载 {list.rows.length} 条内搜索；关键字是前端本地过滤，不产生新请求（实测后台 q/keyword/title 参数被忽略）。
+                {hasMore ? (
+                  <span data-testid="apv8-search-crosspage" data-apv8-search-crosspage="needs-load">
+                    {` ${crossPageLoadHint(true)}`}
+                  </span>
+                ) : null}
+              </p>
+              <p
+                className="min-w-0 break-words text-xs text-muted-foreground"
+                data-testid="apv-h-status-note"
+                data-apv-h-status-scope="server"
+                title="本页的「按处理结果筛选」八态组是真正发到服务端的 status 维度（实测 listUrl 只发 status/limit/cursor）；上面搜索/审批人/时间/风险与排序都是当前已加载行上的本地过滤，二者不同源。"
+              >
+                结果下拉＝服务端 status 筛选（切换会重新请求）；搜索、审批人、时间窗、风险档、排序都是本地过滤，只在已加载行内生效。
+              </p>
+              <ActorBuckets rows={riskBaseRows} phase={list.phase} actor={actor} onPick={pickActor} hasMore={hasMore} />
+              <SinceQuickFilter phase={list.phase} since={since} loadedCount={list.rows.length} onPick={pickSince} hasMore={hasMore} />
+              <RiskQuickFilter rows={actorBaseRows} phase={list.phase} risk={risk} onPick={pickRisk} hasMore={hasMore} />
+              <p className="apr5-panel__note">风险档、时间窗、审批人、排序都只在当前已加载行内过滤，不会发新请求。</p>
+            </div>
+          ) : null}
 
-      {!known ? (
-        <p className="min-w-0 break-words text-xs text-warning" data-testid="apr5-filter-unknown">
-          这个筛选值不在已知的八种结果里，系统仍按原样去读；读到的内容可能与服务端的状态说法不一致。
-        </p>
-      ) : null}
+          {!known ? (
+            <p className="apr5-warn" data-testid="apr5-filter-unknown">
+              这个筛选值不在已知的八种结果里，系统仍按原样去读；读到的内容可能与服务端的状态说法不一致。
+            </p>
+          ) : null}
+          {list.forced ? (
+            <p className="apr5-warn" data-testid="apr5-forced-note">
+              这是用 ?state= 复现出来的状态，不是服务此刻的回答。
+            </p>
+          ) : null}
 
-      {list.forced ? (
-        <p className="min-w-0 break-words text-xs text-warning" data-testid="apr5-forced-note">
-          这是用 ?state= 复现出来的状态，不是服务此刻的回答。
-        </p>
-      ) : null}
+          {/* 表头：8 列 + 行末工具位。空态/加载态都保留它，行形制不塌。 */}
+          <div className="apr5-thead" role="row" aria-hidden="true">
+            <span>时间</span>
+            <span>事项</span>
+            <span>发起</span>
+            <span>审批人</span>
+            <span>结果</span>
+            <span>耗时</span>
+            <span>编号</span>
+            <span>备注</span>
+            <span className="apr5-thead__tools">操作</span>
+          </div>
 
-      <div
-        className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]"
-        data-testid="apv-state"
-        data-phase={list.phase}
-      >
-        <section className="flex min-w-0 flex-col gap-2" data-testid="apr5-list" data-apv-nav="true" aria-label="历史决策列表">
-          {list.phase === "loading" ? <LoadingPanel /> : null}
+          {list.phase === "loading" ? <div className="apr5-body"><LoadingPanel /></div> : null}
 
-          {list.phase === "denied" ? <DeniedPanel failure={list.failure} /> : null}
+          {list.phase === "denied" ? <div className="apr5-body"><DeniedPanel failure={list.failure} /></div> : null}
 
           {list.phase === "error" && list.failure ? (
-            <ErrorPanel failure={list.failure} onRetry={list.reload} retryTestId="apr5-retry" />
+            <div className="apr5-body"><ErrorPanel failure={list.failure} onRetry={list.reload} retryTestId="apr5-retry" /></div>
           ) : null}
 
           {list.phase === "empty" ? (
-            <EmptyPanel
+            <LedgerEmpty
               reason={`${APPROVAL_EMPTY_SENTENCE}：「${summary}」结果下没有记录`}
-              nextStep="换一个结果看看，或点「全部」把所有历史决策列出来。"
+              nextStep="换一个结果看看，或点「全部结果」把所有历史决策列出来。"
               onRefresh={list.reload}
               testId="apr5-empty-history"
               clear={filterState.active ? { label: "清空筛选", onClear: clearFilters } : undefined}
@@ -642,70 +718,60 @@ export function ApprovalsHistoryModulePage(): ReactNode {
           ) : null}
 
           {list.phase === "ready" ? (
-            <>
+            <div className="apr5-body" data-testid="apr5-rows">
               {risk && visibleRows.length === 0 ? (
-                <Card className="border-border bg-card" data-testid="apv-risk-empty">
-                  <CardContent className="min-w-0 space-y-2 p-4 text-sm">
-                    <p>该风险档下没有审批。</p>
-                    <p className="text-xs text-muted-foreground">
-                      这是当前已加载 {list.rows.length} 条里的真实结果：没有命中该风险档的行（严重风险没有独立档位，在「全部」下照常显示）；可只清空风险档，其余筛选保留。
-                    </p>
-                    <Button size="sm" outlined data-testid="apv-risk-clear" onClick={() => pickRisk(null)}>
-                      清空风险档
-                    </Button>
-                  </CardContent>
-                </Card>
+                <div className="apr5-inlineempty" data-testid="apv-risk-empty">
+                  <p>该风险档下没有审批。</p>
+                  <p className="apr5-inlineempty__note">
+                    这是当前已加载 {list.rows.length} 条里的真实结果：没有命中该风险档的行（严重风险没有独立档位，在「全部」下照常显示）；可只清空风险档，其余筛选保留。
+                  </p>
+                  <Button size="sm" outlined data-testid="apv-risk-clear" onClick={() => pickRisk(null)}>
+                    清空风险档
+                  </Button>
+                </div>
               ) : null}
               {!risk && since && visibleRows.length === 0 ? (
-                <Card className="border-border bg-card" data-testid="apv-since-empty">
-                  <CardContent className="min-w-0 space-y-2 p-4 text-sm">
-                    <p>该时间范围内没有审批。</p>
-                    <p className="text-xs text-muted-foreground">
-                      这是当前已加载 {list.rows.length} 条里的真实结果：没有提交时间落在该时间窗内的行（缺提交时间的行不属于任何窗口）；可放宽范围或清空时间筛选。
-                    </p>
-                    <Button size="sm" outlined data-testid="apv-since-clear" onClick={() => pickSince(null)}>
-                      清空时间范围
-                    </Button>
-                  </CardContent>
-                </Card>
+                <div className="apr5-inlineempty" data-testid="apv-since-empty">
+                  <p>该时间范围内没有审批。</p>
+                  <p className="apr5-inlineempty__note">
+                    这是当前已加载 {list.rows.length} 条里的真实结果：没有提交时间落在该时间窗内的行（缺提交时间的行不属于任何窗口）；可放宽范围或清空时间筛选。
+                  </p>
+                  <Button size="sm" outlined data-testid="apv-since-clear" onClick={() => pickSince(null)}>
+                    清空时间范围
+                  </Button>
+                </div>
               ) : null}
               {!risk && !since && actor && visibleRows.length === 0 ? (
-                <Card className="border-border bg-card" data-testid="apv-actor-empty">
-                  <CardContent className="min-w-0 space-y-2 p-4 text-sm">
-                    <p>该审批人下没有审批。</p>
-                    <p className="text-xs text-muted-foreground">
-                      这是当前已加载 {list.rows.length} 条里的真实结果：没有该审批人名下的行；可清空审批人筛选或换条件。
-                    </p>
-                    <Button size="sm" outlined data-testid="apv-actor-clear" onClick={() => pickActor(null)}>
-                      清空审批人筛选
-                    </Button>
-                  </CardContent>
-                </Card>
+                <div className="apr5-inlineempty" data-testid="apv-actor-empty">
+                  <p>该审批人下没有审批。</p>
+                  <p className="apr5-inlineempty__note">
+                    这是当前已加载 {list.rows.length} 条里的真实结果：没有该审批人名下的行；可清空审批人筛选或换条件。
+                  </p>
+                  <Button size="sm" outlined data-testid="apv-actor-clear" onClick={() => pickActor(null)}>
+                    清空审批人筛选
+                  </Button>
+                </div>
               ) : null}
               {q && !actor && !since && !risk && visibleRows.length === 0 ? (
-                <Card className="border-border bg-card" data-testid="apv8-search-empty">
-                  <CardContent className="min-w-0 space-y-2 p-4 text-sm">
-                    <p>没有匹配的审批。</p>
-                    <p className="text-xs text-muted-foreground">
-                      这是前端本地过滤的真实结果：当前已加载 {list.rows.length} 条里没有包含「{q.trim()}」的行；可清空搜索或换服务器筛选条件。
-                    </p>
-                    <Button size="sm" outlined onClick={() => setQ("")}>
-                      清空搜索
-                    </Button>
-                  </CardContent>
-                </Card>
+                <div className="apr5-inlineempty" data-testid="apv8-search-empty">
+                  <p>没有匹配的审批。</p>
+                  <p className="apr5-inlineempty__note">
+                    这是前端本地过滤的真实结果：当前已加载 {list.rows.length} 条里没有包含「{q.trim()}」的行；可清空搜索或换服务器筛选条件。
+                  </p>
+                  <Button size="sm" outlined onClick={() => setQ("")}>
+                    清空搜索
+                  </Button>
+                </div>
               ) : null}
               {visibleRows.map((row, i) => (
-                <ApprovalRowCard
+                <ApprovalLedgerRow
                   key={row.key}
                   index={i}
                   row={row}
                   selected={row.rawId !== null && row.rawId === selected}
                   onOpen={() => openRow(row)}
                   previewOpen={previewKey === row.key}
-                  onTogglePreview={() =>
-                    setPreviewKey((current) => (current === row.key ? null : row.key))
-                  }
+                  onTogglePreview={() => setPreviewKey((current) => (current === row.key ? null : row.key))}
                   active={(activeRowKey ?? (visibleRows.length > 0 ? visibleRows[0].key : null)) === row.key}
                   onActivate={() => setActiveRowKey(row.key)}
                   onNavKey={navigateRows}
@@ -714,7 +780,7 @@ export function ApprovalsHistoryModulePage(): ReactNode {
               ))}
 
               {list.unreadable > 0 ? (
-                <p className="min-w-0 break-words text-xs text-warning">
+                <p className="apr5-warn" data-testid="apr5-unreadable">
                   {q
                     ? `另有 ${list.unreadable} 条缺少可显示内容的记录，不参与关键字搜索。`
                     : `有 ${list.unreadable} / ${list.rows.length + list.unreadable} 条记录缺少可显示的内容，未列在上面。`}
@@ -722,64 +788,64 @@ export function ApprovalsHistoryModulePage(): ReactNode {
               ) : null}
 
               {list.pageFailure ? <InlineFailure failure={list.pageFailure} action="后续记录没有加载成功" onRetry={list.loadMore} /> : null}
-
-              {/* P1-A2 ③②：分页 footer 状态机——有可见行才出分页条；过滤 miss/空态由空卡说话，
-                  不留死钮。AP-01①②：计数句与待处理腿同一个 denominatorReadout（两路同形），
-                  读口无 total 时只报「已加载 n 条（非全量）」，游标缺失不等于全量（扇出腿按 limit
-                  截断）；「已到末页」角标只在 total 已知时出现，未知腿由 P1-A2 ② 已退出。 */}
-              {visibleRows.length > 0 ? (
-              <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs" data-testid="apv-page">
-                <Button
-                  size="sm"
-                  outlined
-                  className="shrink-0 whitespace-nowrap"
-                  data-testid="apv-page-more"
-                  disabled={!list.next || list.loadingMore}
-                  onClick={list.loadMore}
-                  title={
-                    list.next
-                      ? "带服务端游标续取下一页（追加时按单号去重，重复行不上屏）。"
-                      : aggregated
-                        ? "聚合视图按 8 个状态扇出取齐，跨状态没有续页游标：这里已到末页，但合并结果按单页上限截断，服务端并不承诺这就是全量。切到单一状态可按游标续取。"
-                        : "服务端没有给出下一页游标：已到末页。读口不给总数，这不等于服务端承诺屏上这些就是全量。"
-                  }
-                  prefix={list.loadingMore ? <Spinner className="h-3.5 w-3.5" /> : <RefreshCw className="h-3.5 w-3.5" />}
-                >
-                  {list.loadingMore ? "加载中…" : "加载更多"}
-                </Button>
-                <span data-testid="apv-page-count" title={readout.reason}>
-                  {readout.text}
-                </span>
-                {!list.next && list.total !== null ? (
-                  <span className="text-muted-foreground" data-testid="apv-page-end">
-                    已到末页
-                  </span>
-                ) : null}
-              </div>
-              ) : null}
-
-              {/* AP-01②：到底/截断态的诚实说明，只在读口给不出总数时上屏。 */}
-              {list.phase === "ready" && list.total === null && readout.note ? (
-                <p
-                  className="min-w-0 break-words text-xs text-muted-foreground"
-                  data-testid="apv-denominator-note"
-                  title={readout.reason}
-                >
-                  {readout.note}
-                </p>
-              ) : null}
-            </>
+            </div>
           ) : null}
-        </section>
 
-        <aside className="flex min-w-0 flex-col gap-3 lg:sticky lg:top-4 lg:self-start" aria-label="记录详情">
+          {/* 页脚：骨架的左注脚 + 右页码；分页与分母诚实句同一行收口。 */}
+          <div className="apr5-foot">
+            <div className="apr5-foot__note">
+              <span>审批记录与审计事件同源，可在审计与安全中按编号反查。</span>
+              {list.phase === "ready" && list.total === null && readout.note ? (
+                <span className="apr5-foot__caliber" data-testid="apv-denominator-note" title={readout.reason}>
+                  {readout.note}
+                </span>
+              ) : null}
+            </div>
+            <div className="apr5-foot__pager">
+              {visibleRows.length > 0 ? (
+                <div className="apr5-foot__pagerinner" data-testid="apv-page">
+                  <Button
+                    size="sm"
+                    outlined
+                    className="shrink-0 whitespace-nowrap"
+                    data-testid="apv-page-more"
+                    disabled={!list.next || list.loadingMore}
+                    onClick={list.loadMore}
+                    title={
+                      list.next
+                        ? "带服务端游标续取下一页（追加时按单号去重，重复行不上屏）。"
+                        : aggregated
+                          ? "聚合视图按 8 个状态扇出取齐，跨状态没有续页游标：这里已到末页，但合并结果按单页上限截断，服务端并不承诺这就是全量。切到单一状态可按游标续取。"
+                          : "服务端没有给出下一页游标：已到末页。读口不给总数，这不等于服务端承诺屏上这些就是全量。"
+                    }
+                    prefix={list.loadingMore ? <Spinner className="h-3.5 w-3.5" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                  >
+                    {list.loadingMore ? "加载中…" : "加载更多"}
+                  </Button>
+                  <span className="apr5-foot__count" data-testid="apv-page-count" title={readout.reason}>
+                    {readout.text}
+                  </span>
+                  {!list.next && list.total !== null ? (
+                    <span className="apr5-foot__count" data-testid="apv-page-end">
+                      已到末页
+                    </span>
+                  ) : null}
+                </div>
+              ) : null}
+              <span className="apr5-foot__page" data-testid="apr5-page-indicator">
+                第 1 / {hasMore ? "…" : 1} 页
+              </span>
+            </div>
+          </div>
+        </ConsoleCard>
+
+        <aside className={`apr5-detail${selected || unaddressable ? " is-open" : ""}`} aria-label="记录详情">
           {selected ? <BackToList onBack={backToList} /> : null}
           <PermalinkCopy target={selected} />
-          {drawer}
+          {selected || unaddressable ? drawer : null}
         </aside>
       </div>
     </div>
   );
 }
-
 export default ApprovalsHistoryModulePage;

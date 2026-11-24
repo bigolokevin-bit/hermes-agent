@@ -103,7 +103,7 @@ import {
   APPROVAL_RETRY_LABEL,
 } from "./stateCopy";
 
-function PanelExits({ testId }: { testId: string }): ReactNode {
+export function PanelExits({ testId }: { testId: string }): ReactNode {
   return (
     <div className="flex min-w-0 flex-wrap items-center justify-center gap-2" data-testid={testId}>
       <Link

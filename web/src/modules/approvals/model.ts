@@ -426,6 +426,11 @@ export interface ApprovalRow {
   remainingSeconds: number | null;
   /** 批量 P0: 已投票审批人的 id 集（与 decisionEntries 的 whoRaw 同键序）。 */
   decidedByIds: string[];
+  /**
+   * 2026-11-24 历史表「备注」列：最近一张带意见的票的 comment 人话。
+   * 缺＝null（屏上「—」+ 原因），不从事由或其它字段回填。
+   */
+  lastNote?: string | null;
 }
 
 const ID_KEYS = ["approvalId", "approval_id", "id", "uuid"] as const;
@@ -467,6 +472,8 @@ function rowFrom(item: unknown, index: number): ApprovalRow | null {
   const decidedByIds = decisionEntries(rec)
     .map((entry) => entry.whoRaw)
     .filter((raw): raw is string => raw !== null);
+  const lastNote =
+    [...decisionEntries(rec)].reverse().find((entry) => Boolean(entry.note))?.note ?? null;
   return {
     key: rawId ?? `approval-${index}`,
     rawId,
@@ -496,6 +503,7 @@ function rowFrom(item: unknown, index: number): ApprovalRow | null {
     changeKind: changeKindView(changeKindRaw),
     remainingSeconds,
     decidedByIds,
+    lastNote,
   };
 }
 

@@ -108,3 +108,751 @@
     overflow-wrap: anywhere;
   }
 }
+
+/* ==================================================================
+ * 2026-11-24 历史决策骨架对齐（APR parity 车道）
+ * 历史 pane 在骨架里是一张单表：filterbar + 8 列表头 + 36/40px 行 +
+ * 页脚注脚。以下规则只服务 [data-testid="apr5-page-history"]，待处理页
+ * 与其它模块不受影响；颜色/字号/间距全部走 -ls 令牌。
+ * ================================================================== */
+
+.apr5-history {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--space-ls-3);
+}
+
+/* 页头副行：左真读数，右页面动作；一行放下，窄屏折行。 */
+.apr5-pagehead {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-ls-2);
+}
+
+.apr5-pagehead__sum {
+  margin: 0;
+  min-width: 0;
+  font-size: var(--font-size-ls-1);
+  line-height: var(--line-height-ls-2);
+  color: var(--color-text-subtle-ls);
+  font-variant-numeric: var(--tabular-ls);
+}
+
+.apr5-pagehead__counts {
+  color: var(--color-text-muted-ls);
+}
+
+.apr5-pagehead__acts {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-ls-2);
+}
+
+.apr5-pagehead__acts [data-testid="apv-export-name"] {
+  display: none;
+}
+
+.apr5-pagehead__acts [data-testid="apv7-export-count"] {
+  font-size: 11px;
+  color: var(--color-text-subtle-ls);
+}
+
+.apr5-refresh,
+.apr5-pagehead__acts button {
+  white-space: nowrap;
+}
+
+.apr5-linkbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  padding: 0 8px;
+  border: var(--border-strong-ls);
+  border-radius: var(--radius-ls-1);
+  background: transparent;
+  color: var(--color-text-muted-ls);
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.apr5-linkbtn:hover {
+  color: var(--color-text-ls);
+  background: color-mix(in srgb, var(--color-text-ls) 6%, transparent);
+}
+
+.apr5-linkbtn:disabled {
+  cursor: not-allowed;
+  opacity: var(--opacity-disabled-ls);
+}
+
+/* 主区：表卡整宽；详情选中后落到表下，不再挤一条 24rem 右栏。 */
+.apr5-main {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--space-ls-3);
+}
+
+/* filterbar：搜索 + 结果 + 类型 + 右侧读数。 */
+.apr5-filterbar {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-ls-2);
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--color-border-subtle-ls);
+}
+
+.apr5-search {
+  display: inline-flex;
+  min-width: 180px;
+  flex: 0 1 320px;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 8px;
+  border: var(--border-strong-ls);
+  border-radius: var(--radius-ls-1);
+  background: transparent;
+  color: var(--color-text-subtle-ls);
+}
+
+.apr5-search__input {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-ls);
+  font-size: 11.5px;
+  outline: none;
+}
+
+.apr5-search__input::placeholder {
+  color: var(--color-text-faint-ls);
+}
+
+.apr5-select {
+  height: 28px;
+  padding: 0 8px;
+  border: var(--border-strong-ls);
+  border-radius: var(--radius-ls-1);
+  background: transparent;
+  color: var(--color-text-muted-ls);
+  font-size: 11.5px;
+  line-height: 1;
+}
+
+.apr5-filterbar__grow {
+  flex: 1;
+}
+
+.apr5-filterbar__meta {
+  font-family: var(--font-family-mono-ls);
+  font-size: 11px;
+  color: var(--color-text-subtle-ls);
+  font-variant-numeric: var(--tabular-ls);
+  white-space: nowrap;
+}
+
+/* 生效筛选行：无筛选时只留一行极细的占位，不撑高度。 */
+.apr5-eff {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-ls-2);
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--color-border-subtle-ls);
+  font-size: 11px;
+}
+
+.apr5-eff.is-idle {
+  padding-block: 0;
+  border-bottom-color: transparent;
+}
+
+.apr5-eff.is-idle [data-testid="apv-reset-filters"] {
+  display: none;
+}
+
+.apr5-eff.is-idle [data-testid="apv-filter-summary-all"] {
+  display: none;
+}
+
+/* 排序条：骨架表头的排序能力收成 11px 微标签行。 */
+.apr5-sortbar {
+  padding: 4px 12px;
+  border-bottom: 1px solid var(--color-border-subtle-ls);
+}
+
+.apr5-sortbar [data-testid="apv-sort-wrap"] {
+  gap: 0;
+}
+
+.apr5-sortbar [data-testid="apv-sort-wrap"] > div {
+  gap: 2px;
+}
+
+.apr5-sortbar [data-testid="apv-sort-wrap"] > div > span {
+  font-size: 10px;
+  color: var(--color-text-faint-ls);
+}
+
+.apr5-sortbar [data-testid^="apv-sort-"] {
+  height: 22px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: var(--radius-ls-1);
+  font-size: 10px;
+  color: var(--color-text-subtle-ls);
+}
+
+.apr5-sortbar [data-testid^="apv-sort-"]:hover {
+  background: color-mix(in srgb, var(--color-text-ls) 6%, transparent);
+  color: var(--color-text-ls);
+}
+
+.apr5-sortbar [data-testid^="apv-sort-"] p,
+.apr5-sortbar [data-testid="apv-sort-wrap"] p {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* 表头/行：同一套 9 轨；各格用 grid-area 定位，隐藏列不挪位。 */
+.apr5-thead,
+.apr5-lrow {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 74px minmax(0, 1.7fr) 96px 84px 74px 56px 76px minmax(0, 1fr) 104px;
+  grid-template-areas: "time item requester approver status dur ref note tools";
+  align-items: center;
+  column-gap: var(--space-ls-2);
+  padding: 0 12px;
+}
+
+.apr5-thead {
+  height: 32px;
+  border-bottom: 1px solid var(--color-border-subtle-ls);
+  background: color-mix(in srgb, var(--color-text-ls) 2%, transparent);
+  font-family: var(--font-family-mono-ls);
+  font-size: 9px;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--color-text-faint-ls);
+}
+
+.apr5-thead > span:nth-child(1) { grid-area: time; }
+.apr5-thead > span:nth-child(2) { grid-area: item; }
+.apr5-thead > span:nth-child(3) { grid-area: requester; }
+.apr5-thead > span:nth-child(4) { grid-area: approver; }
+.apr5-thead > span:nth-child(5) { grid-area: status; }
+.apr5-thead > span:nth-child(6) { grid-area: dur; }
+.apr5-thead > span:nth-child(7) { grid-area: ref; }
+.apr5-thead > span:nth-child(8) { grid-area: note; }
+.apr5-thead > span:nth-child(9) { grid-area: tools; text-align: right; }
+
+.apr5-lrow {
+  min-height: var(--table-row-h-ls);
+  border-bottom: 1px solid var(--color-border-subtle-ls);
+  cursor: pointer;
+  color: var(--color-text-muted-ls);
+  font-size: var(--font-size-ls-1);
+}
+
+.apr5-lrow:hover {
+  background: color-mix(in srgb, var(--color-text-ls) 3.2%, transparent);
+}
+
+.apr5-lrow:focus-visible {
+  outline: var(--focus-ring-ls);
+  outline-offset: -2px;
+}
+
+.apr5-lrow.is-selected {
+  background: color-mix(in srgb, var(--color-primary-ls) 5%, transparent);
+}
+
+.apr5-lrow__time {
+  grid-area: time;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--font-family-mono-ls);
+  font-size: 11px;
+  color: var(--color-text-subtle-ls);
+  font-variant-numeric: var(--tabular-ls);
+  white-space: nowrap;
+}
+
+.apr5-lrow__toggle {
+  grid-area: item;
+  justify-self: start;
+  align-self: center;
+  z-index: 1;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: var(--border-ls-1);
+  border-radius: var(--radius-ls-1);
+  color: var(--color-text-faint-ls);
+  background: transparent;
+  cursor: pointer;
+}
+
+.apr5-lrow__toggle:hover {
+  color: var(--color-text-ls);
+}
+
+.apr5-lrow__titlebtn {
+  grid-area: item;
+  padding-left: 24px;
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 1px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.apr5-lrow__title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--font-size-ls-2);
+  line-height: var(--line-height-ls-1);
+  color: var(--color-text-ls);
+}
+
+.apr5-lrow__titlebtn:hover .apr5-lrow__title {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.apr5-lrow__sub {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  line-height: var(--line-height-ls-1);
+  color: var(--color-text-subtle-ls);
+}
+
+.apr5-lrow__who {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--font-size-ls-1);
+  color: var(--color-text-muted-ls);
+}
+
+.apr5-lrow__who--requester { grid-area: requester; }
+.apr5-lrow__who--approver { grid-area: approver; }
+
+.apr5-lrow__dur {
+  grid-area: dur;
+  font-family: var(--font-family-mono-ls);
+  font-size: 11px;
+  color: var(--color-text-subtle-ls);
+  font-variant-numeric: var(--tabular-ls);
+  white-space: nowrap;
+}
+
+.apr5-lrow__ref {
+  grid-area: ref;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-family-mono-ls);
+  font-size: 10px;
+  color: var(--color-text-faint-ls);
+}
+
+.apr5-lrow__note {
+  grid-area: note;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  color: var(--color-text-subtle-ls);
+}
+
+/* 行末工具位：复制/详情压成 10px 微钮，不抢列宽。 */
+.apr5-lrow__tools {
+  grid-area: tools;
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.apr5-lrow__tools [data-testid^="apr-row-copy-"] {
+  height: 20px;
+  padding: 0 5px;
+  font-size: 10px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.apr5-lrow__tools [data-testid^="apr-row-copy-status"] {
+  font-size: 10px;
+}
+
+.apr5-lrow__tools [data-testid^="apr5-row-details-"] > button {
+  min-height: 20px;
+  font-size: 10px;
+}
+
+/* 状态徽标（DOM 最后、grid 归「结果」列）。 */
+.apr5-lrow > .emp-pill {
+  grid-area: status;
+  justify-self: start;
+}
+
+/* 行内预览/隐藏字段不占轨道。 */
+.apr5-lrow__preview {
+  grid-column: 1 / -1;
+  min-width: 0;
+  margin: 4px 0 8px;
+  padding: 8px 10px;
+  border: var(--border-ls-1);
+  border-radius: var(--radius-ls-1);
+  background: color-mix(in srgb, var(--color-text-ls) 2.5%, transparent);
+}
+
+.apr5-lrow__preview-title {
+  margin: 0 0 4px;
+  font-size: var(--font-size-ls-2);
+  color: var(--color-text-ls);
+}
+
+.apr5-lrow__preview-grid {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 2px 12px;
+  margin: 0;
+  font-size: 11px;
+}
+
+.apr5-lrow__preview-grid dt {
+  font-family: var(--font-family-mono-ls);
+  font-size: 9.5px;
+  letter-spacing: 0.05em;
+  color: var(--color-text-faint-ls);
+}
+
+.apr5-lrow__preview-grid dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.apr5-lrow__muted {
+  color: var(--color-text-subtle-ls);
+}
+
+.apr5-lrow__preview-rid {
+  margin: 6px 0 0;
+  font-size: 11px;
+}
+
+/* 空态：保留行形制的一条行带，不居中放小灰字。 */
+.apr5-empty {
+  min-height: 120px;
+  padding: 12px;
+}
+
+.apr5-empty__row {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-ls-2);
+  min-height: var(--table-row-h-ls);
+  padding: 4px 4px;
+}
+
+.apr5-empty__icon {
+  flex: none;
+  color: var(--color-text-faint-ls);
+}
+
+.apr5-empty__copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.apr5-empty__title {
+  margin: 0;
+  font-size: var(--font-size-ls-2);
+  color: var(--color-text-ls);
+  overflow-wrap: anywhere;
+}
+
+.apr5-empty__next {
+  margin: 2px 0 0;
+  font-size: 11px;
+  color: var(--color-text-subtle-ls);
+  overflow-wrap: anywhere;
+}
+
+.apr5-empty__acts {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  gap: var(--space-ls-2);
+}
+
+.apr5-empty__exits {
+  margin-top: 4px;
+  font-size: 11px;
+}
+
+/* 页脚：左注脚、右页码/分页。 */
+.apr5-foot {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-ls-2);
+  padding: 8px 12px;
+  border-top: 1px solid var(--color-border-subtle-ls);
+  font-size: 11px;
+  color: var(--color-text-subtle-ls);
+}
+
+.apr5-foot__note {
+  min-width: 0;
+  flex: 1 1 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.apr5-foot__caliber {
+  color: var(--color-text-faint-ls);
+}
+
+.apr5-foot__pager {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-ls-2);
+}
+
+.apr5-foot__count {
+  font-family: var(--font-family-mono-ls);
+  font-size: 10.5px;
+  color: var(--color-text-subtle-ls);
+  font-variant-numeric: var(--tabular-ls);
+}
+
+.apr5-foot__page {
+  font-family: var(--font-family-mono-ls);
+  font-size: 10.5px;
+  color: var(--color-text-faint-ls);
+  white-space: nowrap;
+}
+
+.apr5-detail {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--space-ls-2);
+}
+
+/* 未选中时骨架里没有详情栏：只留一行可复制的固定链接（禁用并说明原因）。 */
+.apr5-detail:not(.is-open) {
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-end;
+  font-size: 11px;
+}
+
+.apr5-detail:not(.is-open) [data-testid="apd10-permalink"] {
+  height: 22px;
+  padding: 0 6px;
+  font-size: 10px;
+  color: var(--color-text-faint-ls);
+}
+
+.apr5-body {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.apr5-inlineempty {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-ls-1);
+  padding: 10px 12px;
+  font-size: var(--font-size-ls-1);
+}
+
+.apr5-inlineempty__note {
+  margin: 0;
+  font-size: 11px;
+  color: var(--color-text-subtle-ls);
+}
+
+.apr5-warn {
+  margin: 0;
+  padding: 6px 12px;
+  font-size: 11px;
+  color: var(--color-warning-ls);
+  overflow-wrap: anywhere;
+}
+
+.apr5-panel {
+  padding: 8px 12px 10px;
+  border-bottom: 1px solid var(--color-border-subtle-ls);
+}
+
+/* 面板里的搜索与 filterbar 顶栏重复：屏上只留一处输入，DOM 保留给既有护栏。 */
+.apr5-panel [data-testid="apv8-search-group"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.apr5-panel__note {
+  margin: 0;
+  font-size: 11px;
+  color: var(--color-text-subtle-ls);
+}
+
+/* 读屏保留区：汇总条/八态组/队列快捷钮在屏上由 filterbar 承担。 */
+.apr5-sr {
+  display: none;
+}
+
+@media (max-width: 1279.98px) {
+  .apr5-thead,
+  .apr5-lrow {
+    grid-template-columns: 72px minmax(0, 1.7fr) 88px 78px 70px 54px 72px 104px;
+    grid-template-areas: "time item requester approver status dur ref tools";
+  }
+  .apr5-thead > span:nth-child(8),
+  .apr5-lrow__note {
+    display: none;
+  }
+}
+
+@media (max-width: 1099.98px) {
+  .apr5-thead,
+  .apr5-lrow {
+    grid-template-columns: 68px minmax(0, 1fr) 70px 54px 66px 92px;
+    grid-template-areas: "time item status dur ref tools";
+  }
+  .apr5-thead > span:nth-child(3),
+  .apr5-thead > span:nth-child(4),
+  .apr5-lrow__who {
+    display: none;
+  }
+}
+
+@media (max-width: 639.98px) {
+  .apr5-thead,
+  .apr5-lrow {
+    grid-template-columns: 58px minmax(0, 1fr) 66px;
+    grid-template-areas: "time item status";
+    column-gap: 6px;
+    padding: 0 8px;
+  }
+  .apr5-thead > span:nth-child(6),
+  .apr5-thead > span:nth-child(7),
+  .apr5-thead > span:nth-child(9),
+  .apr5-lrow__dur,
+  .apr5-lrow__ref,
+  .apr5-lrow__tools {
+    display: none;
+  }
+  .apr5-pagehead__acts {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  .apr5-sortbar {
+    display: none;
+  }
+  .apr5-filterbar {
+    padding: 6px 8px;
+  }
+  .apr5-search {
+    flex-basis: 100%;
+  }
+}
+
+
+/* 表体行末重复「详情」折（行本身可点开详情）：视觉让位，DOM 保留。 */
+.apr5-lrow [data-testid^="apr5-row-details-"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.apr5-lrow__tools [data-testid="apr-row-copy-status"]:empty {
+  display: none;
+}
+
+.apr5-lrow__tools [data-testid="apr-row-copy-fallback"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.apr5-filterbar [data-testid="apv5-count"] {
+  display: none;
+}
+
+/* 行内两行制：标题 13 + 副行 10，压到 40px 档。 */
+.apr5-lrow__title {
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.apr5-lrow__sub {
+  font-size: 10px;
+  line-height: 1.2;
+}
