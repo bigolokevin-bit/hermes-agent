@@ -147,7 +147,8 @@ describe("runs window contract", () => {
     expect(search).toContain("rdir=desc");
     expect(search).toContain("keep=1");
     expect(countOf("/api/employees")).toBe(employeesBefore);
-    expect(countOf("/api/run-stats")).toBe(statsBefore);
+    // 换窗口＝换统计窗口：运行构成卡跟着再读一次 run-stats，列表仍只读一次。
+    expect(countOf("/api/run-stats")).toBe(statsBefore + 1);
     expect(runsUrls().length).toBe(runsBefore + 1);
   });
 

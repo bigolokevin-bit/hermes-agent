@@ -261,7 +261,9 @@ describe("R150 ① the first screen costs exactly one list read", () => {
     await mount("/runs");
 
     expect(countReads("/api/runs")).toBe(1);
-    expect(countReads("/api/run-stats")).toBe(0);
+    // 运行构成卡自 2026-11-24 起按窗口读一次 /api/run-stats（合计与今日分桶）；
+    // 列表本身仍只读 /api/runs 一次，run-stats 不再兼任 list fallback。
+    expect(countReads("/api/run-stats")).toBe(1);
     // The employee-name side-read is a separate family: counted, never blamed
     // on the list batch, and never repeated per row.
     expect(countReads("/api/employees")).toBe(1);

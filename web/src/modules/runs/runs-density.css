@@ -41,3 +41,32 @@
   min-width: 0;
   max-width: 100%;
 }
+
+/* 2026-11-24 骨架密度：40px 单行。开始/耗时/成本不折行，状态格只放 pill +
+ * 一行失败原因；表头右列与数值列同向对齐。锚点仍是既有 testid，不动业务。 */
+[data-testid="run5-table"] .console-grid-row .ui-c-field {
+  min-height: 0;
+}
+
+[data-testid="run5-table"] .console-grid-row [data-testid$="-start"],
+[data-testid="run5-table"] .console-grid-row [data-testid$="-elapsed"] {
+  white-space: nowrap;
+}
+
+[data-testid="run5-table"] .console-grid-row [data-testid$="-cost"] > span {
+  flex-wrap: nowrap;
+}
+
+[data-testid="run5-table"] .console-grid-head__cell--right,
+[data-testid="run5-table"] .console-grid-head__cell--right button {
+  text-align: right;
+}
+
+[data-testid="run5-table"] .console-grid-head__cell--right button {
+  width: 100%;
+}
+
+[data-testid="run5-table"] [data-testid$="-cost"] > span > span,
+[data-testid="run5-table"] [data-testid$="-cost"] > span > span * {
+  white-space: nowrap;
+}

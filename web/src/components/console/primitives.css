@@ -113,3 +113,408 @@
 
 .stat-value--compact { font-size: var(--font-size-ls-1); }
 .stat-value__suffix { font-size: 0.6em; color: var(--color-text-subtle-ls); }
+
+/* ------------------------------------------------------------------ *
+ * 紧凑面（2026-11-24 任务与运行密度车道）。骨架 console-v4-skeleton.html
+ * `section[data-mod="work"]` 的一行工具条 / filterbar / 看板列 / 运行构成，
+ * 值全部取自 tokens.css 语义层，不写裸 hex、不新增令牌。
+ * 只给 /work 两面用；员工列表继续用上面的卡式基元。
+ * ------------------------------------------------------------------ */
+
+.console-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-ls-2);
+  min-width: 0;
+}
+
+.console-grow { flex: 1 1 auto; min-width: 0; }
+
+.console-sub {
+  margin: 0;
+  min-width: 0;
+  font-size: var(--font-size-ls-1);
+  line-height: var(--line-height-ls-2);
+  color: var(--color-text-muted-ls);
+}
+
+.console-mono {
+  font-family: var(--font-family-mono-ls);
+  font-variant-numeric: var(--tabular-ls);
+}
+
+.console-filterbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-ls-2);
+  min-width: 0;
+  padding: 8px 10px;
+}
+
+.console-input,
+.console-select {
+  height: 28px;
+  min-width: 0;
+  padding: 0 8px;
+  border: var(--border-strong-ls);
+  border-radius: var(--radius-ls-1);
+  background: var(--color-sunken-ls);
+  color: var(--color-text-ls);
+  font-family: var(--font-family-sans-ls);
+  font-size: var(--font-size-ls-1);
+}
+
+.console-input { flex: 1 1 180px; max-width: 280px; }
+.console-input::placeholder { color: var(--color-text-faint-ls); }
+
+.console-input:focus-visible,
+.console-select:focus-visible {
+  outline: var(--focus-ring-ls);
+  outline-offset: var(--focus-ring-offset-ls);
+}
+
+.console-chip-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--color-border-subtle-ls);
+  border-radius: var(--radius-ls-1);
+  background: transparent;
+  color: var(--color-text-muted-ls);
+  font-family: var(--font-family-mono-ls);
+  font-size: 11px;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.console-chip-btn[aria-pressed="true"] {
+  border-color: var(--color-border-ls);
+  background: color-mix(in srgb, var(--color-text-ls) 8%, transparent);
+  color: var(--color-text-ls);
+}
+
+.console-chip-btn:focus-visible {
+  outline: var(--focus-ring-ls);
+  outline-offset: var(--focus-ring-offset-ls);
+}
+
+/* 看板：五列状态，卡内三行（标题 / 归属+级别 / 更新+成本）。 */
+.console-board {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--space-ls-2);
+  min-width: 0;
+}
+
+.console-board__col {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.console-board__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 2px 2px 6px;
+  border-bottom: 1px solid var(--color-border-subtle-ls);
+}
+
+.console-board__title {
+  margin: 0;
+  font-size: var(--font-size-ls-1);
+  font-weight: var(--font-weight-ls-medium);
+  color: var(--color-text-ls);
+}
+
+.console-board__count {
+  font-family: var(--font-family-mono-ls);
+  font-size: 11px;
+  color: var(--color-text-subtle-ls);
+  white-space: nowrap;
+}
+
+.console-board__card {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  min-width: 0;
+  padding: 7px 8px;
+  border: var(--border-ls-1);
+  border-radius: var(--radius-ls-1);
+  background: var(--color-surface-raised-ls);
+  color: var(--color-text-ls);
+  text-align: left;
+  cursor: pointer;
+}
+
+.console-board__card:hover {
+  border-color: var(--color-border-ls);
+  background: color-mix(in srgb, var(--color-text-ls) 5%, var(--color-surface-raised-ls));
+}
+
+.console-board__card:focus-visible {
+  outline: var(--focus-ring-ls);
+  outline-offset: var(--focus-ring-offset-ls);
+}
+
+.console-board__name {
+  margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  font-size: var(--font-size-ls-1);
+  font-weight: var(--font-weight-ls-regular);
+  line-height: 1.35;
+  color: var(--color-text-ls);
+}
+
+.console-board__meta,
+.console-board__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--color-text-subtle-ls);
+}
+
+.console-board__foot > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.console-board__empty {
+  margin: 0;
+  padding: 10px 8px;
+  border: 1px dashed var(--color-border-subtle-ls);
+  border-radius: var(--radius-ls-1);
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--color-text-faint-ls);
+}
+
+/* 列表行（div 网格，非 HTML table）：骨架 40px 行，数字右对齐等宽。 */
+.console-grid-row {
+  display: grid;
+  align-items: center;
+  gap: 0 var(--space-ls-2);
+  min-width: 0;
+  min-height: var(--table-row-h-ls);
+  padding: 0 10px;
+  border-bottom: 1px solid var(--color-border-subtle-ls);
+}
+
+.console-grid-head {
+  min-height: 26px;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--color-border-subtle-ls);
+  font-size: 11px;
+  color: var(--color-text-subtle-ls);
+}
+
+.console-grid-head__cell { min-width: 0; white-space: nowrap; }
+.console-grid-head__cell--right { text-align: right; }
+
+.console-grid-row__cell { min-width: 0; }
+.console-grid-row__cell--right {
+  text-align: right;
+  font-variant-numeric: var(--tabular-ls);
+}
+
+.console-grid-row:hover {
+  background: color-mix(in srgb, var(--color-text-ls) 3.5%, transparent);
+}
+
+.console-row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: 0;
+}
+
+.console-row-actions a,
+.console-row-actions button {
+  font-size: 11px;
+  line-height: 1;
+  color: var(--color-text-muted-ls);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  white-space: nowrap;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+.console-row-actions a:hover,
+.console-row-actions button:hover { color: var(--color-text-ls); }
+
+/* 双栏：失败详情 + 运行构成（骨架 split-wide）。 */
+.console-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: var(--space-ls-2);
+  min-width: 0;
+  align-items: start;
+}
+
+.console-split__main { display: flex; flex-direction: column; gap: var(--space-ls-2); min-width: 0; }
+
+/* 占比条（骨架 .brow）。 */
+.console-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.console-bar {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) 40px;
+  align-items: center;
+  gap: var(--space-ls-2);
+  min-width: 0;
+  font-size: 11px;
+  line-height: 1.3;
+  color: var(--color-text-muted-ls);
+}
+
+.console-bar__track {
+  height: 5px;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 1px;
+  background: color-mix(in srgb, var(--color-text-ls) 7%, transparent);
+}
+
+.console-bar__track > i {
+  display: block;
+  height: 100%;
+  background: var(--color-text-faint-ls);
+}
+
+.console-bar__track > i.tone-ok { background: var(--color-success-ls); }
+.console-bar__track > i.tone-warn { background: var(--color-warning-ls); }
+.console-bar__track > i.tone-bad { background: var(--color-danger-ls); }
+.console-bar__track > i.tone-info { background: var(--color-info-ls); }
+
+.console-bar__value {
+  text-align: right;
+  font-family: var(--font-family-mono-ls);
+  font-variant-numeric: var(--tabular-ls);
+  color: var(--color-text-ls);
+}
+
+.console-kv {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 4px var(--space-ls-3);
+  margin: 0;
+  min-width: 0;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.console-kv dt { color: var(--color-text-subtle-ls); white-space: nowrap; }
+.console-kv dd {
+  margin: 0;
+  min-width: 0;
+  color: var(--color-text-ls);
+  overflow-wrap: anywhere;
+}
+
+.console-divider {
+  height: 1px;
+  margin: var(--space-ls-2) 0;
+  background: var(--color-border-subtle-ls);
+}
+
+.console-notice {
+  display: flex;
+  gap: var(--space-ls-2);
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border-subtle-ls);
+  border-left: 2px solid var(--color-danger-ls);
+  border-radius: var(--radius-ls-1);
+  background: color-mix(in srgb, var(--color-danger-ls) 5%, transparent);
+  font-size: var(--font-size-ls-1);
+  line-height: 1.4;
+  color: var(--color-text-ls);
+}
+
+.console-notice__sub {
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--color-text-muted-ls);
+}
+
+.console-steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  font-size: var(--font-size-ls-1);
+}
+
+.console-steps li {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: var(--space-ls-2);
+  min-width: 0;
+  color: var(--color-text-muted-ls);
+}
+
+.console-steps li::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-text-faint-ls);
+}
+
+.console-steps li.ok::before { background: var(--color-success-ls); }
+.console-steps li.err::before { background: var(--color-danger-ls); }
+.console-steps li.err { color: var(--color-text-ls); }
+
+.console-steps__time {
+  font-family: var(--font-family-mono-ls);
+  font-variant-numeric: var(--tabular-ls);
+  font-size: 11px;
+  color: var(--color-text-subtle-ls);
+}
+
+@media (max-width: 1100px) {
+  .console-board { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .console-split { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 760px) {
+  .console-board { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 520px) {
+  .console-board { grid-template-columns: minmax(0, 1fr); }
+  .console-input { max-width: none; flex-basis: 100%; }
+}

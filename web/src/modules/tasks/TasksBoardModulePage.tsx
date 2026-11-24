@@ -10,7 +10,6 @@ import { Link, useLocation, useNavigate, useSearchParams } from "react-router";
 import { RequestIdCopy } from "@/components/RequestIdCopy";
 import { AlertTriangle, Inbox, RefreshCw, ShieldAlert, X } from "lucide-react";
 
-import { Badge } from "@nous-research/ui/ui/components/badge";
 import { Button } from "@nous-research/ui/ui/components/button";
 import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 import {
@@ -36,6 +35,8 @@ import {
 } from "./tasksBoard";
 import { TaskCreateForm } from "./TaskCreateForm";
 import { ConsoleSelect } from "@/shell/ConsoleSelect";
+import { ConsoleCard } from "@/components/console/ConsoleCard";
+import { Pill } from "@/components/console/Pill";
 import "./tasks-density.css";
 
 /** 组内排序键：优先级高→低，同级按更新时间新→旧；未知按最后。 */
@@ -252,6 +253,10 @@ export function TasksBoardModulePage() {
   const panelActive = Boolean(fStatus);
   const [filtered, setFiltered] = useState<FilterResult | null>(null);
   const [cursorStack, setCursorStack] = useState<string[]>([]);
+  // 骨架 filterbar：搜索只筛这一页已经读到的行，不冒充服务端搜索。
+  const [q, setQ] = useState("");
+  // 骨架来源 chip：全部任务 / 渠道任务（非人工来源）。
+  const [sourceFilter, setSourceFilter] = useState<"all" | "channel">("all");
 
   const patchParams = useCallback((next: Record<string, string | null>) => {
     const draft = new URLSearchParams(params);
@@ -424,10 +429,23 @@ export function TasksBoardModulePage() {
     return () => { alive = false; };
   }, [selected, tick, forced, forceRid]);
 
+  const visibleRows = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    return board.rows.filter((row) => {
+      const isChannel = (row.sourceKind !== undefined && row.sourceKind !== "manual") || Boolean(row.sourceChannel);
+      if (sourceFilter === "channel" && !isChannel) return false;
+      if (!needle) return true;
+      return (
+        row.title.toLowerCase().includes(needle) ||
+        actorLabel(row.assignee, board.nameMap).toLowerCase().includes(needle)
+      );
+    });
+  }, [board.rows, board.nameMap, q, sourceFilter]);
+
   const grouped = useMemo(() => {
     const map = new Map<string, TaskRow[]>();
     for (const status of BOARD_STATUSES) map.set(status, []);
-    for (const row of board.rows) {
+    for (const row of visibleRows) {
       if (map.has(row.status)) map.get(row.status)!.push(row);
     }
     for (const rows of map.values()) {
@@ -438,33 +456,67 @@ export function TasksBoardModulePage() {
       );
     }
     return map;
-  }, [board.rows]);
+  }, [visibleRows]);
 
   const counts = useMemo(() => {
-    const open = grouped.get("open")?.length ?? 0;
-    const blocked = grouped.get("blocked")?.length ?? 0;
-    return { open, blocked };
-  }, [grouped]);
+    const open = board.rows.filter((row) => row.status === "open").length;
+    const blocked = board.rows.filter((row) => row.status === "blocked").length;
+    const inProgress = board.rows.filter((row) => row.status === "in_progress").length;
+    return { open, blocked, inProgress };
+  }, [board.rows]);
+
+  // 今日完成按关闭时间落在北京时间今天算；没有关闭时间的不计，也不补数。
+  const todayDone = useMemo(() => {
+    const now = new Date();
+    const day = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Shanghai",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(now);
+    const fmt = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Shanghai",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+    return board.rows.filter((row) => {
+      if (row.status !== "done" || !row.closedAt) return false;
+      const ms = Date.parse(row.closedAt);
+      return Number.isFinite(ms) && fmt.format(new Date(ms)) === day;
+    }).length;
+  }, [board.rows]);
+
+  const channelCount = useMemo(
+    () =>
+      board.rows.filter(
+        (row) => (row.sourceKind !== undefined && row.sourceKind !== "manual") || Boolean(row.sourceChannel),
+      ).length,
+    [board.rows],
+  );
 
   // QA V4-R4 条目1: 取数失败或还在加载时，汇总不给硬零——只有请求成功且
   // 数据确为空才允许显示 0。
   const countsUnknown = board.phase === "loading" || board.phase === "error" || board.phase === "denied";
   const countsUnreadable = board.phase === "error" || board.phase === "denied";
+  const boardReady = board.phase === "ready" || board.phase === "empty";
+  const subLine = boardReady
+    ? `${board.rows.length} 个任务 · ${counts.open} 待处理 · ${counts.inProgress} 进行中 · ${todayDone} 今日完成`
+    : null;
 
   const retry = useCallback(() => {
     setTick((n) => n + 1);
   }, []);
 
   return (
-    <div className="min-w-0 space-y-4" data-testid="tsk4-board">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="font-mondwest text-2xl font-semibold">任务看板</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            按后端状态看任务；拖动排序未启用，状态不会被前端改写。
-          </p>
-        </div>
-        <div className="flex shrink-0 gap-2">
+    <div className="flex min-w-0 flex-col gap-2" data-testid="tsk4-board">
+      {/* 骨架页头：外壳已给唯一 H1；这里只放副行真读数与两个动作。 */}
+      <header className="console-toolbar" data-testid="tsk4-head">
+        <p className="console-sub" data-testid="tsk4-sub">
+          {subLine ?? "按后端状态看任务；拖动排序未启用，状态不会被前端改写。"}
+        </p>
+        <span className="console-grow" />
+        <div className="flex shrink-0 items-center gap-2">
           <Button
             size="sm"
             outlined
@@ -493,53 +545,124 @@ export function TasksBoardModulePage() {
         />
       ) : null}
 
-      {/* P2: filters are real BFF parameters; the list renders what comes
-        * back. Priority is refused until the server accepts it — no fake
-        * client-side filtering. */}
-      <div className="flex flex-wrap items-center gap-2 text-xs" role="group" aria-label="任务筛选" data-testid="tsk4-filter">
-        <ConsoleSelect
-          aria-label="按状态筛选"
-          data-testid="tsk4-filter-status"
-          className="min-w-0 rounded-sm border border-white/15 bg-transparent px-2 py-1 text-xs"
-          value={fStatus ?? ""}
-          onChange={(next) => applyFilter({ status: next === "" ? null : next })}
-          options={[
-            { value: "", label: "状态：按看板列展示" },
-            { value: "all", label: "全部（单查询聚合）" },
-            ...BOARD_STATUSES.map((st) => ({ value: st, label: statusLabel(st) })),
-          ]}
-        />
-        <ConsoleSelect
-          aria-label="按负责人筛选"
-          data-testid="tsk4-filter-assignee"
-          className="min-w-0 rounded-sm border border-white/15 bg-transparent px-2 py-1 text-xs"
-          value={fAssignee ?? ""}
-          onChange={(next) => applyFilter({ assignee: next === "" ? null : next })}
-          options={[
-            { value: "", label: "负责人：不限" },
-            ...assigneeOptions,
-          ]}
-        />
-        <ConsoleSelect
-          aria-label="按优先级筛选"
-          data-testid="tsk4-filter-priority"
-          className="min-w-0 rounded-sm border border-white/15 bg-transparent px-2 py-1 text-xs opacity-60"
-          value=""
-          onChange={() => undefined}
-          disabled
-          title="服务端优先级筛选尚未开放：带上它后台会返回未过滤的全量，为避免假过滤此处暂不可用"
-          options={[{ value: "", label: "优先级：暂不可筛" }]}
-        />
-        <Button
-          size="sm"
-          outlined
-          data-testid="tsk4-filter-clear"
-          disabled={!filterActive}
-          onClick={clearFilter}
+      {/* 骨架 chips：来源筛选，不是页签；一屏仍只有外壳那一排 tab。 */}
+      <div className="console-toolbar" data-testid="tsk4-chips">
+        <button
+          type="button"
+          className="console-chip-btn"
+          aria-pressed={sourceFilter === "all"}
+          data-testid="tsk4-chip-all"
+          onClick={() => setSourceFilter("all")}
         >
-          清空筛选
-        </Button>
+          全部任务 {boardReady ? board.rows.length : "—"}
+        </button>
+        <button
+          type="button"
+          className="console-chip-btn"
+          aria-pressed={sourceFilter === "channel"}
+          data-testid="tsk4-chip-channel"
+          onClick={() => setSourceFilter("channel")}
+        >
+          渠道任务 {boardReady ? channelCount : "—"}
+        </button>
+        <span className="console-sub">来源是任务的一种筛选，不单独占一排页签</span>
       </div>
+
+      {/* filterbar：状态与负责人是真参数；优先级服务端未开放，禁用并说明。 */}
+      <ConsoleCard flush>
+        <div
+          className="console-filterbar"
+          role="group"
+          aria-label="任务筛选"
+          data-testid="tsk4-filter"
+        >
+          <input
+            type="search"
+            className="console-input"
+            placeholder="搜索任务或员工"
+            aria-label="搜索任务"
+            data-testid="tsk4-search"
+            value={q}
+            onChange={(event) => setQ(event.target.value)}
+            title="只筛当前已加载的看板行；不会向服务再要一次数据"
+          />
+          <ConsoleSelect
+            aria-label="按状态筛选"
+            data-testid="tsk4-filter-status"
+            className="console-select"
+            value={fStatus ?? ""}
+            onChange={(next) => applyFilter({ status: next === "" ? null : next })}
+            options={[
+              { value: "", label: "状态：按看板列展示" },
+              { value: "all", label: "全部（单查询聚合）" },
+              ...BOARD_STATUSES.map((st) => ({ value: st, label: statusLabel(st) })),
+            ]}
+          />
+          <ConsoleSelect
+            aria-label="按负责人筛选"
+            data-testid="tsk4-filter-assignee"
+            className="console-select"
+            value={fAssignee ?? ""}
+            onChange={(next) => applyFilter({ assignee: next === "" ? null : next })}
+            options={[
+              { value: "", label: "负责人：不限" },
+              ...assigneeOptions,
+            ]}
+          />
+          <ConsoleSelect
+            aria-label="按优先级筛选"
+            data-testid="tsk4-filter-priority"
+            className="console-select opacity-60"
+            value=""
+            onChange={() => undefined}
+            disabled
+            title="服务端优先级筛选尚未开放：带上它后台会返回未过滤的全量，为避免假过滤此处暂不可用"
+            options={[{ value: "", label: "优先级：暂不可筛" }]}
+          />
+          <Button
+            size="sm"
+            outlined
+            data-testid="tsk4-filter-clear"
+            disabled={!filterActive && q === "" && sourceFilter === "all"}
+            onClick={() => {
+              clearFilter();
+              setQ("");
+              setSourceFilter("all");
+            }}
+          >
+            清空筛选
+          </Button>
+          <span className="console-grow" />
+          <span className="console-sub console-mono" data-testid="status">
+            {countsUnknown ? "待处理 — · 阻塞 —" : `待处理 ${counts.open} · 阻塞 ${counts.blocked}`}
+          </span>
+          {countsUnreadable ? (
+            <span data-testid="tasks-summary-caveat" className="console-sub">
+              {board.phase === "denied" ? "暂时读不到任务数据（没有查看权限）" : "暂时读不到任务数据，请稍后重试"}
+            </span>
+          ) : null}
+          <span className="console-sub console-mono" data-testid="tsk4-filter-count">
+            本页 {boardReady ? visibleRows.length : "—"} / {boardReady ? board.rows.length : "—"} 条
+          </span>
+        </div>
+      </ConsoleCard>
+
+      {countsUnreadable ? (
+        <details className="console-sub" data-testid="tasks-summary-caveat-detail">
+          <summary className="cursor-pointer">详情</summary>
+          <p className="mt-1">
+            {board.phase === "denied" ? "没有查看权限时数字不作零处理" : "接口不可达时数字不作零处理"}：读不到就是「—」，不按 0 算。
+            {board.requestId ? `请求编号：${board.requestId}` : ""}
+          </p>
+        </details>
+      ) : null}
+
+      <TaskDetailCard
+        state={detail}
+        nameMap={board.nameMap}
+        onClose={closeTask}
+        onRetry={() => setTick((n) => n + 1)}
+      />
 
       {panelActive ? (
         <section className="min-w-0 space-y-3" data-testid="tsk4-filter-view">
@@ -639,43 +762,6 @@ export function TasksBoardModulePage() {
         </section>
       ) : null}
 
-      {!panelActive ? (
-      <div className="flex flex-wrap gap-x-5 gap-y-1 text-sm" data-testid="tsk4-summary">
-        <span data-testid="status">
-          待处理 <b>{countsUnknown ? "—" : counts.open}</b> · 阻塞 <b>{countsUnknown ? "—" : counts.blocked}</b>
-        </span>
-        {countsUnreadable ? (
-          <>
-            <span data-testid="tasks-summary-caveat" className="text-xs text-muted-foreground">
-              {board.phase === "denied" ? "暂时读不到任务数据（没有查看权限）" : "暂时读不到任务数据，请稍后重试"}
-            </span>
-            {/* 设计车道⑤：技术口径从主句撤下，收进「详情」折叠（样式参照 pages/SystemPage.tsx 的原生 details 先例）。 */}
-            <details className="text-xs text-muted-foreground" data-testid="tasks-summary-caveat-detail">
-              <summary className="cursor-pointer">详情</summary>
-              <p className="mt-1">
-                {board.phase === "denied" ? "没有查看权限时数字不作零处理" : "接口不可达时数字不作零处理"}：读不到就是「—」，不按 0 算。
-                {board.requestId ? `请求编号：${board.requestId}` : ""}
-              </p>
-            </details>
-          </>
-        ) : null}
-        <span data-testid="next-action">下一步：处理阻塞任务</span>
-        <span data-testid="owner">负责人：任务指派对象</span>
-      </div>
-      ) : null}
-      {!panelActive ? (
-      <p className="text-xs text-muted-foreground">
-        仅显示本页已加载的任务，不是全量统计；新建任务会真正提交，状态迁移将在后续版本开放。
-      </p>
-      ) : null}
-
-      <TaskDetailCard
-        state={detail}
-        nameMap={board.nameMap}
-        onClose={closeTask}
-        onRetry={() => setTick((n) => n + 1)}
-      />
-
       {!panelActive && board.phase === "loading" ? <BoardSkeleton /> : null}
 
       {/* UI-B 空态组合：留白按令牌（p-10=40px 不在清单，收进 space-6/8）；
@@ -716,14 +802,10 @@ export function TasksBoardModulePage() {
                 />
               </p>
             </div>
-            {/* UI-B 错误态组合：与空态锚互斥由 phase 单值枚举保证（既有测试锁）；
-              * rid 复制入口与技术口径折叠（tasks-summary-caveat-detail）均既有达标，
-              * 本笔实测复核；重试升为唯一实心主操作，其余出口降次级样式。 */}
             <div className="flex flex-wrap items-center gap-[var(--space-2)]">
               <Button size="sm" onClick={retry} data-testid="tsk4-retry" prefix={<RefreshCw className="h-4 w-4" />}>
                 重试
               </Button>
-              {/* QA V4-R4 条目2: 真出口 — hash 壳内 react-router 路由可达。 */}
               <Link
                 to="/overview"
                 data-testid="tsk4-back"
@@ -744,55 +826,52 @@ export function TasksBoardModulePage() {
       ) : null}
 
       {!panelActive && board.phase === "ready" ? (
-        <div className="grid min-w-0 gap-3 md:grid-cols-2 xl:grid-cols-5" data-testid="tsk4-columns">
+        <div className="console-board" data-testid="tsk4-columns">
           {BOARD_STATUSES.map((status) => {
             const rows = grouped.get(status) ?? [];
             return (
-              <section key={status} className="min-w-0 space-y-2" data-testid={`tsk4-col-${status}`}>
-                <div className="flex items-center justify-between gap-2">
-                  <h2 className="text-sm font-semibold">{COLUMN_LABEL[status]}</h2>
+              <section key={status} className="console-board__col" data-testid={`tsk4-col-${status}`}>
+                <div className="console-board__head">
+                  <h2 className="console-board__title">{COLUMN_LABEL[status]}</h2>
                   {rows.length === 0 ? (
-                    <Badge title="这一列当前是空的；空列不计数为 0">—</Badge>
+                    <span className="console-board__count" title="这一列当前是空的；空列不计数为 0">—</span>
                   ) : (
-                    <Badge title="排序：优先级（高→低），同级按更新时间（新→旧）">{rows.length} 条（本页已加载）</Badge>
+                    <span className="console-board__count" title="排序：优先级（高→低），同级按更新时间（新→旧）">
+                      {rows.length} 条（本页已加载）
+                    </span>
                   )}
                 </div>
                 {rows.length === 0 ? (
-                  <p className="rounded-lg border border-border p-3 text-xs text-muted-foreground" data-testid={`tsk4-emptycol-${status}`}>
+                  <p className="console-board__empty" data-testid={`tsk4-emptycol-${status}`}>
                     本列暂无任务{fAssignee ? "（当前正按负责人筛选，清空筛选或换一位负责人可见更多）" : ""}
                   </p>
                 ) : (
                   rows.map((row) => {
                     const priority = priorityLabel(row.priority);
+                    const tone = priority.tone === "warning" ? "warn" : "mut";
                     return (
-                      <Card
+                      <button
                         key={row.taskId}
+                        type="button"
                         data-testid={`tsk4-card-${row.taskId}`}
-                        role="button"
-                        tabIndex={0}
                         aria-label={`查看任务 ${row.title}`}
-                        className="cursor-pointer transition-colors hover:bg-muted/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+                        className="console-board__card"
                         onClick={() => openTask(row.taskId)}
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter" || event.key === " ") {
-                            event.preventDefault();
-                            openTask(row.taskId);
-                          }
-                        }}
                       >
-                        <CardContent className="space-y-2 p-3">
-                          <div className="flex flex-wrap items-start justify-between gap-2">
-                            <h3 className="min-w-0 flex-1 text-sm font-medium">{row.title}</h3>
-                            <Badge tone={priority.tone}>{priority.text}</Badge>
+                        <h3 className="console-board__name">{row.title}</h3>
+                        <div className="console-board__meta">
+                          <span className="truncate">{actorLabel(row.assignee, board.nameMap)}</span>
+                          <Pill tone={tone} dot={false} title={`优先级：${priority.text}`}>{priority.text}</Pill>
+                        </div>
+                        <div className="console-board__foot">
+                          <span>{`更新 ${beijing(row.updatedAt)} · 成本 ${money(row.cost)}`}</span>
+                        </div>
+                        {row.progressNote ? (
+                          <div className="console-board__foot">
+                            <span title={row.progressNote}>{row.progressNote}</span>
                           </div>
-                          <p className="text-xs text-muted-foreground">截止 {beijing(row.dueAt)}</p>
-                          <p className="text-xs text-muted-foreground">
-                            更新 {beijing(row.updatedAt)} · 成本 {typeof row.cost === "number" && Number.isFinite(row.cost) ? money(row.cost) : <span title="后台没有回传这条任务的成本。">—</span>}
-                          </p>
-                          <p className="line-clamp-2 text-xs text-muted-foreground">{row.progressNote ?? "—"}</p>
-                          <p className="text-xs text-muted-foreground">{actorLabel(row.assignee, board.nameMap)}</p>
-                        </CardContent>
-                      </Card>
+                        ) : null}
+                      </button>
                     );
                   })
                 )}
@@ -800,6 +879,25 @@ export function TasksBoardModulePage() {
             );
           })}
         </div>
+      ) : null}
+
+      {!panelActive && board.phase === "ready" && visibleRows.length === 0 ? (
+        <p className="console-sub" data-testid="tsk4-no-match">
+          {board.rows.length === 0
+            ? "看板这一页还没有任务。"
+            : "没有匹配当前搜索或来源筛选的任务；搜索只筛已加载的看板行，清空即回到全部。"}
+        </p>
+      ) : null}
+
+      {!panelActive && boardReady ? (
+        <ConsoleCard>
+          <div className="console-toolbar console-sub" data-testid="tsk4-board-foot">
+            <span>拖动排序未启用；看板顺序按任务状态由后端决定</span>
+            <span className="console-grow" />
+            <span className="console-mono">今日完成 {todayDone} / 目标 —</span>
+            <span className="console-mono">本页 {visibleRows.length} 条</span>
+          </div>
+        </ConsoleCard>
       ) : null}
     </div>
   );

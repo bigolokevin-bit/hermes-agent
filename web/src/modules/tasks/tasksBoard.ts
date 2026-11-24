@@ -24,6 +24,12 @@ export interface TaskRow {
   dueAt?: string;
   updatedAt?: string;
   progressNote?: string;
+  /** 列表行的来源种类（manual / system …），仅用于来源筛选与计数。 */
+  sourceKind?: string;
+  /** 渠道来源（如 feishu）——有的回答只给 channel 不给 kind。 */
+  sourceChannel?: string;
+  /** 关闭时间：今日完成按它算，缺失就不计入今天。 */
+  closedAt?: string;
   /** T14 R2: real cost from the API; missing stays missing ("—"), never 0. */
   cost?: number;
 }
@@ -105,6 +111,9 @@ export function normalizeTask(v: unknown): TaskRow | null {
     dueAt: str(v.dueAt),
     updatedAt: str(v.updatedAt),
     progressNote: str(v.progressNote),
+    sourceKind: record(v.source) ? str(v.source.kind) : undefined,
+    sourceChannel: record(v.source) ? str(v.source.channel) : undefined,
+    closedAt: str(v.closedAt),
     cost: num(v.cost ?? v.cost_usd ?? v.costUsd ?? v.spend),
   };
 }

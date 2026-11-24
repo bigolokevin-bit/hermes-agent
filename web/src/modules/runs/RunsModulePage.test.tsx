@@ -163,7 +163,7 @@ describe("the four states", () => {
   it("loading is a skeleton, not a list of zero", async () => {
     let resolveList: (v: unknown) => void = () => {};
     api.fetchJSON.mockImplementation((url: string) => {
-      if (String(url).includes("/api/runs") || String(url).includes("/api/run-stats")) {
+      if (String(url).includes("/api/runs")) {
         return new Promise((r) => { resolveList = r; });
       }
       return Promise.resolve({ items: [] });
@@ -2320,9 +2320,9 @@ describe("runs time window selector", () => {
     expect(probe()).toContain("employee=emp_aaaabbbbcccc");
     expect(probe()).toContain("rsort=started");
     expect(probe()).toContain("keep=1");
-    // exactly one new list read; nothing else is asked again
+    // exactly one new list read; the composition card re-reads its own window once
     expect(reads("/api/runs").length).toBe(before + 1);
-    expect(api.fetchJSON.mock.calls.length - reads("/api/runs").length).toBe(otherBefore);
+    expect(api.fetchJSON.mock.calls.length - reads("/api/runs").length).toBe(otherBefore + 1);
     expect(reads("/api/runs").at(-1)).toContain("since=");
   });
 

@@ -46,7 +46,6 @@ import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 import { Spinner } from "@nous-research/ui/ui/components/spinner";
 
 import { fetchJSON } from "@/lib/api";
-import { themedBody } from "@/lib/utils";
 import { copyTextToClipboard } from "@/lib/clipboard";
 
 import {
@@ -104,10 +103,10 @@ import {
   sinceKeyOf,
   statusFilterOf,
   statusLabel,
-  statusTone,
   taskLabel,
   usd,
   type RunRow,
+  type SinceKey,
   eventStatus,
   eventElapsed,
 } from "./runs";
@@ -118,6 +117,9 @@ import { useRunDetail, type DetailOutcome } from "./useRunDetail";
 import { COST_CALIBER_TEXT, costCaliberTitle } from "../metrics/costCaliberNote";
 import { RUN_NOTES_TITLE, RUN_NOTE_ROWS } from "./runNotes";
 import { ConsoleSelect } from "@/shell/ConsoleSelect";
+import { ConsoleCard } from "@/components/console/ConsoleCard";
+import { Pill } from "@/components/console/Pill";
+import { useRunStats } from "./runStats";
 
 /** 「—」 with the reason in its title: a gap reads as a gap, never as a zero. */
 function Dashed({ reason }: { reason: string }): ReactNode {
@@ -334,8 +336,10 @@ function RunPreviewPanel({ row, names, index }: { row: RunRow; names: Map<string
   );
 }
 
+// 骨架 t-runs 的列序：运行 | 员工 | 任务 | 开始 | 耗时 | 成本 | 状态 | 操作。
+// 行壳仍是 li[role=group]（键盘游标与展开逻辑不动），只是网格更紧。
 const GRID =
-  "grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-3 gap-y-1 sm:grid-cols-[minmax(0,1.1fr)_minmax(0,0.7fr)_minmax(0,1fr)_minmax(0,0.7fr)_minmax(0,0.9fr)_minmax(0,1.1fr)_minmax(0,1fr)_auto]";
+  "grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,0.85fr)] gap-x-3 gap-y-1 sm:grid-cols-[minmax(0,0.7fr)_minmax(0,1fr)_minmax(0,0.55fr)_minmax(0,0.66fr)_minmax(0,0.46fr)_minmax(0,0.66fr)_minmax(0,0.58fr)_auto]";
 
 function RunListCopy({
   rows,
@@ -624,15 +628,25 @@ function ListRows({
   return (
     <Card className="min-w-0 border-border bg-card" data-testid="run5-table">
       <CardContent className="p-0">
-        <div className={`hidden ${GRID} border-b border-border px-4 py-2 text-xs text-muted-foreground sm:grid`}>
-          <span>运行</span>
-          <SortHeader label="状态" sortKey="status" active={sortKey} dir={sortDir} onSort={onSort} disabled={sortDisabled} />
-          <SortHeader label="开始" sortKey="started" active={sortKey} dir={sortDir} onSort={onSort} disabled={sortDisabled} />
-          <SortHeader label="耗时" sortKey="elapsed" active={sortKey} dir={sortDir} onSort={onSort} disabled={sortDisabled} />
-          <SortHeader label="成本（美元）" sortKey="cost" active={sortKey} dir={sortDir} onSort={onSort} disabled={sortDisabled} />
-          <span>负责人</span><span>失败原因</span><span aria-hidden="true"></span>
+        <div className={`hidden ${GRID} console-grid-head sm:grid`} data-testid="run5-head">
+          <span className="console-grid-head__cell">运行</span>
+          <span className="console-grid-head__cell">员工</span>
+          <span className="console-grid-head__cell">任务</span>
+          <span className="console-grid-head__cell console-grid-head__cell--right">
+            <SortHeader label="开始" sortKey="started" active={sortKey} dir={sortDir} onSort={onSort} disabled={sortDisabled} />
+          </span>
+          <span className="console-grid-head__cell console-grid-head__cell--right">
+            <SortHeader label="耗时" sortKey="elapsed" active={sortKey} dir={sortDir} onSort={onSort} disabled={sortDisabled} />
+          </span>
+          <span className="console-grid-head__cell console-grid-head__cell--right">
+            <SortHeader label="成本" sortKey="cost" active={sortKey} dir={sortDir} onSort={onSort} disabled={sortDisabled} />
+          </span>
+          <span className="console-grid-head__cell">
+            <SortHeader label="状态" sortKey="status" active={sortKey} dir={sortDir} onSort={onSort} disabled={sortDisabled} />
+          </span>
+          <span aria-hidden="true"></span>
         </div>
-        <ul className="divide-y divide-border">
+        <ul className="min-w-0">
           {rows.map((row, index) => {
             const start = beijingMinute(row.startedAt);
             const elapsed = elapsedMinute(row.startedAt, row.endedAt);
@@ -651,7 +665,7 @@ function ListRows({
                 aria-expanded={open}
                 aria-controls={open ? `run-row-preview-${index}` : undefined}
                 aria-label={`${runCode(row.runId)}：${statusLabel(row.status)}`}
-                className={`min-w-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2${isSelected ? " bg-muted/40" : ""}`}
+                className={`console-grid-row min-w-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2${isSelected ? " bg-muted/40" : ""}`}
                 data-testid={base}
                 data-status={row.status ?? "unknown"}
                 data-selected={isSelected ? "1" : undefined}
@@ -689,11 +703,26 @@ function ListRows({
                 <CardField label="运行" labelTestId={`run5-fieldlabel-code-${index}`}>
                   <RunCodeCell row={row} testId={`${base}-code`} />
                 </CardField>
-                <CardField label="状态" labelTestId={`run5-fieldlabel-status-${index}`}>
-                  <span className="min-w-0">
-                    <Badge tone={statusTone(row.status)} data-testid={`${base}-status`}>{statusLabel(row.status)}</Badge>
+                <CardField label="员工" labelTestId={`run5-fieldlabel-employee-${index}`}>
+                  <span
+                    className="min-w-0 truncate"
+                    data-testid={`${base}-employee`}
+                    title={
+                      row.employeeId
+                        ? row.employeeId
+                        : "这条运行没有带回负责人；不代填、不猜"
+                    }
+                  >
+                    {employeeLabel(row.employeeId, names)}
                   </span>
                 </CardField>
+                <span
+                  className="hidden min-w-0 truncate text-xs text-muted-foreground sm:block"
+                  data-testid={`${base}-task`}
+                  title={row.taskId ?? "这条运行没有关联任务"}
+                >
+                  {taskLabel(row.taskId)}
+                </span>
                 <CardField label="开始" labelTestId={`run5-fieldlabel-start-${index}`}>
                   <span className="min-w-0 break-words" data-testid={`${base}-start`} title={row.startedAt ?? undefined}>
                     {start.text ?? <Dashed reason={start.reason} />}
@@ -707,27 +736,22 @@ function ListRows({
                 <CardField label="成本" labelTestId={`run5-fieldlabel-cost-${index}`}>
                   <CostCell row={row} testId={`${base}-cost`} />
                 </CardField>
-                <CardField label="负责人" labelTestId={`run5-fieldlabel-employee-${index}`}>
-                  <span
-                    className="min-w-0 break-words"
-                    data-testid={`${base}-employee`}
-                    title={
-                      row.employeeId
-                        ? row.employeeId
-                        : "这条运行没有带回负责人；不代填、不猜"
-                    }
-                  >
-                    {employeeLabel(row.employeeId, names)}
+                <div className="flex min-w-0 flex-col gap-0.5">
+                  <CardField label="状态" labelTestId={`run5-fieldlabel-status-${index}`}>
+                    <span className="min-w-0">
+                      <Pill tone={runPillTone(row.status)} data-testid={`${base}-status`}>{statusLabel(row.status)}</Pill>
+                    </span>
+                  </CardField>
+                  <span className="flex min-w-0 items-baseline gap-1 text-[11px] leading-tight text-muted-foreground">
+                    <span className="shrink-0 sm:hidden" data-testid={`run5-fieldlabel-reason-${index}`}>失败原因</span>
+                    <span className="min-w-0 break-words" data-testid={`${base}-reason`} title={reason.reason || undefined}>
+                      {reason.text === "—" ? "" : reason.text}
+                    </span>
                   </span>
-                </CardField>
-                <CardField label="失败原因" labelTestId={`run5-fieldlabel-reason-${index}`}>
-                  <span className="min-w-0 break-words" data-testid={`${base}-reason`} title={reason.reason || undefined}>
-                    {reason.text}
-                  </span>
-                </CardField>
-                <div className="col-span-2 flex min-w-0 flex-col items-stretch gap-1 self-center sm:col-span-1 sm:items-end">
+                </div>
+                <div className="col-span-2 flex min-w-0 items-center justify-end gap-2 self-center sm:col-span-1">
                   <Link
-                    className="flex min-h-[44px] w-full items-center justify-center rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground no-underline hover:bg-muted/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 sm:w-auto"
+                    className="inline-flex min-h-[32px] items-center text-[11px] text-muted-foreground underline underline-offset-2 hover:text-foreground"
                     to={hrefOf(row.runId)}
                     state={{ fromList: true }}
                     data-testid={`${base}-open`}
@@ -738,7 +762,7 @@ function ListRows({
                   </Link>
                   <button
                     type="button"
-                    className="flex min-h-[44px] w-full items-center justify-center rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground hover:bg-muted/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 sm:w-auto"
+                    className="inline-flex min-h-[32px] items-center text-[11px] text-muted-foreground underline underline-offset-2 hover:text-foreground"
                     data-testid={`run-row-toggle-${index}`}
                     aria-expanded={open}
                     aria-controls={`run-row-preview-${index}`}
@@ -750,7 +774,7 @@ function ListRows({
                     disabled={previewGate.disabled}
                     title={previewGate.title}
                   >
-                    {open ? "收起预览" : "展开预览"}
+                    {open ? "收起" : "预览"}
                   </button>
                 </div>
                 </div>
@@ -975,6 +999,149 @@ function DetailField({
 }
 
 
+/**
+ * 骨架「失败详情」卡：数据全部来自列表这一行已读到的字段，不再发请求。
+ * 选中运行的真实详情（含事件步骤）在表格下方展开，卡里只给原因与去向。
+ */
+/** 运行状态 → 骨架 pill 档（ok/warn/bad/info/mut），带圆点。 */
+function runPillTone(raw?: string): "ok" | "warn" | "bad" | "info" | "mut" {
+  if (raw === "completed") return "ok";
+  if (raw === "failed") return "bad";
+  if (raw === "interrupted") return "warn";
+  if (raw === "running" || raw === "pending") return "info";
+  return "mut";
+}
+
+function RunFailureCard({
+  row,
+  names,
+  href,
+}: {
+  row: RunRow;
+  names: Map<string, string>;
+  href: string;
+}): ReactNode {
+  const reason = failureSummary(row);
+  const start = beijingMinute(row.startedAt).text;
+  const elapsed = elapsedMinute(row.startedAt, row.endedAt).text;
+  return (
+    <ConsoleCard label="失败详情" action={<span className="console-mono">{runCode(row.runId)}</span>}>
+      <div className="console-notice">
+        <div className="min-w-0">
+          <b>{reason.text === "—" ? "这条运行没有记录失败原因" : reason.text}</b>
+          <div className="console-notice__sub">
+            {reason.reason || `状态 ${statusLabel(row.status)} · ${employeeLabel(row.employeeId, names)}`}
+          </div>
+        </div>
+      </div>
+      <dl className="console-kv mt-2">
+        <dt>任务</dt>
+        <dd>{taskLabel(row.taskId)}</dd>
+        <dt>员工</dt>
+        <dd>{employeeLabel(row.employeeId, names)}</dd>
+        <dt>开始</dt>
+        <dd className="console-mono">{start ?? "—"}</dd>
+        <dt>耗时</dt>
+        <dd className="console-mono">{elapsed ?? "—"}</dd>
+        <dt>成本</dt>
+        <dd className="console-mono">{costText(row)}</dd>
+      </dl>
+      <p className="console-sub mt-2">
+        <Link to={href} state={{ fromList: true }} className="underline underline-offset-2 hover:text-foreground">
+          查看步骤与事件
+        </Link>
+        <span aria-hidden="true"> · </span>
+        步骤只在这一行展开后读取，卡里不重复请求。
+      </p>
+    </ConsoleCard>
+  );
+}
+
+/** 运行构成：/api/run-stats 的合计与今日分桶；读不到就留「—」。 */
+function RunMixCard({
+  stats,
+  rows,
+  sinceKey,
+}: {
+  stats: ReturnType<typeof useRunStats>;
+  rows: RunRow[];
+  sinceKey: SinceKey;
+}): ReactNode {
+  const totals = stats.totals;
+  const total = totals?.runs ?? 0;
+  const bars = totals
+    ? [
+        { label: "成功", value: totals.succeeded, tone: "ok" },
+        { label: "失败", value: totals.failed, tone: "bad" },
+        { label: "运行中", value: totals.running, tone: "info" },
+        { label: "待运行", value: totals.pending, tone: "mut" },
+      ]
+    : [];
+  const failedRows = rows.filter((row) => row.status === "failed");
+  const reasons = (() => {
+    if (failedRows.length === 0) return "本页无失败";
+    const counts = new Map<string, number>();
+    for (const row of failedRows) {
+      const label = failureSummary(row).text;
+      counts.set(label, (counts.get(label) ?? 0) + 1);
+    }
+    return [...counts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 2)
+      .map(([label, count]) => `${label} ${count}`)
+      .join(" · ");
+  })();
+
+  return (
+    <ConsoleCard label="运行构成" action={<span className="console-mono">{sinceLabel(sinceKey)}</span>}>
+      {stats.phase === "loading" ? (
+        <p className="console-sub">正在读取运行统计…</p>
+      ) : totals === null ? (
+        <p className="console-sub">{stats.reason ?? "运行统计这次没有读数。"}</p>
+      ) : (
+        <>
+          <div className="console-bars">
+            {bars.map((bar) => (
+              <div className="console-bar" key={bar.label}>
+                <span>{bar.label}</span>
+                <span className="console-bar__track">
+                  <i
+                    className={`tone-${bar.tone}`}
+                    style={{ width: `${total > 0 ? (bar.value / total) * 100 : 0}%` }}
+                  />
+                </span>
+                <span className="console-bar__value">{bar.value}</span>
+              </div>
+            ))}
+          </div>
+          {total === 0 ? <p className="console-sub mt-2">这个窗口没有运行。</p> : null}
+          <div className="console-divider" />
+          <dl className="console-kv">
+            <dt>成功率</dt>
+            <dd className="console-mono">
+              {totals.successRate === null ? "—" : `${Math.round(totals.successRate * 100)}%`}
+            </dd>
+            <dt>P95 耗时</dt>
+            <dd className="console-mono" title="统计读口的 p95，单位毫秒">
+              {totals.p95 === null ? "—" : `${totals.p95} ms`}
+            </dd>
+            <dt>平均耗时</dt>
+            <dd className="console-mono" title="统计读口不返平均耗时，这里不拿别的数顶替">
+              —
+            </dd>
+            <dt>今日成本</dt>
+            <dd className="console-mono">
+              {stats.todayCostUsd === null ? "—" : usd(stats.todayCostUsd)}
+            </dd>
+            <dt>失败主因</dt>
+            <dd title="按本页已加载的失败行统计，不是全量">{reasons}</dd>
+          </dl>
+        </>
+      )}
+    </ConsoleCard>
+  );
+}
+
 const RUN_SORT_LABEL: Record<RunSortKey, string> = {
   status: "状态",
   started: "开始时间",
@@ -1086,6 +1253,8 @@ export function RunsModulePage() {
   // it instead of starting over at row zero. The server pagination cursor is
   // untouched — it still drops to page one on any filter change (runs.more).
   const [runCursor, setRunCursor] = useState<string | null>(null);
+  // 骨架 filterbar 的搜索：只筛这一页已加载的行，不冒充服务端搜索。
+  const [runQuery, setRunQuery] = useState("");
   const status = statusFilterOf(params.get("status"));
   // The QA handle. A forced leg paints its panel from the URL and asks the
   // service nothing — not the list, not the detail, not the name side-read.
@@ -1169,6 +1338,28 @@ export function RunsModulePage() {
 
   const cancelRefreshRef = useRef<() => void>(() => {});
   const [names, setNames] = useState<Map<string, string>>(new Map());
+  // 运行构成卡：窗口合计与今日分桶；复现腿不发起任何请求。
+  const stats = useRunStats(sinceKey, forced === null);
+  // 骨架 filterbar 的搜索只筛这一页已加载的行；空搜索原样返回服务给的顺序。
+  const shownRows = useMemo(() => {
+    const needle = runQuery.trim().toLowerCase();
+    if (!needle) return sortedRows;
+    return sortedRows.filter(
+      (row) =>
+        row.runId.toLowerCase().includes(needle) ||
+        runCode(row.runId).toLowerCase().includes(needle) ||
+        employeeLabel(row.employeeId, names).toLowerCase().includes(needle) ||
+        taskLabel(row.taskId).toLowerCase().includes(needle),
+    );
+  }, [sortedRows, runQuery, names]);
+  // 「失败详情」卡取本页最近一次的失败行；没有失败就明说没有。
+  const failedRow = useMemo(() => {
+    const failed = rows.filter((row) => row.status === "failed");
+    if (failed.length === 0) return null;
+    return [...failed].sort(
+      (a, b) => Date.parse(b.startedAt ?? "") - Date.parse(a.startedAt ?? ""),
+    )[0];
+  }, [rows]);
   const removeChip = (keys: readonly string[]) => {
     cancelRefreshRef.current();
     const next = new URLSearchParams(params);
@@ -1338,103 +1529,25 @@ export function RunsModulePage() {
       data-page="runs"
       data-fixture={forced ?? undefined}
     >
-      <div className="flex min-w-0 flex-wrap items-center gap-2" data-testid="run-refresh-bar">
-        <Button
-          size="sm"
-          outlined={phase !== "ready" && phase !== "loading" ? true : undefined}
-          onClick={refreshState.refresh}
-          aria-busy={refreshState.busy}
-          disabled={isForced}
-          title={forcedTitle ?? "按当前窗口、状态、负责人与排序再要一次运行记录；只读，不改任何运行"}
-          data-testid="run-refresh"
-          prefix={<RefreshCw className="h-3.5 w-3.5" />}
-        >
-          刷新
-        </Button>
-        {refreshState.busy ? (
-          <span className="min-w-0 break-words text-xs text-muted-foreground" role="status" aria-live="polite" data-testid="run-busy-note">
-            更新中…（先保留上一次读到的数据）
-          </span>
-        ) : null}
-        {!refreshState.busy && refreshState.updatedAt !== null ? (
-          <span className="min-w-0 break-words text-xs text-muted-foreground" data-testid="run-updated-at">
-            {`刷新完成于 ${beijingMinute(refreshState.updatedAt).text ?? "—"}（读取时刻，不是数据时刻）`}
-          </span>
-        ) : null}
-      </div>
-      {refreshState.error !== null ? (
-        <div className="flex min-w-0 flex-wrap items-center gap-2 rounded-md border border-border px-2 py-1 text-xs" data-testid="run-refresh-error">
-          <span className="min-w-0 break-words">这次刷新没成功：{refreshState.error.sentence}</span>
-          {refreshState.error.requestId !== null ? (
-            <>
-              <span className="text-muted-foreground">请求编号</span>
-              <code className="min-w-0 break-all text-[11px]" data-testid="run-refresh-rid">{refreshState.error.requestId}</code>
-              <Button
-                size="sm"
-                outlined
-                onClick={() => void copyTextToClipboard(refreshState.error?.requestId ?? "")}
-                data-testid="run-refresh-copy"
-              >
-                复制编号
-              </Button>
-            </>
-          ) : (
-            <span className="text-muted-foreground" data-testid="run-refresh-rid-absent">本次请求未记录编号</span>
-          )}
-          <Button size="sm" outlined onClick={refreshState.refresh} data-testid="run-refresh-retry">
-            再试
-          </Button>
-        </div>
-      ) : null}
-      <div className="flex min-w-0 flex-wrap items-start justify-between gap-x-3 gap-y-2">
-        <div className="min-w-0">
-          <nav aria-label="面包屑" className="min-w-0 break-words text-xs text-muted-foreground" data-testid="run5-breadcrumb">
-            <Link to="/overview" className="underline decoration-dotted underline-offset-2 hover:text-foreground">控制台</Link>
-            <span aria-hidden="true"> · </span>
-            <span aria-current="page">运行</span>
-          </nav>
-          <h1 className={`mt-1 min-w-0 break-words text-xl ${themedBody}`}>运行</h1>
-          <p className="mt-1 min-w-0 break-words text-xs text-muted-foreground">
-            按时间看运行记录。这一面只读：不取消运行；重试的含义是新建一次运行。
-          </p>
-        </div>
-        <div className="flex min-w-0 flex-wrap items-end gap-2" role="group" aria-label="运行筛选" data-testid="run5-filters">
-          <div
-            className="flex min-w-0 flex-col gap-1 text-xs"
-            role="group"
-            aria-label="时间范围"
-            data-testid="run5-filter-window"
-            title={isForced ? forcedTitle : "换时间范围会重新向服务要一次数据，其余筛选保持不变"}
-          >
-            <span className="text-muted-foreground">时间范围</span>
-            <div className="flex min-w-0 flex-wrap gap-1">
-              {SINCE_OPTIONS.map((option) => (
-                <button
-                  key={option.key}
-                  type="button"
-                  data-testid={`run-window-${option.key}`}
-                  aria-pressed={option.key === sinceKey}
-                  className={
-                    option.key === sinceKey
-                      ? "shrink-0 whitespace-nowrap rounded-md border border-border bg-muted px-2.5 py-1 text-xs font-medium"
-                      : "shrink-0 whitespace-nowrap rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground"
-                  }
-                  onClick={() => {
-                    refreshState.cancel();
-                    setParam("window", option.key);
-                  }}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-          </div>
-          <label className="flex min-w-0 flex-col gap-1 text-xs" htmlFor="run5-filter-status">
-            <span className="text-muted-foreground">状态</span>
+      {/* 骨架 filterbar：搜索 + 状态 + 时间 + 读取动作挤成一行；页头 H1 归外壳。 */}
+      <ConsoleCard flush>
+        <div className="console-filterbar" role="group" aria-label="运行筛选" data-testid="run5-filters">
+          <input
+            type="search"
+            className="console-input"
+            placeholder="搜索运行编号、员工或任务"
+            aria-label="搜索运行"
+            data-testid="run5-search"
+            value={runQuery}
+            onChange={(event) => setRunQuery(event.target.value)}
+            title="只筛当前已加载的运行行；不会向服务再要一次数据"
+          />
+          <label className="flex min-w-0 items-center gap-1 text-xs" htmlFor="run5-filter-status">
+            <span className="console-sub">状态</span>
             <ConsoleSelect
               id="run5-filter-status"
               data-testid="run5-filter-status"
-              className="h-8 min-w-0 max-w-40 rounded-md border border-border bg-transparent px-2 text-sm"
+              className="console-select max-w-40"
               value={status ?? ""}
               title={isForced ? forcedTitle : "换状态会重新向服务要一次数据"}
               onChange={(next) => {
@@ -1447,6 +1560,33 @@ export function RunsModulePage() {
               ]}
             />
           </label>
+          <div
+            className="flex min-w-0 flex-wrap items-center gap-1"
+            role="group"
+            aria-label="时间范围"
+            data-testid="run5-filter-window"
+            title={isForced ? forcedTitle : "换时间范围会重新向服务要一次数据，其余筛选保持不变"}
+          >
+            {SINCE_OPTIONS.map((option) => (
+              <button
+                key={option.key}
+                type="button"
+                data-testid={`run-window-${option.key}`}
+                aria-pressed={option.key === sinceKey}
+                className={
+                  option.key === sinceKey
+                    ? "shrink-0 whitespace-nowrap rounded-sm border border-border bg-muted px-2 py-0.5 text-xs font-medium"
+                    : "shrink-0 whitespace-nowrap rounded-sm border border-transparent px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground"
+                }
+                onClick={() => {
+                  refreshState.cancel();
+                  setParam("window", option.key);
+                }}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
           {/* wave-125：读取动作自成一组，375 档不再与时间芯片、状态选择器穿插换行。 */}
           <div
             className="flex min-w-0 flex-wrap items-center gap-1"
@@ -1478,25 +1618,50 @@ export function RunsModulePage() {
               清除筛选
             </Button>
           </div>
+          <span className="console-grow" />
+          <div className="flex min-w-0 flex-wrap items-center gap-2" data-testid="run-refresh-bar">
+            <Button
+              size="sm"
+              outlined={phase !== "ready" && phase !== "loading" ? true : undefined}
+              onClick={refreshState.refresh}
+              aria-busy={refreshState.busy}
+              disabled={isForced}
+              title={forcedTitle ?? "按当前窗口、状态、负责人与排序再要一次运行记录；只读，不改任何运行"}
+              data-testid="run-refresh"
+              prefix={<RefreshCw className="h-3.5 w-3.5" />}
+            >
+              刷新
+            </Button>
+            {refreshState.busy ? (
+              <span className="console-sub" role="status" aria-live="polite" data-testid="run-busy-note">
+                更新中…（先保留上一次读到的数据）
+              </span>
+            ) : null}
+            {!refreshState.busy && refreshState.updatedAt !== null ? (
+              <span className="console-sub" data-testid="run-updated-at">
+                {`刷新完成于 ${beijingMinute(refreshState.updatedAt).text ?? "—"}（读取时刻，不是数据时刻）`}
+              </span>
+            ) : null}
+          </div>
         </div>
         {filterChips.length > 0 ? (
           <div
-            className="flex min-w-0 flex-wrap items-center gap-2"
+            className="console-toolbar px-2.5 pb-2"
             data-testid="run-filter-chips"
             aria-label="生效筛选"
           >
-            <span className="text-xs text-muted-foreground">当前筛选</span>
+            <span className="console-sub">当前筛选</span>
             {filterChips.map((chip) => (
               <span
                 key={chip.key}
-                className="inline-flex min-w-0 items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs"
+                className="inline-flex min-w-0 items-center gap-1 rounded-sm border border-border-subtle px-2 py-0.5 text-[11px]"
                 data-testid={`run-chip-${chip.key}`}
                 title={chip.title}
               >
                 <span className="min-w-0 truncate">{chip.label}：{chip.value}</span>
                 <button
                   type="button"
-                  className="shrink-0 rounded-full px-1 text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                  className="shrink-0 rounded-full px-1 text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:ring-ring"
                   aria-label={`移除${chip.label}筛选`}
                   data-testid={`run-chip-${chip.key}-remove`}
                   onClick={() => removeChip(chip.params)}
@@ -1507,65 +1672,156 @@ export function RunsModulePage() {
             ))}
           </div>
         ) : null}
-      </div>
+      </ConsoleCard>
+
+      {refreshState.error !== null ? (
+        <div className="flex min-w-0 flex-wrap items-center gap-2 rounded-sm border border-border px-2 py-1 text-xs" data-testid="run-refresh-error">
+          <span className="min-w-0 break-words">这次刷新没成功：{refreshState.error.sentence}</span>
+          {refreshState.error.requestId !== null ? (
+            <>
+              <span className="text-muted-foreground">请求编号</span>
+              <code className="min-w-0 break-all text-[11px]" data-testid="run-refresh-rid">{refreshState.error.requestId}</code>
+              <Button
+                size="sm"
+                outlined
+                onClick={() => void copyTextToClipboard(refreshState.error?.requestId ?? "")}
+                data-testid="run-refresh-copy"
+              >
+                复制编号
+              </Button>
+            </>
+          ) : (
+            <span className="text-muted-foreground" data-testid="run-refresh-rid-absent">本次请求未记录编号</span>
+          )}
+          <Button size="sm" outlined onClick={refreshState.refresh} data-testid="run-refresh-retry">
+            再试
+          </Button>
+        </div>
+      ) : null}
+
 
       {forced !== null ? <ReproNote state={forced} /> : null}
 
-      <p className="min-w-0 break-words text-xs text-muted-foreground" aria-live="polite" data-testid="run5-status">
-        {statusLine}
-      </p>
+      <div className="console-toolbar console-sub" data-testid="run5-meta">
+        <span data-testid="run5-status" aria-live="polite">{statusLine}</span>
+        <span
+          data-testid="run5-counts"
+          title={
+            countsKnown
+              ? "计数只统计这一页已加载的行，不是全量。"
+              : "读取成功之前不报计数：这里写「—」，不把读不到当成 0。"
+          }
+        >
+          {countsKnown
+            ? `本页 ${rows.length} 次 · 失败 ${failedCount} · 运行中 ${runningCount}（仅本页已加载，最多 ${PAGE_LIMIT} 条，不是全量统计）`
+            : "本页 — 次 · 失败 — · 运行中 —（暂时读不到运行数据，请稍后重试）"}
+          {phase === "ready" && cursor ? "；服务说这一页之外还有更多" : ""}
+          {unreadable > 0 && countsKnown
+            ? `；另有 ${unreadable} 条这次没有返回有效的运行编号，没有算在上面`
+            : ""}
+        </span>
+        {countsKnown ? null : (
+          <details data-testid="run5-counts-detail">
+            <summary className="cursor-pointer">详情</summary>
+            <p className="mt-1">
+              读取没有成功之前数字不作零处理：这里写「—」，不按 0 算。
+              {failure?.requestId ? `请求编号：${failure.requestId}` : ""}
+            </p>
+          </details>
+        )}
+        <p data-testid="run-page-cap" title={pageCapTitle()}>
+          已加载 {countsKnown ? rows.length : "—"} 行（{pageCapText()}；复制与导出也只含这些行，不报全量）
+          {phase === "ready" && cursor ? (
+            <span className="ml-2" data-testid="run-page-cap-more">
+              {pageCapMoreText()}
+            </span>
+          ) : null}
+        </p>
+        <span data-testid="run-asof-line">
+          采集时刻 <span data-testid="run-asof" title={asof.title}>{asof.text}</span>
+          （上游给了才显示；没给就是「—」，不拿本机时间顶替）
+        </span>
+      </div>
 
       <RunSourceBar source={source} />
 
       <span hidden data-testid="run-state" data-phase={phase} />
-      <p
-        className="min-w-0 break-words text-xs text-muted-foreground"
-        data-testid="run5-counts"
-        title={
-          countsKnown
-            ? "计数只统计这一页已加载的行，不是全量。"
-            : "读取成功之前不报计数：这里写「—」，不把读不到当成 0。"
-        }
-      >
-        {countsKnown
-          ? `本页 ${rows.length} 次 · 失败 ${failedCount} · 运行中 ${runningCount}（仅本页已加载，最多 ${PAGE_LIMIT} 条，不是全量统计）`
-          : "本页 — 次 · 失败 — · 运行中 —（暂时读不到运行数据，请稍后重试）"}
-        {phase === "ready" && cursor ? "；服务说这一页之外还有更多" : ""}
-        {unreadable > 0 && countsKnown
-          ? `；另有 ${unreadable} 条这次没有返回有效的运行编号，没有算在上面`
-          : ""}
-      </p>
-      {countsKnown ? null : (
-        // 设计车道⑤：技术口径从主句撤下，收进「详情」折叠（样式参照 pages/SystemPage.tsx 的原生 details 先例）。
-        <details className="text-xs text-muted-foreground" data-testid="run5-counts-detail">
-          <summary className="cursor-pointer">详情</summary>
-          <p className="mt-1">
-            读取没有成功之前数字不作零处理：这里写「—」，不按 0 算。
-            {failure?.requestId ? `请求编号：${failure.requestId}` : ""}
-          </p>
-        </details>
-      )}
 
-      <p
-        className="min-w-0 break-words text-xs text-muted-foreground"
-        data-testid="run-page-cap"
-        title={pageCapTitle()}
-      >
-        已加载 {countsKnown ? rows.length : "—"} 行（{pageCapText()}；复制与导出也只含这些行，不报全量）
-        {phase === "ready" && cursor ? (
-          <span className="ml-2" data-testid="run-page-cap-more">
-            {pageCapMoreText()}
-          </span>
-        ) : null}
-      </p>
+      {phase === "loading" ? <LoadingPanel fixture={forced ?? undefined} /> : null}
+      {phase === "empty" ? (
+        <EmptyPanel
+          onRetry={reloadList}
+          onClear={clearFilters}
+          kind={filtersNarrow ? "filter" : "window"}
+          fixture={forced ?? undefined}
+          guide={
+            <>
+              <p className="max-w-prose break-words text-xs text-muted-foreground">
+                想先有东西可看：去任务板挑一件来跑，或到指标页看这段时间的钱花在哪。
+              </p>
+              <p className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs">
+                <Link className="underline underline-offset-2" to="/work?tab=board" data-testid="run-empty-guide-work">
+                  去任务板
+                </Link>
+                <Link className="underline underline-offset-2" to="/metrics" data-testid="run-empty-guide-metrics">
+                  看运行分析
+                </Link>
+              </p>
+              <p className="max-w-prose break-words text-xs text-muted-foreground">
+                若你刚收窄过条件，清空筛选就能看全部；这里没有汇总数字，也不把空当 0。
+              </p>
+            </>
+          }
+        />
+      ) : null}
+      {phase === "error" ? (
+        <ErrorPanel
+          failure={failure ?? { sentence: "读取运行记录时出了问题，请稍后重试。", requestId: null, technical: null }}
+          onRetry={reloadList}
+          fixture={forced ?? undefined}
+        />
+      ) : null}
+      {phase === "denied" ? (
+        <DeniedPanel requestId={failure?.requestId ?? null} fixture={forced ?? undefined} />
+      ) : null}
+      {phase === "ready" ? (
+        <ListRows
+          key={sinceKey}
+          cursorRunId={runCursor}
+          onCursorChange={setRunCursor}
+          rows={shownRows}
+          names={names}
+          hrefOf={hrefOf}
+          previewGate={listGate.preview}
+          selectedId={selected}
+          sortKey={rsort}
+          sortDir={rdir}
+          onSort={chooseSort}
+          sortDisabled={false}
+        />
+      ) : null}
+      {phase === "ready" && rows.length > 0 && shownRows.length === 0 ? (
+        <p className="console-sub" data-testid="run5-no-match">
+          没有匹配当前搜索的运行；搜索只筛已加载的这一页，清空即回到服务给的顺序。
+        </p>
+      ) : null}
+      {phase === "ready" ? (
+        <div className="console-split" data-testid="run5-split">
+          <div className="console-split__main">
+            {failedRow !== null ? (
+              <RunFailureCard row={failedRow} names={names} href={hrefOf(failedRow.runId)} />
+            ) : (
+              <ConsoleCard label="失败详情" action={<span className="console-mono">本页</span>}>
+                <p className="console-sub">
+                  本页已加载的 {rows.length} 次运行里没有失败；失败会在这里给出原因与任务。
+                </p>
+              </ConsoleCard>
+            )}
+          </div>
+          <RunMixCard stats={stats} rows={rows} sinceKey={sinceKey} />
+        </div>
+      ) : null}
 
-      <p
-        className="min-w-0 break-words text-xs text-muted-foreground"
-        data-testid="run-asof-line"
-      >
-        采集时刻 <span data-testid="run-asof" title={asof.title}>{asof.text}</span>
-        （上游给了才显示；没给就是「—」，不拿本机时间顶替）
-      </p>
 
       {detail.k === "loading" ? (
         <Card data-testid="run5-detail-loading" aria-busy="true">
@@ -1611,7 +1867,7 @@ export function RunsModulePage() {
             <dl className="ui-c-fields ui-c-fields--compact">
               <DetailField label="状态">
                 <span title={detailView?.status.title}>
-                  <Badge tone={statusTone(detail.run.status)} data-testid="run5-detail-status">{detailView?.status.text ?? "—"}</Badge>
+                  <Pill tone={runPillTone(detail.run.status)} data-testid="run5-detail-status">{detailView?.status.text ?? "—"}</Pill>
                 </span>
               </DetailField>
               <DetailField label="成本" num>
@@ -1691,59 +1947,7 @@ export function RunsModulePage() {
         </Card>
       ) : null}
 
-      {phase === "loading" ? <LoadingPanel fixture={forced ?? undefined} /> : null}
-      {phase === "empty" ? (
-        <EmptyPanel
-          onRetry={reloadList}
-          onClear={clearFilters}
-          kind={filtersNarrow ? "filter" : "window"}
-          fixture={forced ?? undefined}
-          guide={
-            <>
-              <p className="max-w-prose break-words text-xs text-muted-foreground">
-                想先有东西可看：去任务板挑一件来跑，或到指标页看这段时间的钱花在哪。
-              </p>
-              <p className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs">
-                <Link className="underline underline-offset-2" to="/work?tab=board" data-testid="run-empty-guide-work">
-                  去任务板
-                </Link>
-                <Link className="underline underline-offset-2" to="/metrics" data-testid="run-empty-guide-metrics">
-                  看运行分析
-                </Link>
-              </p>
-              <p className="max-w-prose break-words text-xs text-muted-foreground">
-                若你刚收窄过条件，清空筛选就能看全部；这里没有汇总数字，也不把空当 0。
-              </p>
-            </>
-          }
-        />
-      ) : null}
-      {phase === "error" ? (
-        <ErrorPanel
-          failure={failure ?? { sentence: "读取运行记录时出了问题，请稍后重试。", requestId: null, technical: null }}
-          onRetry={reloadList}
-          fixture={forced ?? undefined}
-        />
-      ) : null}
-      {phase === "denied" ? (
-        <DeniedPanel requestId={failure?.requestId ?? null} fixture={forced ?? undefined} />
-      ) : null}
-      {phase === "ready" ? (
-        <ListRows
-          key={sinceKey}
-          cursorRunId={runCursor}
-          onCursorChange={setRunCursor}
-          rows={sortedRows}
-          names={names}
-          hrefOf={hrefOf}
-          previewGate={listGate.preview}
-          selectedId={selected}
-          sortKey={rsort}
-          sortDir={rdir}
-          onSort={chooseSort}
-          sortDisabled={false}
-        />
-      ) : null}
+
       {phase === "ready" ? (
         <div className="flex min-w-0 flex-wrap items-center gap-2" data-testid="run-more-bar">
           <Button
