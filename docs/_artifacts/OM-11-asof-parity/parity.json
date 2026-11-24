@@ -1,0 +1,73 @@
+{
+  "line": "采集时刻 北京时间 2026-11-24 08:21 · 每卡来源见卡内标注",
+  "newest": "2026-11-24 08:21",
+  "legs": [
+    {
+      "url": "http://127.0.0.1:9131/agent-api/api/workbench/timeseries?range=30d&bucket=day&metric=runs",
+      "iso": "2026-11-24T00:21:40Z",
+      "bj": "2026-11-24 08:21"
+    },
+    {
+      "url": "http://127.0.0.1:9131/agent-api/api/runs?since=2026-11-17T00%3A21%3A40.290Z&limit=3",
+      "iso": "2026-11-20T10:26:29.893Z",
+      "bj": "2026-11-20 18:26"
+    },
+    {
+      "url": "http://127.0.0.1:9131/agent-api/api/workbench/summary?range=1d",
+      "iso": "2026-11-24T00:21:40Z",
+      "bj": "2026-11-24 08:21"
+    },
+    {
+      "url": "http://127.0.0.1:9131/agent-api/api/tasks?status=blocked&limit=3",
+      "iso": "2026-11-16T11:03:16.614Z",
+      "bj": "2026-11-16 19:03"
+    },
+    {
+      "url": "http://127.0.0.1:9131/agent-api/api/matrix?limit=50",
+      "iso": "2026-11-24T00:21:40.654Z",
+      "bj": "2026-11-24 08:21"
+    },
+    {
+      "url": "http://127.0.0.1:9131/agent-api/api/employees?limit=100",
+      "iso": "2026-11-17T05:52:48.030Z",
+      "bj": "2026-11-17 13:52"
+    },
+    {
+      "url": "http://127.0.0.1:9131/agent-api/api/workbench/queue?page_size=100",
+      "iso": "2026-11-24T00:21:40Z",
+      "bj": "2026-11-24 08:21"
+    },
+    {
+      "url": "http://127.0.0.1:9131/agent-api/api/budget-usage?employeeId=emp_217A91BA995044DFBB3E2E940B%2Cemp_86A81CE8FF6F42E187BCF2B540%2Cemp_0166858D562149938FBDA22649&periodKind=month&period=2026-11",
+      "iso": "2026-11-22T09:56:56.621Z",
+      "bj": "2026-11-22 17:56"
+    },
+    {
+      "url": "http://127.0.0.1:9131/agent-api/api/budget-usage?employeeId=emp_217A91BA995044DFBB3E2E940B%2Cemp_86A81CE8FF6F42E187BCF2B540%2Cemp_0166858D562149938FBDA22649&periodKind=day&period=2026-11-24",
+      "iso": "2026-11-24T00:21:40Z",
+      "bj": "2026-11-24 08:21"
+    },
+    {
+      "url": "http://127.0.0.1:9131/agent-api/api/effective-config?id=emp_86A81CE8FF6F42E187BCF2B540",
+      "iso": "2026-11-21T18:39:20.010Z",
+      "bj": "2026-11-22 02:39"
+    },
+    {
+      "url": "http://127.0.0.1:9131/agent-api/api/effective-config?id=emp_0166858D562149938FBDA22649",
+      "iso": "2026-11-13T06:02:53.031Z",
+      "bj": "2026-11-13 14:02"
+    },
+    {
+      "url": "http://127.0.0.1:9131/agent-api/api/knowledge/citations",
+      "iso": "2026-11-24T00:21:40Z",
+      "bj": "2026-11-24 08:21"
+    },
+    {
+      "url": "http://127.0.0.1:9131/agent-api/api/hermes-summary",
+      "iso": "2026-11-24T00:21:25.090191+00:00",
+      "bj": "2026-11-24 08:21"
+    }
+  ],
+  "whoami": 200,
+  "ok": true
+}
