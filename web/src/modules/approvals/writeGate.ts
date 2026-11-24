@@ -149,22 +149,138 @@ export const DECISION_GATE: { readonly disabled: boolean; readonly title: string
 
 export const ACTION_HASH_MISSING_REASON = "这张单没给出动作指纹，无法确认批的就是当前动作。";
 
+/**
+ * 存在但核验不了（形态非法）的禁用原因。工单 §AP-05 目标：缺 hash **与形态非法**
+ * 都⇒保守禁用并给原因；已交付只做前者，这条补后者。
+ */
+export const ACTION_HASH_INVALID_SHAPE_REASON =
+  "这张单给出的动作指纹无法核验（不是一个可比的摘要值），不能确认批的就是当前动作。";
+
+/** 既有票记录的指纹与本单指纹对不上：批的可能不是同一件事。 */
+export const ACTION_HASH_MISMATCH_REASON =
+  "这张单上各票记录的指纹与本单的动作指纹不一致，无法确认批的是同一件事。";
+
+/**
+ * 比对不可用——**信息句，不是禁用原因**。`decisions[]` 在本服务不记录任何指纹
+ * （域 approvals.py `_decisions` L337-346 只出 userId/verdict/comment/decidedAt；
+ * 现网 16 行 7 张票实测 key-set 恒为这四键），所以「与票面记录一致」这件事
+ * 既不能声称、也不能反推——不画假匹配，也不据此禁用。
+ */
+export const ACTION_HASH_COMPARE_UNAVAILABLE_NOTE =
+  "这张单的既有票面没有记录指纹，本项比对做不了：给不出核对结论，也不据此禁用。";
+
+/* ------------------------------------------------------------------ *
+ * 指纹形态判据（证据锚定，不是猜的字符集）。
+ *
+ * 现网读腿实测（2026-11-24，GET /api/approvals?status=all&limit=50 → 16 行全量
+ * 逐值核形）：`argsDigest` 的真值分两族——
+ *   十六进制摘要体：64 位全摘要（域 util.digest L47-48 的 sha256 hexdigest）、
+ *     屏上截断显示的 41/46 位前缀、以及 `th_`+32 位（域 compute_target_hash L213）；
+ *   非摘要体：`sha256:apr02`（体 5 位）、`sha256:p07grant`（体 8 位，含 p/g/r/n/t
+ *     这些非十六进制字母）——前缀写着 sha256，体根本不是摘要。
+ * ⇒ 真正的判据是**体是不是十六进制摘要**，长度不是（截断显示是既有形制，
+ *   把 41/46 位判非法会误伤现网与既有测试面）。域创建只验非空 str（L591），
+ *   不验形制，所以「存在但核验不了」是真实可达状态，不是假想敌。
+ *
+ * 判据方向：十六进制摘要体（16–64 位，含 `sha256:`/`th_` 前缀形制）⇒ 可核验；
+ * 其它任何非空值 ⇒ 无法核验 ⇒ 保守禁用给原因。日后出新形制宁可禁用，不放过。
+ * 大小写不改可核验性（同一摘要的两种写法），判据不区分——现网实测恒为小写。
+ * ------------------------------------------------------------------ */
+// 十六进制大小写只是写法差异，值本身仍可核验⇒判据不区分大小写（判非法会是误伤）。
+const HEX = "[0-9a-fA-F]";
+const VERIFIABLE_HASH_SHAPES: readonly RegExp[] = [
+  new RegExp(`^${HEX}{16,64}$`),
+  new RegExp(`^sha256:${HEX}{16,64}$`),
+  new RegExp(`^th_${HEX}{16,32}$`),
+];
+
+/** null/空/纯空白＝缺失；形制在表内＝可核验；带值但不在表内＝无法核验。 */
+export type ActionHashShape = "missing" | "verifiable" | "invalid";
+
+export function actionHashShapeOf(actionHash: string | null): ActionHashShape {
+  if (actionHash === null || actionHash.trim() === "") return "missing";
+  const value = actionHash.trim();
+  return VERIFIABLE_HASH_SHAPES.some((shape) => shape.test(value)) ? "verifiable" : "invalid";
+}
+
 /** 数据侧判据：详情响应没带回指纹族键 ⇒ 返回该句；带回 ⇒ null（不假报缺失）。 */
 export function missingHashReasonFor(actionHash: string | null): string | null {
-  return actionHash === null || actionHash.trim() === "" ? ACTION_HASH_MISSING_REASON : null;
+  return actionHashShapeOf(actionHash) === "missing" ? ACTION_HASH_MISSING_REASON : null;
+}
+
+/** 形态非法句：只在「有值但核验不了」时给出；缺失走缺失句，可核验走 null（两句不并存）。 */
+export function invalidShapeReasonFor(actionHash: string | null): string | null {
+  return actionHashShapeOf(actionHash) === "invalid" ? ACTION_HASH_INVALID_SHAPE_REASON : null;
+}
+
+export type HashConsistency =
+  /** 本单指纹缺失或核验不了：一致性无从谈起，由上面两条腿说话。 */
+  | { state: "not-applicable" }
+  /** 票面没有可比对记录：诚实形制，不禁用、不声称一致。 */
+  | { state: "unavailable" }
+  /** 票面记录的指纹与本单相同。 */
+  | { state: "consistent" }
+  /** 票面记录的指纹与本单不同 ⇒ 保守禁用。 */
+  | { state: "mismatch" };
+
+/**
+ * 一致性腿：拿本单指纹对既有票面记录的指纹。输入只认详情 `decisions[]` 真带回的
+ * 指纹族值（model.ts 逐条读，缺即 null）；没有可比来源 ⇒ `unavailable`——
+ * **既不返回 consistent 也不返回 mismatch**，不推断、不画假匹配。
+ * 比对口径：去空白后逐字比较；任一票对不上即 mismatch（保守）。
+ */
+export function hashConsistency(
+  actionHash: string | null,
+  recordedHashes: readonly (string | null)[],
+): HashConsistency {
+  if (actionHashShapeOf(actionHash) !== "verifiable") return { state: "not-applicable" };
+  const recorded = recordedHashes
+    .map((value) => (value === null ? null : value.trim()))
+    .filter((value): value is string => value !== null && value !== "");
+  if (recorded.length === 0) return { state: "unavailable" };
+  const mine = (actionHash as string).trim();
+  return recorded.every((value) => value === mine) ? { state: "consistent" } : { state: "mismatch" };
 }
 
 /**
- * 禁用原因列表单点（按序）：写通道关闭句在前，数据侧指纹缺失句在后。
+ * 禁用原因列表单点（按序）：写通道关闭句在前，数据侧指纹句在后——缺失句、
+ * 形态非法句（互斥）、与票面不一致句（只在比对真做得了且对不上时）。
+ * `recordedHashes` 缺省＝拿不到任何票面指纹 ⇒ 一致性腿恒 not-applicable/unavailable，
+ * 不新增句（保守但不虚构）。
  * 消费点：决策区说明段逐条渲染；按钮 title 仍只读 DECISION_GATE.title
  * （AP-07② 同源契约不破，本函数不接线到钮上）。
  */
-export function decisionBlockReasons(actionHash: string | null): string[] {
+export function decisionBlockReasons(
+  actionHash: string | null,
+  recordedHashes: readonly (string | null)[] = [],
+): string[] {
   const reasons: string[] = [];
   if (DECISION_GATE.disabled) reasons.push(DECISION_GATE.title);
   const missing = missingHashReasonFor(actionHash);
   if (missing) reasons.push(missing);
+  const invalid = invalidShapeReasonFor(actionHash);
+  if (invalid) reasons.push(invalid);
+  if (hashConsistency(actionHash, recordedHashes).state === "mismatch") {
+    reasons.push(ACTION_HASH_MISMATCH_REASON);
+  }
   return reasons;
+}
+
+/**
+ * 比对结果 → 屏面读数单点（措辞只在这里）：`unavailable` 给诚实信息句，
+ * `consistent` 给「与票面记录相同」的实话，`mismatch` 不在此说话（它已进禁用句），
+ * `not-applicable` 给空串（缺失/非法两句已经说完了，不叠第三句）。
+ */
+export function hashConsistencyNote(consistency: HashConsistency): string {
+  switch (consistency.state) {
+    case "unavailable":
+      return ACTION_HASH_COMPARE_UNAVAILABLE_NOTE;
+    case "consistent":
+      return "详情里各票记录的指纹与本单动作指纹相同。";
+    case "mismatch":
+    case "not-applicable":
+      return "";
+  }
 }
 
 /* ------------------------------------------------------------------ *
