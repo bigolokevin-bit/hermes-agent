@@ -1432,3 +1432,292 @@
     inset: -10px 0;
   }
 }
+
+/* ── 骨架对齐（console-v4-skeleton L3977-4286）：pane 副行 / 卡块 / 分区标题 ──
+   语法只取令牌：卡 = var(--color-surface-ls) + 1px var(--color-border-subtle-ls)
+   + 6px 圆角 + 12/14 内距；卡头 11px 微标签；数值等宽；表头列名与骨架一致。
+   页内只保留这一层卡描边：外层不再套 Card。 */
+.knwn-outer {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.knv-pane {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.knv-subline {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+  padding: 2px 2px 0;
+  color: var(--color-text-subtle-ls);
+  font-size: var(--font-size-ls-1);
+  line-height: var(--line-height-ls-2);
+  overflow-wrap: anywhere;
+}
+
+.knv-subline > span:first-child {
+  min-width: 0;
+}
+
+.knv-subline b {
+  color: var(--color-text-muted-ls);
+  font-family: var(--font-family-mono-ls);
+  font-weight: var(--font-weight-ls-regular);
+  font-variant-numeric: var(--tabular-ls);
+  white-space: nowrap;
+}
+
+.knv-card {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border: var(--border-ls-1);
+  border-radius: 6px;
+  background: var(--color-surface-ls);
+}
+
+.knv-card-hd {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.knv-label {
+  color: var(--color-text-subtle-ls);
+  font-size: var(--font-size-ls-1);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.knv-meta {
+  color: var(--color-text-faint-ls);
+  font-size: var(--font-size-ls-1);
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.knv-card-foot {
+  margin: 2px 0 0;
+  padding-top: 6px;
+  border-top: 1px dashed var(--color-border-subtle-ls);
+  color: var(--color-text-faint-ls);
+  font-size: var(--font-size-ls-1);
+  line-height: var(--line-height-ls-2);
+  overflow-wrap: anywhere;
+}
+
+.knv-missing {
+  margin: 0;
+  padding: 4px 0 2px;
+  color: var(--color-text-muted-ls);
+  font-size: var(--font-size-ls-2);
+  line-height: var(--line-height-ls-2);
+}
+
+.knv-grid {
+  display: grid;
+  min-width: 0;
+  gap: 12px;
+}
+
+.knv-g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.knv-g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.knv-g4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+.knv-hr {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+  margin: 6px 0 0;
+  color: var(--color-text-subtle-ls);
+  font-size: var(--font-size-ls-1);
+  letter-spacing: 0.08em;
+}
+
+.knv-hr::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--color-border-subtle-ls);
+}
+
+/* 空间概览瓦片：与骨架 .tile 同构（名称 + 状态 / 读数 / 进度条 / 页脚） */
+.knv-tile {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border: var(--border-ls-1);
+  border-radius: 6px;
+  background: var(--color-surface-ls);
+}
+
+.knv-tile-hd {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.knv-tile-name {
+  min-width: 0;
+  font-size: var(--font-size-ls-2);
+  font-weight: var(--font-weight-ls-medium);
+  overflow-wrap: anywhere;
+}
+
+.knv-tile-val {
+  color: var(--color-text-muted-ls);
+  font-family: var(--font-family-mono-ls);
+  font-size: var(--font-size-ls-1);
+  font-variant-numeric: var(--tabular-ls);
+}
+
+.knv-bar {
+  position: relative;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--color-border-subtle-ls);
+}
+
+.knv-bar > i {
+  display: block;
+  height: 100%;
+  background: var(--color-text-subtle-ls);
+}
+
+.knv-tile-foot {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--color-text-faint-ls);
+  font-size: var(--font-size-ls-1);
+}
+
+.knv-tile-foot b {
+  font-family: var(--font-family-mono-ls);
+  font-weight: var(--font-weight-ls-regular);
+  font-variant-numeric: var(--tabular-ls);
+}
+
+/* 检索诊断 KPI 条：标签 / 大数 / 说明三行 */
+.knv-kpi {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 14px;
+  border: var(--border-ls-1);
+  border-radius: 6px;
+  background: var(--color-surface-ls);
+}
+
+.knv-kpi > .k {
+  color: var(--color-text-subtle-ls);
+  font-size: var(--font-size-ls-1);
+}
+
+.knv-kpi > .v {
+  color: var(--color-text-ls);
+  font-family: var(--font-family-mono-ls);
+  font-size: var(--font-size-ls-5);
+  font-variant-numeric: var(--tabular-ls);
+  line-height: var(--line-height-ls-1);
+}
+
+.knv-kpi > .v em {
+  color: var(--color-text-subtle-ls);
+  font-size: var(--font-size-ls-2);
+  font-style: normal;
+}
+
+.knv-kpi > .d {
+  color: var(--color-text-faint-ls);
+  font-size: var(--font-size-ls-1);
+  overflow-wrap: anywhere;
+}
+
+.knv-kv {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+  gap: 4px 12px;
+  margin: 0;
+  font-size: var(--font-size-ls-1);
+}
+
+.knv-kv dt {
+  color: var(--color-text-subtle-ls);
+}
+
+.knv-kv dd {
+  margin: 0;
+  color: var(--color-text-muted-ls);
+  font-family: var(--font-family-mono-ls);
+  font-variant-numeric: var(--tabular-ls);
+  overflow-wrap: anywhere;
+}
+
+.knv-nummeta {
+  margin: 0;
+  color: var(--color-text-faint-ls);
+  font-size: var(--font-size-ls-1);
+  line-height: var(--line-height-ls-2);
+  overflow-wrap: anywhere;
+}
+
+.knv-details {
+  border: var(--border-ls-1);
+  border-radius: 6px;
+  background: var(--color-surface-ls);
+}
+
+.knv-details > summary {
+  padding: 8px 14px;
+  color: var(--color-text-subtle-ls);
+  cursor: pointer;
+  font-size: var(--font-size-ls-1);
+  letter-spacing: 0.08em;
+}
+
+.knv-details > .knv-details-bd {
+  padding: 0 14px 12px;
+}
+
+@media (max-width: 1023.98px) {
+  .knv-g4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .knv-g3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 639.98px) {
+  .knv-g2,
+  .knv-g3,
+  .knv-g4 { grid-template-columns: minmax(0, 1fr); }
+  .knv-card { padding: 10px 12px; }
+  .knv-kpi > .v { font-size: var(--font-size-ls-4); }
+}
+
+/* 卡头已经写了块名时，面标题不再重复一行。 */
+.knw5-surface-title:empty {
+  display: none;
+}

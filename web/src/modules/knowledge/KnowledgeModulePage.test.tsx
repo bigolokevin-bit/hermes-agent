@@ -459,7 +459,7 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     expect(attr("knw5-spaces", "data-len")).toBe("5");
     expect(container.querySelectorAll('[data-testid="knw5-spaces-row"]')).toHaveLength(5);
     const text = container.textContent ?? "";
-    for (const head of ["空间名称", "来源", "文档数", "最近同步", "状态"]) expect(text).toContain(head);
+    for (const head of ["知识库", "可见范围", "文档", "向量", "命中率", "索引", "最近更新"]) expect(text).toContain(head);
     expect(text).toContain("产品知识");
     expect(text).toContain("团队空间");
     expect(byTestid("knw5-space-source")?.textContent ?? "").toBe("—");
@@ -1561,7 +1561,7 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     const text = container.textContent ?? "";
 
     // 列头按运营口径写；时间列写清它是哪一刻。
-    for (const head of ["来源名称", "类型", "最近同步", "状态", "条目数"]) expect(text).toContain(head);
+    for (const head of ["连接器", "类型", "目标库", "同步", "最近同步", "本次条数", "状态", "操作"]) expect(text).toContain(head);
     expect(text).not.toContain("最近一次");
     expect(text).toContain("人事制度库");
     expect(text).toContain("SharePoint");
@@ -2317,7 +2317,7 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     expect(urlsCalled().filter((u: string) => u.includes("spaceId=sp_hr"))).toHaveLength(1);
   });
 
-  it("keeps the search state across detail pages and renders a real breadcrumb chain", async () => {
+  it("keeps the search keyword across space and document drill-downs, and draws no second page breadcrumb", async () => {
     const SPACE_LIST = {
       asOf: "2026-11-19T07:00:00Z",
       items: [
@@ -2338,105 +2338,22 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
       return fail(404, "这个数据接口还没有接入。", "rid-x");
     });
 
-    // 1) 检索页：关键词为空时不出检索层级
+    // 页内不画第二套面包屑：全页唯一 H1 与面包屑归外壳（TopBar）。
     await render("/knowledge?tab=spaces");
-    expect(byTestid("knB-nav")).toBeTruthy();
-    expect(byTestid("knB-crumb-search")).toBeNull();
-    // 只有一级时它就是当前页：不可点、带 aria-current
-    const listCrumb = byTestid("knB-crumb-list");
-    expect(listCrumb?.tagName).toBe("SPAN");
-    expect(listCrumb?.getAttribute("aria-current")).toBe("page");
+    expect(byTestid("knB-nav")).toBeNull();
 
-    // 2) 关键词进 URL，面包屑出现检索层级
+    // 关键词进 URL 后跟着走进空间与文档，返回时有得复原。
     await type("kn8-global-input", "人事");
     await submitForm("kn8-global-form");
-    const urlWithQ = byTestid("loc")?.textContent ?? "";
-    expect(urlWithQ).toContain("q=%E4%BA%BA%E4%BA%8B");
-    expect(byTestid("knB-crumb-search")?.textContent ?? "").toContain("检索「人事」");
-    // 出现检索层级后，「知识」变回真链且落点是去掉关键词的列表；末级仍不可点
-    expect(byTestid("knB-crumb-list")?.tagName).toBe("A");
-    expect((byTestid("knB-crumb-list") as HTMLAnchorElement).getAttribute("href")).toBe("/knowledge?tab=spaces");
-    expect(byTestid("knB-crumb-search")?.getAttribute("aria-current")).toBe("page");
-
-    // 3) 从命中行进到空间详情，面包屑三级：知识 / 空间名 / （末级）
+    expect(byTestid("loc")?.textContent ?? "").toContain("q=%E4%BA%BA%E4%BA%8B");
     await click("kn-space-open");
     const afterEnter = byTestid("loc")?.textContent ?? "";
     expect(afterEnter).toContain("space=sp_hr");
-    expect(afterEnter).toContain("q=%E4%BA%BA%E4%BA%8B"); // 关键词跟着进详情，返回才有得复原
-    expect(byTestid("knB-crumb-space")?.textContent ?? "").toContain("人事制度空间");
-    expect(byTestid("knB-crumb-space")?.getAttribute("aria-current")).toBe("page");
-    expect(byTestid("knB-crumb-doc")).toBeNull();
-    // 进了详情，检索层级也变成真链，落点带着关键词回到检索页
-    expect(byTestid("knB-crumb-search")?.tagName).toBe("A");
-    expect((byTestid("knB-crumb-search") as HTMLAnchorElement).getAttribute("href")).toContain("q=%E4%BA%BA%E4%BA%8B");
-    expect((byTestid("knB-crumb-search") as HTMLAnchorElement).getAttribute("href")).not.toContain("space=");
-
-    // 4) 进文档行 → 文档层级成为末级，且不可点
+    expect(afterEnter).toContain("q=%E4%BA%BA%E4%BA%8B");
     await click("kn3-docs-name");
-    expect((byTestid("loc")?.textContent ?? "")).toContain("doc=d_manual");
-    const docCrumb = byTestid("knB-crumb-doc");
-    expect(docCrumb?.tagName).toBe("SPAN");
-    expect(docCrumb?.getAttribute("aria-current")).toBe("page");
-    expect(docCrumb?.textContent ?? "").toContain("员工手册.pdf");
-    const spaceCrumb = byTestid("knB-crumb-space");
-    expect(spaceCrumb?.tagName).toBe("A");
-    expect(spaceCrumb?.getAttribute("aria-current")).toBeNull();
-    expect(spaceCrumb?.getAttribute("href")).toContain("space=sp_hr");
-    expect(spaceCrumb?.getAttribute("href")).not.toContain("doc=");
-
-    // 5) 浏览器后退逐级回退，回到检索页时 q 与命中态复原
-    expect((byTestid("loc")?.textContent ?? "")).toContain("doc=d_manual");
-    await click("go-back");
-    const backToSpace = byTestid("loc")?.textContent ?? "";
-    expect(backToSpace).toContain("space=sp_hr");
-    expect(backToSpace).not.toContain("doc=");
-    expect(byDocTestid("kn7-preview-panel")).toBeNull();
-    await click("go-back");
-    const backToSearch = byTestid("loc")?.textContent ?? "";
-    expect(backToSearch).toContain("q=%E4%BA%BA%E4%BA%8B");
-    expect(backToSearch).not.toContain("space=sp_hr");
-    expect((byTestid("kn8-global-input") as HTMLInputElement | null)?.value).toBe("人事");
-    expect(byTestid("knw5-spaces")?.getAttribute("data-len")).toBe("1");
-    expect(container.querySelectorAll('[data-testid="knw5-spaces-row"]')).toHaveLength(1);
-    expect(byTestid("kn9-count")?.textContent ?? "").toContain("当前已加载 2 项内命中 1 项");
-    expect(byTestid("knB-crumb-search")?.textContent ?? "").toContain("检索「人事」");
-
-    // 6) 面包屑两条真链：「知识」回不带关键词的列表，「检索」把关键词与命中态带回来
-    await render("/knowledge?tab=spaces&space=sp_hr&q=%E4%BA%BA%E4%BA%8B");
-    await click("knB-crumb-list");
-    const viaListCrumb = byTestid("loc")?.textContent ?? "";
-    expect(viaListCrumb).not.toContain("space=");
-    expect(viaListCrumb).not.toContain("q=");
-    expect(byTestid("knB-crumb-search")).toBeNull();
-
-    await render("/knowledge?tab=spaces&space=sp_hr&q=%E4%BA%BA%E4%BA%8B");
-    await click("knB-crumb-search");
-    const viaSearchCrumb = byTestid("loc")?.textContent ?? "";
-    expect(viaSearchCrumb).toContain("q=%E4%BA%BA%E4%BA%8B");
-    expect(viaSearchCrumb).not.toContain("space=");
-    expect((byTestid("kn8-global-input") as HTMLInputElement | null)?.value).toBe("人事");
-    expect(container.querySelectorAll('[data-testid="knw5-spaces-row"]')).toHaveLength(1);
-    expect(byTestid("kn9-count")?.textContent ?? "").toContain("当前已加载 2 项内命中 1 项");
-
-    // 7) 空间名读不到时用短码，原始标识与原因在 title
-    fetchMock.mockImplementation((url: string) => {
-      if (url === SPACES) return fail(404, "这个数据接口还没有接入。", "rid-name-gone");
-      if (url.startsWith("/agent-api/api/documents?") && url.includes("spaceId=")) return Promise.resolve(DOC_LIST);
-      if (url === DOCUMENTS_PLAIN) return Promise.resolve({ documents: [] });
-      return fail(404, "这个数据接口还没有接入。", "rid-x");
-    });
-    fetchMock.mockClear();
-    await render("/knowledge?tab=spaces&space=sp_01M7ABCDEF0123456789");
-    const codeCrumb = byTestid("knB-crumb-space");
-    expect(codeCrumb?.textContent ?? "").toContain(`空间 · ${shortId("sp_01M7ABCDEF0123456789")}`);
-    expect(codeCrumb?.textContent ?? "").not.toContain("sp_01M7ABCDEF0123456789");
-    expect(codeCrumb?.getAttribute("title") ?? "").toContain("sp_01M7ABCDEF0123456789");
-    expect(codeCrumb?.getAttribute("title") ?? "").toContain("空间名没读到");
-    // 名字只靠一次空间读口：不为每一行文档再问一遍
-    expect(fetchMock.mock.calls.filter((c: unknown[]) => String(c[0]) === SPACES)).toHaveLength(1);
-    // 四态没退化：未接入正文仍在，带可复制 rid 与重试
-    expect(byTestid("kn3-docs")).toBeTruthy();
-    expect(byTestid("knB-crumb-list")?.tagName).toBe("A");
+    expect(byTestid("loc")?.textContent ?? "").toContain("doc=d_manual");
+    // 空间名不逐行追问：列表一次 + 详情面点名一次，共两次，没有按文档行扩散。
+    expect(fetchMock.mock.calls.filter((c: unknown[]) => String(c[0]) === SPACES)).toHaveLength(2);
   });
 
   it("keeps the ingest bodies honest per read, identical for 403 and 404, and never a count", async () => {
