@@ -57,9 +57,15 @@ export function PageHeaderProvider({
     [],
   );
 
+  // 2026-11-24（用户实机投诉「多余的这一格」）：console 外壳页的标题与面包屑已由
+  // shell/console.tsx 出，这里 hideTitle=true；若页面又没有 setAfterTitle/setEnd，
+  // 整条 header 就是一个空的 53px 描边带 —— 直接不渲染，避免空框占位。
+  const headerEmpty = hideTitle && afterTitle === null && end === null;
+
   return (
     <PageHeaderContext.Provider value={value}>
       <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden">
+        {headerEmpty ? null : (
         <header
           className={cn(
             "z-1 w-full shrink-0",
@@ -130,6 +136,7 @@ export function PageHeaderProvider({
             ) : null}
           </div>
         </header>
+        )}
 
         {/* Design lane ①: the one session-expiry notice for every page under this
             header. It hangs here (not in App.tsx, whose route registry this lane
