@@ -12,15 +12,19 @@ vi.mock("@/lib/api-error", () => ({
   },
 }));
 vi.mock("@nous-research/ui", () => ({
-  Badge: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
   Button: ({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement> & { outlined?: boolean }) => {
     const { outlined, ...rest } = props; void outlined; return <button {...rest}>{children}</button>;
   },
-  Card: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  CardContent: ({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) => <div {...props}>{children}</div>,
+  Input: (props: React.InputHTMLAttributes<HTMLInputElement>) => <input {...props} />,
+  Switch: ({ checked, disabled, ...rest }: { checked?: boolean } & React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+    <button role="switch" aria-checked={checked} disabled={disabled} {...rest} />
+  ),
+  Select: ({ children, value, disabled }: { children?: React.ReactNode; value?: string; disabled?: boolean }) => (
+    <button type="button" role="combobox" disabled={disabled} data-value={value}>{value}{children}</button>
+  ),
+  SelectOption: ({ children }: { children?: React.ReactNode }) => <span>{children}</span>,
 }));
 import { SettingsPage } from "./SettingsPage";
-import { ApiError } from "@/lib/api-error";
 
 let container: HTMLDivElement;
 let root: Root;
@@ -32,92 +36,97 @@ beforeEach(() => {
 afterEach(() => { act(() => root.unmount()); container.remove(); });
 async function render() { await act(async () => { root.render(<SettingsPage />); }); await act(async () => {}); }
 
-describe("SettingsPage", () => {
-  it("shows unavailable config as explicit read-only unknown state", async () => {
-    fetchJSON.mockRejectedValue(new ApiError("missing", { status: 404, body: "", url: "config", requestId: "req-config" }));
-    await render();
-    expect(container.querySelector('[data-testid="set4-switch-approval"]')?.textContent).toContain("未启用");
-    expect(container.querySelector('[data-testid="set4-switch-chat"]')?.textContent).toContain("未启用");
-    // 缺读口只在卡底可用性块声明一次；行内只留状态，原因进 title。
-    expect(container.querySelector('[data-testid="set4-switch-approval"]')?.getAttribute("title")).toContain("配置自检尚未接入");
-    expect(container.querySelector('[data-testid="set4-switch-chat"]')?.getAttribute("title")).toContain("该项未启用");
-    expect(container.textContent).toContain("上游连通自检");
-    expect(container.textContent).not.toContain("CR-M2-02");
-    expect(container.textContent).not.toContain("HTTP");
-    expect(container.querySelectorAll("button")).toHaveLength(1);
-    expect([...container.querySelectorAll("a")].every((link) => ["#/system", "#/employees"].includes(link.getAttribute("href") ?? ""))).toBe(true);
-  });
-
-  it("shows server-provided three-state values without writing controls", async () => {
-    fetchJSON.mockResolvedValue({ writeSwitches: { approval: true, chat: null }, upstreams: [{ name: "Hermes", state: "disabled" }] });
-    await render();
-    expect(container.querySelector('[data-testid="set4-switch-approval"]')?.textContent).toContain("已开启");
-    expect(container.querySelector('[data-testid="set4-switch-chat"]')?.textContent).toContain("未知（本次未能读取）");
-    expect(container.querySelector('[data-testid="set4-upstreams"]')?.textContent).toContain("未开启");
-    expect([...container.querySelectorAll("button")].some((button) => /保存|重置|开关/.test(button.textContent ?? ""))).toBe(false);
-  });
-
-  it("shows request id and retries on a server error", async () => {
-    fetchJSON.mockRejectedValueOnce(new ApiError("failed", { status: 500, body: "", url: "config", requestId: "req-config-500" })).mockResolvedValueOnce({ writeSwitches: { approval: true, chat: false }, upstreams: [] });
-    await render();
-    expect(container.querySelector('[data-testid="set4-error"]')?.textContent).toContain("req-config-500");
-    await act(async () => { [...container.querySelectorAll("button")].find((button) => button.textContent?.includes("重试"))?.click(); });
-    await act(async () => {});
-    expect(container.querySelector('[data-testid="set4-content"]')).toBeTruthy();
-  });
-
-  it("renders an empty state when the config schema explicitly has no items", async () => {
-    fetchJSON.mockResolvedValue({ items: [] });
-    await render();
-    expect(container.querySelector('[data-testid="set4-empty"]')).toBeTruthy();
-  });
-
-  // 2026-11-24：/system?tab=defaults 不许是空壳。读口 404 时也要摊开这台控制台
-  // 真实读得到的只读事实（运行时摘要），且不造假开关。
-  it("paints real read-only facts even when the config read port is absent", async () => {
-    fetchJSON.mockImplementation((url: string) => {
-      if (url.includes("/api/config")) {
-        return Promise.reject(new ApiError("missing", { status: 404, body: "", url: "config", requestId: "req-config" }));
-      }
+function liveReads() {
+  fetchJSON.mockImplementation((url: string) => {
+    if (url.includes("/api/hermes-summary")) {
       return Promise.resolve({
-        schema: "runtime.hermes.summary.v1",
-        sources: { gateway_health: { state: "ok" }, dashboard_system: { state: "degraded", reason: "timeout" } },
         gateway: {
-          status: "ok",
           platform: "hermes-agent",
           version: "unknown",
           gateway_state: "running",
-          updated_at: "2026-11-24T04:40:26.349578+00:00",
-          platforms: { api_server: { state: "connected" }, feishu: { state: "connected" } },
-          metrics_today: { day: "2026-11-24", requests: 0, messages: 0, tokens: 0 },
-          note: "metrics_today 为进程启动后当日计数，重启归零；不回填历史",
+          status: "ok",
+          active_agents: 0,
+          updated_at: "2026-11-24T09:00:27Z",
         },
       });
+    }
+    return Promise.resolve({
+      asOf: "2026-11-24T09:00:31Z",
+      sources: [
+        { id: "console", port: 8092, state: "ok" },
+        { id: "runtime", port: 8103, state: "down" },
+        { id: "bisheng", port: 7860, state: "ok" },
+      ],
     });
+  });
+}
+
+const val = (key: string) =>
+  (container.querySelector(`[data-testid="set5-ctl-${key}"]`) as HTMLInputElement | null)?.value;
+
+describe("SettingsPage", () => {
+  it("renders a skeleton-shaped read-only form: toolbar + 13 cards, every control disabled", async () => {
+    liveReads();
     await render();
-    const facts = container.querySelector('[data-testid="set4-facts"]');
-    expect(facts).toBeTruthy();
-    expect(container.querySelector('[data-testid="set4-fact-read-port"]')?.textContent).toContain("未接入");
-    expect(container.querySelector('[data-testid="set4-fact-gateway"]')?.textContent).toContain("running");
-    // 工程键名不上屏：人话读数在正文，原始键值进 title。
-    expect(container.querySelector('[data-testid="set4-fact-platforms"]')?.textContent).toContain("已连接");
-    expect(container.querySelector('[data-testid="set4-fact-platforms"]')?.getAttribute("title")).toContain("api_server=connected");
-    expect(container.querySelector('[data-testid="set4-fact-metrics-today"]')?.textContent).toContain("请求 0");
-    expect(container.querySelector('[data-testid="set4-fact-sources"]')?.textContent).toContain("系统状态降级");
-    expect(container.querySelector('[data-testid="set4-fact-sources"]')?.getAttribute("title")).toContain("dashboard_system=degraded（timeout）");
-    expect(container.querySelector('[data-testid="set4-facts-stamp"]')?.textContent).toContain("2026-11-24");
-    // 诚实纪律：没有假开关、没有写入口。
-    expect(container.querySelectorAll('input, [role="switch"]')).toHaveLength(0);
-    expect(container.querySelector('[data-testid="set4-fact-writable"]')?.textContent).toContain("0");
+    const cards = container.querySelectorAll('[data-testid^="set5-card-"]');
+    expect(cards.length).toBeGreaterThanOrEqual(10);
+    expect(container.querySelector('[data-testid="set5-save"]')).toHaveProperty("disabled", true);
+    expect(container.querySelector('[data-testid="set5-reset"]')).toHaveProperty("disabled", true);
+    // 每个块 2–5 行。
+    for (const card of cards) {
+      const rows = card.querySelectorAll(".set5-field");
+      expect(rows.length).toBeGreaterThanOrEqual(2);
+      expect(rows.length).toBeLessThanOrEqual(5);
+    }
+    // 控件一律 disabled（input / switch / select），没有可点的写控件。
+    const controls = [...container.querySelectorAll<HTMLInputElement | HTMLButtonElement>(
+      'input, button[role="switch"], button[role="combobox"]',
+    )];
+    expect(controls.length).toBeGreaterThan(30);
+    expect(controls.every((control) => control.disabled)).toBe(true);
   });
 
-  it("says the runtime summary was unreadable instead of showing zeros", async () => {
-    fetchJSON.mockImplementation((url: string) =>
-      url.includes("/api/config")
-        ? Promise.reject(new ApiError("missing", { status: 404, body: "", url: "config" }))
-        : Promise.reject(new ApiError("boom", { status: 502, body: "", url: "summary" })),
-    );
+  it("fills real values from runtime summary and service probe", async () => {
+    liveReads();
     await render();
-    expect(container.querySelector('[data-testid="set4-facts-unavailable"]')?.textContent).toContain("不代表 0");
+    // 平台工程标识转人话，原值不上屏。
+    expect(val("runtime-platform")).toBe("Hermes 运行时");
+    expect(val("runtime-gateway")).toBe("运行中");
+    expect(val("runtime-status")).toBe("正常");
+    expect(val("runtime-active")).toBe("0");
+    // 版本上游报 unknown → 未读到，不编版本号。
+    expect(val("runtime-version")).toBe("未读到");
+    // 真端口与连通态。
+    expect(val("source-console")).toBe("8092 · 正常");
+    expect(val("source-runtime")).toBe("8103 · 探测失败");
+    expect(val("source-bisheng")).toBe("7860 · 正常");
+  });
+
+  it("keeps engineering enums off screen and has no em dash / tablist", async () => {
+    liveReads();
+    await render();
+    const text = container.textContent ?? "";
+    expect(text).not.toContain("hermes-agent");
+    expect(text).not.toContain("running");
+    expect(text).not.toContain("—");
+    expect(container.querySelector('[role="tablist"]')).toBeNull();
+    expect(container.querySelectorAll("[data-fixture]")).toHaveLength(0);
+    expect(container.querySelector("h2")?.textContent).toContain("默认设置");
+  });
+
+  it("says 未读到 (not zero) when both read ports fail", async () => {
+    fetchJSON.mockRejectedValue(new Error("down"));
+    await render();
+    expect(val("runtime-platform")).toBe("未读到");
+    expect(val("source-console")).toBe("未读到");
+    expect(container.textContent).toContain("数据可用性");
+    expect(container.textContent).toContain("不代表 0 或停止");
+  });
+
+  it("shows 读取中 while the read ports are still pending", async () => {
+    fetchJSON.mockImplementation(() => new Promise(() => {}));
+    await render();
+    expect(val("runtime-platform")).toBe("读取中…");
+    expect(container.querySelector('[data-testid="set5-caliber"]')?.textContent).toContain("读取中…");
   });
 });

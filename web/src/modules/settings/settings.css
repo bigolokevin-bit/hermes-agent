@@ -1,8 +1,8 @@
 /* ---------------------------------------------------------------- *
- * 骨架 defaults pane 形制（set5）：h2 标题 + 副行 + 卡式分区。
- * 两层套框就到顶：页底 → 卡（ConsoleCard）→ 表体分隔线；
- * 卡内分组只用 11px 小标题 + 间距，不再各自描边。
- * 字号/间距/颜色只走 tokens.css 的 -ls 令牌。
+ * 骨架 defaults pane 形制（set5）：h2 标题 + 副行 + 顶部工具条 + 卡式表单。
+ * 两层套框就到顶：页底 → 卡（ConsoleCard）→ 行分隔线；卡内不再各自描边。
+ * 每行 = label（左，13px）| 控件（右）| 说明（12px 弱色，行下）。
+ * 字号/间距/颜色只走 tokens.css 的 -ls 令牌（字号六档，无 11 字面量）。
  * ---------------------------------------------------------------- */
 .set5-page {
   display: flex;
@@ -39,11 +39,23 @@
   color: var(--color-text-muted-ls);
 }
 
+/* 顶部工具条：保存 | 重置（disabled） + 只读环境说明。 */
+.set5-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-ls-2);
+}
+
+/* 微字档：骨架的 11px 说明（工具条说明 / 口径行 / 字段说明共用一处声明）。 */
+.set5-micro {
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--color-text-subtle-ls);
+}
+
 .set5-caliber {
   margin: 0;
-  font-size: var(--font-size-ls-1);
-  line-height: var(--line-height-ls-2);
-  color: var(--color-text-subtle-ls);
 }
 
 .set5-stack {
@@ -53,155 +65,64 @@
   gap: var(--space-ls-2);
 }
 
-.set5-card-action {
-  font-size: var(--font-size-ls-1);
-  color: var(--color-text-subtle-ls);
-}
-
-/* 只读事实行：36–40px 行高，dt 11px 微标签，dd 13px 值。 */
-.set5-fact-rows { margin: 0; }
-
-.set5-fact-row {
-  display: flex;
-  min-width: 0;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-ls-2);
-  box-sizing: border-box;
-  min-height: 36px;
-  padding: var(--space-ls-1) 0;
-  border-top: var(--border-ls-1);
-}
-
-.set5-fact-row:first-child { border-top: 0; }
-
-.set5-fact-row dt {
-  flex: 0 0 auto;
-  font-size: var(--font-size-ls-1);
-  letter-spacing: 0.08em;
-  color: var(--color-text-subtle-ls);
-}
-
-.set5-fact-row dd {
-  flex: 1 1 60%;
-  min-width: 0;
-  margin: 0;
-  font-size: var(--font-size-ls-2);
-  color: var(--color-text-ls);
-  text-align: right;
-  font-variant-numeric: var(--tabular-ls);
-  word-break: break-word;
-}
-
-/* 今日计数：24px 等宽大数字（关键数字用大字，行内其余保持小字）。 */
-.set5-stats {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: flex-end;
-  gap: var(--space-ls-1);
-}
-
-.set5-stat { display: inline-flex; align-items: baseline; gap: 2px; }
-
-.set5-stat-k {
-  font-size: var(--font-size-ls-1);
-  color: var(--color-text-subtle-ls);
-}
-
-.set5-stat-v {
-  font-family: var(--font-family-mono-ls);
-  font-size: var(--font-size-ls-6);
-  line-height: 1;
-  font-weight: var(--font-weight-ls-medium);
-  font-variant-numeric: var(--tabular-ls);
-  color: var(--color-text-ls);
-}
-
-.set5-stat-sep { color: var(--color-text-faint-ls); font-size: var(--font-size-ls-1); }
-
-/* 列表行：36–40px。 */
-.set5-rows {
+/* 卡内表单行：label 左、控件右、说明行下；行间只留 1px 分隔线。 */
+.set5-fields {
   display: flex;
   min-width: 0;
   flex-direction: column;
 }
 
-.set5-subhead {
-  margin: var(--space-ls-3) 0 var(--space-ls-1);
-  font-size: var(--font-size-ls-1);
-  letter-spacing: 0.08em;
-  color: var(--color-text-subtle-ls);
-}
-
-.set5-rows > .set5-subhead:first-child { margin-top: 0; }
-
-.set5-row {
-  display: flex;
+.set5-field {
+  display: grid;
   min-width: 0;
-  flex-wrap: wrap;
+  grid-template-columns: minmax(0, 1fr) 200px;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-ls-2);
+  column-gap: var(--space-ls-3);
+  row-gap: var(--space-ls-1);
   box-sizing: border-box;
-  min-height: 36px;
-  padding: var(--space-ls-1) 0;
+  min-height: 40px;
+  padding: var(--space-ls-2) 0;
   border-top: var(--border-ls-1);
 }
 
-.set5-rows > .set5-subhead + .set5-row { border-top: 0; }
+.set5-field:first-child {
+  border-top: 0;
+}
 
-.set5-row-label {
+.set5-field-label {
   min-width: 0;
   font-size: var(--font-size-ls-2);
   color: var(--color-text-ls);
   word-break: break-word;
 }
 
-.set5-link {
-  font-size: var(--font-size-ls-2);
-  color: var(--color-info-ls);
-  text-decoration: none;
-}
-
-.set5-link:hover { text-decoration: underline; }
-
-/* 整表无读口：正文只留一行「—」，缺列在卡底可用性块点名。 */
-.set5-dash {
-  margin: 0;
-  min-height: 36px;
+.set5-field-control {
   display: flex;
+  min-width: 0;
+  justify-content: flex-end;
   align-items: center;
-  font-family: var(--font-family-mono-ls);
-  font-size: var(--font-size-ls-2);
-  color: var(--color-text-subtle-ls);
 }
 
-.set5-prose {
-  margin: 0;
-  font-size: var(--font-size-ls-1);
-  line-height: 1.65;
-  color: var(--color-text-muted-ls);
+.set5-ctl-input,
+.set5-ctl-select,
+.set5-ctl-select-wrap {
+  width: 100%;
+  min-width: 0;
 }
 
-.set5-savebar-note {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-ls-2);
-  padding: var(--space-ls-2) var(--space-ls-3);
-  border: var(--border-ls-1);
-  border-radius: var(--radius-ls-1);
-  background: var(--color-surface-raised-ls);
+.set5-field-hint {
+  grid-column: 1 / -1;
+  min-width: 0;
+  word-break: break-word;
 }
 
-.set5-savebar-count {
-  font-size: var(--font-size-ls-2);
-  color: var(--color-text-ls);
-}
+/* 窄屏：label / 控件 / 说明改纵向堆叠，控件不再右贴，避免横溢。 */
+@media (max-width: 560px) {
+  .set5-field {
+    grid-template-columns: minmax(0, 1fr);
+  }
 
-@media (max-width: 720px) {
-  .set5-fact-row dd,
-  .set5-stats { text-align: left; justify-content: flex-start; }
+  .set5-field-control {
+    justify-content: flex-start;
+  }
 }
