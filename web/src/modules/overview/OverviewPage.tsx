@@ -6,7 +6,7 @@ import { Card, CardContent } from '@nous-research/ui/ui/components/card';
 
 import { fetchMatrix, load } from '../duty/api';
 import { buildReadiness, buildCost } from '../duty/aggregate';
-import { beijing, dashed, duration, shortId, usd } from '../duty/format';
+import { beijing, dashed, duration, usd } from '../duty/format';
 import { useDutyData, type DutyData } from '../duty/useDutyData';
 import { DUTY_RANGES, DEFAULT_DUTY_RANGE, dutyRange, parseDutyRange, type DutyRangeId } from '../duty/dutyRange';
 import { num } from '../duty/types';
@@ -54,10 +54,23 @@ function shortDuration(start?: string, end?: string): string {
   if (!start) return '—';
   const a = Date.parse(start);
   if (!Number.isFinite(a)) return '—';
-  if (!end) return duration(start, undefined);
-  const b = Date.parse(end);
+  // 未结束的 run 用当前时刻估耗时（只用于「多久了」这一读数），不足 1 秒同样写 <1s，
+  // 不写「0s」——0s 读起来像没跑过，和骨架形制也不一致。
+  const b = end ? Date.parse(end) : Date.now();
   if (!Number.isFinite(b) || b < a) return '—';
-  return b - a < 1000 ? '<1s' : duration(start, end);
+  if (b - a < 1000) return '<1s';
+  return duration(start, end);
+}
+
+/**
+ * 运行短码：`run_` + runId 尾段 6 位小写（骨架 `run_9f21ac` 形制）。
+ * 完整 id 不丢——它留在行的 title 里，点进详情照样取得回。稳定：同一 id 恒得同一码。
+ */
+function runCode(raw?: string | null): string {
+  const v = (raw ?? '').trim();
+  if (!v) return '—';
+  const bare = v.replace(/^(?:run_|rn_)/i, '') || v;
+  return `run_${bare.slice(-6).toLowerCase()}`;
 }
 
 /** 等待时长人话：分/h/d 三档，只用上游给的时刻，不读页面时钟猜数据时刻。 */
@@ -662,7 +675,6 @@ function ReadyCard({
             >
               <span className="ov5-gk" title={gate.source}>
                 {gate.name}
-                {gate.key === narrowestKey ? <span className="ov5-gtag">最窄</span> : null}
               </span>
               {decidable ? (
                 <>
@@ -821,7 +833,7 @@ function RunRowLine({ run }: { run: RunRow }) {
     <div className="ov5-hrow">
       <span className={`ov5-pill ${bad ? 'bad' : 'info'}`}>{bad ? '失败' : '在跑'}</span>
       <span className="ov5-ht" title={run.runId}>
-        {shortId(run.runId)} · {RUN_STATUS_LABEL[run.status ?? ''] ?? '—'}
+        {runCode(run.runId)} · {RUN_STATUS_LABEL[run.status ?? ''] ?? '—'}
       </span>
       <span className="ov5-hm">{beijing(run.startedAt).slice(11)}</span>
     </div>
@@ -1420,12 +1432,14 @@ function Blockers({
                 <li key={`${row.responsibleModule}-${row.object}`} className="ov5-blkrow">
                   <Badge tone={tag === '失败' ? 'destructive' : 'warning'}>{tag}</Badge>
                   <span className="ov5-bmain">
+                    {/* 骨架形制：主行 = 对象 · 阻塞原因；副行 11px = 责任 / 等待 / 影响。
+                        不把 schema 字段名连写成「责任·任务·下一步」。 */}
                     <span className="ov5-bline1">
-                      {row.object}
-                      {row.waitingSince ? ` · 等待 ${ageText(row.waitingSince)}` : ` · ${row.reason}`}
+                      {row.object} · {row.reason}
                     </span>
                     <span className="ov5-bline2">
-                      责任 {row.responsibleModule} · 下一步 {row.nextAction} · 影响 {impact}
+                      责任 {row.waitingOn ?? row.responsibleModule} · 等待{' '}
+                      {row.waitingSince ? ageText(row.waitingSince) : '—'} · 影响 {impact}
                     </span>
                   </span>
                   {row.href ? <Link className="ov5-hgo" to={row.href}>去处理</Link> : null}
@@ -1554,7 +1568,7 @@ function RecentActivity({ data, onRetry }: { data: DutyData; onRetry: () => void
                     to={`/runs/${encodeURIComponent(run.runId)}`}
                     title={`${run.runId}${run.startedAt ? ` · 开始 ${beijing(run.startedAt)}（北京时间）` : ''}`}
                   >
-                    {shortId(run.runId)}
+                    {runCode(run.runId)}
                     {name ? ` · ${name}` : ''}
                   </Link>
                   <span

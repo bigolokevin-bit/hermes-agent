@@ -386,6 +386,7 @@
 }
 
 .ov5-gv {
+  margin-left: auto;
   color: var(--color-text-muted-ls);
   font-family: var(--font-family-mono-ls);
   font-size: 10.5px;
@@ -393,8 +394,9 @@
   white-space: nowrap;
 }
 
+/* 状态紧跟数值之后（名称左 · 数值右对齐 · 状态在数值后），不再在名称旁挂第二枚色块。 */
 .ov5-gcut {
-  margin-left: auto;
+  margin-left: 0;
   color: var(--color-text-faint-ls);
   font-family: var(--font-family-mono-ls);
   font-size: 9px;
@@ -405,6 +407,7 @@
 .ov5-gate.is-static { align-items: baseline; }
 
 .ov5-gate.is-static .ov5-gv {
+  margin-left: 0;
   color: var(--color-text-subtle-ls);
 }
 
@@ -429,15 +432,6 @@
 .ov5-gdot.bad {
   background: var(--color-danger-ls);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-danger-ls) 16%, transparent);
-}
-
-.ov5-gtag {
-  padding: 0 3px;
-  border: 1px solid color-mix(in srgb, var(--color-danger-ls) 40%, transparent);
-  border-radius: 2px;
-  color: var(--color-danger-ls);
-  font-size: 8px;
-  letter-spacing: 0.04em;
 }
 
 .ov5-hnarrow {
@@ -615,6 +609,9 @@
   border-radius: 6px;
   background: var(--color-surface-ls);
   text-decoration: none;
+  /* 三条 37px 细长条在 1440 下也压成单行：右端箭头/计数不换行。 */
+  flex-wrap: nowrap;
+  white-space: nowrap;
 }
 
 a.ov5-cs:hover { border-color: var(--color-border-ls); }
@@ -678,6 +675,7 @@ a.ov5-cs:hover { border-color: var(--color-border-ls); }
   flex: none;
   color: var(--color-text-faint-ls);
   font-size: 11px;
+  white-space: nowrap;
 }
 
 .ov5-hrow .ov5-ht { min-width: 0; }
