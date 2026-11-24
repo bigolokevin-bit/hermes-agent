@@ -587,44 +587,7 @@ a.ov5-cs:hover { border-color: var(--color-border-ls); }
   font-size: 11px;
 }
 
-.ov5-fixture-badge {
-  flex: none;
-  padding: 0 4px;
-  border: 1px dashed color-mix(in srgb, var(--color-warning-ls) 46%, transparent);
-  border-radius: 3px;
-  color: var(--color-warning-ls);
-  font-family: var(--font-family-mono-ls);
-  font-size: 8.5px;
-  line-height: 1.5;
-  white-space: nowrap;
-}
-
-/* 行级示例标记：只给「无读口、用固定示例」的那一行，和真值行分开 */
 .ov5-hrow .ov5-ht { min-width: 0; }
-.ov5-fixture-tag {
-  flex: none;
-  padding: 0 3px;
-  border: 1px dashed color-mix(in srgb, var(--color-warning-ls) 40%, transparent);
-  border-radius: 2px;
-  color: var(--color-warning-ls);
-  font-family: var(--font-family-mono-ls);
-  font-size: 8px;
-  line-height: 1.5;
-  white-space: nowrap;
-}
-
-.ov5-sample {
-  flex: none;
-  margin-left: 4px;
-  padding: 0 3px;
-  border: 1px dashed color-mix(in srgb, var(--color-text-faint-ls) 60%, transparent);
-  border-radius: 2px;
-  color: var(--color-text-faint-ls);
-  font-family: var(--font-family-mono-ls);
-  font-size: 8px;
-  line-height: 1.5;
-  white-space: nowrap;
-}
 
 .ov5-blk-foot { font-size: 11px; }
 

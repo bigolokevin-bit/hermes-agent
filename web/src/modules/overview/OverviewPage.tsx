@@ -32,12 +32,6 @@ type StampSource = { source: string; state: Loadable<unknown> };
 // OM-15：服务探针状态词表——只翻译 hermes-summary 真读数，没有读数就是未接。
 const HEALTH_LABEL: Record<string, string> = { ok: '正常', degraded: '降级', down: '异常' };
 
-/** V3 引用门的强制策略无读口：该行给固定示例，并在行尾挂「示例」字样。 */
-const GATE_SAMPLE = { pass: 1, fail: 1 } as const;
-
-/** 「今日成本」卡缺读口的三个字段：固定示例，行前挂「示例」微标签。 */
-const COST_SAMPLE = { dayCapUsd: 40, projectedMonthUsd: 358, wasteUsd: 6.1, wastePctMonth: 2.8 } as const;
-
 const RUN_STATUS_LABEL: Record<string, string> = {
   completed: '成功',
   succeeded: '成功',
@@ -429,8 +423,6 @@ function KpiCard({
   onRetry,
   icon,
   viz,
-  badge,
-  fixture,
   children,
 }: {
   title: string;
@@ -447,19 +439,10 @@ function KpiCard({
   onRetry?: () => void;
   icon?: ReactNode;
   viz?: ReactNode;
-  /** 卡头右侧的「示例数据」角标（混合真值的卡用）。 */
-  badge?: ReactNode;
-  /** `partial`＝卡内部分字段是固定示例；区块级 data-fixture 便于验收。 */
-  fixture?: 'partial';
   children?: ReactNode;
 }) {
   return (
-    <Card
-      className="ov5-kpi"
-      data-testid={testid}
-      data-duty-testid={testid.replace('ov6-', 'duty-')}
-      data-fixture={fixture}
-    >
+    <Card className="ov5-kpi" data-testid={testid} data-duty-testid={testid.replace('ov6-', 'duty-')}>
       <CardContent className="ov5-kpi-bd">
         <div className="ov5-kpi-hd">
           <h2 className="ov5-kpi-title">
@@ -468,7 +451,6 @@ function KpiCard({
           </h2>
           {meta ? <span className="ov5-kpi-meta">{meta}</span> : null}
           <Source>{source}</Source>
-          {badge}
         </div>
         <div className="ov5-kr">
           <div className="ov5-kpi-value">{value}</div>
@@ -557,36 +539,18 @@ function ReadyCard({
       <div className="ov5-gates">
         {readiness.gates.map((gate) => {
           const dot = gate.state === 'pass' ? 'ok' : gate.state === 'fail' ? 'bad' : 'warn';
-          // 只有「引用门 + 无策略读口」这一行用示例数值；其它未知门保持「— / 待核实」。
-          const sample = gate.key === 'V3' && gate.state === 'unknown';
           return (
-            <div
-              className={`ov5-gate${gate.key === narrowestKey ? ' is-narrow' : ''}${sample ? ' is-sample' : ''}`}
-              key={gate.key}
-              data-fixture={sample ? '1' : undefined}
-            >
+            <div className={`ov5-gate${gate.key === narrowestKey ? ' is-narrow' : ''}`} key={gate.key}>
               <span className="ov5-gk" title={gate.source}>
                 {gate.name}
                 {gate.key === narrowestKey ? <span className="ov5-gtag">最窄</span> : null}
               </span>
               <span className="ov5-gv">
-                {sample ? GATE_SAMPLE.pass : gate.pass === null ? '—' : gate.pass} / {dashed(denom)}
+                {gate.pass === null ? '—' : gate.pass} / {dashed(denom)}
               </span>
               <span className="ov5-gcut">
-                {sample
-                  ? `未达 ${GATE_SAMPLE.fail}`
-                  : gate.state === 'unknown'
-                    ? '待核实'
-                    : `未达 ${gate.fail === null ? '—' : gate.fail}`}
+                {gate.state === 'unknown' ? '待核实' : `未达 ${gate.fail === null ? '—' : gate.fail}`}
               </span>
-              {sample ? (
-                <span
-                  className="ov5-sample"
-                  title="引用门的强制引用策略没有读口；本行通过/未达为固定示例，不构成通过结论"
-                >
-                  示例
-                </span>
-              ) : null}
               <i className={`ov5-gdot ${dot}`} title={gate.whyNot ?? `${gate.name}：${gate.state}`} />
             </div>
           );
@@ -711,8 +675,8 @@ function RunRowLine({ run }: { run: RunRow }) {
 
 /* ============================================================================
  * 今日成本：日账本 + 月配额（骨架 hcard 3）。今日账本 / 月配额 / 本月实扣是
- * 真读数；日上限 / 预估月底 / 浪费没有读口，用固定示例并逐行挂「示例」标签，
- * 不按单价反推、不把示例混进真值行。
+ * 真读数；日上限 / 预估月底 / 浪费没有读口，一律显示「—」并注明缺什么口径。
+ * 真实租户页禁止混入示例数字（示例形态只属于 /demo/overview 示例租户页）。
  * ========================================================================== */
 function CostCard({
   data,
@@ -741,16 +705,6 @@ function CostCard({
           {covered > 0 ? `${covered} 人缺账本` : '逐员工相加'}
         </>
       }
-      badge={
-        <span
-          className="ov5-fixture-badge"
-          data-fixture="1"
-          title="日上限 / 预估月底 / 浪费为固定示例；今日账本、月配额、本月实扣为真读数（缺账本处写—）"
-        >
-          示例数据
-        </span>
-      }
-      fixture="partial"
       source="成本账本（日 / 月）"
       stamps={[
         { source: '成本账本', state: data.budgetDay },
@@ -764,10 +718,9 @@ function CostCard({
       icon={<IconCoins className="ov5-i ov5-i-13" />}
     >
       <div className="ov5-hlist">
-        <div className="ov5-hrow is-sample" data-fixture="1">
-          <span className="ov5-fixture-tag">示例</span>
+        <div className="ov5-hrow">
           <span className="ov5-ht">日上限合计</span>
-          <span className="ov5-hm" title="固定示例，不代表预算读口">${usd(COST_SAMPLE.dayCapUsd).slice(1)}</span>
+          <span className="ov5-hm" title="预算日上限没有读口">—（无预算读口）</span>
         </div>
         <div className="ov5-hrow">
           <span className="ov5-ht">月配额合计</span>
@@ -779,17 +732,13 @@ function CostCard({
           <span className="ov5-ht">本月实扣</span>
           <span className="ov5-hm">{monthUsd === null ? '—（月账本未齐）' : usd(monthUsd)}</span>
         </div>
-        <div className="ov5-hrow is-sample" data-fixture="1">
-          <span className="ov5-fixture-tag">示例</span>
+        <div className="ov5-hrow">
           <span className="ov5-ht">预估月底</span>
-          <span className="ov5-hm" title="固定示例，不代表预测读口">${usd(COST_SAMPLE.projectedMonthUsd).slice(1)}</span>
+          <span className="ov5-hm" title="月底预测没有读口">—（无预测读口）</span>
         </div>
-        <div className="ov5-hrow is-sample" data-fixture="1">
-          <span className="ov5-fixture-tag">示例</span>
+        <div className="ov5-hrow">
           <span className="ov5-ht">浪费（失败与重试）</span>
-          <span className="ov5-hm" title="固定示例，不代表账本分类读数">
-            ${usd(COST_SAMPLE.wasteUsd).slice(1)} · 本月 {COST_SAMPLE.wastePctMonth}%
-          </span>
+          <span className="ov5-hm" title="账本没有失败/重试分类">—（账本无失败分类）</span>
         </div>
       </div>
     </KpiCard>
@@ -798,7 +747,7 @@ function CostCard({
 
 /* ============================================================================
  * 三条细长条：发布 / 出站 / 账本（骨架 chainstrip，高约 44px 单行）
- * 发布与出站在本仓没有读口：整条标 data-fixture 并挂「示例数据」角标。
+ * 真实租户页不混示例：发布与出站没有读口，各字段一律显示「—」。
  * ========================================================================== */
 function ChainStrip({
   kpis,
@@ -812,26 +761,28 @@ function ChainStrip({
   const quota = monthQuota(matrix);
   return (
     <div className="ov5-chainstrip">
-      <Link className="ov5-cs" to="/approvals" data-fixture="1" title="发布链固定示例：3 草稿 · 2 校验失败 · 4 待批 · 1 发布超时">
+      <Link
+        className="ov5-cs"
+        to="/approvals"
+        title="发布链读口未接入：草稿 / 校验失败 / 待批 / 发布超时均显示「—」"
+      >
         <span className="ov5-cs-k">
           <IconRocket className="ov5-i ov5-i-13" />
           发布
         </span>
         <span className="ov5-cs-v">
-          <b>3</b> 草稿 · <b>2</b> 校验失败 · <b>4</b> 待批 · <b>1</b> 发布超时
+          <b>—</b> 草稿 · <b>—</b> 校验失败 · <b>—</b> 待批 · <b>—</b> 发布超时
         </span>
-        <span className="ov5-fixture-badge">示例数据</span>
         <span className="ov5-cs-go">→</span>
       </Link>
-      <span className="ov5-cs" data-fixture="1" title="出站链固定示例：96.2% 成功 · 拒绝 3 · 回执 P95 1.8s · 网关在线 · app_id 一致">
+      <span className="ov5-cs" title="出站链读口未接入：成功 / 拒绝 / 回执 P95 / 网关状态均显示「—」">
         <span className="ov5-cs-k">
           <IconSend className="ov5-i ov5-i-13" />
           出站
         </span>
         <span className="ov5-cs-v">
-          <b>96.2%</b> 成功 · 拒绝 <b>3</b> · 回执 P95 <b>1.8s</b> · 网关在线
+          <b>—</b> 成功 · 拒绝 <b>—</b> · 回执 P95 <b>—</b> · 网关 <b>—</b>
         </span>
-        <span className="ov5-fixture-badge">示例数据</span>
         <span className="ov5-cs-go">→</span>
       </span>
       <Link
@@ -1563,8 +1514,7 @@ export function OverviewView({
       </div>
 
       <footer className="ov5-pagefoot">
-        <span className="ov5-fixture-badge" title="发布与出站两条细长条是固定示例；其余块为实机读数">示例数据</span>
-        <span>发布 / 出站为示例 · 采集 {summaryAsOf ?? '—'}（北京时间） · SEAKOI · 数字员工控制台</span>
+        <span>只展示已接通读口的数据，缺失显示「—」 · 采集 {summaryAsOf ?? '—'}（北京时间） · SEAKOI · 数字员工控制台</span>
         <div
           className="ov5-health"
           data-testid="ov6-kpi-health"
@@ -1659,14 +1609,14 @@ export function OverviewPage() {
 
   if (forced === 'loading') {
     return (
-      <section className="ov5-page" data-testid="ov6-page" data-fixture="1">
+      <section className="ov5-page" data-testid="ov6-page">
         <div className="ov5-skeleton" aria-busy="true" aria-label="总览加载中" data-testid="ov6-loading"><span /><span /><span /></div>
       </section>
     );
   }
   if (forced === 'empty') {
     return (
-      <section className="ov5-page" data-testid="ov6-page" data-fixture="1">
+      <section className="ov5-page" data-testid="ov6-page">
         <Card className="ov5-empty-card" data-testid="ov6-empty"><CardContent>
           <h2>还没有可汇总的数据</h2>
           <p>员工、运行与审批都为空时，总览没有数字可展示。</p>
@@ -1678,7 +1628,7 @@ export function OverviewPage() {
   }
   if (forced === 'error') {
     return (
-      <section className="ov5-page" data-testid="ov6-page" data-fixture="1">
+      <section className="ov5-page" data-testid="ov6-page">
         <Card className="ov5-error-card" data-testid="ov6-error" role="alert"><CardContent>
           <div className="ov5-inline-error"><IconAlert className="ov5-i ov5-i-20" /><b>总览没能读出来</b></div>
           <p>这次聚合的所有来源都没有返回数据，页面没有编造任何数字。</p>
