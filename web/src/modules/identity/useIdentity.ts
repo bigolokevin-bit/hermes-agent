@@ -46,10 +46,6 @@ export function useIdentity(): IdentityState {
 
   useEffect(() => {
     let cancelled = false;
-    setPhase("loading");
-    setMessage(null);
-    setDenied(false);
-    setRequestId(null);
 
     loadIdentity()
       .then((next) => {
@@ -71,7 +67,14 @@ export function useIdentity(): IdentityState {
     };
   }, [nonce]);
 
-  const reload = useCallback(() => setNonce((n) => n + 1), []);
+  /** 重试：同一次语义——先回 loading，再让下面的 effect 重新取一次。 */
+  const reload = useCallback(() => {
+    setPhase("loading");
+    setMessage(null);
+    setDenied(false);
+    setRequestId(null);
+    setNonce((n) => n + 1);
+  }, []);
 
   return { phase, data, message, denied, requestId, reload };
 }

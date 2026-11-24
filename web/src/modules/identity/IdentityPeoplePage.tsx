@@ -76,7 +76,7 @@ export function IdentityPeoplePage() {
   const [status, setStatus] = useState("");
   const searchId = useId();
 
-  const members = data?.members ?? [];
+  const members = useMemo(() => data?.members ?? [], [data]);
   const summary = useMemo(() => memberSummary(members), [members]);
   const buckets = useMemo(() => departmentBuckets(members), [members]);
 

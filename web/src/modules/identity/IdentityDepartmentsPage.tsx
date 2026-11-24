@@ -50,7 +50,7 @@ function linesOf(
 export function IdentityDepartmentsPage() {
   const { phase, data, message, denied, requestId, reload } = useIdentity();
 
-  const members = data?.members ?? [];
+  const members = useMemo(() => data?.members ?? [], [data]);
   const buckets = useMemo(() => departmentBuckets(members), [members]);
   const named = buckets.filter((bucket) => !bucket.unassigned);
   const assigned = named.reduce((sum, bucket) => sum + bucket.count, 0);
