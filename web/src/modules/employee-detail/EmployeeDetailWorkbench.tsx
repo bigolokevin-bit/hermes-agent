@@ -98,15 +98,6 @@ function useHeaderInfo(employeeId: string): HeaderInfo {
   return entry.id === employeeId ? entry.info : EMPTY_HEADER;
 }
 
-/** 五个分区入口：真 Link，普通导航语义（不写 tab 角色）。 */
-const WORKBENCH_ZONES = [
-  { id: "overview", label: "概览" },
-  { id: "capability", label: "能力与权限" },
-  { id: "approvals", label: "审批" },
-  { id: "runs", label: "运行" },
-  { id: "audit", label: "审计" },
-] as const;
-
 export default function EmployeeDetailWorkbench({
   employeeId,
   renderChatHost,
@@ -115,7 +106,6 @@ export default function EmployeeDetailWorkbench({
   const header = useHeaderInfo(employeeId);
   const code = employeeId ? shortCode(employeeId) : "—";
   const title = header.name ? `${header.name} · ${code}` : `员工 · ${code}`;
-  const enc = encodeURIComponent(employeeId);
 
   const chatCell: ReactNode =
     employeeId !== "" && renderChatHost !== undefined ? (
@@ -161,7 +151,7 @@ export default function EmployeeDetailWorkbench({
             {header.department ? (
               <span className="min-w-0">部门 · {header.department}</span>
             ) : null}
-            <span className="min-w-0">工作台 · 左侧对话，右侧档案</span>
+            <span className="min-w-0">工作台</span>
           </p>
         </div>
         {employeeId ? (
@@ -175,25 +165,7 @@ export default function EmployeeDetailWorkbench({
         ) : null}
       </header>
 
-      <nav
-        aria-label="详情分区入口"
-        className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs edw-muted"
-        data-testid="ed5-workbench-zones"
-      >
-        <span className="shrink-0">分区：</span>
-        {employeeId
-          ? WORKBENCH_ZONES.map((z) => (
-              <Link
-                key={z.id}
-                to={`/employees/${enc}${z.id === "overview" ? `?zone=overview` : `?zone=${z.id}`}`}
-                data-zone={z.id}
-                data-testid={`ed5-workbench-zone-${z.id}`}
-                className="rounded-sm underline underline-offset-4 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
-              >
-                {z.label}
-              </Link>
-            ))
-          : null}
+      <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs edw-muted">
         <button
           type="button"
           onClick={() => setChatOnly((v) => !v)}
@@ -203,7 +175,7 @@ export default function EmployeeDetailWorkbench({
         >
           {chatOnly ? "退出全屏" : "对话全屏"}
         </button>
-      </nav>
+      </div>
 
       <div
         className={

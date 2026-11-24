@@ -16,7 +16,7 @@ export const SIDECAR_DISCONNECTED_MESSAGE =
  * user caused, so the sidebar shows one calm line instead of a red banner.
  */
 export const ACTIVITY_UNAVAILABLE_MESSAGE =
-  '活动流未接入本环境（模型与工具活动暂不显示），对话本身可用'
+  '活动流未接入本环境（模型与工具活动暂不显示）；对话通道也未接入（PTY 未开放，消息暂时发不出去）'
 
 /** One-shot re-attempt offered beside ACTIVITY_UNAVAILABLE_MESSAGE. */
 export const ACTIVITY_UNAVAILABLE_RETRY_LABEL = '重试接入'

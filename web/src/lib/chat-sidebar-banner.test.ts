@@ -11,7 +11,7 @@ import {
 describe('activity unavailable copy', () => {
   it('states the environment fact without fault language', () => {
     expect(ACTIVITY_UNAVAILABLE_MESSAGE).toContain('活动流未接入本环境')
-    expect(ACTIVITY_UNAVAILABLE_MESSAGE).toContain('对话本身可用')
+    expect(ACTIVITY_UNAVAILABLE_MESSAGE).toContain('对话通道也未接入')
     expect(ACTIVITY_UNAVAILABLE_MESSAGE).not.toMatch(/could not connect/i)
     expect(ACTIVITY_UNAVAILABLE_RETRY_LABEL).toBe('重试接入')
   })
