@@ -49,3 +49,10 @@
 - 换基：git merge FETCH_HEAD（DU-08/SE-05 与 modules/overview 零交集，diff 实据为空，零冲突）→ 终 tip 2d23a79e8d3303e5cb25a991af50de6626112310，ls-remote 输出行核验 B=0。
 - 换基后门禁：全量 vitest 541 文件 / 4162 过 | 1 跳 exit 0；模块 52/52；e1Contract 本树判读 SKIPPED-NOT-DEPLOYED（dist 残留已 rm）。
 - task-lane：OM-15 与 OM-13 均 DELIVERED tip 2d23a79e8d…，写后复读核验（OM-13 行 branch/worktree 字段仍指旧死栈，报 L0 清理）。
+
+## OM-08 阻塞队列三路诚实线（2026-11-24，基现脸 db793b7b10）
+
+- 现状核验：三路源（failedRuns/blockedTasks/approvals）、「有阻塞源未接入…不代表全部」、行 href 三类（/runs?status=failed、/tasks/<id>、/approvals?id=<id>）、row key（module-object）均已在现脸实现；实测缺口＝空态「当前没有读到阻塞项」未门控三路全 ready——loading 或部分 error 时也冒充「没有」。
+- 页面小修（OverviewPage.tsx Blockers）：新增 allBlockSourcesReady 与 rowsSuppressed 门；空态只在三路全 ready 且非 recentRuns-loading 时出现；否则写「阻塞读数还没有全部到位，这里不写「没有」。」（data-testid=ov6-blockers-reading）。错误线仍为 ≥1 error iff。
+- 新增 overview.blockers.test.tsx 11 例锁：真值表（全 ready 无错误线；每腿单独 error 与三路皆 error 均有错误线且无空态）、loading 不写「没有」、href 三类逐一点名、recentRuns loading 无残影（步骤④）、overSLA（task.dueAt/approval.expiresAt 过期 true）与 key 唯一、失败运行合成一条分组行、渲染 ≤3 条。
+- 门禁：模块 vitest 8 文件 63/63 全绿（52+11）；vite build EXIT=0（dist 残留即 rm，防 e1Contract 环境红）。

@@ -269,13 +269,18 @@ function Blockers({ data, onRetry }: { data: DutyData; onRetry: () => void }) {
   const failed = data.failedRuns.k === 'ready' ? data.failedRuns.data : null;
   const tasks = data.blockedTasks.k === 'ready' ? data.blockedTasks.data : null;
   const approvals = data.approvals.k === 'ready' ? data.approvals.data : null;
-  const rows = data.recentRuns.k === 'loading' ? [] : blockerRows({ failedRuns: failed, blockedTasks: tasks, approvals });
+  // OM-08 步骤④：recentRuns 读取中时不画半套行，也不许残影。
+  const rowsSuppressed = data.recentRuns.k === 'loading';
+  const rows = rowsSuppressed ? [] : blockerRows({ failedRuns: failed, blockedTasks: tasks, approvals });
   const blockSources = [
     { source: '失败运行', state: data.failedRuns },
     { source: '阻塞任务', state: data.blockedTasks },
     { source: '待审批', state: data.approvals },
   ];
   const unavailable = blockSources.some(({ state }) => state.k === 'error');
+  // OM-08 DoD：「当前没有读到阻塞项」当且仅当三路全 ready 且合并后没有行；
+  // 任一源还在读取或未接入时，空态不冒充「没有」，改说到位状态。
+  const allBlockSourcesReady = blockSources.every(({ state }) => state.k === 'ready');
   const firstBlockError = blockSources.map(({ state }) => state).find((state) => state.k === 'error');
   return (
     <Card className="ov5-block" data-testid="ov6-blockers" data-duty-testid="duty-blockers">
@@ -293,10 +298,16 @@ function Blockers({ data, onRetry }: { data: DutyData; onRetry: () => void }) {
           </div>
         ) : null}
         {rows.length === 0 ? (
-          <div className="ov5-empty-line">
-            <span>当前没有读到阻塞项。</span>
-            <Link to="/approvals">去审批中心<ArrowRight className="h-3.5 w-3.5" /></Link>
-          </div>
+          allBlockSourcesReady && !rowsSuppressed ? (
+            <div className="ov5-empty-line">
+              <span>当前没有读到阻塞项。</span>
+              <Link to="/approvals">去审批中心<ArrowRight className="h-3.5 w-3.5" /></Link>
+            </div>
+          ) : (
+            <div className="ov5-empty-line" data-testid="ov6-blockers-reading">
+              <span>阻塞读数还没有全部到位，这里不写「没有」。</span>
+            </div>
+          )
         ) : (
           <ul className="ov5-rows ov5-rows-blocker">
             {rows.map((row) => (
