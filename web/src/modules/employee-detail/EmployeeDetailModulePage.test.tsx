@@ -139,14 +139,14 @@ describe("EmployeeDetailModulePage — identity card (R45)", () => {
     await renderAt(page, at());
     expect(qid("ed1-identity")).toBeTruthy();
     expect(qid("ed1-identity-name")?.textContent).toBe("AgentOS 产品助理");
-    expect(qid("ed1-identity-code")?.textContent).toBe("员工 · A3F1B2C4");
+    expect(qid("ed1-identity-code")?.textContent).toBe("emp_a3f1b2c4…");
     expect(qid("ed1-identity-code")?.getAttribute("title")).toBe(EMP);
     expect(qid("ed1-identity-role")?.textContent).toBe("产品助理（数字员工 · Pilot）");
     expect(qid("ed1-identity-state")?.textContent).toBe("在岗");
     expect(qid("ed1-identity-reports")?.textContent).toBe("—");
     expect(qid("ed1-identity-reports")?.getAttribute("title")).toContain("后台没有回传这位员工的汇报对象");
     expect(qid("ed1-identity-created")?.textContent).toBe("2026-11-14 06:15");
-    expect(qid("ed1-identity")?.textContent).not.toContain("emp_");
+    expect(qid("ed1-identity")?.textContent).not.toContain(EMP); // 整段编号不上屏，只上 8 位短码
   });
 
   it("an answered reports-to becomes a real /employees link with the masked label", async () => {
@@ -1006,7 +1006,7 @@ describe("R68 preview↔identity parity (edx-parity)", () => {
     );
     await renderAt(page, at());
     expect(qid("ed1-identity-name")?.textContent).toBe("小鲤");
-    expect(qid("ed1-identity-code")?.textContent).toBe("员工 · A3F1B2C4"); // 与行内预览同形制
+    expect(qid("ed1-identity-code")?.textContent).toBe("emp_a3f1b2c4…"); // 与行内预览同形制
     expect(qid("ed1-identity-code")?.getAttribute("title")).toBe(EMP); // title 全 id
     expect(qid("ed1-identity-state")?.textContent).toBe("待核实");
     expect(qid("ed1-identity-state")?.getAttribute("title")).toBe("原始值：weird_state");

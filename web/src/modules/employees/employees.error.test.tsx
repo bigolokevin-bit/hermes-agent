@@ -165,7 +165,8 @@ describe("R178 ① a failed list reads as an error, never as an empty roster", (
 
     // 计数位单点句（不作 0）。
     expect(q("emp-list-count")?.textContent).toBe("—");
-    expect(q("emp-list-page-count")?.textContent).toContain("总数不可读");
+    expect(q("emp-list-page-count")).toBeNull();
+    expect(q("emp-list-page-count-top")?.textContent).toContain("— 条 · 第 —/— 页");
   });
 });
 
@@ -204,7 +205,7 @@ describe("R178 ④ busy re-entry: two clicks while a page is in flight fetch onc
     await act(async () => {
       release?.({});
     });
-    await waitFor(() => q("emp-list-page-end") !== null, "released and at end");
+    await waitFor(() => q("emp-list-page-more") === null, "released and at end");
     expect(listUrls().length, "resolve 后不再补发").toBe(before + 1);
     expect(rowIds(), "重叠行去重：并集两行").toEqual([A.employeeId, B.employeeId]);
     expect(

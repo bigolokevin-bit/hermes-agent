@@ -179,11 +179,10 @@ describe("R214 employees empty state and clear guards", () => {
     expect(q("emp-list-state-clear"), "filtered empty offers the clear exit").toBeTruthy();
     // No fake zero: the count position holds  —, not 0.
     expect(q("emp-list-count")?.textContent).toBe("—");
-    // The pagination family is not unmounted under the empty card.
+    // 空集：分页容器仍在，但没有游标就没有续取钮（卡底只留网关状态行）。
     expect(q("emp-list-page")).toBeTruthy();
-    expect(q("emp-list-page-count")).toBeTruthy();
-    expect(q("emp-list-page-more")).toBeTruthy();
-    expect((q("emp-list-page-more") as HTMLButtonElement).disabled).toBe(true);
+    expect(q("emp-list-page-count")).toBeNull();
+    expect(q("emp-list-page-more"), "空集没有续取钮").toBeNull();
     // Nothing leaks placeholders or raw states onto the screen.
     const screen = document.body.textContent ?? "";
     expect(screen).not.toMatch(/undefined|null/);

@@ -243,15 +243,20 @@
 }
 .emp-grid--row:hover { background: color-mix(in srgb, var(--color-text-ls) 3.2%, transparent); }
 
-/* 员工格：头像 + 姓名 + 工号短码，一行到底。 */
+/* 员工格：头像 + 姓名（第一行）+ 工号短码（第二行，等宽 11px 弱色）。
+   40px 行高内两行文字，头像跨两行居中。 */
 .emp-who {
-  display: flex;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  grid-auto-rows: min-content;
   align-items: center;
-  gap: 8px;
+  column-gap: 8px;
   min-width: 0;
   overflow: hidden;
 }
 .emp-ava {
+  grid-row: 1 / span 2;
+  align-self: center;
   flex: none;
   width: 22px;
   height: 22px;
@@ -267,6 +272,7 @@
   background: color-mix(in srgb, var(--color-text-ls) 5%, transparent);
 }
 .emp-nm {
+  grid-column: 2;
   font-size: var(--font-size-ls-1);
   line-height: 1.3;
   color: var(--color-text-ls);
@@ -275,10 +281,12 @@
   white-space: nowrap;
 }
 .emp-sub {
-  flex: none;
-  font-size: 10px;
-  line-height: 1.3;
+  grid-column: 2;
+  font-size: 11px;
+  line-height: 1.25;
   color: var(--color-text-faint-ls);
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 

@@ -250,10 +250,9 @@ describe("R115 employees filter URL contract", () => {
     // Readable empty state, not a blank page.
     expect(q("employees-empty")).toBeTruthy();
     expect(q("emp-list-empty-text")?.textContent).toContain("员工");
-    // The pagination family stays on screen and cannot be clicked blindly.
+    // 分页容器仍在；没有游标就没有续取钮，也没有卡底计数句。
     expect(q("emp-list-page")).toBeTruthy();
-    expect(q("emp-list-page-more")).toBeTruthy();
-    expect((q("emp-list-page-more") as HTMLButtonElement).disabled).toBe(true);
-    expect(q("emp-list-page-count")).toBeTruthy();
+    expect(q("emp-list-page-more")).toBeNull();
+    expect(q("emp-list-page-count")).toBeNull();
   });
 });

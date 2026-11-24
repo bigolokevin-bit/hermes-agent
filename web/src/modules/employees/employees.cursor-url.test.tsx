@@ -139,7 +139,11 @@ async function clickMore(): Promise<void> {
   await act(async () => {
     more!.click();
   });
-  await waitFor(() => (q("emp-list-page-more") as HTMLButtonElement).textContent === "加载更多", "more settled");
+  // 续取完成：钮回到常态，或该页正好是末页（游标用完，钮退场）。
+  await waitFor(() => {
+    const next = q("emp-list-page-more") as HTMLButtonElement | null;
+    return next === null || next.textContent === "加载更多";
+  }, "more settled");
 }
 
 /** 挂载带游标时，等恢复链跑完（说明行是链路的最后一步）。 */
@@ -167,8 +171,9 @@ describe("PE-01 cursor position in the URL", () => {
       "emp_C3D4E5F6A7B8",
       "emp_D4E5F6A7B8C9",
     ]);
-    expect(q("emp-list-page-end")?.textContent).toBe("已到末页");
-    expect(q("emp-list-page-count")?.textContent).toBe("总数不可用 · 已显示 4 人");
+    expect(q("emp-list-page-more"), "末页没有续取钮").toBeNull();
+    expect(q("emp-list-page-end")).toBeNull();
+    expect(q("emp-list-page-count-top")?.textContent).toContain("4 条 · 第 3/3 页");
     expect(q("emp-list-cursor-restored"), "手动翻页不出现恢复说明").toBeNull();
   });
 
@@ -206,7 +211,7 @@ describe("PE-01 cursor position in the URL", () => {
     expect(rowIds()).toHaveLength(3);
     expect(q("emp-list-cursor-restored")?.textContent).toBe("原链接位置超出当前数据：已停在真实末页");
     expect(urlCursor(), "位置已不存在：键位如实清掉").toBeNull();
-    expect(q("emp-list-page-end")?.textContent).toBe("已到末页");
+    expect(q("emp-list-page-more"), "停在真实末页：没有续取钮").toBeNull();
     expect(listUrls().filter((u) => u.includes("cursor=pc-9")), "陈旧游标没有被赌一次").toHaveLength(0);
   });
 

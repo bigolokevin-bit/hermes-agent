@@ -254,7 +254,7 @@ describe("R209 ②③ retry recovers, matches the list row, and never re-fetches
     expect(detailLegs()).toBe(1);
     expect(listLegs(), "the detail module never fetches the list leg").toBe(1);
     const matrixBefore = matrixLegs();
-    const pageBefore = text("emp-list-page-count", listBox);
+    const pageBefore = text("emp-list-page-count-top", listBox);
     const moreBefore = q("emp-list-page-more", listBox)?.getAttribute("disabled");
 
     const retry = findButton("重试");
@@ -274,11 +274,11 @@ describe("R209 ②③ retry recovers, matches the list row, and never re-fetches
     const listRowText = text("emp-l-name-link-emp_A3F1B2C4D5E6", listBox);
     expect(text("ed1-identity-name")).toBe("小鲤");
     expect(listRowText).toContain("小鲤");
-    expect(text("ed1-identity-code")).toContain("A3F1B2C4");
-    expect(listRowText).toContain("A3F1B2C4");
+    expect(text("ed1-identity-code")).toContain("emp_a3f1b2c4…");
+    expect(listRowText).toContain("emp_a3f1b2c4…");
     expect(text("ed1-identity-created")).toBe("2026-11-14 10:15");
     // 列表分页条读数与游标态一字不变。
-    expect(text("emp-list-page-count", listBox)).toBe(pageBefore);
+    expect(text("emp-list-page-count-top", listBox)).toBe(pageBefore);
     expect(q("emp-list-page-more", listBox)?.getAttribute("disabled")).toBe(moreBefore);
     expect(q("employees-row-emp_A3F1B2C4D5E6", listBox)).toBeTruthy();
     expect(q("employees-row-emp_B2C4D6E8F0A1", listBox)).toBeTruthy();

@@ -174,19 +174,25 @@ function readRows(body: unknown): { rows: EmployeeRow[]; nextCursor: string | nu
   return { rows, nextCursor, total };
 }
 
-function shortCode(id: string): string {
-  const tail = id.replace(/^emp_/i, "").replace(/[^0-9a-z]/gi, "").slice(0, 8).toUpperCase();
-  return tail || "—";
+/** 工号短码：骨架形制 = `emp_` + 8 位小写短码；上游编号更长时截断加「…」，
+ *  整段长编号只留在 title/详情读口，绝不整段上屏。 */
+export function employeeCode(id: string | null | undefined): string {
+  const raw = (id ?? "").trim();
+  const alnum = raw.replace(/^emp_/i, "").replace(/[^0-9a-z]/gi, "");
+  if (!alnum) return "emp_—";
+  const head = alnum.slice(0, 8).toLowerCase();
+  return `emp_${head}${alnum.length > 8 ? "…" : ""}`;
 }
 
-/** R62: the four sortable columns, keyed by what the screen actually shows. */
+/** R62: the sortable columns, keyed by what the screen actually shows.
+ *  工号不再是独立列（短码并进员工格第二行），code 只留给旧链接的 URL 复现。 */
 type SortKey = "name" | "code" | "state" | "time";
 
 /** Sort value for a row. Missing/blank yields null so it sorts last — a
  * missing value is never coerced into 0 or an empty-first position. */
 function sortValue(row: EmployeeRow, key: SortKey): string | null {
   if (key === "name") return row.name?.trim() || null;
-  if (key === "code") return shortCode(row.employeeId);
+  if (key === "code") return employeeCode(row.employeeId);
   if (key === "state") return row.lifecycleState?.trim() || null;
   return row.updatedAt?.trim() || null;
 }
@@ -238,6 +244,24 @@ function SortHeader({
 
 function displayName(row: EmployeeRow): string {
   return row.name?.trim() || "未命名员工";
+}
+
+/** 部门/岗位格的岗位段：`title` 里去掉落款式的姓名重复（姓名已在员工格），
+ *  括注原样保留；去掉姓名后为空 = 只留部门，不写占位句。 */
+export function roleLine(title: string | null | undefined, name: string): string {
+  const raw = title?.trim() ?? "";
+  if (!raw) return "";
+  const strip = (text: string, needle: string) =>
+    needle ? text.split(needle).join(" ") : text;
+  const full = name.trim();
+  // 上游名字常带「… <编号>」尾巴（如「QA2 契约验证 1794894768」），两种都要剥。
+  const base = full.replace(/[\s·\-—_/]*\d{4,}$/, "").trim();
+  let out = raw;
+  for (const needle of [full, base]) {
+    out = strip(out, needle);
+  }
+  out = out.replace(/^[\s·\-—:|,，]+|[\s·\-—:|,，]+$/g, "").trim();
+  return out === full || out === base ? "" : out;
 }
 
 export function lifecycleLabel(value?: string | null): string {
@@ -518,7 +542,7 @@ function RowPreview({ row }: { row: EmployeeRow }) {
         <div className="flex min-w-0 gap-1.5">
           <dt className="shrink-0 text-white/40">工号短码</dt>
           <dd className="min-w-0 truncate font-mono" title={row.employeeId}>
-            员工 · {shortCode(row.employeeId)}
+            {employeeCode(row.employeeId)}
           </dd>
         </div>
         <div className="flex min-w-0 gap-1.5">
@@ -574,7 +598,7 @@ function buildEmployeesCopyText(rows: EmployeeRow[]): { text: string; count: num
   const lines = rows.map((row) =>
     [
       csvCell(displayName(row)),
-      csvCell(`员工 · ${shortCode(row.employeeId)}`),
+      csvCell(employeeCode(row.employeeId)),
       csvCell(lifecycleLabel(row.lifecycleState)),
       csvCell(beijingMinute(row.updatedAt) ?? "—"),
       csvCell(deptCopyValue(row)),
@@ -669,7 +693,7 @@ export function buildEmployeesCsv(rows: EmployeeRow[]): string {
     (row) =>
       [
         csvCell(displayName(row)),
-        csvCell(`员工 · ${shortCode(row.employeeId)}`),
+        csvCell(employeeCode(row.employeeId)),
         csvCell(lifecycleLabel(row.lifecycleState)),
         csvCell(beijingMinute(row.updatedAt) ?? ""),
         // R110: 部门列与复制同 helper 同串（缺值写三态句，不写空）。
@@ -746,7 +770,7 @@ function EditEmployeeDrawer({ row, onClose }: { row: EmployeeRow; onClose: () =>
         <div className="flex items-center justify-between gap-2">
           <h2 className="font-mondwest text-base">编辑员工</h2>
           <span className="font-mono text-xs text-white/45" title={row.employeeId}>
-            员工 · {shortCode(row.employeeId)}
+            {employeeCode(row.employeeId)}
           </span>
         </div>
         <label className="flex min-w-0 flex-col gap-1 text-xs">
@@ -1276,9 +1300,8 @@ export function EmployeesModulePage() {
     setReload((n) => n + 1);
   };
 
-  // ③ 「加载更多」在没有下一页（或非 ready）时保留文案与原因，但既不响应、
-  // 也不进 tab 序列：原生 disabled 已不可聚焦，这里再显式坐实 tabIndex=-1。
-  const moreDisabled = state.phase !== "ready" || !state.nextCursor || state.loadingMore;
+  // ③ 「加载更多」只在真有多页（服务端给了 nextCursor）时上屏；
+  //   loadMore 自己仍守门，非 ready / 无游标 / 在飞都不发请求。
 
   // R58: real cursor paging. Same filter query plus the server's nextCursor;
   // appended rows are deduplicated by employeeId (never repeat a row).
@@ -1475,7 +1498,7 @@ export function EmployeesModulePage() {
                         <li key={item.employeeId}>
                           {batchLine(item, (id) => {
                             const row = state.items.find((r) => r.employeeId === id);
-                            return row ? displayName(row) : shortCode(id);
+                            return row ? displayName(row) : employeeCode(id);
                           })}
                         </li>
                       ))}
@@ -1740,7 +1763,6 @@ return (
               <div className="emp-grid emp-grid--head" data-testid="employees-table-head">
                 <span className="emp-head-who">
                   <SortHeader label="员工" sortKey="name" active={sort} dir={dir} onCycle={cycleSort} tip="按姓名排序（本地：仅当前已加载行）" />
-                  <SortHeader label="工号" sortKey="code" active={sort} dir={dir} onCycle={cycleSort} tip="按工号短码排序（本地：仅当前已加载行）" />
                   <SortHeader
                     label={<Clock className="h-3 w-3" aria-hidden="true" />}
                     ariaLabel="按最近活跃排序"
@@ -1763,6 +1785,7 @@ return (
                 <ul className="emp-list" data-testid="emp-l-list" data-emp-list-rows="true">
                   {visibleItems.map((row) => {
                     const empId = row.employeeId;
+                    const role = roleLine(row.title, displayName(row));
                     const mp = enrichment.matrix.get(empId) ?? null;
                     const run = enrichment.runs.get(empId) ?? null;
                     const runsReady = enrichment.runsPhase === "ready";
@@ -1860,7 +1883,7 @@ return (
                                   title={empId}
                                   data-testid={`employees-code-${empId}`}
                                 >
-                                  员工 · {shortCode(empId)}
+                                  {employeeCode(empId)}
                                 </span>
                               </span>
                               <span className="emp-dept emp-col-dept">
@@ -1870,7 +1893,11 @@ return (
                                 >
                                   {departmentView(row.department !== undefined, row.department ?? null).label}
                                 </span>
-                                <span className="emp-dept__role">{row.title?.trim() || "岗位未提供"}</span>
+                                {role ? (
+                                  <span className="emp-dept__role" data-label="岗位" title={role === row.title?.trim() ? undefined : row.title?.trim()}>
+                                    {role}
+                                  </span>
+                                ) : null}
                               </span>
                               <span className="emp-life" data-testid={`emp-life-${empId}`}>
                                 <Pill tone={lifeTone(row.lifecycleState)} title={lifeTitle(row.lifecycleState)}>
@@ -1933,39 +1960,25 @@ return (
             </div>
           ) : null}
 
-          {/* 卡底一行 11px：把口径与缺读口压成一条，不再用段落压屏。 */}
+          {/* 卡底一行 11px：只留口径与缺读口两句，实现说明退到 title。 */}
           <div className="emp-notes" data-testid="emp-list-notes">
             <span
               className="emp-note"
               data-testid="emp-list-scope-note"
-              title="白名单参数 keyword、lifecycleState 由服务端过滤；q/query/name 不被该读口接受（实测均返回全量），因此不存在本地过滤口径，也不会为搜索补发额外请求。"
+              title="读口不接受 sort/department 参数，也不为排序或部门筛选补发请求：排序与部门/状态筛选只在当前已加载的这些行内生效，统计口径同此，不是全量。"
             >
-              关键字与状态筛选走服务端真参数
-            </span>
-            <span
-              className="emp-note"
-              data-testid="emp-list-sort-scope-note"
-              title="实测：GET /api/employees 带 sort=name&order=desc、sortBy=lifecycleState、sort=createdAt&dir=asc 任一参数，均返回同一顺序的同一全量（200，3 条）——后台读口不支持排序参数。为避免假的服务端排序，这里只对已加载行做本地排序。"
-            >
-              排序仅在当前已加载 {state.items.length} 条内生效
-            </span>
-            <span
-              className="emp-note"
-              data-testid="emp-list-dept-scope-note"
-              title="实测 GET /api/employees 带 department= 或 dept= 都返回同一全量（200），后台不做部门过滤；为避免假筛选，这里只对已加载的行做前端本地过滤，切换不产生新请求、也不影响服务端游标。"
-            >
-              按当前已加载 {state.items.length} 人统计，不是全量
+              按已加载 {state.items.length} 人统计
             </span>
             <span
               className="emp-note"
               data-testid="emp-list-col-note"
-              title="主模型：员工列表与 /api/matrix 都不回传模型路由，整列隐藏（以员工详情「模型路由」为准）；今日花费的日美元预算上限：读口未返回；客户端数与队列长度：无读口。"
+              title="主模型：员工列表与 /api/matrix 都不回传模型路由，整列隐藏（以员工详情「模型路由」为准）；今日花费的日美元预算上限：读口未返回。"
             >
               缺读口：主模型 · 日预算上限
             </span>
           </div>
 
-          {/* R69: 分页条常驻——非 ready 态下「加载更多」以 disabled+原因存在，不隐身。 */}
+          {/* 卡底：一条网关状态行；「加载更多」只在真有多页时出现。 */}
           <div className="emp-foot">
             <span
               className="emp-foot__status"
@@ -1982,23 +1995,6 @@ return (
               )}
             </span>
             <div className="emp-foot__right" data-testid="emp-list-page">
-              <span
-                data-testid="emp-list-page-count"
-                className="emp-meta"
-                title={
-                  state.phase !== "ready"
-                    ? phaseReason(state.phase) ?? undefined
-                    : state.total === null
-                      ? "读口顶层只有 items/nextCursor（实测 200，无 total 键）；按已加载条数推算会撒谎，故不推算。"
-                      : undefined
-                }
-              >
-                {state.phase !== "ready"
-                  ? "总数不可读 · 已显示 — 人"
-                  : state.total === null
-                    ? `总数不可用 · 已显示 ${state.items.length} 人`
-                    : `共 ${state.total} 人 / 已显示 ${state.items.length} 人`}
-              </span>
               {restoreInfo ? (
                 <span
                   data-testid="emp-list-cursor-restored"
@@ -2008,27 +2004,18 @@ return (
                   {restoreNoteText(restoreInfo)}
                 </span>
               ) : null}
-              <Button
-                size="sm"
-                outlined
-                className="emp-foot__more"
-                data-testid="emp-list-page-more"
-                disabled={moreDisabled}
-                aria-disabled={moreDisabled || undefined}
-                tabIndex={moreDisabled ? -1 : undefined}
-                onClick={loadMore}
-                title={
-                  state.phase !== "ready"
-                    ? `不能续取：${phaseReason(state.phase)}`
-                    : state.nextCursor
-                      ? "带服务端游标续取下一页（追加按工号去重）"
-                      : "服务端没有给出下一页游标：已到末页。"
-                }
-              >
-                {state.loadingMore ? "加载中…" : "加载更多"}
-              </Button>
-              {state.phase === "ready" && state.nextCursor === null && state.items.length > 0 ? (
-                <span data-testid="emp-list-page-end" className="emp-meta">已到末页</span>
+              {state.phase === "ready" && state.nextCursor !== null ? (
+                <Button
+                  size="sm"
+                  outlined
+                  className="emp-foot__more"
+                  data-testid="emp-list-page-more"
+                  disabled={state.loadingMore}
+                  onClick={loadMore}
+                  title="带服务端游标续取下一页（追加按工号去重）"
+                >
+                  {state.loadingMore ? "加载中…" : "加载更多"}
+                </Button>
               ) : null}
             </div>
           </div>

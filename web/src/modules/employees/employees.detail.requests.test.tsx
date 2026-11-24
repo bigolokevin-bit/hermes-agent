@@ -200,10 +200,10 @@ describe("R213 employees detail request contract guards", () => {
     // no stale fields survive the swap: name, code and raw ids of the first
     // employee are fully off the screen
     expect(container.textContent).toContain("阿朝");
-    expect(container.textContent).toContain("B2C4D6E8");
+    expect(container.textContent).toContain("emp_b2c4d6e8…");
     expect(container.textContent).not.toContain("小鲤");
-    expect(container.textContent).not.toContain("A3F1B2C4");
-    expect(text("ed1-identity-code", container)).toContain("员工 · B2C4D6E8");
+    expect(container.textContent).not.toContain("a3f1b2c4");
+    expect(text("ed1-identity-code", container)).toContain("emp_b2c4d6e8…");
     expect(container.textContent).not.toMatch(/undefined|null/);
   });
 });

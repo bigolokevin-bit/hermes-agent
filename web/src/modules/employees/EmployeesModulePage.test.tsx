@@ -140,7 +140,7 @@ describe("EmployeesModulePage list depth", () => {
     const link = q("emp-l-name-link-emp_217A91BA995044DFBB3E2E940B") as HTMLAnchorElement;
     expect(link?.getAttribute("href")).toBe("/employees/emp_217A91BA995044DFBB3E2E940B");
     expect(link.textContent).toContain("小鲤");
-    expect(link.textContent).toContain("员工 · 217A91BA");
+    expect(link.textContent).toContain("emp_217a91ba…");
     expect(link.textContent).not.toContain("emp_217A91BA995044DFBB3E2E940B");
     // Unknown lifecycle states never get invented words.
     expect(link.textContent).toContain("待核实");
@@ -208,8 +208,8 @@ describe("EmployeesModulePage list depth", () => {
     });
     await render("/employees");
     const note = q("emp-list-scope-note");
-    expect(note?.textContent).toContain("服务端真参数");
-    expect(note?.getAttribute("title")).toContain("q/query/name");
+    expect(note?.textContent).toContain("按已加载 2 人统计");
+    expect(note?.getAttribute("title")).toContain("sort/department");
     expect(q("emp-list-count")?.textContent).toBe("2");
     // typing a non-matching keyword re-queries exactly once more (server mode,
     // no extra local request).
@@ -301,20 +301,22 @@ describe("R62 column sorting (emp-list-sort-*)", () => {
       String(el.getAttribute("data-testid")).replace("emp-l-row-", ""),
     );
 
-  it("four sortable headers are real buttons; sorting is local, missing values sort last", async () => {
+  it("three sortable headers are real buttons; 工号 has no column of its own; sorting is local, missing values sort last", async () => {
     fetchJSON.mockImplementation(() => Promise.resolve(sortBody));
     await render("/employees");
     const callsBefore = fetchJSON.mock.calls.length;
-    for (const key of ["name", "code", "state", "time"]) {
+    for (const key of ["name", "state", "time"]) {
       const el = q(`emp-list-sort-${key}`);
       expect(el?.tagName).toBe("BUTTON");
       expect(el?.getAttribute("type")).toBe("button");
       expect(el?.closest('[role="columnheader"]')?.getAttribute("aria-sort")).toBe("none");
     }
-    // 口径注脚在表下，写明仅当前已加载行。
-    const note = q("emp-list-sort-scope-note");
-    expect(note?.textContent).toContain("排序仅在当前已加载 3 条内生效");
-    expect(String(note?.getAttribute("title"))).toContain("200");
+    // 工号不再是独立列：表头没有它的排序钮，短码并进员工格第二行。
+    expect(q("emp-list-sort-code")).toBeNull();
+    // 口径注脚在表下，写明只按已加载行统计。
+    const note = q("emp-list-scope-note");
+    expect(note?.textContent).toContain("按已加载 3 人统计");
+    expect(String(note?.getAttribute("title"))).toContain("sort/department");
 
     const nameBtn = q("emp-list-sort-name") as HTMLButtonElement;
     await act(async () => {
@@ -406,7 +408,7 @@ describe("R63 inline row preview (emp-row-preview-*)", () => {
     const preview = q("emp-row-preview-emp_217A91BA995044DFBB3E2E940B") as Element;
     expect(preview).toBeTruthy();
     expect(preview.textContent).toContain("小鲤");
-    expect(preview.textContent).toContain("员工 · 217A91BA");
+    expect(preview.textContent).toContain("emp_217a91ba…");
     expect(preview.textContent).toContain("待核实"); // weird_state → 待核实，title 带原值
     expect(preview.textContent).toContain("内容编辑");
     expect(preview.textContent).toContain("2026-11-17 13:52"); // BJT 到分
@@ -490,12 +492,12 @@ describe("R64 employees list copy as text (emp-list-copy)", () => {
     expect(lines[0]).toBe("name,employee_no,lifecycle,last_active,department");
     expect(lines).toHaveLength(3); // 表头 + 屏上 2 人
     expect(lines[1]).toContain("小鲤");
-    expect(lines[1]).toContain("员工 · 217A91BA");
+    expect(lines[1]).toContain("emp_217a91ba…");
     expect(lines[1]).toContain("待核实"); // weird_state → 人话 default
     expect(lines[1]).toContain("2026-11-17 13:52"); // BJT 到分
     expect(lines[2]).toContain("阿朝");
     expect(lines[2]).toContain("在岗");
-    expect(written[0]).not.toContain("emp_"); // 禁裸工号全量
+    expect(written[0]).not.toContain("emp_217A91BA995044DFBB3E2E940B"); // 禁整段工号上屏（只上 8 位短码）
     expect(q("emp-list-copy-status")?.textContent).toContain("已复制 2 行");
     expect(q("emp-list-copy-fallback")).toBeNull();
   });
@@ -541,7 +543,7 @@ describe("R64 employees list copy as text (emp-list-copy)", () => {
     expect(area, "fallback textarea").toBeTruthy();
     expect(area!.readOnly).toBe(true);
     expect(area!.value.split("\n")).toHaveLength(3);
-    expect(area!.value).toContain("员工 · 217A91BA");
+    expect(area!.value).toContain("emp_217a91ba…");
   });
 
   it("disables with a stated reason when nothing is loaded", async () => {
@@ -581,20 +583,20 @@ describe("R58 pagination and honest total (emp-list-page-*)", () => {
     });
   };
 
-  it("states the missing total honestly and pages with the real cursor, deduping appended rows", async () => {
+  it("pages with the real cursor, deduping appended rows, and shows 加载更多 only while a cursor is in hand", async () => {
     const urls: string[] = [];
     stubPages(urls);
     await render("/employees");
     await act(async () => {
       flushTimers();
     });
-    const count = q("emp-list-page-count");
-    expect(count?.textContent).toContain("总数不可用 · 已显示 2 人");
-    expect(count?.getAttribute("title")).toContain("无 total 键");
+    // 计数只在 filterbar 右侧（条数 · 页码）；卡底不再重复一句工程话。
+    expect(q("emp-list-page-count")).toBeNull();
+    expect(q("emp-list-page-end")).toBeNull();
+    expect(q("emp-list-page-count-top")?.textContent).toContain("2 条 · 第 1/… 页");
     const more = q("emp-list-page-more") as HTMLButtonElement | null;
     expect(more, "more button").toBeTruthy();
     expect(more!.disabled, "cursor present enables more").toBe(false);
-    expect(q("emp-list-page-end")).toBeNull();
     await act(async () => {
       more!.click();
     });
@@ -603,9 +605,9 @@ describe("R58 pagination and honest total (emp-list-page-*)", () => {
     expect(paged, "exactly one cursor query").toHaveLength(1);
     expect(document.querySelectorAll('[data-testid^="emp-l-row-"]')).toHaveLength(3);
     expect(document.querySelectorAll('[data-testid="emp-l-row-emp_2B2C2D2E4F506172"]')).toHaveLength(1);
-    expect((q("emp-list-page-more") as HTMLButtonElement).disabled, "last page disables more").toBe(true);
-    expect(q("emp-list-page-end")?.textContent).toContain("已到末页");
-    expect(q("emp-list-page-count")?.textContent).toContain("已显示 3 人");
+    // 末页：游标用完，续取钮退场（屏上不留「已到末页」的角标）。
+    expect(q("emp-list-page-more"), "last page has no 加载更多").toBeNull();
+    expect(q("emp-list-page-count-top")?.textContent).toContain("3 条 · 第 2/2 页");
   });
 
   it("switching lifecycle resets the cursor and replaces (never appends) rows, keeping the URL", async () => {
@@ -727,7 +729,7 @@ describe("R66 employees list CSV export (emp-list-export)", () => {
     expect(lines).toHaveLength(3); // 表头 + 屏上 2 人
     expect(lines[0]).toBe("name,employee_no,lifecycle,last_active,department");
     expect(lines[1]).toContain('"小鲤, 带头"'); // RFC4180 逗号转义
-    expect(lines[1]).toContain("员工 · 217A91BA");
+    expect(lines[1]).toContain("emp_217a91ba…");
     expect(lines[2].endsWith(",增长组")).toBe(true); // R110：末列=部门真值；last_active 缺=空字段（非「—」非 0）
     expect(lines[2]).toContain("待核实"); // weird_state 人话
     // Blob.text() 按规范剥离前导 BOM，字节级验证 Excel 兼容头
@@ -895,9 +897,10 @@ describe("R69 list state consistency (emp-list-state-*)", () => {
     expect(q("emp-list-count")?.getAttribute("title")).toContain("没能加载");
     expect(disabledTitle("emp-list-copy")).toContain("不能复制");
     expect(disabledTitle("emp-list-export")).toContain("不能导出");
-    expect(disabledTitle("emp-list-page-more")).toContain("不能续取");
+    expect(q("emp-list-page-more"), "非 ready 不上屏续取钮").toBeNull();
     expect(q("emp-list-page-end")).toBeNull();
-    expect(q("emp-list-page-count")?.textContent).toContain("总数不可读");
+    expect(q("emp-list-page-count")).toBeNull();
+    expect(q("emp-list-page-count-top")?.textContent).toContain("— 条 · 第 —/— 页");
     // 错误态不吞 URL：筛选/排序参数原样保留。
     expect(document.body.getAttribute("data-last-search")).toBe(
       "?q=zz&lifecycle=active&sort=name&dir=desc",
@@ -926,7 +929,7 @@ describe("R69 list state consistency (emp-list-state-*)", () => {
     expect(q("emp-list-state-error"), "denied is not an error card").toBeNull();
     const deniedText = q("employees-denied")?.textContent ?? "";
     expect(deniedText).toContain("没有查看权限");
-    expect(disabledTitle("emp-list-page-more")).toContain("没有查看权限");
+    expect(q("emp-list-page-more"), "denied 态没有续取钮").toBeNull();
 
     failWith({ status: 404 });
     await render("/employees");
@@ -940,7 +943,7 @@ describe("R69 list state consistency (emp-list-state-*)", () => {
     expect(q("emp-list-state-loading"), "skeleton card").toBeTruthy();
     expect(q("emp-list-count")?.textContent).toBe("—");
     expect(disabledTitle("emp-list-copy")).toContain("加载中");
-    expect(disabledTitle("emp-list-page-more")).toContain("加载中");
+    expect(q("emp-list-page-more"), "loading 态没有续取钮").toBeNull();
     // 骨架固定 5 行等高（不跳动的形态学断言）：行高一致。
     const bars = document.querySelectorAll('[data-testid="emp-list-state-loading"] .animate-pulse');
     expect(bars).toHaveLength(5);
@@ -963,7 +966,7 @@ describe("R81 department filter (emp-list-dept-select)", () => {
     // 部门是同一行里的下拉（不再占一行分段 chips），「全部部门」是未过滤态。
     expect(q("emp-list-dept-select")).toBeTruthy();
     expect(selectValue("emp-list-dept-select")).toBe("");
-    expect(q("emp-list-dept-scope-note")?.textContent).toContain("按当前已加载 2 人统计，不是全量");
+    expect(q("emp-list-scope-note")?.textContent).toContain("按已加载 2 人统计");
     const urlsBefore = fetchJSON.mock.calls.map((c) => String(c[0]));
     expect(
       urlsBefore
@@ -1018,7 +1021,7 @@ describe("R81 department filter (emp-list-dept-select)", () => {
     expect(select, "dept select present in error").toBeTruthy();
     expect(select!.hasAttribute("disabled")).toBe(true);
     expect(select!.getAttribute("title")).toContain("不能按部门筛选");
-    expect(q("emp-list-dept-scope-note")?.textContent).toContain("按当前已加载 0 人");
+    expect(q("emp-list-scope-note")?.textContent).toContain("按已加载 0 人");
   });
 });
 

@@ -41,7 +41,7 @@ import {
 } from "@/modules/approvals/stateCopy";
 // R68 parity: the list row preview and this identity card share ONE
 // missing-field wording source and ONE lifecycle vocabulary.
-import { departmentView, FIELD_MISSING, FIELD_MISSING_TITLE, fieldMissing, lifecycleLabel as rosterLifecycleLabel } from "@/modules/employees/EmployeesModulePage";
+import { departmentView, employeeCode, FIELD_MISSING, FIELD_MISSING_TITLE, fieldMissing, lifecycleLabel as rosterLifecycleLabel } from "@/modules/employees/EmployeesModulePage";
 import { fetchJSON } from "@/lib/api";
 import { API_UNREACHABLE_MESSAGE, ApiError, humanizeStatus } from "@/lib/api-error";
 import "./employee-detail.css";
@@ -1321,7 +1321,7 @@ function IdentityCard({ d, empId }: { d: Rec; empId: string }) {
               {name ?? FIELD_MISSING}
             </IdentityField>
             <IdentityField id="code" label="工号" title={empId}>
-              员工 · {shortCode(empId)}
+              {employeeCode(empId)}
             </IdentityField>
             <IdentityField id="role" label="角色" title={role ? undefined : FIELD_MISSING_TITLE}>
               {role ?? FIELD_MISSING}

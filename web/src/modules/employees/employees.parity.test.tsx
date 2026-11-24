@@ -203,7 +203,7 @@ describe("R134 ① row cell joins the preview/detail verbatim matrix", () => {
     expect(q("ed1-identity-name")?.textContent, "identity name == row").toBe(name);
 
     const code = rowCode(E1);
-    expect(code, "masked code on the row").toBe("员工 · A3F1B2C4");
+    expect(code, "masked code on the row").toBe("emp_a3f1b2c4…");
     expect(pv[1], "preview code == row").toBe(code);
     expect(q("ed1-identity-code")?.textContent, "identity code == row").toBe(code);
 

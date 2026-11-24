@@ -3,8 +3,8 @@
  * R175 — 员工列表分页契约护栏（纯测试，零产品改动）。
  *
  * 已覆盖只回证据，不写重复用例：
- *  - ①去重+③末页 disabled/「已到末页」/计数文案：EmployeesModulePage.test.tsx
- *    describe「R58 pagination and honest total (emp-list-page-*)」已锁；
+ *  - ①去重+③末页（游标用完即撤「加载更多」，计数只在 filterbar 右侧）：
+ *    EmployeesModulePage.test.tsx describe「R58 pagination ...」已锁；
  *  - ②翻页后改筛选=恰一次新取数且不带旧 cursor=、行替换非累加：
  *    employees.filters.test.tsx（R115）已锁；
  *  - 未翻页场景 copy/CSV/表体三值相等+导出零请求：employees.export.test.tsx
@@ -12,8 +12,8 @@
  *
  * 现场裁决（工单④与产品现状差异，按现状锁定并点名，不改产品）：
  *  第 2 页 500 时 loadMore 的 catch 把旧行保留在 state.items，但 phase=error
- *  的渲染分支互斥——屏上呈现整页错误卡：表体卸载、emp-list-page-count 变
- *  「总数不可读 · 已显示 — 人」、emp-list-copy 按 R69 gates 置 disabled。
+ *  的渲染分支互斥——屏上呈现整页错误卡：表体卸载、filterbar 计数退成
+ *  「— 条 · 第 —/— 页」、emp-list-copy 按 R69 gates 置 disabled。
  *  重试走 setReload → 首页腿全量替换（服务端游标只续不回头，重试不携带旧
  *  cursor），成功后错误卡与 rid 载体一并卸载。
  */
@@ -163,11 +163,11 @@ describe("R175 employees paging contract", () => {
       "emp_B2C3D4E5F6A7",
       "emp_C3D4E5F6A7B8",
     ]);
-    const more = q("emp-list-page-more") as HTMLButtonElement;
-    expect(more.disabled, "末页禁用续取").toBe(true);
-    expect(more.getAttribute("title"), "末页原因句").toContain("已到末页");
-    expect(q("emp-list-page-end")?.textContent).toBe("已到末页");
-    expect(q("emp-list-page-count")?.textContent).toBe("总数不可用 · 已显示 3 人");
+    // 末页：游标用完，续取钮退场，卡底不再有「已到末页」角标。
+    expect(q("emp-list-page-more"), "末页没有续取钮").toBeNull();
+    expect(q("emp-list-page-end")).toBeNull();
+    expect(q("emp-list-page-count")).toBeNull();
+    expect(q("emp-list-page-count-top")?.textContent).toContain("3 条 · 第 2/2 页");
     // 去重键：重复的乙二只出现一次。
     expect(rowIds().filter((id) => id === "emp_B2C3D4E5F6A7")).toHaveLength(1);
   });
@@ -200,7 +200,8 @@ describe("R175 employees paging contract", () => {
     // 与工单期望的现状差异（点名不改产品）：旧行保留在 state，但表体卸载、
     // 计数变「总数不可读」、复制钮按 gates 置灰。
     expect(q("employees-table"), "旧行不上屏（state 保留）").toBeNull();
-    expect(q("emp-list-page-count")?.textContent).toBe("总数不可读 · 已显示 — 人");
+    expect(q("emp-list-page-count")).toBeNull();
+    expect(q("emp-list-page-count-top")?.textContent).toContain("— 条 · 第 —/— 页");
     expect((q("emp-list-copy") as HTMLButtonElement).disabled, "错误态复制置灰（R69 gates）").toBe(true);
 
     const before = listUrls().length;
