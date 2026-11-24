@@ -17,6 +17,7 @@
  * copyable 请求编号 and a retry, and denied — 403 and 404 rendering one identical
  * body. Without an `id` the page asks nothing and says what it needs.
  */
+import "./audit-375-a11y.css";
 import type { ReactNode } from "react";
 import { useSearchParams } from "react-router";
 import { Compass } from "lucide-react";

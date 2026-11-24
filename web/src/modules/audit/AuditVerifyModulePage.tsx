@@ -21,6 +21,7 @@
  * The window bounds are ISO on the wire and never on the screen: the page
  * shows Beijing wall clock, labelled as such. `?state=` is the shell's QA repro
  */
+import "./audit-375-a11y.css";
 import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { Link2, RefreshCw, ShieldQuestion } from "lucide-react";
 
