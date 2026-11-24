@@ -559,6 +559,14 @@ export interface DecisionEntry {
   verdictRaw: string | null;
   at: string | null;
   note: string | null;
+  /**
+   * AP-05 锚定腿：这张票面上记录的指纹原值（actionHash/action_hash/argsDigest
+   * 一族），缺即 null——**不是空串、不是从本单指纹回填**。现网实测本服务不记录
+   * 它（域 approvals.py `_decisions` L337-346 只出四键；16 行 7 票 key-set 印证），
+   * 所以这条腿在活体上恒为 null，一致性判定据实走「比对不可用」；域若日后补记，
+   * 这里不改判据直接生效。
+   */
+  actionHash: string | null;
 }
 
 /** Q13: one field-level before/after row, every cell a human sentence. */
@@ -796,6 +804,8 @@ function decisionEntries(rec: Record<string, unknown>): DecisionEntry[] {
       at: beijing(pick(one, ["decidedAt", "decided_at", "at", "createdAt", "ts"])),
       atRaw: pickText(one, ["decidedAt", "decided_at", "at", "createdAt", "ts"]),
       note: humanSentence(pickText(one, ["comment", "note", "reason"])),
+      // AP-05 锚定腿：票面自带的指纹族值；本服务实测不记录（缺即 null，不回填）。
+      actionHash: pickText(one, ["actionHash", "action_hash", "argsDigest"]),
     });
   }
   return out;

@@ -143,7 +143,11 @@ describe("AP-04① 合取判据：缺任一输入即关，原因句逐字不动"
     expect(gate.NEGATIVE_PROOFS_ACCEPTED).toBe(false);
     expect(gate.DECISION_GATE.disabled).toBe(true);
     expect(gate.DECISION_GATE.title).toBe(READONLY_SENTENCE);
-    expect(gate.decisionBlockReasons("hash")).toEqual([READONLY_SENTENCE]);
+    // AP-05 锚定腿起，"有指纹"的输入必须是真形制（现网实态＝64 位十六进制摘要）；
+    // 非摘要体如今会多出一条「无法核验」原因，见 approvals.actionhash.anchor.test.tsx。
+    expect(gate.decisionBlockReasons("22eadfcebfdaa88b5451bb8622503c876ddfd7418e692056baa29786bb9fb63f")).toEqual([
+      READONLY_SENTENCE,
+    ]);
   });
 
   it("服务端探测「关」＋旗标「开」⇒ 仍关——探测是必要条件，构建旗标开不动它", async () => {
