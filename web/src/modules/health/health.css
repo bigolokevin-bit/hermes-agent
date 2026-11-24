@@ -15,24 +15,6 @@
   gap: 12px;
 }
 
-.hlt5-counts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 12px;
-  margin-top: 8px;
-  color: var(--color-muted-foreground);
-  font-size: 12px;
-}
-
-.hlt5-owner {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 8px;
-  color: var(--color-muted-foreground);
-  font-size: 12px;
-}
-
 .hlt5-row {
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.4fr);
@@ -126,14 +108,6 @@
   animation: hlt5-pulse 1.6s ease-in-out infinite;
 }
 
-.hlt5-foot {
-  margin: 0;
-  padding: 10px 16px 14px;
-  color: var(--color-muted-foreground);
-  font-size: 11px;
-  line-height: 1.6;
-}
-
 .hlt5-page .arc-border {
   display: none;
 }
@@ -157,32 +131,54 @@
   }
 }
 /* sys5 — service state counts and local filter */
+.sys5-bar {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-ls-2);
+}
+
+.sys5-bar-gap { flex: 1 1 auto; min-width: 0; }
+
 .sys5-counts {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  align-items: center;
+  gap: 4px;
 }
 
+/* 计数是筛选入口，不是指标块：11px 小芯片，与卡头微标签同档，不再各自成框。 */
 .sys5-count {
   display: inline-flex;
   align-items: baseline;
-  gap: 5px;
+  gap: 4px;
   max-width: 100%;
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  padding: 4px 9px;
-  color: var(--color-foreground);
-  font-size: 12px;
-  line-height: 1.3;
+  height: 22px;
+  padding: 0 7px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-ls-1);
+  color: var(--color-text-muted-ls);
+  font-size: var(--font-size-ls-1);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+button.sys5-count { cursor: pointer; }
+
+button.sys5-count:hover {
+  border-color: var(--color-border-subtle-ls);
+  color: var(--color-text-ls);
 }
 
 .sys5-count[aria-pressed="true"] {
-  border-color: var(--color-ring);
-  background: var(--color-muted);
+  border-color: var(--color-border-ls);
+  background: color-mix(in srgb, var(--color-text-ls) 7%, transparent);
+  color: var(--color-text-ls);
 }
 
 .sys5-count.is-muted {
-  color: var(--color-muted-foreground);
+  color: var(--color-text-faint-ls);
 }
 
 .sys5-count-label {
@@ -190,7 +186,9 @@
 }
 
 .sys5-count-value {
-  font-variant-numeric: tabular-nums;
+  font-family: var(--font-family-mono-ls);
+  font-variant-numeric: var(--tabular-ls);
+  color: var(--color-text-ls);
 }
 
 .sys5-filter-note {
@@ -212,13 +210,8 @@
 }
 
 @media (max-width: 720px) {
-  .sys5-counts {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .sys5-count {
-    justify-content: space-between;
+  .sys5-bar-gap {
+    display: none;
   }
 }
 
@@ -278,8 +271,14 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 6px 10px;
-  color: var(--color-muted-foreground);
-  font-size: 12px;
+  color: var(--color-text-subtle-ls);
+  font-size: var(--font-size-ls-1);
+}
+
+.sys3-summary-hint {
+  margin-left: auto;
+  color: var(--color-text-faint-ls);
+  white-space: nowrap;
 }
 
 .sys3-reason {
@@ -300,13 +299,6 @@
 }
 
 .sys3-gap-body,
-.sys3-foot {
-  margin: 0;
-  color: var(--color-muted-foreground);
-  font-size: 12px;
-  overflow-wrap: anywhere;
-}
-
 .sys3-req {
   display: flex;
   flex-wrap: wrap;
@@ -377,12 +369,6 @@
 
 .sys3-row[data-open="1"] td {
   background: var(--color-muted);
-}
-
-.sys4-hint {
-  margin: 0;
-  color: var(--color-muted-foreground);
-  font-size: 11px;
 }
 
 .sys4-detail {
@@ -720,13 +706,15 @@
 }
 .sys-search-input {
   min-width: 0;
-  flex: 1 1 220px;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  background: var(--color-background);
-  padding: 6px 10px;
-  color: var(--color-foreground);
-  font-size: 0.75rem;
+  flex: 1 1 180px;
+  max-width: 240px;
+  height: 24px;
+  border: 1px solid var(--color-border-subtle-ls);
+  border-radius: var(--radius-ls-1);
+  background: var(--color-sunken-ls, var(--color-background));
+  padding: 0 8px;
+  color: var(--color-text-ls);
+  font-size: var(--font-size-ls-1);
 }
 .sys-search-input:disabled {
   cursor: not-allowed;
@@ -939,27 +927,30 @@
   gap: var(--space-ls-2);
 }
 
+/* 骨架 .kpi：四块各自就是最外层，内不再套卡；高 62px 档。 */
 .hlt5-kpi {
   display: flex;
   min-width: 0;
   flex-direction: column;
   gap: 2px;
-  padding: var(--space-ls-2) var(--space-ls-3);
+  padding: 8px 12px 7px;
   border: var(--border-ls-1);
-  border-radius: var(--radius-ls-1);
+  border-radius: var(--console-card-radius, 6px);
   background: var(--color-surface-ls);
 }
 
 .hlt5-kpi-k {
-  font-size: var(--font-size-ls-1);
-  line-height: var(--line-height-ls-1);
+  font-family: var(--font-family-mono-ls);
+  font-size: 10px;
+  line-height: 1.2;
+  letter-spacing: 0.1em;
   color: var(--color-text-subtle-ls);
 }
 
 .hlt5-kpi-v {
   font-family: var(--font-family-mono-ls);
-  font-size: var(--font-size-ls-5);
-  line-height: var(--line-height-ls-1);
+  font-size: 21px;
+  line-height: 1.15;
   font-variant-numeric: var(--tabular-ls);
   color: var(--color-text-ls);
 }
@@ -1005,19 +996,6 @@
   gap: var(--space-ls-2);
 }
 
-.hlt5-divider {
-  height: 1px;
-  margin: var(--space-ls-3) 0 var(--space-ls-2);
-  background: var(--color-border-subtle-ls);
-}
-
-.hlt5-gap {
-  margin: 0;
-  font-size: var(--font-size-ls-1);
-  line-height: var(--line-height-ls-2);
-  color: var(--color-text-subtle-ls);
-}
-
 .hlt5-hooks {
   display: flex;
   flex-direction: column;
@@ -1051,14 +1029,6 @@
   white-space: nowrap;
 }
 
-.hlt5-card-foot {
-  padding: var(--space-ls-2) var(--space-ls-3);
-  border-top: var(--border-ls-1);
-  font-size: var(--font-size-ls-1);
-  line-height: var(--line-height-ls-2);
-  color: var(--color-text-subtle-ls);
-}
-
 /* 服务表的「说明」列：版本标识 + 最近检查时刻 + 复制，压成一行窄读。 */
 .sys-note-line {
   display: flex;
@@ -1086,7 +1056,13 @@
 }
 
 /* 服务卡与探针明细：内容直接在 ConsoleCard 里，不再套第二层描边。 */
-.sys3-inner { padding: var(--space-ls-3); }
+.sys3-inner {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--space-ls-2);
+  padding: var(--space-ls-3);
+}
 .hlt5-panel { padding: var(--space-ls-3); }
 .hlt5-panel--center { align-items: center; text-align: center; }
 
@@ -1101,7 +1077,9 @@
 .sys-note-line > span { white-space: nowrap; }
 
 @media (max-width: 720px) {
-  .sys3-table th:nth-child(5), .sys3-table td:nth-child(5) { width: auto; }
+  /* 说明列在 375 档只放复制钮（检查时刻已隐藏）：收窄到刚好容下按钮，
+     粘性右列整格落在滚动壳内，左侧留出「服务 + 状态」两列。 */
+  .sys3-table th:nth-child(5), .sys3-table td:nth-child(5) { width: 88px; }
 }
 
 /* 版本标识挪到卡底：一行 chips，不再在表格正文里逐行占一格。 */
@@ -1127,3 +1105,65 @@
 .sys3-version-name { color: var(--color-text-subtle-ls); }
 
 .sys3-versions-gap { color: var(--color-text-subtle-ls); }
+
+/* ------------------------------------------------------------------ *
+ * 2026-11-24 密度收口：骨架 health pane 只有 KPI 行 / 服务卡 / 维护与钩子。
+ * 探针明细、读源矩阵、口径说明是工程面，收进页底「读源与口径」折叠块：
+ * 收起时正文只剩骨架那几块，展开才摊开读源与导出。
+ * ------------------------------------------------------------------ */
+.hlt5-caliber-gap {
+  color: var(--color-text-faint-ls);
+}
+
+.hlt5-engine {
+  min-width: 0;
+  border: var(--border-ls-1);
+  border-radius: var(--console-card-radius, 6px);
+  background: var(--color-surface-ls);
+}
+
+.hlt5-engine > summary {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-ls-2);
+  padding: 8px var(--space-ls-3);
+  cursor: pointer;
+  list-style: none;
+  font-family: var(--font-family-mono-ls);
+  font-size: 11px;
+  line-height: 1.2;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-subtle-ls);
+}
+
+.hlt5-engine > summary::-webkit-details-marker {
+  display: none;
+}
+
+.hlt5-engine > summary::before {
+  content: "▸";
+  color: var(--color-text-faint-ls);
+}
+
+.hlt5-engine[open] > summary::before {
+  content: "▾";
+}
+
+.hlt5-engine-meta {
+  margin-left: auto;
+  font-family: var(--font-family-sans-ls);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--color-text-faint-ls);
+}
+
+.hlt5-engine-body {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--space-ls-2);
+  padding: 0 var(--space-ls-3) var(--space-ls-3);
+}

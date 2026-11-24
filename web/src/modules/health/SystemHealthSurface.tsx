@@ -349,93 +349,88 @@ export function SystemHealthSurface({ preview = null, onRetry, refreshTick = 0, 
   return (
     <div className="sys3-body" data-testid="sys3-page">
       <div className="sys3-inner space-y-3" data-fixture={preview ?? undefined}>
-        <div className="sys5-counts" data-testid="sys5-counts" aria-label="服务状态计数">
-          {counts.map((bucket) => {
-            const value = bucket.count === null ? "—" : String(bucket.count);
-            const title = bucket.count === null
-              ? countReason ?? "计数不可用。"
-              : filterable && filter === bucket.state
-                ? `取消「${bucket.label}」筛选，显示全部服务。`
-                : filterable
-                  ? `只看状态为「${bucket.label}」的服务；筛选只在本地生效，不改网址。`
-                  : countReason ?? undefined;
-            return filterable ? (
-              <button
-                key={bucket.key}
-                type="button"
-                className="sys5-count"
-                data-testid={`sys5-count-${bucket.key}`}
-                data-state={bucket.state}
-                aria-pressed={filter === bucket.state}
-                title={title}
-                onClick={() => {
-                  setOpenKey(null);
-                  setFilter((current) => (current === bucket.state ? null : bucket.state));
-                  if (svc) clearService();
-                }}
-              >
-                <span className="sys5-count-label">{bucket.label}</span>
-                <b className="sys5-count-value">{value}</b>
+        <div className="sys5-bar">
+          <div className="sys5-counts" data-testid="sys5-counts" aria-label="服务状态计数">
+            {counts.map((bucket) => {
+              const value = bucket.count === null ? "—" : String(bucket.count);
+              const title = bucket.count === null
+                ? countReason ?? "计数不可用。"
+                : filterable && filter === bucket.state
+                  ? `取消「${bucket.label}」筛选，显示全部服务。`
+                  : filterable
+                    ? `只看状态为「${bucket.label}」的服务；筛选只在本地生效，不改网址。`
+                    : countReason ?? undefined;
+              return filterable ? (
+                <button
+                  key={bucket.key}
+                  type="button"
+                  className="sys5-count"
+                  data-testid={`sys5-count-${bucket.key}`}
+                  data-state={bucket.state}
+                  aria-pressed={filter === bucket.state}
+                  title={title}
+                  onClick={() => {
+                    setOpenKey(null);
+                    setFilter((current) => (current === bucket.state ? null : bucket.state));
+                    if (svc) clearService();
+                  }}
+                >
+                  <span className="sys5-count-label">{bucket.label}</span>
+                  <b className="sys5-count-value">{value}</b>
+                </button>
+              ) : (
+                <span
+                  key={bucket.key}
+                  className="sys5-count is-muted"
+                  data-testid={`sys5-count-${bucket.key}`}
+                  data-state={bucket.state}
+                  title={title}
+                >
+                  <span className="sys5-count-label">{bucket.label}</span>
+                  <b className="sys5-count-value">{value}</b>
+                </span>
+              );
+            })}
+          </div>
+          <div className="sys-search-bar" data-testid="sys-search-bar">
+            <input
+              type="search"
+              className="sys-search-input"
+              data-testid="sys-search"
+              value={q}
+              disabled={!filterable}
+              aria-disabled={!filterable ? "true" : undefined}
+              title={!filterable ? countReason ?? "当前不是可搜索状态。" : "按服务名或口径 key 过滤下面的服务表与读源矩阵；只在已加载行内搜索。"}
+              placeholder="按服务名或口径 key 搜索"
+              aria-label="按服务名或口径 key 搜索"
+              onChange={(event) => {
+                const value = event.target.value;
+                setQ(value);
+                writeServiceQuery(value || null);
+              }}
+            />
+            {q ? (
+              <button type="button" className="sys-search-clear" data-testid="sys-search-clear" onClick={() => { setQ(""); writeServiceQuery(null); }}>
+                清空搜索
               </button>
-            ) : (
-              <span
-                key={bucket.key}
-                className="sys5-count is-muted"
-                data-testid={`sys5-count-${bucket.key}`}
-                data-state={bucket.state}
-                title={title}
-              >
-                <span className="sys5-count-label">{bucket.label}</span>
-                <b className="sys5-count-value">{value}</b>
-              </span>
-            );
-          })}
-        </div>
-        <div className="sys-search-bar" data-testid="sys-search-bar">
-          <input
-            type="search"
-            className="sys-search-input"
-            data-testid="sys-search"
-            value={q}
-            disabled={!filterable}
-            aria-disabled={!filterable ? "true" : undefined}
-            title={!filterable ? countReason ?? "当前不是可搜索状态。" : "按服务名或口径 key 过滤下面的服务表与读源矩阵；只在已加载行内搜索。"}
-            placeholder="按服务名或口径 key 搜索"
-            aria-label="按服务名或口径 key 搜索"
-            onChange={(event) => {
-              const value = event.target.value;
-              setQ(value);
-              writeServiceQuery(value || null);
-            }}
-          />
+            ) : null}
+          </div>
           <span className="sys-search-scope-note" data-testid="sys-search-scope-note">
             仅在当前已加载 {state.k === "ready" ? state.read.rows.length : 0} 行内搜索
           </span>
-          {q ? (
-            <button type="button" className="sys-search-clear" data-testid="sys-search-clear" onClick={() => { setQ(""); writeServiceQuery(null); }}>
-              清空搜索
-            </button>
-          ) : null}
-        </div>
-        <div className="flex min-w-0 flex-wrap items-start justify-between gap-2">
-          <div className="min-w-0">
-            <h2 className="text-sm font-medium text-white/85">服务健康清单</h2>
-            <p className="mt-1 text-xs text-white/45">来源：健康读口 · 最近检查时刻只取接口顶层采集时间</p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              className="sys3-planned"
-              data-testid="sys3-planned-edit"
-              data-planned="1"
-              aria-disabled="true"
-              title="控制台还没有探针写入口；接入后会提供编辑与启停管理。"
-              onClick={(event) => event.preventDefault()}
-            >
-              编辑探针（计划中）
-            </button>
-            {hideRefresh ? null : <Button size="sm" outlined onClick={retry} disabled={!refreshEnabled} aria-disabled={!refreshEnabled ? "true" : undefined} title={refreshTitle} data-testid="sys3-refresh">刷新</Button>}
-          </div>
+          <span className="sys5-bar-gap" />
+          <button
+            type="button"
+            className="sys3-planned"
+            data-testid="sys3-planned-edit"
+            data-planned="1"
+            aria-disabled="true"
+            title="控制台还没有探针写入口；接入后会提供编辑与启停管理。"
+            onClick={(event) => event.preventDefault()}
+          >
+            编辑探针（计划中）
+          </button>
+          {hideRefresh ? null : <Button size="sm" outlined onClick={retry} disabled={!refreshEnabled} aria-disabled={!refreshEnabled ? "true" : undefined} title={refreshTitle} data-testid="sys3-refresh">刷新</Button>}
         </div>
 
         {svc ? (
@@ -522,24 +517,23 @@ export function SystemHealthSurface({ preview = null, onRetry, refreshTick = 0, 
         ) : (
           <>
             <div className="sys3-summary" data-testid="sys3-summary">
-              <span>整体状态</span>
               <Badge tone={tone(state.read.overall)} data-testid="sys3-overall">{state.read.overall}</Badge>
               <span data-testid="sys3-sources">来源 {state.read.sources ?? "—"} 项</span>
               <span data-testid="sys3-asof" title={state.read.asOfTitle}>{state.read.asOf ?? "—"}</span>
+              <span className="sys3-summary-hint" title="点行或按 Enter 展开详情，Esc 收起；同时只展开一行">行可展开</span>
               {state.read.overallReason ? <span className="sys3-reason">{state.read.overallReason}</span> : null}
               {state.read.asOfReason ? <span className="sys3-reason">{state.read.asOfReason}</span> : null}
             </div>
-            <p className="sys5-filter-note" data-testid="sys5-filter-note">
-              {filter
-                ? `已筛：${filter} · ${visibleRows.length} 项。筛选只在本地生效，不改网址；刷新后回到全部服务。`
-                : "点上面的状态计数可只看该状态的服务；筛选只在本地生效，不改网址。"}
-              {filter && visibleRows.length > 0 ? (
-                <button type="button" data-testid="sys5-clear" onClick={() => { setFilter(null); setOpenKey(null); }}>
-                  清除筛选
-                </button>
-              ) : null}
-            </p>
-            <p className="sys4-hint">点行或按 Enter 展开详情，Esc 收起；同时只展开一行。</p>
+            {filter ? (
+              <p className="sys5-filter-note" data-testid="sys5-filter-note">
+                {`已筛：${filter} · ${visibleRows.length} 项。筛选只在本地生效，不改网址；刷新后回到全部服务。`}
+                {visibleRows.length > 0 ? (
+                  <button type="button" data-testid="sys5-clear" onClick={() => { setFilter(null); setOpenKey(null); }}>
+                    清除筛选
+                  </button>
+                ) : null}
+              </p>
+            ) : null}
             {q && searchRows.length === 0 ? (
               <div className="sys-search-empty" data-testid="sys-search-empty">
                 <p>没有匹配的服务</p>
@@ -623,7 +617,7 @@ export function SystemHealthSurface({ preview = null, onRetry, refreshTick = 0, 
                       </tr>
                       {openKey === row.key ? (
                         <tr data-testid={`sys4-detail-row-${row.key}`} id={`sys4-detail-row-${row.key}`}>
-                          <td colSpan={6}><RowDetail row={row} /></td>
+                          <td colSpan={5}><RowDetail row={row} /></td>
                         </tr>
                       ) : null}
                     </Fragment>
@@ -651,7 +645,6 @@ export function SystemHealthSurface({ preview = null, onRetry, refreshTick = 0, 
             </>
             )}
             <VersionFoot rows={state.read.rows} />
-            <p className="sys3-foot">缺失值按缺口标注，原因在悬停说明里；不用本机时钟补采集时刻，也不把未知当正常。</p>
           </>
         )}
       </div>
