@@ -1,28 +1,34 @@
 /**
  * 人员与访问 · 角色与权限（`/identity?tab=roles`）。
  *
- * 角色定义、权限矩阵、条件权限、提权记录都没有读口。本页因此不编角色、不画示例
- * 勾叉：矩阵与角色清单只留「表头 + 一行声明」，条件权限与提权卡只留一句声明。
- * 有读口的部分按骨架密度做实：成员按台账部门归组（部门 | 成员数 | 成员 chip |
- * 在职/待激活），成员明细给成员 · 部门范围 · 状态，异常由台账现算（待激活 /
- * 未归属 / 单人部门）。无读口整列不渲染，同一缺失只声明一次，破折号不上屏。
+ * 立屏理由是角色 × 动作矩阵：结构照骨架九卡保留，只允许值缺。
+ * 权限矩阵没有读口（`/api/roles` 404），矩阵行因此取成员台账里**显式给出**的
+ * role 值；台账也没有角色字段时渲染一行「未读到角色定义」的占位行，列头与
+ * 六类动作照样立着，不删表、不补示例勾叉。条件权限、成员角色与最近操作同样
+ * 没有读口：格内留 `—`，缺读口只在卡底「数据可用性」声明一次。
+ *
+ * 有读口的部分按骨架密度做实：部门归组、成员明细（部门范围 / 状态）、异常与
+ * 建议都由成员台账现算；副行按骨架形制写「角色 × 6 类动作 · 条件权限」。
  */
 import { useMemo, type ReactNode } from "react";
 
 import { Pill } from "@/components/console/Pill";
 
-import { CardFoot, DeclRow, IdentityHead, PlannedButton } from "./bits";
+import { DASH, IdCard, IdentityHead, KvList, PlannedButton } from "./bits";
 import {
   departmentBuckets,
   lifecyclePill,
+  roleBuckets,
   shortCode,
   type MemberRow,
 } from "./model";
 import { useIdentity } from "./useIdentity";
 import "./identity.css";
 
-const MATRIX_COLS = ["角色", "查看", "运行任务", "写入配置", "审批", "安装", "删除"] as const;
+const ACTION_COLS = ["查看", "运行任务", "写入配置", "审批", "安装", "删除"] as const;
+const MATRIX_COLS = ["角色", ...ACTION_COLS, "成员"] as const;
 const ROSTER_COLS = ["角色", "成员", "人数", "范围"] as const;
+const LEGEND = "✓ 允许 · ◐ 条件 · — 禁止";
 const CHIP_MAX = 3;
 
 interface DeptGroup {
@@ -100,31 +106,46 @@ function ledgerNotices(members: MemberRow[], groups: DeptGroup[]): Notice[] {
   return notices;
 }
 
-/** 卡壳：11px h2 微标签 + 右端计数带；表卡 flush（整宽表格），其余 12px 内距。 */
-function RoleCard({
-  title,
-  meta,
-  testId,
-  flush,
-  foot,
-  children,
-}: {
+interface Advice {
   title: string;
-  meta?: ReactNode;
-  testId: string;
-  flush?: boolean;
-  foot?: ReactNode;
-  children: ReactNode;
-}) {
+  sub: string;
+}
+
+/** 建议只用台账里数得出来的事实（未归属部门 / 单人部门），没有就留卡壳。 */
+function ledgerAdvice(members: MemberRow[], groups: DeptGroup[]): Advice[] {
+  const advice: Advice[] = [];
+  const unassigned = members.filter((member) => !member.department).length;
+  if (unassigned > 0) {
+    advice.push({
+      title: `${unassigned} 名成员未归属部门`,
+      sub: "部门字段为空，不计入任何部门范围。",
+    });
+  }
+  const singles = groups.filter((group) => !group.unassigned && group.members.length === 1);
+  if (singles.length > 0) {
+    advice.push({
+      title: `${singles.length} 个部门只有 1 名成员`,
+      sub: `${singles.map((group) => group.name).join("、")}：部门范围只覆盖一人。`,
+    });
+  }
+  return advice;
+}
+
+/** 矩阵/清单里没有值的格：等宽破折号，不补 0、不补示例。 */
+function DashCell({ right }: { right?: boolean }) {
+  return <td className={`${right ? "id-right " : ""}id-center id-mono`}>{DASH}</td>;
+}
+
+/** 占位行首格：灰字承载列宽，后六格与成员格留破折号。 */
+function EmptyRoleRow({ cols, children }: { cols: number; children: ReactNode }) {
   return (
-    <div className="console-card" data-testid={testId}>
-      <div className="console-card__head">
-        <h2 className="id-card-title">{title}</h2>
-        {meta === undefined ? null : <span className="id-count">{meta}</span>}
-      </div>
-      {flush ? children : <div className="console-card__body">{children}</div>}
-      {foot}
-    </div>
+    <tr className="id-row-empty">
+      <td>{children}</td>
+      {Array.from({ length: cols - 2 }, (_, index) => (
+        <DashCell key={index} />
+      ))}
+      <DashCell right />
+    </tr>
   );
 }
 
@@ -133,33 +154,30 @@ export function IdentityRolesPage() {
   const members = useMemo(() => data?.members ?? [], [data]);
   const groups = useMemo(() => groupByDepartment(members), [members]);
   const notices = useMemo(() => ledgerNotices(members, groups), [members, groups]);
+  const advice = useMemo(() => ledgerAdvice(members, groups), [members, groups]);
+  const roles = useMemo(() => roleBuckets(members), [members]);
 
   const namedGroups = groups.filter((group) => !group.unassigned);
   const namedCount = namedGroups.length;
   const assignedCount = namedGroups.reduce((sum, group) => sum + group.members.length, 0);
   const unassignedCount = members.length - assignedCount;
-  const actionCount = MATRIX_COLS.length - 1;
+  const actionCount = ACTION_COLS.length;
 
   const sub =
     phase === "ready" ? (
       <>
-        <b className="id-num">{members.length}</b> 名成员
-        <span className="id-sep" aria-hidden="true">
-          ·
-        </span>
-        <b className="id-num">{namedCount}</b> 个部门
-        {unassignedCount > 0 ? (
+        {roles.length > 0 ? (
           <>
-            <span className="id-sep" aria-hidden="true">
-              ·
-            </span>
-            <b className="id-num">{unassignedCount}</b> 名未归属
+            <b className="id-num">{roles.length}</b> 个角色
           </>
-        ) : null}
+        ) : (
+          "角色定义未读到"
+        )}{" "}
+        × <b className="id-num">{actionCount}</b> 类动作
         <span className="id-sep" aria-hidden="true">
           ·
         </span>
-        <b className="id-num">{actionCount}</b> 类动作
+        条件权限未读到
       </>
     ) : (
       "角色与权限读取中…"
@@ -197,41 +215,74 @@ export function IdentityRolesPage() {
         </div>
       ) : (
         <>
-          <RoleCard
+          <IdCard
             title="角色 × 动作"
-            meta={`${actionCount} 类动作`}
+            count={<span className="id-legend">{LEGEND}</span>}
             testId="identity-matrix-card"
             flush
-            foot={<CardFoot note="权限矩阵与条件权限同源：角色定义暂未提供，6 类动作只留列名，不补示例勾叉。" right="角色行：无" />}
+            note="行 = 角色 · 列 = 六类动作 · 右端 = 成员数"
+            availability={[
+              {
+                label: "角色定义/权限矩阵",
+                reason: "无读口：角色读口返回 404，六类动作的允许与条件权限都没有上游读数",
+              },
+            ]}
           >
             <div className="id-tw">
               <table className="id-table id-table--matrix" data-testid="identity-matrix-table">
                 <thead>
                   <tr>
                     {MATRIX_COLS.map((col, index) => (
-                      <th key={col} scope="col" className={index === 0 ? undefined : "id-center"}>
+                      <th
+                        key={col}
+                        scope="col"
+                        className={
+                          index === 0 ? undefined : index === MATRIX_COLS.length - 1 ? "id-right" : "id-center"
+                        }
+                      >
                         {col}
                       </th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  <DeclRow colSpan={MATRIX_COLS.length}>
-                    角色定义暂未提供：这一屏不出现一行角色，也不补示例勾叉。
-                  </DeclRow>
+                  {roles.length === 0 ? (
+                    <EmptyRoleRow cols={MATRIX_COLS.length}>未读到角色定义</EmptyRoleRow>
+                  ) : (
+                    roles.map((role) => (
+                      <tr key={role.name}>
+                        <td>{role.name}</td>
+                        {ACTION_COLS.map((col) => (
+                          <DashCell key={col} />
+                        ))}
+                        <td className="id-right id-mono">{role.members.length}</td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
-          </RoleCard>
+          </IdCard>
 
           <div className="id-grid2">
-            <RoleCard title="条件说明" meta="按角色" testId="identity-role-cond-card">
-              <p className="id-decl">
-                部门范围、双人复核与金额阈值三类条件暂未提供：本卡不写处数，也不补示例条件行。
-              </p>
-            </RoleCard>
+            <IdCard
+              title="条件说明"
+              count="按角色"
+              testId="identity-role-cond-card"
+              availability={[
+                { label: "条件权限", reason: "部门范围、双人复核与金额阈值三类条件都没有上游读数" },
+              ]}
+            >
+              <KvList
+                rows={[
+                  { k: "部门范围", v: <span className="id-mono">{DASH}</span> },
+                  { k: "双人复核", v: <span className="id-mono">{DASH}</span> },
+                  { k: "金额阈值", v: <span className="id-mono">{DASH}</span> },
+                ]}
+              />
+            </IdCard>
 
-            <RoleCard title="权限来源" meta="3 层叠加" testId="identity-role-source-card">
+            <IdCard title="权限来源" count="3 层叠加" testId="identity-role-source-card">
               <p className="id-formula">（角色权限 并 部门范围） 交 门禁状态</p>
               <p className="id-decl">
                 先并后交：角色与部门给的范围合并，再由门禁收紧；双人模式下单人仍不可执行。
@@ -239,22 +290,19 @@ export function IdentityRolesPage() {
               <p className="id-decl">
                 权限变更应在访问控制里做，不在员工配置里做；员工配置只决定这个数字员工用哪套角色。
               </p>
-            </RoleCard>
+            </IdCard>
           </div>
 
           <div className="console-split">
             <div className="id-stack">
-              <RoleCard
+              <IdCard
                 title="按部门"
-                meta={`${namedCount} 个部门`}
+                count={`${namedCount} 个部门`}
                 testId="identity-role-dept-card"
                 flush
-                foot={
-                  <CardFoot
-                    note="成员、部门与在职态取自成员台账；角色与范围不在这张卡里凑数。"
-                    right={`${members.length} 名成员${unassignedCount > 0 ? ` · ${unassignedCount} 未归属` : ""}`}
-                  />
-                }
+                note={`成员、部门与在职态取自成员台账；${members.length} 名成员${
+                  unassignedCount > 0 ? ` · ${unassignedCount} 未归属` : ""
+                }`}
               >
                 <div className="id-tw">
                   <table className="id-table id-table--role-dept" data-testid="identity-role-dept-table">
@@ -272,7 +320,9 @@ export function IdentityRolesPage() {
                     </thead>
                     <tbody>
                       {groups.length === 0 ? (
-                        <DeclRow colSpan={4}>成员台账为空：没有可归组的成员。</DeclRow>
+                        <tr className="id-row-empty">
+                          <td colSpan={4}>成员台账为空：没有可归组的成员。</td>
+                        </tr>
                       ) : (
                         groups.map((group) => {
                           const hidden = group.members.length - CHIP_MAX;
@@ -302,22 +352,30 @@ export function IdentityRolesPage() {
                     </tbody>
                   </table>
                 </div>
-              </RoleCard>
+              </IdCard>
 
-              <RoleCard
+              <IdCard
                 title="成员明细"
-                meta={`${members.length} 行`}
+                count={`${members.length} 行`}
                 testId="identity-role-detail-card"
                 flush
-                foot={<CardFoot note="部门范围取成员台账的部门字段，未填写即写「未填写」；角色与最近操作整列不渲染。" right={`${members.length} 行`} />}
+                note="部门范围取成员台账的部门字段；角色与最近操作没有上游读数，格内留破折号。"
+                availability={[
+                  { label: "角色", reason: "成员台账未带角色字段，取不到成员的角色" },
+                  { label: "最近操作", reason: "没有操作日志读口" },
+                ]}
               >
                 <div className="id-tw">
                   <table className="id-table id-table--roles-detail" data-testid="identity-role-detail-table">
                     <thead>
                       <tr>
                         <th scope="col">成员</th>
+                        <th scope="col">角色</th>
                         <th scope="col" className="id-hidesm">
                           部门范围
+                        </th>
+                        <th scope="col" className="id-right id-hidesm">
+                          最近操作
                         </th>
                         <th scope="col" className="id-col-st">
                           状态
@@ -326,7 +384,9 @@ export function IdentityRolesPage() {
                     </thead>
                     <tbody>
                       {members.length === 0 ? (
-                        <DeclRow colSpan={3}>成员台账为空：这一屏没有可展示的成员。</DeclRow>
+                        <tr className="id-row-empty">
+                          <td colSpan={5}>成员台账为空：这一屏没有可展示的成员。</td>
+                        </tr>
                       ) : (
                         members.map((row) => {
                           const pill = lifecyclePill(row.lifecycle);
@@ -343,9 +403,9 @@ export function IdentityRolesPage() {
                                   </span>
                                 </span>
                               </td>
-                              <td className="id-hidesm id-cell-sm">
-                                {row.department ?? "未填写"}
-                              </td>
+                              <td className="id-mono">{row.role ?? DASH}</td>
+                              <td className="id-hidesm id-cell-sm">{row.department ?? "未填写"}</td>
+                              <td className="id-right id-hidesm id-mono">{DASH}</td>
                               <td className="id-col-st">
                                 <Pill tone={pill.tone}>{pill.label}</Pill>
                               </td>
@@ -356,16 +416,17 @@ export function IdentityRolesPage() {
                     </tbody>
                   </table>
                 </div>
-              </RoleCard>
+              </IdCard>
             </div>
 
             <div className="id-stack">
-              <RoleCard
+              <IdCard
                 title="按角色"
-                meta="成员归属"
+                count="成员归属"
                 testId="identity-role-roster-card"
                 flush
-                foot={<CardFoot note="角色清单与成员归属暂未提供：只留列名，不补示例角色行。" right="角色行：无" />}
+                note="角色清单取成员台账的显式角色字段；范围没有读口。"
+                availability={[{ label: "角色范围", reason: "角色的范围与门禁都没有上游读数" }]}
               >
                 <div className="id-tw">
                   <table className="id-table id-table--role-roster" data-testid="identity-role-roster-table">
@@ -383,19 +444,49 @@ export function IdentityRolesPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      <DeclRow colSpan={ROSTER_COLS.length}>
-                        角色清单暂未提供：这里只有列名，没有角色行可数。
-                      </DeclRow>
+                      {roles.length === 0 ? (
+                        <tr className="id-row-empty">
+                          <td>未读到角色定义</td>
+                          <td>{DASH}</td>
+                          <td className="id-right id-mono">{DASH}</td>
+                          <td className="id-hidesm">{DASH}</td>
+                        </tr>
+                      ) : (
+                        roles.map((role) => {
+                          const hidden = role.members.length - CHIP_MAX;
+                          return (
+                            <tr key={role.name}>
+                              <td>{role.name}</td>
+                              <td>
+                                <span className="id-chips">
+                                  {role.members.slice(0, CHIP_MAX).map((member) => (
+                                    <span className="id-chip" key={member.id} title={member.name}>
+                                      {member.name}
+                                    </span>
+                                  ))}
+                                  {hidden > 0 ? (
+                                    <span className="id-chip id-chip--more" title={`还有 ${hidden} 名成员`}>
+                                      +{hidden}
+                                    </span>
+                                  ) : null}
+                                </span>
+                              </td>
+                              <td className="id-right id-mono">{role.members.length}</td>
+                              <td className="id-hidesm id-mono">{DASH}</td>
+                            </tr>
+                          );
+                        })
+                      )}
                     </tbody>
                   </table>
                 </div>
-              </RoleCard>
+              </IdCard>
 
-              <RoleCard
+              <IdCard
                 title="异常"
-                meta={notices.length > 0 ? `${notices.length} 条` : "暂无"}
+                count={notices.length > 0 ? `${notices.length} 条` : "暂无"}
                 testId="identity-role-alert-card"
-                foot={<CardFoot note="异常由成员台账现算：待激活、未归属部门、单人部门。" />}
+                note="异常由成员台账现算：待激活、未归属部门、单人部门。"
               >
                 {notices.length === 0 ? (
                   <p className="id-decl">成员台账里没有可报的异常。</p>
@@ -412,27 +503,41 @@ export function IdentityRolesPage() {
                     ))}
                   </div>
                 )}
-              </RoleCard>
+              </IdCard>
 
-              <RoleCard
+              <IdCard
                 title="最近提权"
-                meta="近 30 天"
-                testId="identity-role-escalation-card"
-                foot={
-                  <CardFoot
-                    note="提权记录暂未提供：不列日期与操作人。"
-                    right={
-                      <a className="id-link" href="#/audit">
-                        去审计 →
-                      </a>
-                    }
-                  />
+                count={
+                  <a className="id-link" href="#/audit">
+                    去审计 →
+                  </a>
                 }
+                testId="identity-role-escalation-card"
+                note="提权记录没有读口：不列日期与操作人，也不补示例条目。"
+              />
+
+              <IdCard
+                title="建议"
+                count="最小权限"
+                testId="identity-role-advice-card"
+                note="建议由成员台账现算，不引入外部规则。"
               >
-                <p className="id-decl">
-                  提权事件暂未提供：本卡不列日期与操作人，也不补示例条目。
-                </p>
-              </RoleCard>
+                {advice.length === 0 ? (
+                  <p className="id-decl">暂无基于现有读口的建议。</p>
+                ) : (
+                  <div className="id-notices">
+                    {advice.map((item) => (
+                      <div className="id-notice" data-tone="info" key={item.title}>
+                        <span className="id-notice__dot" aria-hidden="true" />
+                        <span className="id-notice__body">
+                          <b>{item.title}</b>
+                          <span>{item.sub}</span>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </IdCard>
             </div>
           </div>
         </>
