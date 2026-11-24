@@ -116,10 +116,10 @@ describe("AU-07 pure legs", () => {
       endedAt: null,
       costUsd: null,
     });
-    expect(normalizeRunAside({ id: RUN_ID, costUsd: 0 }).costUsd).toBe(0);
+    expect(normalizeRunAside({ id: RUN_ID, costUsd: 0 })!.costUsd).toBe(0);
     expect(normalizeRunAside({ status: "succeeded" })).toBeNull();
     expect(normalizeRunAside(null)).toBeNull();
-    expect(normalizeRunAside({ run: { runId: RUN_ID, employeeId: " emp_1 " } }).employeeId).toBe("emp_1");
+    expect(normalizeRunAside({ run: { runId: RUN_ID, employeeId: " emp_1 " } })!.employeeId).toBe("emp_1");
   });
 
   it("状态四词表封闭：表外原样、缺值破折；花费 null 与真 0 字面不同", () => {
@@ -180,9 +180,9 @@ describe("AU-07 record pane aside", () => {
     expect(txt("aud3-run-end")).toBe("该字段未返回");
     const open = q("[data-testid='aud3-run-open'] a") as HTMLAnchorElement;
     expect(open).not.toBeNull();
-    expect(open.getAttribute("href")).toBe(
-      runChainOf([{ noun: "运行", label: "运行", raw: RUN_ID }]).href,
-    );
+    const chain = runChainOf([{ noun: "运行", label: "运行", raw: RUN_ID }]);
+    if (chain.kind !== "link") throw new Error("run 链应为真链接");
+    expect(open.getAttribute("href")).toBe(chain.href);
     expect(open.getAttribute("rel")).toBe("noreferrer noopener");
     expect(open.textContent).toContain(RUN_ID);
   });
