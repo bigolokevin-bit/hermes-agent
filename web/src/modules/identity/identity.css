@@ -507,3 +507,199 @@
   .id-table--matrix th:nth-child(1) { width: 24%; }
   .id-table--matrix th:nth-child(n + 2) { width: 12.6%; padding: 0 1px; }
 }
+/* ==================================================================== *
+ * 角色与权限一屏（2026-11-24 骨架密度车道）：卡头 h2 微标签 / 计数带 /
+ * 表内单行声明 / 成员 chip / 异常条目 / 双栏堆叠。
+ * 只消费 tokens.css 的 -ls 语义层，不写裸 hex、不新增令牌。
+ * ==================================================================== */
+
+/* 卡头标题：骨架 .hd h2 形制，仍是 11px 等宽微标签（h2 只负责结构）。 */
+.id-card-title {
+  margin: 0;
+  font-family: var(--font-family-mono-ls);
+  font-size: 11px;
+  font-weight: var(--font-weight-ls-regular);
+  line-height: 1.2;
+  letter-spacing: 0.08em;
+  color: var(--color-text-subtle-ls);
+  white-space: nowrap;
+}
+
+/* 卡头右端计数带。 */
+.id-count {
+  flex: none;
+  font-family: var(--font-family-mono-ls);
+  font-size: 11px;
+  font-variant-numeric: var(--tabular-ls);
+  line-height: 1.2;
+  color: var(--color-text-subtle-ls);
+  white-space: nowrap;
+}
+
+/* 表内单行声明：36px 行、左对齐、11px，不铺警告底色。 */
+.id-decl-row td {
+  height: var(--table-row-h-compact-ls);
+  padding: 0 var(--space-ls-3);
+  font-size: 11px;
+  line-height: var(--line-height-ls-2);
+  color: var(--color-text-subtle-ls);
+  white-space: normal;
+}
+
+.id-decl {
+  margin: 0;
+  font-size: 11px;
+  line-height: var(--line-height-ls-2);
+  color: var(--color-text-subtle-ls);
+}
+
+.id-decl + .id-decl {
+  margin-top: var(--space-ls-2);
+}
+
+/* 成员 chip 组：最多 3 枚 + 余数，溢出裁在组内，不撑破列。 */
+.id-chips {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.id-chip {
+  display: inline-block;
+  flex: none;
+  max-width: 104px;
+  padding: 0 5px;
+  overflow: hidden;
+  border: var(--border-ls-1);
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--color-text-ls) 4%, transparent);
+  font-family: var(--font-family-sans-ls);
+  font-size: 10px;
+  line-height: 16px;
+  color: var(--color-text-muted-ls);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.id-chip--more {
+  border-style: dashed;
+  border-color: var(--color-border-ls);
+  color: var(--color-text-subtle-ls);
+}
+
+/* 异常条目：圆点语义色（warn/info/bad），标题一行 + 说明一行。 */
+.id-notices {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.id-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-ls-2);
+  min-width: 0;
+  padding: 7px 0;
+  border-bottom: var(--border-ls-1);
+}
+
+.id-notice:first-child {
+  padding-top: 0;
+}
+
+.id-notice:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.id-notice__dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: var(--color-text-faint-ls);
+}
+
+.id-notice[data-tone="warn"] .id-notice__dot { background: var(--color-warning-ls); }
+.id-notice[data-tone="info"] .id-notice__dot { background: var(--color-info-ls); }
+.id-notice[data-tone="bad"] .id-notice__dot { background: var(--color-danger-ls); }
+
+.id-notice__body {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.id-notice__body b {
+  font-size: var(--font-size-ls-1);
+  font-weight: var(--font-weight-ls-medium);
+  line-height: var(--line-height-ls-2);
+  color: var(--color-text-ls);
+}
+
+.id-notice__body span {
+  font-size: 11px;
+  line-height: var(--line-height-ls-2);
+  color: var(--color-text-muted-ls);
+}
+
+.id-link {
+  color: var(--color-text-muted-ls);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  white-space: nowrap;
+}
+
+.id-link:hover {
+  color: var(--color-text-ls);
+}
+
+.id-link:focus-visible {
+  outline: var(--focus-ring-ls);
+  outline-offset: var(--focus-ring-offset-ls);
+}
+
+/* 等宽两栏（条件说明 | 权限来源）与右栏堆叠。 */
+.id-grid2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: var(--space-ls-2);
+  min-width: 0;
+}
+
+.id-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-ls-2);
+  min-width: 0;
+}
+
+/* 列宽：按部门（部门最宽，成员 chip 次之）/ 成员明细 / 角色清单。 */
+.id-table--role-dept th:nth-child(1) { width: 26%; }
+.id-table--role-dept th:nth-child(2) { width: 12%; }
+.id-table--role-dept th:nth-child(4) { width: 22%; }
+.id-table--roles-detail th:nth-child(1) { width: 40%; }
+.id-table--roles-detail th:nth-child(3) { width: 18%; }
+.id-table--role-roster th:nth-child(1) { width: 32%; }
+
+@media (max-width: 1100px) {
+  .id-grid2 { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 760px) {
+  .id-table--role-dept th:nth-child(1) { width: 42%; }
+  .id-table--role-dept th:nth-child(2) { width: 24%; }
+  .id-table--role-dept th:nth-child(4) { width: 34%; }
+  .id-table--roles-detail th:nth-child(1) { width: 62%; }
+  .id-table--roles-detail th:nth-child(3) { width: 38%; }
+  .id-table--role-roster th:nth-child(1) { width: 40%; }
+
+  .id-card-title {
+    white-space: normal;
+  }
+}

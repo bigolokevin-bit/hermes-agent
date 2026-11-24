@@ -228,12 +228,10 @@ describe("人员与访问 · 组织与部门", () => {
 });
 
 describe("人员与访问 · 角色与权限", () => {
-  it("副行不写任何角色数；矩阵列名逐字照骨架，表体一行缺读口", async () => {
+  it("副行是本次真读数的派生句；矩阵只留 6 个动作列头 + 一行声明", async () => {
     await mount(<IdentityRolesPage />);
 
-    expect(text('[data-testid="identity-roles-sub"]')).toBe(
-      "角色定义与权限矩阵没有读口：本页不列角色、不画示例矩阵，也不写条件权限的处数。",
-    );
+    expect(text('[data-testid="identity-roles-sub"]')).toBe("3 名成员·2 个部门·1 名未归属·6 类动作");
     expect(headers('[data-testid="identity-matrix-table"]')).toEqual([
       "角色",
       "查看",
@@ -244,26 +242,71 @@ describe("人员与访问 · 角色与权限", () => {
       "删除",
     ]);
     expect(host.querySelectorAll('[data-testid="identity-matrix-table"] tbody tr')).toHaveLength(1);
+    expect(text('[data-testid="identity-matrix-card"] .id-decl-row')).toContain(
+      "角色定义暂未提供",
+    );
   });
 
-  it("另三卡列名照骨架；成员侧填真台账行，角色与范围是破折号", async () => {
+  it("按部门聚合真台账：部门 / 成员数 / 成员 chip / 在职待激活", async () => {
     await mount(<IdentityRolesPage />);
 
-    expect(headers('[data-testid="identity-role-members-card"] table')).toEqual(["成员", "操作", "角色"]);
-    expect(headers('[data-testid="identity-role-size-card"] table')).toEqual(["成员", "人数", "范围"]);
+    expect(headers('[data-testid="identity-role-dept-table"]')).toEqual([
+      "部门",
+      "成员数",
+      "成员",
+      "在职/待激活",
+    ]);
+    const rows = [...host.querySelectorAll('[data-testid="identity-role-dept-table"] tbody tr')];
+    expect(rows).toHaveLength(3);
+    const cells = rows.map((row) =>
+      [...row.querySelectorAll("td")].map((td) => (td.textContent ?? "").trim()),
+    );
+    expect(cells[0]).toEqual(["产品部", "1", "产品助理", "在职 1"]);
+    expect(cells[1]).toEqual(["客服中心", "1", "质检助理", "在职 1"]);
+    expect(cells[2]).toEqual(["未归属", "1", "数据助理", "待激活 1"]);
+    expect(rows[0].querySelectorAll(".id-chip")).toHaveLength(1);
+  });
+
+  it("成员明细只渲染有读口的三列，角色与最近操作整列不渲染", async () => {
+    await mount(<IdentityRolesPage />);
+
     expect(headers('[data-testid="identity-role-detail-table"]')).toEqual([
       "成员",
-      "角色",
       "部门范围",
-      "最近操作",
       "状态",
     ]);
-
     const rows = [...host.querySelectorAll('[data-testid="identity-role-detail-table"] tbody tr')];
     expect(rows).toHaveLength(3);
     const cells = rows.map((row) => row.textContent ?? "");
     expect(cells.some((c) => c.includes("质检助理") && c.includes("客服中心") && c.includes("在职"))).toBe(true);
     expect(cells.some((c) => c.includes("产品助理") && c.includes("产品部") && c.includes("在职"))).toBe(true);
-    expect(cells.some((c) => c.includes("数据助理") && c.includes("待激活"))).toBe(true);
+    expect(cells.some((c) => c.includes("数据助理") && c.includes("未填写") && c.includes("待激活"))).toBe(true);
+  });
+
+  it("按角色只有列名 + 一行声明；异常由台账现算，提权卡指向审计", async () => {
+    await mount(<IdentityRolesPage />);
+
+    expect(headers('[data-testid="identity-role-roster-table"]')).toEqual([
+      "角色",
+      "成员",
+      "人数",
+      "范围",
+    ]);
+    expect(host.querySelectorAll('[data-testid="identity-role-roster-table"] tbody tr')).toHaveLength(1);
+    expect(host.querySelectorAll('[data-testid="identity-role-alert-card"] .id-notice')).toHaveLength(3);
+    expect(
+      host.querySelector('[data-testid="identity-role-escalation-card"] a.id-link')?.getAttribute("href"),
+    ).toBe("#/audit");
+  });
+
+  it("8 张卡都有 h2 卡头；模块内不出 tablist / h1 / 示例数据；破折号不逐行铺", async () => {
+    await mount(<IdentityRolesPage />);
+
+    expect(host.querySelectorAll("h2")).toHaveLength(8);
+    expect(host.querySelectorAll('[role="tablist"]')).toHaveLength(0);
+    expect(host.querySelectorAll("h1")).toHaveLength(0);
+    expect(host.querySelectorAll("[data-fixture]")).toHaveLength(0);
+    // 同一缺失只声明一次；无读口整列不渲染，因此正文不再出现逐行破折号。
+    expect((host.textContent ?? "").match(/—/g) ?? []).toHaveLength(0);
   });
 });

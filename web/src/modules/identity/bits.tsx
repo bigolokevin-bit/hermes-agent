@@ -51,6 +51,18 @@ export function GapRow({ colSpan, children }: { colSpan: number; children: React
   );
 }
 
+/**
+ * 表内单行声明：整行跨列、左对齐 11px，只陈述缺口。
+ * 纯无读口的表用它替代逐行空值，不做居中灰字空态。
+ */
+export function DeclRow({ colSpan, children }: { colSpan: number; children: ReactNode }) {
+  return (
+    <tr className="id-decl-row">
+      <td colSpan={colSpan}>{children}</td>
+    </tr>
+  );
+}
+
 /** 卡内一句说明（没有表格的卡用它承载缺口）。 */
 export function GapNote({ children }: { children: ReactNode }) {
   return <p className="id-gap-note">{children}</p>;
