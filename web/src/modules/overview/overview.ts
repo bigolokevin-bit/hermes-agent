@@ -136,12 +136,6 @@ export interface TrendPoint {
   failed: number | null;
 }
 
-const DAY_LABEL = new Intl.DateTimeFormat('zh-CN', {
-  timeZone: 'Asia/Shanghai',
-  month: '2-digit',
-  day: '2-digit',
-});
-
 /**
  * 趋势点位随窗取尾部 N 桶（OM-04：14d 之外的档位读 30d 后由
  * duty 层裁桶，这里再按档位天数收口，缺省 14 保持既有口径）。
@@ -201,8 +195,11 @@ export function trendWindow(stats: RunStatsBody | null, days = 14): TrendPoint[]
   return Array.from({ length: count }, (_, i) => {
     const ms = startMs + i * DAY_MS;
     const hit = byDay.get(dayKeyOf(ms));
+    // 轴标签用日格键直接裁成 MM-DD（北京时区已由 dayKeyOf 固定）：
+    // 避免 locale 的「11/24」在缩略图里被读成「12/24」，也让首/中/末三标
+    // 与日格一一对应（首日、中间日、窗口末日）。
     return {
-      label: DAY_LABEL.format(new Date(ms)),
+      label: dayKeyOf(ms).slice(5),
       runs: hit ? hit.runs : null,
       failed: hit ? hit.failed : null,
     };

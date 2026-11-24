@@ -32,6 +32,12 @@ type StampSource = { source: string; state: Loadable<unknown> };
 // OM-15：服务探针状态词表——只翻译 hermes-summary 真读数，没有读数就是未接。
 const HEALTH_LABEL: Record<string, string> = { ok: '正常', degraded: '降级', down: '异常' };
 
+/** V3 引用门的强制策略无读口：该行给固定示例，并在行尾挂「示例」字样。 */
+const GATE_SAMPLE = { pass: 1, fail: 1 } as const;
+
+/** 「今日成本」卡缺读口的三个字段：固定示例，行前挂「示例」微标签。 */
+const COST_SAMPLE = { dayCapUsd: 40, projectedMonthUsd: 358, wasteUsd: 6.1, wastePctMonth: 2.8 } as const;
+
 const RUN_STATUS_LABEL: Record<string, string> = {
   completed: '成功',
   succeeded: '成功',
@@ -228,6 +234,25 @@ function IconBook({ className }: IconProps) {
   );
 }
 
+function IconSearch({ className }: IconProps) {
+  return (
+    <svg {...ICON_BASE} className={className}>
+      <circle cx="10.8" cy="10.8" r="6.6" />
+      <path d="m15.6 15.6 4.4 4.4" />
+    </svg>
+  );
+}
+
+function IconDownload({ className }: IconProps) {
+  return (
+    <svg {...ICON_BASE} className={className}>
+      <path d="M12 3.6v11.2" />
+      <path d="m7.4 10.4 4.6 4.6 4.6-4.6" />
+      <path d="M4.4 19.6h15.2" />
+    </svg>
+  );
+}
+
 function IconRocket({ className }: IconProps) {
   return (
     <svg {...ICON_BASE} className={className}>
@@ -318,7 +343,7 @@ function AsofLine({ states }: { states: Array<Loadable<unknown> | null> }) {
     return (
       <p className="ov5-fresh" data-testid="ov6-asof" title="取各来源响应自带的采集时间，最新的一个上屏">
         <IconClock className="ov5-i ov5-i-13" />
-        <span>{`采集时刻 北京时间 ${newest} · 每卡来源见卡内标注`}</span>
+        <span>{`采集时刻 北京时间 ${newest}`}</span>
       </p>
     );
   }
@@ -404,6 +429,8 @@ function KpiCard({
   onRetry,
   icon,
   viz,
+  badge,
+  fixture,
   children,
 }: {
   title: string;
@@ -420,10 +447,19 @@ function KpiCard({
   onRetry?: () => void;
   icon?: ReactNode;
   viz?: ReactNode;
+  /** 卡头右侧的「示例数据」角标（混合真值的卡用）。 */
+  badge?: ReactNode;
+  /** `partial`＝卡内部分字段是固定示例；区块级 data-fixture 便于验收。 */
+  fixture?: 'partial';
   children?: ReactNode;
 }) {
   return (
-    <Card className="ov5-kpi" data-testid={testid} data-duty-testid={testid.replace('ov6-', 'duty-')}>
+    <Card
+      className="ov5-kpi"
+      data-testid={testid}
+      data-duty-testid={testid.replace('ov6-', 'duty-')}
+      data-fixture={fixture}
+    >
       <CardContent className="ov5-kpi-bd">
         <div className="ov5-kpi-hd">
           <h2 className="ov5-kpi-title">
@@ -432,6 +468,7 @@ function KpiCard({
           </h2>
           {meta ? <span className="ov5-kpi-meta">{meta}</span> : null}
           <Source>{source}</Source>
+          {badge}
         </div>
         <div className="ov5-kr">
           <div className="ov5-kpi-value">{value}</div>
@@ -520,18 +557,36 @@ function ReadyCard({
       <div className="ov5-gates">
         {readiness.gates.map((gate) => {
           const dot = gate.state === 'pass' ? 'ok' : gate.state === 'fail' ? 'bad' : 'warn';
+          // 只有「引用门 + 无策略读口」这一行用示例数值；其它未知门保持「— / 待核实」。
+          const sample = gate.key === 'V3' && gate.state === 'unknown';
           return (
-            <div className={`ov5-gate${gate.key === narrowestKey ? ' is-narrow' : ''}`} key={gate.key}>
+            <div
+              className={`ov5-gate${gate.key === narrowestKey ? ' is-narrow' : ''}${sample ? ' is-sample' : ''}`}
+              key={gate.key}
+              data-fixture={sample ? '1' : undefined}
+            >
               <span className="ov5-gk" title={gate.source}>
                 {gate.name}
                 {gate.key === narrowestKey ? <span className="ov5-gtag">最窄</span> : null}
               </span>
               <span className="ov5-gv">
-                {gate.pass === null ? '—' : gate.pass} / {dashed(denom)}
+                {sample ? GATE_SAMPLE.pass : gate.pass === null ? '—' : gate.pass} / {dashed(denom)}
               </span>
               <span className="ov5-gcut">
-                {gate.state === 'unknown' ? '待核实' : `未达 ${gate.fail === null ? '—' : gate.fail}`}
+                {sample
+                  ? `未达 ${GATE_SAMPLE.fail}`
+                  : gate.state === 'unknown'
+                    ? '待核实'
+                    : `未达 ${gate.fail === null ? '—' : gate.fail}`}
               </span>
+              {sample ? (
+                <span
+                  className="ov5-sample"
+                  title="引用门的强制引用策略没有读口；本行通过/未达为固定示例，不构成通过结论"
+                >
+                  示例
+                </span>
+              ) : null}
               <i className={`ov5-gdot ${dot}`} title={gate.whyNot ?? `${gate.name}：${gate.state}`} />
             </div>
           );
@@ -593,7 +648,10 @@ function TodayRunsCard({
   onRetry: () => void;
 }) {
   const today = data.todayStats.k === 'ready' ? data.todayStats.data : null;
-  const running = today?.totals?.running ?? null;
+  // 今日总运行数为 0 且列表已空 ⇒ 在跑=0 是可证的；有运行但统计没给 running 才留「—」。
+  const running =
+    today?.totals?.running ??
+    (data.todayRuns.k === 'ready' && kpis.runs === 0 ? 0 : null);
   const rows =
     data.todayRuns.k === 'ready'
       ? data.todayRuns.data.filter((run) => run.status === 'running' || run.status === 'failed').slice(0, 3)
@@ -652,8 +710,9 @@ function RunRowLine({ run }: { run: RunRow }) {
 }
 
 /* ============================================================================
- * 今日成本：日账本 + 月配额（骨架 hcard 3）。没有预算读口的字段写「—」，
- * 不按单价反推、不编日上限。
+ * 今日成本：日账本 + 月配额（骨架 hcard 3）。今日账本 / 月配额 / 本月实扣是
+ * 真读数；日上限 / 预估月底 / 浪费没有读口，用固定示例并逐行挂「示例」标签，
+ * 不按单价反推、不把示例混进真值行。
  * ========================================================================== */
 function CostCard({
   data,
@@ -669,8 +728,6 @@ function CostCard({
   onRetry: () => void;
 }) {
   const quota = monthQuota(matrix);
-  const usedPct =
-    monthUsd === null || quota === null || quota <= 0 ? null : Math.round((monthUsd / quota) * 1000) / 10;
   const covered = kpis.costPartial ? kpis.costMissing : 0;
   return (
     <KpiCard
@@ -680,10 +737,20 @@ function CostCard({
       unit={`今日账本 · 月配额 ${quota === null ? '—' : usd(quota)}`}
       foot={
         <>
-          本月 <b>{monthUsd === null ? '—' : usd(monthUsd)}</b> / 月配额 <b>{quota === null ? '—' : usd(quota)}</b> ·
-          预估月底 <b>—</b>
+          月配额 <b>{quota === null ? '—' : usd(quota)}</b> ·{' '}
+          {covered > 0 ? `${covered} 人缺账本` : '逐员工相加'}
         </>
       }
+      badge={
+        <span
+          className="ov5-fixture-badge"
+          data-fixture="1"
+          title="日上限 / 预估月底 / 浪费为固定示例；今日账本、月配额、本月实扣为真读数（缺账本处写—）"
+        >
+          示例数据
+        </span>
+      }
+      fixture="partial"
       source="成本账本（日 / 月）"
       stamps={[
         { source: '成本账本', state: data.budgetDay },
@@ -697,31 +764,33 @@ function CostCard({
       icon={<IconCoins className="ov5-i ov5-i-13" />}
     >
       <div className="ov5-hlist">
-        <div className="ov5-hrow">
-          <span className="ov5-ht">日上限合计 —（无预算读口）</span>
-          <span className="ov5-hm">如实缺</span>
+        <div className="ov5-hrow is-sample" data-fixture="1">
+          <span className="ov5-fixture-tag">示例</span>
+          <span className="ov5-ht">日上限合计</span>
+          <span className="ov5-hm" title="固定示例，不代表预算读口">${usd(COST_SAMPLE.dayCapUsd).slice(1)}</span>
         </div>
         <div className="ov5-hrow">
-          <span className="ov5-ht">月配额已用 {usedPct === null ? '—' : `${usedPct}%`}</span>
-          <span className="ov5-hm">{covered > 0 ? `${covered} 人缺账本` : '逐员工相加'}</span>
+          <span className="ov5-ht">月配额合计</span>
+          <span className="ov5-hm" title="来自能力矩阵 budget.monthlyCostUsd 逐员工相加">
+            {quota === null ? '—' : usd(quota)}
+          </span>
         </div>
         <div className="ov5-hrow">
-          <span className="ov5-ht">浪费 —（账本无失败分类）</span>
-          <span className="ov5-hm">预估不出</span>
+          <span className="ov5-ht">本月实扣</span>
+          <span className="ov5-hm">{monthUsd === null ? '—（月账本未齐）' : usd(monthUsd)}</span>
         </div>
-      </div>
-      <div className="ov5-meter">
-        <svg
-          className="ov5-meter-svg"
-          viewBox="0 0 100 4"
-          preserveAspectRatio="none"
-          role="img"
-          aria-label={`月配额已用 ${usedPct === null ? '—' : `${usedPct}%`}`}
-        >
-          <rect className="track" x={0} y={0} width={100} height={4} />
-          {usedPct !== null ? <rect className="fill" x={0} y={0} width={Math.min(100, usedPct)} height={4} /> : null}
-        </svg>
-        <span className="ov5-meter-lbl">月配额已用 {usedPct === null ? '—' : `${usedPct}%`} · 日上限无读口</span>
+        <div className="ov5-hrow is-sample" data-fixture="1">
+          <span className="ov5-fixture-tag">示例</span>
+          <span className="ov5-ht">预估月底</span>
+          <span className="ov5-hm" title="固定示例，不代表预测读口">${usd(COST_SAMPLE.projectedMonthUsd).slice(1)}</span>
+        </div>
+        <div className="ov5-hrow is-sample" data-fixture="1">
+          <span className="ov5-fixture-tag">示例</span>
+          <span className="ov5-ht">浪费（失败与重试）</span>
+          <span className="ov5-hm" title="固定示例，不代表账本分类读数">
+            ${usd(COST_SAMPLE.wasteUsd).slice(1)} · 本月 {COST_SAMPLE.wastePctMonth}%
+          </span>
+        </div>
       </div>
     </KpiCard>
   );
@@ -896,7 +965,9 @@ function Trend({ stats, label = '近 14 天', days = 14, onRetry }: { stats: Loa
                       y2={TREND_PAD.t + geo.plot.h}
                     />
                     <circle className="ov5-peak-dot" cx={geo.columns[geo.peakAt.index].cx} cy={TREND_PAD.t - 8} r={2.4} />
-                    <text className="ov5-axis-lbl" x={geo.columns[geo.peakAt.index].cx} y={TREND_PAD.t - 11} textAnchor="middle">峰值</text>
+                    <text className="ov5-axis-lbl" x={geo.columns[geo.peakAt.index].cx} y={TREND_PAD.t - 11} textAnchor="middle">
+                      峰值 {geo.columns[geo.peakAt.index].label}
+                    </text>
                   </g>
                 ) : null}
                 {geo.columns.map((col) =>
@@ -1092,7 +1163,7 @@ function Blockers({ data, onRetry }: { data: DutyData; onRetry: () => void }) {
             ))}
           </ul>
         )}
-        <p className="ov5-block-foot">失败运行按一组计；任务与审批每条各一行。</p>
+        <p className="ov5-block-foot ov5-blk-foot">失败运行按一组计；任务与审批每条各一行。</p>
       </CardContent>
     </Card>
   );
@@ -1239,7 +1310,12 @@ export function OverviewView({
   });
   const costView = buildCost(budgetDay, budgetMonth, kpis.total);
   // 单卡不再画无轴火花小图：14 天趋势只由下方的 Trend 块承担，避免「图坏了」的观感。
-  const runningToday = data.todayStats.k === 'ready' ? data.todayStats.data?.totals?.running ?? null : null;
+  // 在跑数：先认统计源的 totals.running；今日总运行数为 0 时，列表为空即可证明在跑=0。
+  // 其它情况（今日有运行但统计没给 running）保持「—」，不拿前 3 行列表冒充全量。
+  const runningFromEmptyList =
+    data.todayRuns.k === 'ready' && kpis.runs === 0 ? 0 : null;
+  const runningToday =
+    data.todayStats.k === 'ready' ? data.todayStats.data?.totals?.running ?? runningFromEmptyList : null;
   const healthSources = [
     { label: '员工统计', state: data.employees },
     { label: '运行统计', state: data.stats },
@@ -1315,6 +1391,8 @@ export function OverviewView({
     [summaryAsOf, summaryRowsKey],
   );
   const [copyState, setCopyState] = useState<'idle' | 'ok' | 'fail'>('idle');
+  // 搜索 / 导出没有读口：按钮可见，按下只给可见的诚实提示，不做无声假动作。
+  const [actionHint, setActionHint] = useState<string | null>(null);
   const fallbackRef = useRef<HTMLTextAreaElement | null>(null);
   const copySummary = useCallback(() => {
     const fail = () => {
@@ -1373,11 +1451,15 @@ export function OverviewView({
     <section className="ov5-page" data-testid="ov6-page">
       <header className="ov5-head">
         <div className="ov5-head-main">
-          <p className="ov5-sub">员工、运行、审批与成本各读各的；缺失值显示「—」，不补零。</p>
+          {/* 外壳 TopBar 已有唯一的 <h1> 与面包屑；这里是页面内的显示标题，
+              用 <p> 保持「全站一个 h1」的骨架约束，不再重复渲染面包屑。 */}
+          <p className="ov5-title">运营总览</p>
           <div className="ov5-facts">
             <AsofLine states={[data.stats, data.todayStats, data.employees, data.approvalStats, data.budgetDay]} />
-            <span className="ov5-fact">在岗 <b>{dashed(kpis.active)}</b></span>
-            <span className="ov5-fact">在跑 <b>{dashed(runningToday)}</b></span>
+            <span className="ov5-fact"><b>{dashed(kpis.total)}</b> 名数字员工</span>
+            <span className="ov5-fact">
+              {runningToday === null ? <>在跑 <b>—</b></> : <><b>{runningToday}</b> 个运行在跑</>}
+            </span>
           </div>
         </div>
         <div className="ov5-head-actions">
@@ -1416,11 +1498,38 @@ export function OverviewView({
             ) : null}
             {copyState === 'fail' ? <span role="status" data-testid="ov6-summary-copy-fail">复制失败：已选中摘要文本，可手动复制。</span> : null}
           </span>
+          <Button
+            size="sm"
+            outlined
+            data-testid="ov6-search"
+            title="搜索读口未接入：⌘K 暂不可用"
+            prefix={<IconSearch className="ov5-i ov5-i-14" />}
+            onClick={() => setActionHint('搜索接口未接入：本页暂不支持检索（⌘K 不可用）。')}
+          >
+            搜索 ⌘K
+          </Button>
+          <Button
+            size="sm"
+            outlined
+            data-testid="ov6-export"
+            title="导出接口未接入：日报导出暂不可用"
+            prefix={<IconDownload className="ov5-i ov5-i-14" />}
+            onClick={() => setActionHint('导出接口未接入：日报导出暂不可用。')}
+          >
+            导出日报
+          </Button>
           <Button size="sm" outlined onClick={onRetry} disabled={loading || anyLoading} aria-busy={loading || anyLoading} data-testid="ov6-refresh" prefix={<IconRefresh className={`ov5-i ov5-i-14 ${loading || anyLoading ? 'ov5-spin' : ''}`} />}>
             刷新
           </Button>
         </div>
       </header>
+
+      {actionHint ? (
+        <p className="ov5-act-hint" role="status" data-testid="ov6-action-hint">
+          <IconAlert className="ov5-i ov5-i-13" />
+          {actionHint}
+        </p>
+      ) : null}
 
       {copyState === 'fail' ? (
         <textarea

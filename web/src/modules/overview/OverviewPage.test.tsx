@@ -106,6 +106,34 @@ describe('OverviewView', () => {
     expect(container.querySelectorAll('[data-duty-testid^="duty-kpi-"]')).toHaveLength(5);
   });
 
+  it('页头：模块内大标题 + 真值元数据；搜索/导出无读口只给可见提示，不发请求', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    await render(
+      <OverviewView
+        data={dataFixture()}
+        matrix={{ k: 'ready', data: { items: [] } }}
+        loading={false}
+        onRetry={() => {}}
+      />,
+    );
+    expect(container.querySelector('.ov5-title')?.textContent).toBe('运营总览');
+    const facts = container.querySelector('.ov5-facts')?.textContent ?? '';
+    expect(facts).toContain('2 名数字员工');
+    expect(facts).toContain('在跑');
+
+    await act(async () => {
+      (container.querySelector('[data-testid="ov6-search"]') as HTMLButtonElement).click();
+    });
+    expect(container.querySelector('[data-testid="ov6-action-hint"]')?.textContent).toContain('搜索接口未接入');
+
+    await act(async () => {
+      (container.querySelector('[data-testid="ov6-export"]') as HTMLButtonElement).click();
+    });
+    expect(container.querySelector('[data-testid="ov6-action-hint"]')?.textContent).toContain('导出接口未接入');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it('renders KPIs, trend, recent activity and blockers from real data', async () => {
     await render(
       <OverviewView

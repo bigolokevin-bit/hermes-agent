@@ -26,15 +26,31 @@
   flex: 1 1 420px;
 }
 
-.ov5-sub {
+/* 页面内显示标题（外壳 TopBar 已有唯一的 h1，这里不再出第二个 h1） */
+.ov5-title {
   margin: 0;
-  color: var(--color-text-muted-ls);
-  font-size: var(--font-size-ls-1);
-  line-height: var(--line-height-ls-2);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  color: var(--color-text-ls);
+  font-size: 30px;
+  font-weight: var(--font-weight-ls-medium);
+  line-height: 1.12;
+  letter-spacing: -0.01em;
 }
+
+.ov5-act-hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 4px 8px;
+  border-left: 2px solid var(--color-warning-ls);
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--color-warning-ls) 7%, transparent);
+  color: var(--color-text-muted-ls);
+  font-size: 10.5px;
+  line-height: 1.45;
+}
+
+.ov5-act-hint > .ov5-i { color: var(--color-warning-ls); }
 
 .ov5-facts {
   display: flex;
@@ -49,6 +65,12 @@
   font-family: var(--font-family-mono-ls);
   font-size: 9.5px;
   white-space: nowrap;
+}
+
+.ov5-fact::before {
+  content: '·';
+  margin-right: 5px;
+  color: var(--color-text-faint-ls);
 }
 
 .ov5-fact b {
@@ -207,46 +229,7 @@
   margin-left: auto;
 }
 
-.ov5-meter {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  margin-top: auto;
-  padding-top: 5px;
-}
 
-.ov5-meter-svg {
-  display: block;
-  width: 100%;
-  height: 4px;
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.ov5-meter-svg rect.track { fill: var(--color-surface-raised-ls); }
-.ov5-meter-svg rect.fill { fill: var(--color-text-muted-ls); }
-
-.ov5-meter-lbl {
-  color: var(--color-text-faint-ls);
-  font-family: var(--font-family-mono-ls);
-  font-size: 9px;
-}
-
-.ov5-spark-area {
-  fill: color-mix(in srgb, var(--color-primary-ls) 13%, transparent);
-}
-
-.ov5-spark-line {
-  fill: none;
-  stroke: var(--color-primary-ls);
-  stroke-width: 1.4;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.ov5-spark-dot {
-  fill: var(--color-primary-ls);
-}
 
 .ov5-kpi-foot {
   margin: 0;
@@ -615,6 +598,35 @@ a.ov5-cs:hover { border-color: var(--color-border-ls); }
   line-height: 1.5;
   white-space: nowrap;
 }
+
+/* 行级示例标记：只给「无读口、用固定示例」的那一行，和真值行分开 */
+.ov5-hrow .ov5-ht { min-width: 0; }
+.ov5-fixture-tag {
+  flex: none;
+  padding: 0 3px;
+  border: 1px dashed color-mix(in srgb, var(--color-warning-ls) 40%, transparent);
+  border-radius: 2px;
+  color: var(--color-warning-ls);
+  font-family: var(--font-family-mono-ls);
+  font-size: 8px;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.ov5-sample {
+  flex: none;
+  margin-left: 4px;
+  padding: 0 3px;
+  border: 1px dashed color-mix(in srgb, var(--color-text-faint-ls) 60%, transparent);
+  border-radius: 2px;
+  color: var(--color-text-faint-ls);
+  font-family: var(--font-family-mono-ls);
+  font-size: 8px;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.ov5-blk-foot { font-size: 11px; }
 
 /* ---------- 区块卡（趋势 / 活跃 / 列表） ---------- */
 .ov5-block-bd {

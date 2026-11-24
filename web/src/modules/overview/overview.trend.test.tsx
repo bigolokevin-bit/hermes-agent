@@ -7,6 +7,7 @@ import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { OverviewView } from './OverviewPage';
+import { trendWindow } from './overview';
 import type { DutyData } from '../duty/useDutyData';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -73,6 +74,29 @@ function view(specs: BucketSpec[], days: 7 | 14 | 30 = 14) {
     />
   );
 }
+
+describe('x 轴日格与三标', () => {
+  it('首/中/末三标取自窗口首日/中间日/末日，末日=响应 to，不越窗出现未来日期', () => {
+    const points = trendWindow(
+      {
+        to: '2026-11-24T03:58:13Z',
+        buckets: [
+          { bucketStart: '2026-11-12T00:00:00Z', runs: 1, failed: 0 },
+          { bucketStart: '2026-11-14T00:00:00Z', runs: 13, failed: 0 },
+          { bucketStart: '2026-11-20T00:00:00Z', runs: 44, failed: 0 },
+          { bucketStart: '2026-11-21T00:00:00Z', runs: 24, failed: 0 },
+          { bucketStart: '2026-11-22T00:00:00Z', runs: 4, failed: 0 },
+        ],
+      } as never,
+      14,
+    );
+    expect(points).toHaveLength(14);
+    // 三标＝首日 / 中间日 / 末日（连字符，避免斜杠在缩略图里被读成 12/24）。
+    expect([points[0].label, points[6].label, points[13].label]).toEqual(['11-11', '11-17', '11-24']);
+    expect(points[13].label).not.toMatch(/^12-/);
+    expect(points.every((point) => point.label <= '11-24')).toBe(true);
+  });
+});
 
 describe('OM-06 趋势柱与读口逐桶对齐', () => {
   it('12 桶含 2 个 null：柱子总数 12，is-missing 恰 2，缺桶 title 说「未返回」', async () => {
