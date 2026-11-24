@@ -20,15 +20,16 @@ import {
   lifecyclePill,
   membersFrom,
   memberSummary,
+  roleBuckets,
   shortCode,
   toMember,
   type MemberRow,
 } from "./model";
 
 const rows: MemberRow[] = [
-  { id: "emp_217A91BA995044DFBB3E2E940B", name: "质检助理", title: "质检", department: "客服中心", lifecycle: "active", updatedAt: null },
-  { id: "emp_86A81CE8FF6F42E187BCF2B540", name: "产品助理", title: "产品助理", department: "产品部", lifecycle: "active", updatedAt: null },
-  { id: "emp_0166858D562149938FBDA22649", name: "数据助理", title: "分析", department: null, lifecycle: "draft", updatedAt: null },
+  { id: "emp_217A91BA995044DFBB3E2E940B", name: "质检助理", title: "质检", department: "客服中心", lifecycle: "active", updatedAt: null, owner: null, role: null },
+  { id: "emp_86A81CE8FF6F42E187BCF2B540", name: "产品助理", title: "产品助理", department: "产品部", lifecycle: "active", updatedAt: null, owner: null, role: null },
+  { id: "emp_0166858D562149938FBDA22649", name: "数据助理", title: "分析", department: null, lifecycle: "draft", updatedAt: null, owner: null, role: null },
 ];
 
 describe("identity 读数层", () => {
@@ -36,7 +37,7 @@ describe("identity 读数层", () => {
     expect(toMember({ employeeId: "emp_1" })).toBeNull();
     expect(toMember({ name: "无号成员" })).toBeNull();
     expect(membersFrom({ items: [{ employeeId: "emp_1", name: "甲" }, { employeeId: "emp_2" }] })).toEqual([
-      { id: "emp_1", name: "甲", title: null, department: null, lifecycle: null, updatedAt: null },
+      { id: "emp_1", name: "甲", title: null, department: null, lifecycle: null, updatedAt: null, owner: null, role: null },
     ]);
   });
 
@@ -57,6 +58,20 @@ describe("identity 读数层", () => {
     expect(lifecyclePill("suspended")).toEqual({ tone: "mut", label: "已停用" });
     expect(lifecyclePill("whatever")).toEqual({ tone: "mut", label: "未标注" });
     expect(lifecyclePill(null).label).toBe("未标注");
+  });
+
+  it("角色分桶只认台账显式 role，不从岗位推断；没有角色字段就是空集", () => {
+    expect(roleBuckets(rows)).toEqual([]);
+    expect(
+      roleBuckets([
+        { ...rows[0], role: "平台管理员" },
+        { ...rows[1], role: "平台管理员" },
+        { ...rows[2], role: "审批人" },
+      ]),
+    ).toEqual([
+      { name: "平台管理员", members: [{ ...rows[0], role: "平台管理员" }, { ...rows[1], role: "平台管理员" }] },
+      { name: "审批人", members: [{ ...rows[2], role: "审批人" }] },
+    ]);
   });
 
   it("部门分桶只数写了部门的行，未写的排最后且标记 unassigned", () => {

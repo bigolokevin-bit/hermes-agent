@@ -200,20 +200,46 @@
 }
 
 /* 列宽：成员格最宽，状态列固定窄，数字列同宽。 */
-.id-table--people th:nth-child(1) { width: 26%; }
-.id-table--people th:nth-child(2) { width: 26%; }
-.id-table--people th:nth-child(3) { width: 12%; }
-.id-table--people th:nth-child(4) { width: 16%; }
-.id-table--people th:nth-child(5) { width: 12%; }
+.id-table--people th:nth-child(1) { width: 25%; }
+.id-table--people th:nth-child(2) { width: 24%; }
+.id-table--people th:nth-child(3) { width: 11%; }
+.id-table--people th:nth-child(4) { width: 14%; }
+.id-table--people th.id-col-st { width: 96px; }
 .id-table--dept th:nth-child(1) { width: 22%; }
-.id-table--dept th:nth-child(2) { width: 14%; }
-.id-table--dept th:nth-child(3) { width: 10%; }
-.id-table--dept th:nth-child(7) { width: 16%; }
+.id-table--dept th:nth-child(2) { width: 10%; }
+.id-table--dept th:nth-child(3) { width: 9%; }
+.id-table--dept th:nth-child(4) { width: 10%; }
+.id-table--dept th:nth-child(5) { width: 16%; }
+.id-table--dept th:nth-child(6) { width: 13%; }
+.id-table--dept th.id-col-st { width: 96px; }
+.id-table--changes th:nth-child(1) { width: 38%; }
+.id-table--changes th.id-col-st { width: 84px; }
 .id-table--matrix th:nth-child(1) { width: 28%; }
 .id-table--role-member th:nth-child(1) { width: 46%; }
 .id-table--role-size th:nth-child(1) { width: 46%; }
 .id-table--role-detail th:nth-child(1) { width: 30%; }
 .id-table--role-detail th:nth-child(3) { width: 20%; }
+
+/* 矩阵图例（✓ 允许 · ◐ 条件 · — 禁止）：卡头右端，与骨架 .meta 同形。 */
+.id-legend {
+  font-family: var(--font-family-mono-ls);
+  font-size: 11px;
+  line-height: 1.2;
+  color: var(--color-text-subtle-ls);
+  white-space: nowrap;
+}
+
+/* 矩阵占位行 / 空态行：灰字承载列宽，不铺警告底色。 */
+.id-row-empty td {
+  color: var(--color-text-subtle-ls);
+}
+
+/* 占位行首格允许折行：窄屏也不把「未读到角色定义」裁成省略号。 */
+.id-row-empty td:first-child {
+  font-size: 11px;
+  line-height: 1.25;
+  white-space: normal;
+}
 
 .id-col-st {
   width: 96px;
@@ -479,9 +505,9 @@
   .id-table--dept th:nth-child(3) { width: 22%; }
   .id-table--dept th:nth-child(7) { width: 30%; }
   /* 矩阵在窄屏保留 6 类动作列：角色列收窄，动作表头折成两行，不裁列、不横溢。 */
-  .id-table--matrix th:nth-child(1) { width: 26%; }
+  .id-table--matrix th:nth-child(1) { width: 34%; }
   .id-table--matrix th:nth-child(n + 2) {
-    width: 12.3%;
+    width: 9.4%;
     padding: 0 2px;
     white-space: normal;
     text-align: center;
@@ -504,8 +530,8 @@
 }
 
 @media (max-width: 420px) {
-  .id-table--matrix th:nth-child(1) { width: 24%; }
-  .id-table--matrix th:nth-child(n + 2) { width: 12.6%; padding: 0 1px; }
+  .id-table--matrix th:nth-child(1) { width: 34%; }
+  .id-table--matrix th:nth-child(n + 2) { width: 9.4%; padding: 0 1px; }
 }
 /* ==================================================================== *
  * 角色与权限一屏（2026-11-24 骨架密度车道）：卡头 h2 微标签 / 计数带 /
@@ -683,8 +709,10 @@
 .id-table--role-dept th:nth-child(1) { width: 26%; }
 .id-table--role-dept th:nth-child(2) { width: 12%; }
 .id-table--role-dept th:nth-child(4) { width: 22%; }
-.id-table--roles-detail th:nth-child(1) { width: 40%; }
-.id-table--roles-detail th:nth-child(3) { width: 18%; }
+.id-table--roles-detail th:nth-child(1) { width: 34%; }
+.id-table--roles-detail th:nth-child(2) { width: 16%; }
+.id-table--roles-detail th:nth-child(3) { width: 22%; }
+.id-table--roles-detail th:nth-child(4) { width: 14%; }
 .id-table--role-roster th:nth-child(1) { width: 32%; }
 
 @media (max-width: 1100px) {
@@ -695,11 +723,303 @@
   .id-table--role-dept th:nth-child(1) { width: 42%; }
   .id-table--role-dept th:nth-child(2) { width: 24%; }
   .id-table--role-dept th:nth-child(4) { width: 34%; }
-  .id-table--roles-detail th:nth-child(1) { width: 62%; }
-  .id-table--roles-detail th:nth-child(3) { width: 38%; }
+  /* 窄屏成员明细留 成员 / 角色 / 状态 三列（部门范围与最近操作裁掉）。 */
+  .id-table--roles-detail th:nth-child(1) { width: 50%; }
+  .id-table--roles-detail th:nth-child(2) { width: 22%; }
+  .id-table--roles-detail th:nth-child(5) { width: 28%; }
   .id-table--role-roster th:nth-child(1) { width: 40%; }
 
   .id-card-title {
     white-space: normal;
   }
+}
+
+/* ==================================================================== *
+ * 人员目录 / 组织与部门（骨架 density 车道）：绑定条 / 筛选 chip 提示 /
+ * 口径 kv 数字 / 待处理行 / 部门月费占比条 / 三栏。
+ * 只消费 tokens.css 的 -ls 语义层与 primitives.css 基元，不写裸 hex。
+ * ==================================================================== */
+
+/* 三栏（骨架 g3）：1100 以下退成一栏，不横溢。 */
+.id-grid3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
+  gap: var(--space-ls-2);
+  min-width: 0;
+}
+
+/* 身份绑定条（骨架 .bindbar）：一行 11px 读数 + 右端动作。 */
+.id-bindbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 7px var(--space-ls-3);
+  border: var(--border-ls-1);
+  border-radius: var(--radius-ls-1);
+  background: color-mix(in srgb, var(--color-text-ls) 3%, transparent);
+  font-size: 11px;
+  line-height: 1.3;
+  color: var(--color-text-muted-ls);
+}
+
+.id-bindbar b {
+  font-weight: var(--font-weight-ls-medium);
+  color: var(--color-text-ls);
+}
+
+.id-bind-tag {
+  flex: none;
+  padding: 0 5px;
+  border: var(--border-ls-1);
+  border-radius: 3px;
+  font-size: 10px;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+.id-bind-tag.ok {
+  color: var(--color-success-ls);
+  border-color: color-mix(in srgb, var(--color-success-ls) 32%, transparent);
+  background: color-mix(in srgb, var(--color-success-ls) 7%, transparent);
+}
+
+.id-bind-tag.warn {
+  color: var(--color-warning-ls);
+  border-color: color-mix(in srgb, var(--color-warning-ls) 32%, transparent);
+  background: color-mix(in srgb, var(--color-warning-ls) 7%, transparent);
+}
+
+.id-bind-tag.mut {
+  color: var(--color-text-subtle-ls);
+  border-color: var(--color-border-subtle-ls);
+}
+
+/* chip 组右端一句口径：窄屏裁在组内，不撑破行。 */
+.id-chips__hint {
+  min-width: 0;
+  overflow: hidden;
+  align-self: center;
+  font-size: 11px;
+  line-height: 1.3;
+  color: var(--color-text-faint-ls);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 口径 kv 里的数字：等宽、主色；分项略弱一档。 */
+.id-hnum {
+  font-family: var(--font-family-mono-ls);
+  font-size: var(--font-size-ls-1);
+  font-variant-numeric: var(--tabular-ls);
+  color: var(--color-text-ls);
+}
+
+.id-hnum--sub {
+  color: var(--color-text-muted-ls);
+}
+
+/* 待处理：一行一件事 + 右端动作（骨架 .between xs）。 */
+.id-todo {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+
+.id-todo__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-ls-2);
+  min-width: 0;
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+.id-todo__dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-text-faint-ls);
+}
+
+.id-todo__dot--warn { background: var(--color-warning-ls); }
+.id-todo__dot--info { background: var(--color-info-ls); }
+.id-todo__dot--bad { background: var(--color-danger-ls); }
+
+.id-todo__text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text-ls);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 行内链接（成员名 / 最近变动）：不抢颜色，悬停才画下划线。 */
+.id-rowlink {
+  color: inherit;
+  text-decoration: none;
+}
+
+.id-rowlink:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.id-rowlink:focus-visible {
+  outline: var(--focus-ring-ls);
+  outline-offset: var(--focus-ring-offset-ls);
+}
+
+/* 部门月费构成：名称 | 占比条 | 金额·占比；窄屏把条折到第二行。 */
+.id-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.id-bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) auto;
+  align-items: center;
+  column-gap: var(--space-ls-2);
+  min-width: 0;
+  font-size: 11px;
+  line-height: 1.3;
+  color: var(--color-text-muted-ls);
+}
+
+.id-bar__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-text-ls);
+}
+
+.id-bar__track {
+  height: 5px;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 1px;
+  background: color-mix(in srgb, var(--color-text-ls) 7%, transparent);
+}
+
+.id-bar__track > i {
+  display: block;
+  height: 100%;
+  background: var(--color-text-muted-ls);
+}
+
+.id-bar__val {
+  font-family: var(--font-family-mono-ls);
+  font-variant-numeric: var(--tabular-ls);
+  color: var(--color-text-subtle-ls);
+  white-space: nowrap;
+}
+
+@media (max-width: 1100px) {
+  .id-grid3 { grid-template-columns: minmax(0, 1fr); }
+
+  .id-bar {
+    grid-template-areas:
+      "name val"
+      "track track";
+    grid-template-columns: minmax(0, 1fr) auto;
+    row-gap: 4px;
+  }
+  .id-bar__name { grid-area: name; }
+  .id-bar__track { grid-area: track; }
+  .id-bar__val { grid-area: val; }
+}
+
+@media (max-width: 760px) {
+  /* 窄屏：部门列整列收起，改由成员格的第二行承载；状态列留足胶囊宽度。 */
+  .id-table--people .id-col-dept { display: none; }
+  .id-table--people .id-col-dept,
+  .id-table--people .id-hidesm { width: 0; }
+  .id-table--people th:nth-child(1) { width: calc(100% - 96px); }
+  .id-table--people th.id-col-st { width: 96px; }
+
+  .id-table--dept th:nth-child(1) { width: 44%; }
+  .id-table--dept th:nth-child(2) { width: 22%; }
+  .id-table--dept .id-col-st { width: 34%; }
+  .id-table--changes th:nth-child(1) { width: 44%; }
+  .id-table--changes .id-col-st { width: 84px; }
+  .id-chips__hint { display: none; }
+  .id-bindbar { padding: 7px var(--space-ls-2); }
+}
+
+/* 组织树两级：部门一行 + 组内成员逐行（层级读不到，只拼台账这一层）。 */
+.id-tree .id-tree__leaf {
+  display: block;
+  min-height: 0;
+  padding: 0;
+}
+
+.id-tree__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-ls-2);
+  min-height: 26px;
+  padding: 0 var(--space-ls-2);
+  min-width: 0;
+}
+
+.id-tree__kids {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 0 0 4px;
+}
+
+.id-tree__kid {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-ls-2);
+  min-height: 22px;
+  min-width: 0;
+  padding: 0 var(--space-ls-2) 0 var(--space-ls-4);
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+.id-tree__kid-name {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text-muted-ls);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.id-tree__kid-st {
+  flex: none;
+  font-size: 10px;
+  color: var(--color-text-faint-ls);
+  white-space: nowrap;
+}
+
+/* 窄屏第二行：先隐藏，760 以下顶替工号行。 */
+.id-who__dept {
+  display: none;
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 10px;
+  line-height: 1.1;
+  color: var(--color-text-faint-ls);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 窄屏第二行：放在文件末尾，稳定压过上面 .id-who__dept 的默认隐藏。 */
+@media (max-width: 760px) {
+  .id-who__sub { display: none; }
+  .id-who__dept { display: block; }
 }
