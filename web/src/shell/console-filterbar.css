@@ -1,0 +1,83 @@
+/**
+ * Console filterbar — 壳层可复用的「筛选行」标准（骨架 console-v4-skeleton.html
+ * `section[data-mod]` 顶部的一行 filterbar）。
+ *
+ * 骨架形制：**一条 32px 单行** —— 左侧输入/下拉，右侧计数与分页；控件同高、
+ * 间距 8px、不换行；只有 ≤720px（骨架窄屏断点）才允许折行。
+ *
+ * 为什么单开一张表而不并进 console-chrome.css：那一张有「零字面量」契约闸
+ * （console-chrome.test.ts 断言 CSS 里不出现 px/em/rem），而本表的 720px
+ * 断点是媒体查询条件、无法令牌化。此表只用 -ls 令牌 + 一个断点字面量，
+ * 由 console.tsx 紧接着 console-chrome.css 导入。
+ *
+ * 作用域：本表定义的是**壳层标准**，不重写任何模块的 JSX。
+ *   - 已在用 `.console-filterbar` 的模块（tasks / runs）自动获得对齐与单行档；
+ *   - 自带类名的 filterbar（`.apr5-filterbar` / `.id-filterbar` /
+ *     `.set5-toolbar` / `.knw5-toolbar` / `.se6-sessions__toolbar` …）不动，
+ *     换名清单见交回件「模块侧待套用清单」。
+ *
+ * 与 components/console/primitives.css 的关系：那张表给的是「可换行的工具条」
+ * （flex-wrap:wrap + 8/10 内衬）。本表用 `.pane` 前缀提高一级特异性
+ * （0,2,0 > 0,1,0），因此不依赖两张表在 bundle 里的先后顺序 —— 不是靠
+ * !important 压过去的。
+ *
+ * 内衬：宿主卡多为 `ConsoleCard flush`（卡体自身无 padding），控件不允许贴着
+ * 卡的 1px 描边，所以行内保留 8/12 内衬；这属于「必要的外边距」，与「控件同高
+ * 32px、单行」不冲突。
+ */
+
+/* 一条单行：左输入/下拉 + 右计数与分页；控件同高 32px，间距 8px。 */
+.pane .console-filterbar,
+.console-filterbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-ls-2);
+  flex-wrap: nowrap;
+  min-width: 0;
+  min-height: var(--hit-min-ls);
+  padding: var(--space-ls-2) var(--space-ls-3);
+}
+
+/* 左组：筛选控件区，可收缩；单行（≤720 才折）。 */
+.pane .console-filterbar__left,
+.console-filterbar__left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-ls-2);
+  flex: 1 1 auto;
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+
+/* 右组：计数 / 分页 / 读时刻；永远贴右端，数字等宽不跳动。 */
+.pane .console-filterbar__right,
+.console-filterbar__right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-ls-2);
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+  margin-left: auto;
+  font-variant-numeric: var(--tabular-ls);
+}
+
+/* 控件同高：输入与下拉 32px（--control-h-ls 同档）。按钮不在此列 —— 模块
+ * 里现存的芯片档是 26/28px，本车道不越界改别人的按钮级；将来接标准的按钮
+ * 自己挂 .console-filterbar__ctl。 */
+.pane .console-filterbar :is(input, select, .console-input, .console-select),
+.console-filterbar :is(input, select, .console-input, .console-select),
+.pane .console-filterbar__ctl,
+.console-filterbar__ctl {
+  height: var(--hit-min-ls);
+  min-height: var(--hit-min-ls);
+}
+
+/* 骨架窄屏断点：≤720px 才允许折行（两档都折，左组跟着折）。 */
+@media (max-width: 720px) {
+  .pane .console-filterbar,
+  .console-filterbar,
+  .pane .console-filterbar__left,
+  .console-filterbar__left {
+    flex-wrap: wrap;
+  }
+}

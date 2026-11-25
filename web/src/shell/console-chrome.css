@@ -127,3 +127,23 @@ main[class*="overflow-y-auto"] {
   border: 0;
   border-radius: 0;
 }
+
+/* ── 两层面契约：页底 → 卡（2026-11-25，祖先链取证后钉死）──────────────────
+ * 骨架只有两层框：页面底色（--bg）+ 卡（.console-card，--panel + 1px 描边 +
+ * 6px 圆角）。外壳自己在「页底」与「卡」之间只渲染两个承载盒：
+ *   .pane                 每个 pane 的内容盒（console.tsx ConsolePane / 详情 pane）
+ *   .console-module-frame 模块 <section> 承载盒（console.tsx ConsoleModulesFrame）
+ * 三页实测这两个盒子本来就不着色/不描边，但没有任何东西阻止后续样式表或主题
+ * 变量把 --panel / border / radius 注进来（那正是评审看到的「多一层面板」的
+ * 成因而非现状）。此块把两者钉成不可绘制的承载盒 —— 只钉这四件几何，不动
+ * 宽度/间距/排布，所以任何页面版式都不受影响；无 !important：任何后置规则
+ * 若仍要加框，必须显式写出并在此处补理由，不能靠优先级叠上去。
+ * 判据（可复跑）：web/scripts/ancestor-probe.mjs —— 三页祖先链里带描边或有
+ * 底色的容器只剩 <body>/app 根（页底）与卡本身。 */
+.pane,
+.console-module-frame {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+}

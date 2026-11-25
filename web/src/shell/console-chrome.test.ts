@@ -18,6 +18,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const TSX = readFileSync(resolve(HERE, "console.tsx"), "utf8");
 const CHROME = readFileSync(resolve(HERE, "console-chrome.css"), "utf8");
 const NAV = readFileSync(resolve(HERE, "console-nav.css"), "utf8");
+const FILTERBAR = readFileSync(resolve(HERE, "console-filterbar.css"), "utf8");
 const TOKENS = readFileSync(resolve(HERE, "../styles/tokens.css"), "utf8");
 
 /** Strip comments so prose like `../styles/tokens.css` is not read as a class. */
@@ -91,5 +92,57 @@ describe("n10 shell chrome: zero inline styles, all classes backed", () => {
     const body = bare(CHROME);
     expect(body.match(/#[0-9a-fA-F]{3,8}\b/g)?.length ?? 0).toBe(0);
     expect(body.match(/\b\d+(?:\.\d+)?(?:px|em|rem|pt|%)\b/g)?.length ?? 0).toBe(0);
+  });
+});
+
+/**
+ * n18（三层面套框收敛）：骨架只有「页底 → 卡」两层。外壳自己在两者之间只
+ * 渲染两个承载盒（.pane / .console-module-frame），本闸把它们钉成不可绘制，
+ * 并把「为什么不是 !important」写成可执行断言：谁要多加一层框，必须先改这里。
+ */
+describe("n18 shell two-layer contract: page bottom → card, nothing in between", () => {
+  it("pin .pane and .console-module-frame to zero paint, in one rule", () => {
+    const rule = bare(CHROME).match(/\.pane,\s*\.console-module-frame\s*\{[^}]*\}/);
+    expect(rule, "the two-layer contract rule is missing from console-chrome.css").not.toBeNull();
+    const block = rule![0];
+    expect(block).toContain("background: transparent");
+    expect(block).toContain("border: 0");
+    expect(block).toContain("border-radius: 0");
+    expect(block).toContain("padding: 0");
+    expect(block).not.toContain("!important");
+  });
+
+  it("the shell stamps console-module-frame on the module section it renders", () => {
+    expect(TSX).toContain("console-module-frame");
+    expect(TSX).toContain('"console-module-frame flex min-h-0 flex-1 flex-col gap-3"');
+  });
+});
+
+/**
+ * n18 筛选行：壳层可复用的 32px 单行标准。表在 console-filterbar.css（它的
+ * 720px 断点无法令牌化，不能进「零字面量」的 console-chrome.css）。
+ */
+describe("n18 shell filterbar: one 32px line, wrap only at ≤720", () => {
+  it("defines the three reusable classes and the shell imports the sheet", () => {
+    const defined = classNames(FILTERBAR);
+    for (const name of [
+      "console-filterbar",
+      "console-filterbar__left",
+      "console-filterbar__right",
+    ]) {
+      expect(defined.has(name), `${name} is used by the standard but not defined`).toBe(true);
+    }
+    expect(TSX).toContain('"./console-filterbar.css"');
+  });
+
+  it("keeps controls on the 32px tier, nowrap by default, wrap only under 720", () => {
+    const body = bare(FILTERBAR);
+    expect(body).toContain("min-height: var(--hit-min-ls)");
+    expect(body).toContain("height: var(--hit-min-ls)");
+    expect(body.match(/flex-wrap:\s*nowrap/g)?.length ?? 0).toBeGreaterThan(0);
+    const mq = body.match(/@media \(max-width: 720px\)\s*\{[\s\S]*?\n\}/);
+    expect(mq, "the ≤720px wrap tier is missing").not.toBeNull();
+    expect(mq![0]).toContain("flex-wrap: wrap");
+    expect(body).not.toContain("!important");
   });
 });

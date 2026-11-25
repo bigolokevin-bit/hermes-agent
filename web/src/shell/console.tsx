@@ -68,6 +68,7 @@ import { ConsoleButton } from "./ConsoleButton";
 import { StatePlaceholder } from "./StatePlaceholder";
 import "./console-nav.css";
 import "./console-chrome.css";
+import "./console-filterbar.css";
 import "../styles/table-density.css";
 import "../styles/detail.css";
 import { copyTextToClipboard } from "@/lib/clipboard";
@@ -392,7 +393,10 @@ function ConsoleModulesFrame({
             key={meta.module}
             data-mod={meta.module}
             data-testid={pageTestId}
-            className="flex min-h-0 flex-1 flex-col gap-3"
+            /* console-module-frame：两层面契约的锚点（console-chrome.css 里
+               钉成不着色/不描边/不圆角/不内衬）。模块内容只许画「卡」，
+               这一层不许再当面板。 */
+            className="console-module-frame flex min-h-0 flex-1 flex-col gap-3"
           >
             {children}
           </section>
