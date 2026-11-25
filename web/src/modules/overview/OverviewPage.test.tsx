@@ -174,7 +174,9 @@ describe('OverviewView', () => {
       />,
     );
     const cost = container.querySelector('[data-testid="ov6-kpi-cost"]')?.textContent ?? '';
+    // 日账本覆盖不全 ⇒ 今日实扣不上屏，也不拿月数字顶位；主数行写「—」。
     expect(container.querySelector('[data-testid="ov6-kpi-cost"] .ov5-kpi-value')?.textContent).toBe('—');
+    expect(cost).toContain('本月实扣');
     expect(cost).not.toContain('$1.50');
     const employeeCard = container.querySelector('[data-testid="ov6-kpi-employees"]');
     expect(employeeCard?.textContent).not.toContain('GAP-');

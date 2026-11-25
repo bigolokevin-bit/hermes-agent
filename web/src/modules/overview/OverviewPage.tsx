@@ -4,7 +4,7 @@ import { Badge } from '@nous-research/ui/ui/components/badge';
 import { Button } from '@nous-research/ui/ui/components/button';
 import { Card, CardContent } from '@nous-research/ui/ui/components/card';
 
-import { fetchMatrix, load, DUTY_RUNS_PAGE_LIMIT } from '../duty/api';
+import { fetchMatrix, load } from '../duty/api';
 import { buildReadiness, buildCost } from '../duty/aggregate';
 import { beijing, dashed, duration, usd } from '../duty/format';
 import { useDutyData, type DutyData } from '../duty/useDutyData';
@@ -346,6 +346,8 @@ function BlockFoot({ children, items, testid }: { children: ReactNode; items: St
  * 北京时间 YYYY-MM-DD HH:mm, or "—" with the honest reason in title.
  * Never an invented time, never absent from the DOM. */
 function AsofLine({ states, waiting = false }: { states: Array<Loadable<unknown> | null>; waiting?: boolean }) {
+  // 同页同源同值：来源自身没带 asOf 时沿用本页聚合读口的采集时刻（与卡脚、页脚同一个数）。
+  const pageStamp = useContext(PageStampContext);
   if (waiting) {
     return (
       <p className="ov5-fresh" data-testid="ov6-asof" title="取不到采集时间：数据还在读取">
@@ -366,6 +368,14 @@ function AsofLine({ states, waiting = false }: { states: Array<Loadable<unknown>
       <p className="ov5-fresh" data-testid="ov6-asof" title="取各来源响应自带的采集时间，最新的一个上屏">
         <IconClock className="ov5-i ov5-i-13" />
         <span>{`采集时刻 北京时间 ${newest}`}</span>
+      </p>
+    );
+  }
+  if (pageStamp) {
+    return (
+      <p className="ov5-fresh" data-testid="ov6-asof" title="各来源响应没带自身采集时间，沿用本页聚合读口的采集时刻">
+        <IconClock className="ov5-i ov5-i-13" />
+        <span>{`采集时刻 北京时间 ${pageStamp}`}</span>
       </p>
     );
   }
@@ -683,13 +693,8 @@ function ReadyCard({
       meta={`${dashed(denom)} 名 · 可判定 ${decidableCount} 门交集`}
       value={readiness.confirmed === null ? <UnknownValue /> : readiness.confirmed}
       unit={`/ ${dashed(readiness.decidableDenom)} 可上岗`}
-      note={
-        readiness.confirmed !== null
-          ? `交集基于 ${decidableCount} 门${excludedLabel ? `（${excludedLabel}无读口，未计入）` : ''}`
-          : undecidedNames.length > 0
-            ? `缺：${undecidedNames.join('、')} 读口未回${excludedLabel ? ` · ${excludedLabel}无读口` : ''}`
-            : undefined
-      }
+      // 右上只放覆盖率微读数；「哪几门没回、V3 无读口」这类话只在卡内段落说一遍。
+      note={`数据源 ${coverageReady}/5`}
       status={{
         tone: statusTone,
         title: `数据源 ${coverageReady}/5${gapList.length > 0 ? ` · 缺：${gapList.map((gap) => gap.label).join('、')}` : ''}`,
@@ -795,9 +800,9 @@ function ReadyCard({
 }
 
 /* ============================================================================
- * 今日运行：次数 + 状态分布门行 + 在跑/失败 run 行列表 + 堆叠条（骨架 hcard 2）。
- * 三卡共用同一条带序列（卡头/主数/口径脚/一句说明/门行组/行列表/堆叠条/采集戳），
- * 缺的读数写「—」并在卡底一次性声明，不拿空白垫高。
+ * 今日运行：次数 + 状态分布门行 + 堆叠条（骨架 hcard 2）。
+ * 三卡共用同一条带序列（卡头/主数/口径脚/一句说明/门行组/堆叠条/采集戳/未接入）；
+ * 明细行只在真有在跑/失败 run 时出现，空列表不铺占位行，缺计数在卡底声明一次。
  * ========================================================================== */
 function TodayRunsCard({
   data,
@@ -814,41 +819,22 @@ function TodayRunsCard({
   const running =
     today?.totals?.running ??
     (data.todayRuns.k === 'ready' && kpis.runs === 0 ? 0 : null);
-  const allRows = data.todayRuns.k === 'ready' ? data.todayRuns.data : [];
-  const runRows = allRows.filter((run) => run.status === 'running');
-  const failRows = allRows.filter((run) => run.status === 'failed');
+  const succeeded = totals?.succeeded ?? null;
   // 「其它」= 总数 − 成功 − 失败：只有三项都有真读数才给，否则留「—」。
   const other =
-    kpis.runs !== null && totals?.succeeded != null && totals?.failed != null
-      ? Math.max(0, kpis.runs - totals.succeeded - totals.failed)
+    kpis.runs !== null && succeeded !== null && totals?.failed != null
+      ? Math.max(0, kpis.runs - succeeded - totals.failed)
       : null;
+  // 占比列只在算得出时出现；算不出就留空，不再每行铺一个「—」。
   const share = (n: number | null) =>
-    n !== null && kpis.runs !== null && kpis.runs > 0 ? `${Math.round((n / kpis.runs) * 1000) / 10}%` : '—';
+    n !== null && kpis.runs !== null && kpis.runs > 0
+      ? `占 ${Math.round((n / kpis.runs) * 1000) / 10}%`
+      : '';
   const statusRows: Array<{ name: string; n: number | null; dot: 'ok' | 'warn' | 'bad'; why: string }> = [
-    {
-      name: '运行中',
-      n: running,
-      dot: running === null ? 'warn' : running > 0 ? 'warn' : 'ok',
-      why: '当前有活动 Run；读口未回时为「—」',
-    },
-    {
-      name: '成功',
-      n: totals?.succeeded ?? null,
-      dot: (totals?.succeeded ?? 0) > 0 ? 'ok' : 'warn',
-      why: totals?.succeeded == null ? '运行统计未返回成功计数' : '今日已结束且成功的 run',
-    },
-    {
-      name: '失败',
-      n: kpis.failed,
-      dot: (kpis.failed ?? 0) > 0 ? 'bad' : kpis.failed === null ? 'warn' : 'ok',
-      why: kpis.failed === null ? '运行统计未返回失败计数' : '今日失败的 run',
-    },
-    {
-      name: '取消/中断',
-      n: other,
-      dot: other === null ? 'warn' : other > 0 ? 'warn' : 'ok',
-      why: other === null ? '总数与成功/失败未同时给出，差额算不出' : '总数 − 成功 − 失败（取消、中断、待处理）',
-    },
+    { name: '运行中', n: running, dot: running === null ? 'warn' : running > 0 ? 'warn' : 'ok', why: '当前有活动 Run' },
+    { name: '成功', n: succeeded, dot: (succeeded ?? 0) > 0 ? 'ok' : 'warn', why: '今日已结束且成功的 run' },
+    { name: '失败', n: kpis.failed, dot: (kpis.failed ?? 0) > 0 ? 'bad' : kpis.failed === null ? 'warn' : 'ok', why: '今日失败的 run' },
+    { name: '取消/中断', n: other, dot: other === null ? 'warn' : other > 0 ? 'warn' : 'ok', why: '总数 − 成功 − 失败（取消、中断、待处理）' },
   ];
   const pctOf = (n: number | null) =>
     n === null || kpis.runs === null || kpis.runs === 0 ? 0 : Math.round((n / kpis.runs) * 1000) / 10;
@@ -858,25 +844,29 @@ function TodayRunsCard({
       : kpis.runs === 0
         ? null
         : '—';
-  const zeroRuns =
-    kpis.runs === 0 && data.todayStats.k === 'ready' && data.todayRuns.k === 'ready';
   const coverageReady = [data.todayStats.k === 'ready', data.todayRuns.k === 'ready'].filter(Boolean).length;
-  // 行列表三个固定槽：最新在跑 → 最新失败 → 第 2 个失败（没有就补诚实占位行，行高一致）。
-  const slots =
+  // 缺的计数只在这里声明一次（卡底折叠项），正文行只留「—」本身。
+  const gaps: KpiGap[] = [
+    { label: '今日已运行人数', reason: '当日按人去重读口' },
+    ...(succeeded === null ? [{ label: '成功计数', reason: '运行统计未返回成功项' }] : []),
+    ...(other === null ? [{ label: '取消/中断计数', reason: '总数与成功/失败未同时给出' }] : []),
+  ];
+  const realRows =
     data.todayRuns.k === 'ready'
-      ? buildRunSlots({ runRows, failRows, running, kpisFailed: kpis.failed, totalsSucceeded: totals?.succeeded ?? null, zeroRuns })
-      : null;
+      ? data.todayRuns.data.filter((run) => run.status === 'running' || run.status === 'failed').slice(0, 3)
+      : [];
   return (
     <KpiCard
       title="今日运行"
       meta={<Link to="/work?tab=runs">运行记录 →</Link>}
       value={kpis.runs === null ? <UnknownValue /> : kpis.runs}
       unit="次"
+      note={`数据源 ${coverageReady}/2`}
       status={{
-        tone: 'unknown',
-        title: `数据源 ${coverageReady}/2 · 缺：今日已运行人数`,
+        tone: gaps.length === 0 ? 'ok' : 'unknown',
+        title: `数据源 ${coverageReady}/2${gaps.length > 0 ? ` · 缺 ${gaps.length} 项（见卡底）` : ''}`,
       }}
-      gaps={[{ label: '今日已运行人数', reason: '当日按人去重读口' }]}
+      gaps={gaps}
       // 读数行只留能证的数：失败率没有分母（今日 0 次）就整项不渲染，不写「不计算」。
       foot={
         <>
@@ -911,163 +901,63 @@ function TodayRunsCard({
           </div>
         ))}
       </div>
-      <div className="ov5-hnarrow">
-        <b>明细取今日列表前 {DUTY_RUNS_PAGE_LIMIT} 条</b>
-        <span className="ov5-hsep">·</span>
-        {kpis.runs === null
-          ? '运行统计未回，合计暂不给'
-          : `合计以运行统计为准${running !== null && running > 0 && runRows.length === 0 ? '；列表窗口内暂无在跑明细' : ''}`}
-      </div>
-      <div className="ov5-hlist">
-        {data.todayRuns.k === 'error' ? (
-          <div className="ov5-hrow ov5-emptyrow">
-            <span className="ov5-ht">运行记录没有读出来（见上方重试）</span>
-          </div>
-        ) : data.todayRuns.k === 'loading' ? (
-          <div className="ov5-hrow ov5-emptyrow">
-            <span className="ov5-ht">正在读今日运行记录…</span>
-          </div>
-        ) : (
-          slots!.map((slot, i) =>
-            slot.run ? (
-              <RunRowLine key={slot.run.runId ?? i} run={slot.run} suffix={slot.suffix} />
-            ) : (
-              <div className="ov5-hrow" key={`ph-${i}`}>
-                <span className={`ov5-pill ${slot.tone ?? 'info'}`}>{slot.label}</span>
-                <span className="ov5-ht" title={slot.why}>
-                  {slot.text}
-                </span>
-                <span className="ov5-hm">{slot.hm ?? '—'}</span>
-              </div>
-            ),
-          )
-        )}
-      </div>
+      {/* 真在跑/失败 run 才上明细行；没有就整块不渲染，不再铺占位 pill 行。 */}
+      {realRows.length > 0 ? (
+        <div className="ov5-hlist">
+          {realRows.map((run) => (
+            <RunRowLine key={run.runId} run={run} />
+          ))}
+        </div>
+      ) : null}
       <div className="ov5-stack">
         <StackBar
           label="今日运行成功 / 失败 / 其它占比"
           fullUnknown={kpis.runs === null || kpis.runs === 0}
           segments={[
-            { key: 'ok', w: pctOf(totals?.succeeded ?? null) },
+            { key: 'ok', w: pctOf(succeeded) },
             { key: 'bad', w: pctOf(kpis.failed) },
             {
               key: 'unknown',
               w: Math.max(
                 0,
-                100 - pctOf(totals?.succeeded ?? null) - pctOf(kpis.failed),
+                100 - pctOf(succeeded) - pctOf(kpis.failed),
               ),
             },
           ]}
         />
         <div className="ov5-legend">
-          <span>
-            <i className="ok" />
-            {dashed(totals?.succeeded ?? null)} 成功
-          </span>
+          {succeeded !== null ? (
+            <span>
+              <i className="ok" />
+              {succeeded} 成功
+            </span>
+          ) : null}
           <span>
             <i className="bad" />
             {dashed(kpis.failed)} 失败
           </span>
-          <span>
-            <i className="unknown" />
-            {dashed(other)} 其它
+          {other !== null ? (
+            <span>
+              <i className="unknown" />
+              {other} 其它
+            </span>
+          ) : null}
+          <span className="ov5-legend-note">
+            {succeeded !== null && other !== null ? '分段＝今日运行统计合计' : '未返回的分段计数见卡底声明'}
           </span>
-          <span className="ov5-legend-note">分段＝今日运行统计合计</span>
         </div>
       </div>
     </KpiCard>
   );
 }
 
-/** 今日运行明细的三个固定槽位：真 run 优先，缺位补同高占位行；只写真数与状态，不编 run。 */
-function buildRunSlots({
-  runRows,
-  failRows,
-  running,
-  kpisFailed,
-  totalsSucceeded,
-  zeroRuns,
-}: {
-  runRows: RunRow[];
-  failRows: RunRow[];
-  running: number | null;
-  kpisFailed: number | null;
-  totalsSucceeded: number | null;
-  zeroRuns: boolean;
-}): Array<{
-  run?: RunRow;
-  suffix?: string;
-  label?: string;
-  text?: string;
-  hm?: string;
-  tone?: 'ok' | 'info' | 'bad';
-  why?: string;
-}> {
-  const slots: ReturnType<typeof buildRunSlots> = [];
-  // 槽 1：最新在跑（多于一个时写「等 N 个」，N 取运行统计口径）。
-  if (runRows.length > 0) {
-    slots.push({
-      run: runRows[0],
-      suffix: runRows.length > 1 || (running ?? 0) > 1 ? ` 等 ${dashed(running ?? runRows.length)} 个` : undefined,
-    });
-  } else {
-    slots.push({
-      label: '在跑',
-      text:
-        running !== null && running > 0
-          ? '在跑 run 不在今日前 3 条列表内'
-          : zeroRuns
-            ? '今日 00:00 起无运行（读口已接，真零）'
-            : runRows.length === 0 && failRows.length === 0
-              ? '今天没有在跑或失败的 run'
-              : '当前没有在跑的 run',
-      why: '在跑＝当前有活动 Run；列表只取今日前 3 条',
-      hm: '—',
-    });
-  }
-  // 槽 2：最新失败。
-  if (failRows.length > 0) {
-    slots.push({ run: failRows[0] });
-  } else {
-    slots.push({
-      label: '失败',
-      tone: 'bad',
-      text: kpisFailed === null ? '失败计数未返回' : `今日失败 ${kpisFailed} 个`,
-      why: '失败＝今日状态为 failed 的 run',
-      hm: '—',
-    });
-  }
-  // 槽 3：第 2 个失败；没有就报剩余口径，仍是同一行形制。
-  if (failRows.length > 1) {
-    slots.push({ run: failRows[1] });
-  } else if (failRows.length === 1) {
-    slots.push({
-      label: '失败',
-      tone: 'bad',
-      text: `共 ${dashed(kpisFailed)} 个 · 更早明细在运行记录`,
-      why: '列表只取今日前 3 条，更早失败看运行记录',
-      hm: '—',
-    });
-  } else {
-    slots.push({
-      label: '成功',
-      tone: 'ok',
-      text: `今日成功 ${dashed(totalsSucceeded)} 次 · 明细在运行记录`,
-      why: '成功计数取运行统计口径；列表只取今日前 3 条',
-      hm: '—',
-    });
-  }
-  return slots;
-}
-
-function RunRowLine({ run, suffix }: { run: RunRow; suffix?: string }) {
+function RunRowLine({ run }: { run: RunRow }) {
   const bad = run.status === 'failed';
   return (
     <div className="ov5-hrow">
       <span className={`ov5-pill ${bad ? 'bad' : 'info'}`}>{bad ? '失败' : '在跑'}</span>
       <span className="ov5-ht" title={run.runId}>
         {runCode(run.runId)} · {RUN_STATUS_LABEL[run.status ?? ''] ?? '—'}
-        {suffix ?? ''}
       </span>
       <span className="ov5-hm">{run.startedAt ? beijing(run.startedAt).slice(11) : '—'}</span>
     </div>
@@ -1075,8 +965,9 @@ function RunRowLine({ run, suffix }: { run: RunRow; suffix?: string }) {
 }
 
 /* ============================================================================
- * 今日成本：日账本 + 月配额（骨架 hcard 3），六组读数一排单列行与门行同高；
- * 缺读口的组写「—」并在卡底「未接入」一次性声明，不在正文另铺一行缺口。
+ * 今日成本：主数=今日实扣，日账本没回时以本月实扣顶位（em 写明口径）；
+ * 四行读数与另两卡门行同高（月配额/本月实扣/今日占月/缺读口合并行），
+ * 缺读口的组写「—」，原因统一收进卡底「未接入」一次性声明。
  * ========================================================================== */
 function CostCard({
   data,
@@ -1098,10 +989,18 @@ function CostCard({
   const quota = monthQuota(matrix);
   const covered = kpis.costPartial ? kpis.costMissing : 0;
   const displayCost = kpis.costUsd ?? liveCostUsd;
-  const caliber =
-    kpis.costUsd !== null ? '今日账本' : liveCostUsd !== null ? '运行统计口径' : '今日成本';
+  // 主数行优先今日实扣；日账本没回时用本月实扣当真值顶位（口径写进 em），
+  // 「日账本未返回」收进卡底一次性声明，不再占主数右侧。
+  const mainVal = displayCost;
+  const mainIsToday = displayCost !== null;
+  const unitTail = mainIsToday
+    ? monthActual !== null
+      ? `今日实扣 / ${usd(monthActual)} 本月`
+      : '今日实扣'
+    : quota !== null
+      ? `本月实扣 / ${usd(quota)} 月配额`
+      : '本月实扣';
   // 今日上限：BFF 没有预算日上限读口 ⇒ 斜杠后就写「—」，不把月配额挪到今日位。
-  const dayCap: number | null = null;
   // 本月实扣：月账本自身逐员工相加（日账本缺人不连坐月口径）。
   const monthShare =
     monthActual !== null && monthActual > 0 && displayCost !== null
@@ -1113,6 +1012,7 @@ function CostCard({
       ? Math.round((monthActual / quota) * 1000) / 10
       : null;
   const gaps: KpiGap[] = [
+    ...(displayCost === null ? [{ label: '今日实扣', reason: '日账本未返回' }] : []),
     { label: '日上限合计', reason: '预算日上限读口' },
     ...(quota === null ? [{ label: '月配额合计', reason: '矩阵月配额读口' }] : []),
     ...(monthActual === null
@@ -1126,49 +1026,54 @@ function CostCard({
     data.budgetMonth.k === 'ready',
     quota !== null,
   ].filter(Boolean).length;
-  // 六组读数与「可上岗」门行同形制：名左 · 值右 · 行尾只给有值组的口径；
-  // 缺读口的组只写「—」，原因统一收进卡底「未接入」一次性声明。
-  const readoutRows: Array<{ name: string; v: string; cut: string; dot: 'ok' | 'warn' }> = [
-    { name: '日上限', v: '—', cut: '', dot: 'warn' },
+  // 四行读数与「可上岗／今日运行」门行同形制同高（4 行对 4 行）：
+  // 月配额 · 本月实扣 · 今日占月 · 缺读口合并行；明细收进卡底「未接入 N 项」。
+  const readoutRows: Array<{ name: string; v: string; cut: string; dot: 'ok' | 'warn'; why: string }> = [
     {
       name: '月配额合计',
       v: quota === null ? '—' : usd(quota),
       cut: quota === null ? '' : '矩阵逐项相加',
       dot: quota === null ? 'warn' : 'ok',
+      why: '矩阵月配额逐项相加',
     },
     {
       name: '本月实扣',
       v: monthActual === null ? '—' : usd(monthActual),
-      cut: monthActual === null ? '' : '月账本逐项相加',
+      cut: monthPct === null ? '' : `已用 ${monthPct}%`,
       dot: monthActual === null ? 'warn' : 'ok',
+      why: '月账本逐项相加',
     },
     {
       name: '今日占月',
       v: monthShare === null ? '—' : `${monthShare}%`,
       cut: monthShare === null ? '' : '今日 ÷ 本月实扣',
       dot: monthShare === null ? 'warn' : 'ok',
+      why: '今日实扣 ÷ 本月实扣',
     },
-    { name: '预估月底', v: '—', cut: '', dot: 'warn' },
-    { name: '浪费', v: '—', cut: '', dot: 'warn' },
+    {
+      name: '缺读口',
+      v: '—',
+      cut: '日上限 / 预估月底 / 浪费',
+      dot: 'warn',
+      why: '三项读口未接入，明细见卡底「未接入」',
+    },
   ];
   const usedPct = monthPct === null ? null : Math.min(monthPct, 100);
   return (
     <KpiCard
       title="今日成本"
       meta={<Link to="/overview?tab=usage">成本账本 →</Link>}
-      value={displayCost === null ? <UnknownValue /> : usd(displayCost)}
-      unit={`/ ${dayCap === null ? '—' : usd(dayCap)}`}
-      note={displayCost === null ? '日账本未返回' : caliber}
+      value={mainVal === null ? <UnknownValue /> : usd(mainVal)}
+      unit={mainVal === null ? undefined : unitTail}
+      note={`数据源 ${coverageReady}/3`}
       status={{
         tone: gaps.length === 0 ? 'ok' : 'unknown',
-        title: `数据源 ${coverageReady}/5${gaps.length > 0 ? ` · 缺：${gaps.map((gap) => gap.label).join('、')}` : ''}`,
+        title: `数据源 ${coverageReady}/3${gaps.length > 0 ? ` · 缺 ${gaps.length} 项（见卡底）` : ''}`,
       }}
       gaps={gaps}
       foot={
         <>
-          本月 <b>{monthActual === null ? '—' : usd(monthActual)}</b> /{' '}
-          <b>{quota === null ? '—' : usd(quota)}</b> ·{' '}
-          <b>{monthPct === null ? '—' : `${monthPct}%`}</b>
+          账本覆盖 <b>{coveredRows === null ? '—' : coveredRows}/{dashed(kpis.total)}</b> · 今日 00:00 起
         </>
       }
       stamps={[
@@ -1180,22 +1085,20 @@ function CostCard({
       onRetry={onRetry}
       icon={<IconCoins className="ov5-i ov5-i-13" />}
     >
-      <p className="ov5-hsay">
-        月配额已用 <b>{monthPct === null ? '—' : `${monthPct}%`}</b>
-        <span className="ov5-hsep">·</span>
-        账本覆盖 <b>{coveredRows === null ? '—' : coveredRows}/{dashed(kpis.total)}</b>
-      </p>
+      <p className="ov5-hsay">实扣取月账本 · 配额取矩阵，各自逐项相加</p>
       <div className="ov5-gline">
-        <span>月读数各自相加</span>
-        <span>/ 缺读口写「—」</span>
+        <span>本月读数</span>
+        <span>/ 已用占比</span>
       </div>
       <div className="ov5-gates">
         {readoutRows.map((row) => (
           <div className="ov5-gate" key={row.name}>
-            <span className="ov5-gk">{row.name}</span>
+            <span className="ov5-gk" title={row.why}>
+              {row.name}
+            </span>
             <span className="ov5-gv">{row.v}</span>
             <span className="ov5-gcut">{row.cut}</span>
-            <i className={`ov5-gdot ${row.dot}`} title={row.cut} />
+            <i className={`ov5-gdot ${row.dot}`} title={row.why} />
           </div>
         ))}
       </div>
@@ -1209,15 +1112,21 @@ function CostCard({
           ]}
         />
         <div className="ov5-legend">
-          <span>
-            <i className={monthPct !== null && monthPct > 90 ? 'bad' : 'ok'} />
-            {monthPct === null ? '— 已用' : `${monthPct}% 已用`}
+          {monthPct !== null ? (
+            <>
+              <span>
+                <i className={monthPct > 90 ? 'bad' : 'ok'} />
+                {monthPct}% 已用
+              </span>
+              <span>
+                <i className="unknown" />
+                {Math.round((100 - monthPct) * 10) / 10}% 剩余
+              </span>
+            </>
+          ) : null}
+          <span className="ov5-legend-note">
+            {monthPct !== null ? '分段＝月实扣 ÷ 月配额' : '实扣或配额未回，见卡底声明'}
           </span>
-          <span>
-            <i className="unknown" />
-            {monthPct === null ? '— 剩余' : `${Math.round((100 - monthPct) * 10) / 10}% 剩余`}
-          </span>
-          <span className="ov5-legend-note">实扣取月账本 · 配额取矩阵</span>
         </div>
       </div>
     </KpiCard>
