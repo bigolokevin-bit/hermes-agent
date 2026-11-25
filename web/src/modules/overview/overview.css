@@ -123,9 +123,12 @@
 }
 
 .ov5-seg:focus-visible {
-  outline: 1px solid var(--color-border-ls);
+  outline: 2px solid var(--color-accent-ls, var(--fg-3));
   outline-offset: 2px;
 }
+
+/* 浮层打开时把整张卡抬一层：保证浮层压住下方卡与下方横条，不靠 DOM 顺序。 */
+.ov5-seg[data-pop-open] { z-index: 50; }
 
 .ov5-seg-card {
   flex: 1 1 auto;
@@ -193,9 +196,7 @@
 
 .ov5-seg .ov5-seg-foot + .ov5-seg-foot { margin-top: 3px; }
 
-.ov5-seg .ov5-seg-foot + .ov5-seg-bar { margin-top: 9px; }
-
-.ov5-seg-bar { margin-top: 9px; }
+.ov5-seg .ov5-seg-foot + .ov5-seg-plot { margin-top: 8px; }
 
 /* ---------- 卡内浮层：--panel-2 底 + 1px --line + 6px 圆角 + 12px 内距 ----------
    朝下开；卡贴近视口底部时 data-flip=1 翻到卡上方。右侧卡贴右边界对齐，
@@ -218,6 +219,21 @@
 }
 
 .ov5-seg-pop[data-open='1'] { display: block; }
+
+/* 卡与浮层之间 6px 的透明连接带：鼠标从卡移到浮层时不经过 dead zone，浮层不闪。 */
+.ov5-seg-pop::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -6px;
+  height: 6px;
+}
+
+.ov5-seg-pop[data-flip='1']::before {
+  top: auto;
+  bottom: -6px;
+}
 
 .ov5-seg-pop[data-flip='1'] {
   top: auto;
@@ -294,14 +310,17 @@
 .ov5-pop-row[data-tone='bad'] .ov5-pop-v { color: var(--color-danger-ls); }
 .ov5-pop-row[data-tone='unknown'] .ov5-pop-v { color: var(--color-text-subtle-ls); }
 
-/* 4px 细条：只做占比提示，不铺图例；读数没回时整条画 unknown。 */
-.ov5-seg-bar {
+/* 卡底绘图带：三卡同高 12px（卡 1 三段条居中；卡 2/3 迷你日序列 + 11px 读数）。 */
+.ov5-seg-plot {
   display: flex;
   align-items: center;
-  height: 4px;
+  gap: 8px;
+  height: 12px;
+  min-width: 0;
 }
 
-.ov5-seg-bar .ov5-stack-svg {
+/* 卡 1：三段堆叠条保持原样，主数字为 0 时退化成空轨也要读得出来。 */
+.ov5-seg-plot .ov5-stack-svg {
   width: 100%;
   height: 4px;
   border-radius: 2px;
@@ -309,8 +328,60 @@
 
 /* 2026-11-25：真零段（今日运行 0 次）原本画成空，读作「没渲染」。
    把轨道提到可见的描边色，零值读成一条空轨，而不是缺失。 */
-.ov5-seg-bar .ov5-stack-svg rect.track {
+.ov5-seg-plot .ov5-stack-svg rect.track {
   fill: var(--color-border-subtle-ls);
+}
+
+/* 迷你日序列那一条带一条 1px 轴（全卡宽）：7 根柱坐在轴上，读数压在轴右端，
+   整带因此读作「一张小图 + 一个合计」，而不是左端一簇孤零零的小刻度。 */
+.ov5-seg-plot:has(> .ov5-mini) {
+  box-shadow: inset 0 -1px 0 var(--color-border-subtle-ls);
+}
+
+/* ---------- 近 7 天迷你日序列（卡 2 次数 / 卡 3 金额，同一形制） ----------
+   7 根 3px 竖条、间距 2px、整条 12px 高；每列底色即轨道（始终可见），
+   柱从底部长起、按 7 日峰值归一（峰值 0 时给 2px 最小可见高度，不画成 0 高）；
+   最右一根是今天，用更亮的 --fg 标出；缺读数的那天只留轨道、不画柱。 */
+.ov5-mini {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 12px;
+  flex: none;
+}
+
+.ov5-mini-col {
+  display: flex;
+  align-items: flex-end;
+  width: 3px;
+  height: 12px;
+  border-radius: 1px;
+  background: var(--color-border-subtle-ls);
+  overflow: hidden;
+}
+
+.ov5-mini-col > i {
+  display: block;
+  width: 3px;
+  border-radius: 1px;
+  background: var(--color-text-subtle-ls);
+}
+
+.ov5-mini-col[data-today='1'] > i {
+  background: var(--color-text-ls);
+}
+
+.ov5-mini-col[data-null='1'] { background: color-mix(in srgb, var(--color-border-subtle-ls) 55%, transparent); }
+
+.ov5-mini-note {
+  margin-left: auto;
+  color: var(--color-text-muted-ls);
+  font-size: 11px;
+  line-height: 12px;
+  font-variant-numeric: var(--tabular-ls);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .ov5-kpis-foot {

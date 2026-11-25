@@ -227,6 +227,69 @@ export function provenZeroFill(stats: RunStatsBody | null, points: TrendPoint[])
   return sum === totals ? missing : 0;
 }
 
+/** 近 N 天迷你日格（首排卡 2/卡 3 底的 7 根竖条用）：逐日次数与金额。 */
+export interface MiniDay {
+  /** 北京日格键，MM-DD。 */
+  label: string;
+  /** 当日运行次数；null=读口没给这一天（不是 0）。 */
+  runs: number | null;
+  /** 当日记账金额；null=读口没给这一天（不是 0）。 */
+  costUsd: number | null;
+  /** 最右一格=今天（北京日窗末端）。 */
+  today: boolean;
+}
+
+export interface MiniDaysView {
+  days: MiniDay[];
+  /**
+   * 缺日是否已被「各桶之和 = totals」证明为 0：证明成立时 days 里的 null 已按
+   * 真零铺平（与趋势图同一口径），7 日合计因此可写成精确值而不是下限。
+   */
+  zeroProven: boolean;
+}
+
+/**
+ * 近 N 天迷你日序列：与 trendWindow 同一日格口径（北京日、末端优先用响应自带
+ * `to`），额外带每日 costUsd。缺日在证明成立时落成 0，否则保持 null（缺读数），
+ * 绝不拿「没读到」冒充 0。
+ */
+export function miniDays(stats: RunStatsBody | null, days = 7): MiniDaysView {
+  const buckets = Array.isArray(stats?.buckets) ? stats.buckets : [];
+  const parsed = buckets
+    .map((bucket) => ({
+      ms: Date.parse(bucket.bucketStart),
+      runs: num(bucket.runs),
+      cost: num(bucket.costUsd),
+    }))
+    .filter((row) => Number.isFinite(row.ms));
+  // 算术闭合证明（与 provenZeroFill 同判据）：每个桶都给了读数且各桶之和 = totals。
+  const allKnown = parsed.length > 0 && parsed.every((row) => row.runs !== null);
+  const sumRuns = parsed.reduce((n, row) => n + (row.runs ?? 0), 0);
+  const totalsRuns = num(stats?.totals?.runs);
+  const zeroProven = allKnown && totalsRuns !== null && sumRuns === totalsRuns;
+  if (parsed.length === 0) return { days: [], zeroProven: false };
+
+  const byDay = new Map<string, { runs: number | null; cost: number | null }>();
+  for (const row of parsed) byDay.set(dayKeyOf(row.ms), { runs: row.runs, cost: row.cost });
+
+  const lastMs = Math.max(...parsed.map((row) => row.ms));
+  const toMs = typeof stats?.to === 'string' ? Date.parse(stats.to) : NaN;
+  const endMs = beijingDayStart(Number.isFinite(toMs) ? toMs : lastMs);
+  const startMs = endMs - (days - 1) * DAY_MS;
+  const out: MiniDay[] = Array.from({ length: days }, (_, i) => {
+    const ms = startMs + i * DAY_MS;
+    const hit = byDay.get(dayKeyOf(ms));
+    const zero = zeroProven ? 0 : null;
+    return {
+      label: dayKeyOf(ms).slice(5),
+      runs: hit ? hit.runs : zero,
+      costUsd: hit ? hit.cost : zero,
+      today: i === days - 1,
+    };
+  });
+  return { days: out, zeroProven };
+}
+
 export interface DayActivityCellView {
   hour: number;
   /** null＝该小时没有读到（未发生/无读数），与真 0 区分。 */

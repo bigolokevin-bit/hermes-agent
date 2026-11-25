@@ -16,12 +16,14 @@ import {
   buildKpis,
   blockerRows,
   dayActivity,
+  miniDays,
   monthQuota,
   overviewSummaryText,
   provenZeroFill,
   sourceStamp,
   trendWindow,
   OVERVIEW_GAP,
+  type MiniDay,
   type OverviewSummaryRow,
 } from './overview';
 import {
@@ -550,6 +552,46 @@ function PopRows({ section, testid }: { section: PopSection; testid: string }) {
 }
 
 /* ============================================================================
+ * 近 7 天迷你日序列（卡 2 / 卡 3 卡底共用一种形制）：7 根 3px 竖条、间距 2px，
+ * 轨道（每列的底色）始终可见；柱高按 7 日峰值归一，峰值 0 时给最小可见高度 2px。
+ * 最右一根代表今天，用更亮的 --fg 标出来；缺读数的那一天不画柱（只留轨道）。
+ * ========================================================================== */
+function MiniBars({
+  days,
+  metric,
+  testid,
+  label,
+}: {
+  days: MiniDay[];
+  metric: 'runs' | 'cost';
+  testid: string;
+  label: string;
+}) {
+  const values = days.map((day) => (metric === 'runs' ? day.runs : day.costUsd));
+  const peak = values.reduce<number>((max, v) => (v !== null && v > max ? v : max), 0);
+  return (
+    <div className="ov5-mini" data-testid={testid} role="img" aria-label={label}>
+      {days.map((day, i) => {
+        const v = values[i];
+        // 单格 0 与「峰值也是 0」都给最小可见高度：柱不许画成 0 高，否则读作没渲染。
+        const h = v === null ? 0 : peak > 0 ? Math.max(2, Math.round((v / peak) * 11)) : 2;
+        return (
+          <span
+            className="ov5-mini-col"
+            key={`${day.label}-${i}`}
+            data-today={day.today ? '1' : undefined}
+            data-null={v === null ? '1' : undefined}
+            title={`${day.label}${v === null ? '：这一天没有读数' : ''}`}
+          >
+            <i style={{ height: `${h}px` }} />
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ============================================================================
  * 一张卡：外层是可聚焦的 hover/focus 宿主（tabIndex=0 + aria-describedby），
  * 卡体只见 11px 标签 / 大号主数字 / 两行副读数 / 4px 细条；浮层挂着全部细读数。
  * 打开方式：hover、键盘 focus、点卡片（375 无 hover）；Esc 与点卡外都关闭。
@@ -564,7 +606,7 @@ function KpiCard({
   unit,
   subs,
   status,
-  bar,
+  plot,
   popover,
   issues,
   onRetry,
@@ -577,7 +619,8 @@ function KpiCard({
   unit?: ReactNode;
   subs: Array<{ text: string; title?: string; testid?: string }>;
   status: { tone: 'ok' | 'unknown' | 'bad'; title: string };
-  bar: { label: string; segments: StackSeg[]; fullUnknown: boolean };
+  /** 卡底绘图带：高度统一 12px（卡 1 三段条居中，卡 2/3 迷你日序列 + 11px 读数）。 */
+  plot: ReactNode;
   popover: { title: string; sections: PopSection[] };
   issues: KpiIssue[];
   onRetry: () => void;
@@ -669,9 +712,7 @@ function KpiCard({
               {sub.text}
             </p>
           ))}
-          <div className="ov5-seg-bar">
-            <StackBar label={bar.label} segments={bar.segments} fullUnknown={bar.fullUnknown} />
-          </div>
+          <div className="ov5-seg-plot">{plot}</div>
           <IssueRows issues={issues} onRetry={onRetry} testid={testid} />
         </CardContent>
       </Card>
@@ -703,6 +744,7 @@ function KpiStrip({
   monthActual,
   liveCostUsd,
   dayStats,
+  trend,
   busy,
   onRetry,
 }: {
@@ -711,6 +753,8 @@ function KpiStrip({
   kpis: ReturnType<typeof buildKpis>;
   monthActual: number | null;
   liveCostUsd: number | null;
+  /** 近 14 天趋势腿：卡 2/卡 3 卡底取它最后 7 个日格做迷你日序列。 */
+  trend?: Loadable<RunStatsBody>;
   /** 今日运行明细：/run-stats 北京日窗（比 duty 的 1d 聚合多 succeeded/p95/窗口）。 */
   dayStats?: Loadable<RunStatsBody>;
   busy: boolean;
@@ -897,8 +941,6 @@ function KpiStrip({
   // P95 只在有样本时由统计读口回（单位毫秒）；今日 0 次就没有样本，如实写「—」。
   const p95 = num((totals as Record<string, unknown> | null)?.p95);
   const sampleCount = num((totals as Record<string, unknown> | null)?.sampleCount);
-  const pctOf = (n: number | null) =>
-    n === null || kpis.runs === null || kpis.runs === 0 ? 0 : Math.round((n / kpis.runs) * 1000) / 10;
   // 成功率只在有分母（今日运行 > 0）时才算；今日 0 次是「没有分母」，不是 0% 成功。
   const successRate =
     kpis.runs !== null && kpis.runs > 0 && succeeded !== null
@@ -990,7 +1032,6 @@ function KpiStrip({
     monthActual !== null && quota !== null && quota > 0
       ? Math.round((monthActual / quota) * 1000) / 10
       : null;
-  const usedPct = monthPct === null ? null : Math.min(monthPct, 100);
   // 预估月底＝按北京时区本月已过天数线性外推（本月实扣 ÷ 已过天数 × 当月天数）。
   const [bjYear, bjMonth, bjDay] = beijingDayWindow().date.split('-').map(Number);
   const daysInMonth = new Date(Date.UTC(bjYear, bjMonth, 0)).getUTCDate();
@@ -1079,6 +1120,31 @@ function KpiStrip({
         ? `月配额已用 ${monthPct}%`
         : '—';
 
+  /* ---------- 卡底迷你日序列：近 7 天（卡 2 次数 / 卡 3 金额） ---------- */
+  const trendBody = trend?.k === 'ready' ? trend.data : null;
+  const mini = useMemo(() => miniDays(trendBody, 7), [trendBody]);
+  // 7 格都要有读数才写精确合计；有一格缺读数就整条写「—」（不拿下限冒充合计）。
+  const weekRuns =
+    mini.days.length === 7 && mini.days.every((d) => d.runs !== null)
+      ? mini.days.reduce((n, d) => n + (d.runs as number), 0)
+      : null;
+  const weekCost =
+    mini.days.length === 7 && mini.days.every((d) => d.costUsd !== null)
+      ? Math.round(mini.days.reduce((n, d) => n + (d.costUsd as number), 0) * 100) / 100
+      : null;
+  const miniSlots: MiniDay[] =
+    mini.days.length === 7
+      ? mini.days
+      : Array.from({ length: 7 }, (_, i) => ({
+          label: `—${i + 1}`,
+          runs: null,
+          costUsd: null,
+          today: i === 6,
+        }));
+  const weekProof = mini.zeroProven
+    ? '；未返回的日子按「各桶之和 = 合计」证明为 0'
+    : '；没有返回的日格不补 0，只留轨道';
+
   /* ---------- 带底：全页唯一的缺读口声明 ---------- */
   const gapParts = [
     ...(displayCost === null ? ['今日实扣'] : []),
@@ -1155,18 +1221,21 @@ function KpiStrip({
               readyGapLabels.length > 0 ? ` · 缺：${readyGapLabels.join('、')}` : ''
             }`,
           }}
-          bar={{
-            label: '可上岗 / 受限 / 未知占比',
-            fullUnknown: buckets === null,
-            segments:
-              buckets === null
-                ? []
-                : [
-                    { key: 'ok', w: pct(buckets.confirmed) ?? 0 },
-                    { key: 'bad', w: pct(buckets.failing) ?? 0 },
-                    { key: 'unknown', w: pct(buckets.pending) ?? 0 },
-                  ],
-          }}
+          plot={
+            <StackBar
+              label="可上岗 / 受限 / 未知占比"
+              fullUnknown={buckets === null}
+              segments={
+                buckets === null
+                  ? []
+                  : [
+                      { key: 'ok', w: pct(buckets.confirmed) ?? 0 },
+                      { key: 'bad', w: pct(buckets.failing) ?? 0 },
+                      { key: 'unknown', w: pct(buckets.pending) ?? 0 },
+                    ]
+              }
+            />
+          }
           issues={[
             { label: '员工统计', state: data.employees, gap: OVERVIEW_GAP.employees },
             ...(matrix.k === 'error'
@@ -1199,15 +1268,23 @@ function KpiStrip({
               [data.todayStats.k === 'ready', data.todayRuns.k === 'ready'].filter(Boolean).length
             }/2`,
           }}
-          bar={{
-            label: '今日运行成功 / 失败 / 其它占比',
-            fullUnknown: kpis.runs === null || kpis.runs === 0,
-            segments: [
-              { key: 'ok', w: pctOf(succeeded) },
-              { key: 'bad', w: pctOf(kpis.failed) },
-              { key: 'unknown', w: Math.max(0, 100 - pctOf(succeeded) - pctOf(kpis.failed)) },
-            ],
-          }}
+          plot={
+            <>
+              <MiniBars
+                days={miniSlots}
+                metric="runs"
+                testid="ov6-kpi-runs-mini"
+                label="近 7 天每日运行次数"
+              />
+              <span
+                className="ov5-mini-note"
+                data-testid="ov6-kpi-runs-week"
+                title={`近 7 天运行次数：/run-stats 北京日窗最后 7 个日格，柱高按 7 日峰值归一${weekProof}`}
+              >
+                {weekRuns === null ? '近 7 天 —' : `近 7 天 ${weekRuns} 次`}
+              </span>
+            </>
+          }
           issues={[{ label: '运行统计', state: data.todayStats, gap: OVERVIEW_GAP.runs }]}
           onRetry={onRetry}
         />
@@ -1233,14 +1310,23 @@ function KpiStrip({
               ).length
             }/3`,
           }}
-          bar={{
-            label: '本月实扣占月配额比例',
-            fullUnknown: usedPct === null,
-            segments: [
-              { key: usedPct !== null && usedPct > 90 ? 'bad' : 'ok', w: usedPct ?? 0 },
-              { key: 'unknown', w: usedPct === null ? 0 : Math.max(0, 100 - usedPct) },
-            ],
-          }}
+          plot={
+            <>
+              <MiniBars
+                days={miniSlots}
+                metric="cost"
+                testid="ov6-kpi-cost-mini"
+                label="近 7 天每日记账金额"
+              />
+              <span
+                className="ov5-mini-note"
+                data-testid="ov6-kpi-cost-week"
+                title={`近 7 天记账金额：/run-stats 北京日窗最后 7 个日格的 costUsd 之和，柱高按 7 日峰值归一${weekProof}`}
+              >
+                {weekCost === null ? '近 7 天 —' : `近 7 天 ${usd(weekCost)}`}
+              </span>
+            </>
+          }
           issues={[{ label: '成本账本', state: data.budgetDay, gap: OVERVIEW_GAP.cost }]}
           onRetry={onRetry}
         />
@@ -2213,6 +2299,7 @@ export function OverviewView({
         monthActual={monthActual}
         liveCostUsd={liveCostUsd}
         dayStats={dayStats}
+        trend={trend}
         busy={anyLoading}
         onRetry={onRetry}
       />
