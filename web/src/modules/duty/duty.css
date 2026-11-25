@@ -258,27 +258,10 @@
 
 .duty-link:hover { text-decoration: underline; }
 
+/* 走势图容器：曲线本体在公共件 TrendCurve（components/charts），这里只保宽度。 */
 .duty-chart {
   width: 100%;
-  height: 120px;
-  overflow: visible;
-}
-
-.duty-axis {
-  stroke: var(--color-border);
-  stroke-width: 1;
-}
-
-.duty-line {
-  fill: none;
-  stroke: var(--color-primary);
-  stroke-linejoin: round;
-  stroke-width: 2;
-}
-
-.duty-axis-label {
-  fill: var(--color-muted-foreground);
-  font-size: var(--font-size-1);
+  min-width: 0;
 }
 
 .duty-heat {

@@ -177,8 +177,16 @@ describe("duty aggregate — a missing point keeps its slot", () => {
     expect(txt("duty-trend-total")).toBe("6");
     expect(txt("duty-trend-peak")).toBe("4");
     expect(txt("duty-trend-low")).toBe("2");
-    const line = container.querySelector(".duty-line");
-    expect((line?.getAttribute("points") ?? "").trim().split(/\s+/).length).toBe(3);
+    // 曲线换成公共件 TrendCurve 后仍是一条连续曲线：缺读数的桶按 0 参与
+    // （曲线件里 null 才造断口，这里不给 null），三个桶各占一个轴位。
+    const figure = container.querySelector('[data-testid="duty-trend-figure"]');
+    const lines = [...(figure?.querySelectorAll("path.tc-line") ?? [])];
+    expect(lines.length).toBe(1);
+    expect(lines[0].getAttribute("d") ?? "").toContain("C");
+    const xTicks = [...(figure?.querySelectorAll("text.tc-tick") ?? [])].filter(
+      (node) => Number(node.getAttribute("y")) > 100,
+    );
+    expect(xTicks.length).toBe(3);
     await openTable();
     const rows = [...container.querySelectorAll("#duty-trend-table tbody tr")];
     expect(rows.length).toBe(3);

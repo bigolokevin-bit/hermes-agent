@@ -52,8 +52,11 @@ export interface TrendCurveProps {
   /** 峰值文案，默认 `峰值 N`；给 null 则不标。 */
   peakLabel?: (value: number) => string;
   formatY?: (value: number) => string;
-  formatX?: (label: string) => string;
+  /** X 轴档位文案；第二参给该点的下标（末档写成「今天」这类屏上叫法时用）。 */
+  formatX?: (label: string, index: number) => string;
   ariaLabel?: string;
+  /** 屏上文字替代（如卡片里的逐日摘要）的 id，挂到 svg 的 aria-describedby。 */
+  describedBy?: string;
   testId?: string;
   showX?: boolean;
   showGrid?: boolean;
@@ -101,6 +104,7 @@ export function TrendCurve({
   formatY,
   formatX,
   ariaLabel,
+  describedBy,
   testId,
   showX = true,
   showGrid = true,
@@ -139,7 +143,8 @@ export function TrendCurve({
 
   const axisValue = (value: number): string =>
     formatY ? formatY(value) : String(Math.round(value * 100) / 100);
-  const axisLabel = (label: string): string => (formatX ? formatX(label) : label);
+  const axisLabel = (label: string, index: number): string =>
+    formatX ? formatX(label, index) : label;
   const xIndices = showX && points.length > 0
     ? Array.from(
         new Set([0, Math.floor((points.length - 1) / 2), points.length - 1].filter((i) => i >= 0)),
@@ -159,6 +164,7 @@ export function TrendCurve({
         height={height}
         role="img"
         aria-label={ariaLabel}
+        aria-describedby={describedBy}
         data-testid={testId}
       >
         <defs>
@@ -260,7 +266,7 @@ export function TrendCurve({
             y={height - 6}
             textAnchor={index === 0 ? 'start' : index === points.length - 1 ? 'end' : 'middle'}
           >
-            {axisLabel(points[index].label)}
+            {axisLabel(points[index].label, index)}
           </text>
         ))}
       </svg>

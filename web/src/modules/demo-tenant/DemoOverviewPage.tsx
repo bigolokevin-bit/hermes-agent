@@ -33,6 +33,8 @@ import { Badge } from '@nous-research/ui/ui/components/badge';
 import { Button } from '@nous-research/ui/ui/components/button';
 import { Card, CardContent } from '@nous-research/ui/ui/components/card';
 
+import { TrendCurve } from '@/components/charts/TrendCurve';
+
 import { DEMO_TENANT_AS_OF, DEMO_TENANT_LABEL, demoOverview } from './dataset';
 import '../overview/overview.css';
 import './demo-tenant.css';
@@ -355,27 +357,14 @@ function ChainStrip() {
 }
 
 /* ------------------------------------------------------------------ *
- * ⑦ 近 14 天运行：面积 + 折线，峰值虚线 + 标注，y 0/30/60，x 三标
+ * ⑦ 近 14 天运行：平滑曲线 + 面积渐变，峰值虚线 + 标注，y 0/30/60，x 三标
  * ------------------------------------------------------------------ */
-const TREND_W = 640;
 const TREND_H = 148;
-const TREND_PAD = { l: 26, r: 12, t: 16, b: 18 } as const;
 const TREND_Y_MAX = 60;
 
 function TrendBlock() {
   const trend = demoOverview.trend;
   const points = trend.points;
-  const plotW = TREND_W - TREND_PAD.l - TREND_PAD.r;
-  const plotH = TREND_H - TREND_PAD.t - TREND_PAD.b;
-  const baseY = TREND_PAD.t + plotH;
-  const xAt = (index: number) => TREND_PAD.l + (index * plotW) / (points.length - 1);
-  const yAt = (runs: number) => TREND_PAD.t + plotH - (runs / TREND_Y_MAX) * plotH;
-  const linePath = points
-    .map((point, index) => `${index === 0 ? 'M' : 'L'}${xAt(index).toFixed(1)},${yAt(point.runs).toFixed(1)}`)
-    .join(' ');
-  const areaPath = `${linePath} L${xAt(points.length - 1).toFixed(1)},${baseY.toFixed(1)} L${xAt(0).toFixed(1)},${baseY.toFixed(1)} Z`;
-  const peakIndex = points.reduce((best, point, index) => (point.runs > points[best].runs ? index : best), 0);
-  const xTicks = [0, 6, points.length - 1];
 
   return (
     <Card className="ov5-block ov5-trend" data-testid="dt5-trend">
@@ -395,53 +384,18 @@ function TrendBlock() {
           日均 <b>{trend.dailyAvg}</b> 次 · 峰值日 <b>{trend.peakDay}</b> · 覆盖 <b>{points.length}</b> 天
         </p>
         <div className="ov5-chart">
-          <svg
-            className="ov5-trend-svg dt5-trend-svg"
-            viewBox={`0 0 ${TREND_W} ${TREND_H}`}
-            role="img"
-            aria-label={`近 14 天运行趋势：合计 ${trend.total} 次，峰值 ${trend.peak} 次（${trend.peakDay}）`}
-          >
-            {[0, 30, 60].map((tick) => (
-              <g key={`y${tick}`}>
-                <line className="ov5-grid-line" x1={TREND_PAD.l} x2={TREND_W - TREND_PAD.r} y1={yAt(tick)} y2={yAt(tick)} />
-                <text className="ov5-axis-lbl" x={TREND_PAD.l - 8} y={yAt(tick) + 4} textAnchor="end">
-                  {tick}
-                </text>
-              </g>
-            ))}
-            <path className="dt5-area" d={areaPath} />
-            <path className="dt5-line" d={linePath} />
-            <line
-              className="ov5-peak-mark"
-              x1={xAt(peakIndex)}
-              x2={xAt(peakIndex)}
-              y1={TREND_PAD.t - 6}
-              y2={baseY}
-            />
-            <circle className="ov5-peak-dot" cx={xAt(peakIndex)} cy={yAt(trend.peak)} r={2.6} />
-            <text
-              className="ov5-axis-lbl"
-              x={xAt(peakIndex) - 4}
-              y={yAt(trend.peak) - 6}
-              textAnchor="end"
-            >
-              峰值 {trend.peak}
-            </text>
-            {xTicks.map((index) => (
-              <text
-                className="ov5-axis-lbl"
-                key={`x${index}`}
-                x={xAt(index)}
-                y={TREND_H - 5}
-                textAnchor={index === 0 ? 'start' : index === points.length - 1 ? 'end' : 'middle'}
-              >
-                {index === points.length - 1 ? '今天' : points[index].day}
-              </text>
-            ))}
-          </svg>
+          <TrendCurve
+            points={points.map((point) => ({ label: point.day, y: point.runs }))}
+            height={TREND_H}
+            pad={{ l: 26, r: 12, t: 16, b: 18 }}
+            top={TREND_Y_MAX}
+            ariaLabel={`近 14 天运行趋势：合计 ${trend.total} 次，峰值 ${trend.peak} 次（${trend.peakDay}）`}
+            peakLabel={(value) => `峰值 ${value}`}
+            formatX={(text, index) => (index === points.length - 1 ? '今天' : text)}
+          />
         </div>
         <p className="ov5-block-foot">
-          面积与折线表示当日运行次数；峰值日（{trend.peakDay}）以虚线标注。示例数据，不与真实租户合并。
+          面积与曲线表示当日运行次数；峰值日（{trend.peakDay}）以虚线标注。示例数据，不与真实租户合并。
         </p>
       </CardContent>
     </Card>

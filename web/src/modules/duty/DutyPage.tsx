@@ -8,6 +8,7 @@ import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 import { cn } from "@/lib/utils";
 import { copyTextToClipboard } from "@/lib/clipboard";
 import { InfoHint } from "@/components/ui/InfoHint";
+import { TrendCurve } from "@/components/charts/TrendCurve";
 import {
   activity24,
   blockersTotal,
@@ -894,8 +895,6 @@ function TrendCard({
   const buckets = stats.k === "ready" ? dailyBuckets(stats.data) : [];
   const summary = trendSummary(buckets);
   const peak = summary.peak;
-  // A bucket without a reading keeps its slot on the axis but never counts as 0.
-  const max = Math.max(1, ...buckets.map((b) => b.runs ?? 0));
   const failed = stats.k === "error";
   const summaryTitle = failed
     ? `这次没能读取${label}趋势：${stats.message}${stats.requestId ? `（请求编号 ${stats.requestId}）` : ""}；不把缺数当 0。`
@@ -926,36 +925,19 @@ function TrendCard({
               ? "日均 — 次；这一批有日期没有读数"
               : `日均 ${(summary.total / buckets.length).toFixed(1)} 次${peak ? `；峰值在 ${peak.label}` : ""}`}
         </p>
-        <svg
+        <TrendCurve
           className="duty-chart"
-          viewBox="0 0 600 120"
-          role="img"
-          aria-label={`${label}每日运行次数`}
-          aria-describedby="duty-trend-summary"
-          data-testid="duty-trend-figure"
-        >
-          <line x1="4" y1="108" x2="596" y2="108" className="duty-axis" />
-          <polyline
-            className="duty-line"
-            points={buckets
-              .map((b, i) => {
-                const x = buckets.length === 1 ? 300 : 8 + (i * 584) / (buckets.length - 1);
-                const y = 100 - ((b.runs ?? 0) / max) * 84;
-                return `${x},${y}`;
-              })
-              .join(" ")}
-          />
-          {buckets.length > 0 ? (
-            <text x="8" y="118" className="duty-axis-label">
-              {buckets[0].label}
-            </text>
-          ) : null}
-          {buckets.length > 1 ? (
-            <text x="592" y="118" textAnchor="end" className="duty-axis-label">
-              今天
-            </text>
-          ) : null}
-        </svg>
+          // 值守台口径：缺读数的桶按 0 参与（连续一条曲线），不造断口——
+          // 与卡上「首日/末日/峰值/最低/合计」五读数同一份桶序列。
+          points={buckets.map((b) => ({ label: b.label, y: b.runs ?? 0 }))}
+          height={120}
+          ariaLabel={`${label}每日运行次数`}
+          describedBy="duty-trend-summary"
+          testId="duty-trend-figure"
+          formatX={(text, index) =>
+            index === buckets.length - 1 && buckets.length > 1 ? "今天" : text
+          }
+        />
         <p className="duty-note">{label} · 按北京时间切日 · 只画有运行的桶</p>
       </StateLine>
       <p className="duty-say duty-trend-summary" id="duty-trend-summary" data-testid="duty-trend-summary" title={summaryTitle}>
