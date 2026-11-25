@@ -12,6 +12,10 @@
  *
  * 纪律：本文件只做算术，不写 style、不读 window、不注入时钟；
  * 像素一律 px 数字，交给 JSX 的 svg 属性（禁内联 style 棘轮）。
+ *
+ * 2026-11-25：近 14 天运行趋势改画平滑曲线 + 面积渐变，形制与几何搬到
+ * `web/src/components/charts/`（TrendCurve + monotone）。本文件里的
+ * `trendGeometry`/`niceTicks` 只作为当时的设计基线对照保留，页面已不再引用。
  */
 import { num } from '../duty/types';
 

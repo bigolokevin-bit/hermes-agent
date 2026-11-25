@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { Badge } from '@nous-research/ui/ui/components/badge';
 import { Button } from '@nous-research/ui/ui/components/button';
@@ -33,8 +33,13 @@ import {
   type OverviewSummaryBody,
 } from './api';
 import { COST_CALIBER_TEXT } from '../metrics/costCaliberNote';
-import { TREND_H, TREND_PAD, trendGeometry } from './VizChart';
+import { TrendCurve } from '@/components/charts/TrendCurve';
 import './overview.css';
+
+/** 趋势曲线画布高（IN 的容器 208–288 档）与其内边距；
+ *  内边距与 overview.css 的 .ov5-bars 覆盖层（30/10/24/20）逐像素对齐。 */
+const TREND_CURVE_H = 208;
+const TREND_CURVE_PAD = { l: 30, r: 10, t: 24, b: 20 } as const;
 
 type Forced = 'loading' | 'empty' | 'error';
 type StampSource = { source: string; state: Loadable<unknown> };
@@ -297,26 +302,6 @@ function IconDownload({ className }: IconProps) {
  * ========================================================================== */
 
 /** 量宽度只为趋势图定 viewBox；jsdom 没有布局，退回 720 不影响任何断言。 */
-function useMeasuredWidth(fallback: number): [RefObject<HTMLDivElement | null>, number] {
-  const ref = useRef<HTMLDivElement | null>(null);
-  const [width, setWidth] = useState(fallback);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const apply = (next: number) => {
-      if (next > 0) setWidth((prev) => (Math.abs(prev - next) > 0.5 ? Math.round(next) : prev));
-    };
-    apply(el.clientWidth);
-    if (typeof ResizeObserver === 'undefined') return;
-    const observer = new ResizeObserver((entries) => {
-      for (const entry of entries) apply(entry.contentRect.width);
-    });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-  return [ref, width];
-}
-
 function RequestId({ id }: { id: string | null }) {
   const [copied, setCopied] = useState(false);
   const text = id ?? '未提供';
@@ -1114,10 +1099,13 @@ function Trend({
   const allMissing = points.length > 0 && points.every((p) => p.runs === null);
   const allZero = points.length > 0 && points.every((p) => p.runs === 0);
   const max = Math.max(1, ...points.map((p) => p.runs ?? 0));
-  const [chartRef, width] = useMeasuredWidth(720);
   const [hovered, setHovered] = useState<number | null>(null);
-  const draw = source.k === 'ready' && points.length > 0 && !allZero && !allMissing;
-  const geo = draw ? trendGeometry(width, points) : null;
+  // 峰值：首个等于最大读数的日（全零/全缺时没有峰值）。
+  const peak = points.reduce<{ index: number; value: number } | null>((best, point, index) => {
+    const runs = point.runs;
+    if (runs === null || runs <= 0) return best;
+    return best === null || runs > best.value ? { index, value: runs } : best;
+  }, null);
   const lastWithRuns = points.reduce((best, p, i) => (p.runs !== null ? i : best), -1);
   const activeIndex = hovered !== null && hovered < points.length ? hovered : lastWithRuns;
   const active = activeIndex >= 0 ? points[activeIndex] : null;
@@ -1125,9 +1113,7 @@ function Trend({
   const total = known.reduce((sum, p) => sum + (p.runs as number), 0);
   const missingDays = points.length - known.length;
   const avg = known.length > 0 ? Math.round((total / known.length) * 10) / 10 : null;
-  const peak = geo?.peakAt ?? null;
-  const failedTotal =
-    geo?.failedTotal ?? (source.k === 'ready' ? num(source.data.totals?.failed) : null);
+  const failedTotal = source.k === 'ready' ? num(source.data.totals?.failed) : null;
   return (
     <Card className="ov5-block ov5-trend" data-testid="ov6-trend" data-duty-testid="duty-trend">
       <CardContent className="ov5-block-bd">
@@ -1158,7 +1144,7 @@ function Trend({
             <IconAlert className="ov5-i ov5-i-16" />
             <span>{label}的运行数据没有返回，所以画不出趋势。</span>
           </div>
-        ) : geo ? (
+        ) : (
           <>
             <div className="ov5-hnum">
               <span className="ov5-hnum-v">{total}</span>
@@ -1174,78 +1160,15 @@ function Trend({
                 </span>
               ) : null}
             </p>
-            <div className="ov5-chart" ref={chartRef}>
-              <svg
-                className="ov5-trend-svg"
-                viewBox={`0 0 ${geo.w} ${geo.h}`}
-                height={TREND_H}
-                role="img"
-                aria-label={`${label}运行趋势：合计 ${total} 次，峰值 ${peak ? peak.value : '无'} 次，失败 ${failedTotal === null ? '待核实' : failedTotal} 次，缺读数 ${missingDays} 天`}
-              >
-                {geo.ticks.map((tick) => (
-                  <g key={`t${tick.label}-${tick.y}`}>
-                    <line className="ov5-grid-line" x1={TREND_PAD.l} x2={geo.w - TREND_PAD.r} y1={tick.y} y2={tick.y} />
-                    <text className="ov5-axis-lbl" x={TREND_PAD.l - 8} y={tick.y + 4} textAnchor="end">{tick.label}</text>
-                  </g>
-                ))}
-                {geo.columns.map((col) =>
-                  col.missing ? (
-                    <rect
-                      key={`void${col.index}`}
-                      className="ov5-trend-void"
-                      x={col.cx - 1.5}
-                      y={TREND_PAD.t + geo.plot.h - 7}
-                      width={3}
-                      height={7}
-                      rx={1}
-                    >
-                      <title>{`${col.label} · 缺读数`}</title>
-                    </rect>
-                  ) : null,
-                )}
-                {geo.segments.map((segment, index) => (
-                  <path key={`seg${index}`} className="ov5-trend-line" d={segment.line} />
-                ))}
-                {geo.points.map((point) => (
-                  <circle key={`pt${point.index}`} className="ov5-trend-pt" cx={point.x} cy={point.y} r={1.6} />
-                ))}
-                {geo.peakAt ? (
-                  <g>
-                    <line
-                      className="ov5-peak-mark"
-                      x1={geo.columns[geo.peakAt.index].cx}
-                      x2={geo.columns[geo.peakAt.index].cx}
-                      y1={TREND_PAD.t - 8}
-                      y2={TREND_PAD.t + geo.plot.h}
-                    />
-                    <circle
-                      className="ov5-peak-dot"
-                      cx={geo.columns[geo.peakAt.index].cx}
-                      cy={geo.columns[geo.peakAt.index].y ?? TREND_PAD.t}
-                      r={2.6}
-                    />
-                    <text
-                      className="ov5-axis-lbl ov5-peak-lbl"
-                      x={
-                        geo.columns[geo.peakAt.index].cx > geo.w - 64
-                          ? geo.columns[geo.peakAt.index].cx - 6
-                          : geo.columns[geo.peakAt.index].cx + 6
-                      }
-                      y={(geo.columns[geo.peakAt.index].y ?? TREND_PAD.t) - 6}
-                      textAnchor={
-                        geo.columns[geo.peakAt.index].cx > geo.w - 64 ? 'end' : 'start'
-                      }
-                    >
-                      峰值 {geo.peakAt.value}
-                    </text>
-                  </g>
-                ) : null}
-                {geo.columns.map((col) =>
-                  col.showLabel ? (
-                    <text key={`ax${col.index}`} className="ov5-axis-lbl" x={col.cx} y={TREND_H - 5} textAnchor="middle">{col.label}</text>
-                  ) : null,
-                )}
-              </svg>
+            <div className="ov5-chart">
+              <TrendCurve
+                points={points.map((point) => ({ label: point.label, y: point.runs }))}
+                height={TREND_CURVE_H}
+                pad={TREND_CURVE_PAD}
+                testId="ov6-trend-svg"
+                ariaLabel={`${label}运行趋势：合计 ${total} 次，峰值 ${peak ? peak.value : '无'} 次，失败 ${failedTotal === null ? '待核实' : failedTotal} 次，缺读数 ${missingDays} 天`}
+                peakLabel={(value) => `峰值 ${value}`}
+              />
               <div className="ov5-bars">
                 {points.map((point, i) => (
                   <div
@@ -1280,11 +1203,11 @@ function Trend({
             </div>
             <BlockFoot items={[{ source: '运行统计', state: source }]} testid="ov6-trend-stamp">
               {provenZero > 0
-                ? `折线＝当日运行次数；未返回的 ${provenZero} 天由「各桶之和＝合计 ${total}」算术闭合推得 0，非估数；失败次数在悬停说明里。`
-                : '折线＝当日运行次数；失败次数在悬停说明里；缺读数只断口，不折 0。'}
+                ? `曲线＝当日运行次数；未返回的 ${provenZero} 天由「各桶之和＝合计 ${total}」算术闭合推得 0，非估数；失败次数在悬停说明里。`
+                : '曲线＝当日运行次数；失败次数在悬停说明里；缺读数只断口，不折 0。'}
             </BlockFoot>
           </>
-        ) : null}
+        )}
       </CardContent>
     </Card>
   );

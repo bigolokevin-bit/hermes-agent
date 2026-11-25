@@ -47,16 +47,11 @@ import {
   type UsageWindowKey,
 } from "./usage";
 import { ConsoleSelect } from "@/shell/ConsoleSelect";
+import { TrendCurve } from "@/components/charts/TrendCurve";
 import { usd } from "./format";
 import { panelUrls, useUsagePanels, type NearDayPanel, type Panel, type TrendPanel } from "./usagePanels";
 import { legShortText, type SourceLeg } from "./usageSources";
-import {
-  niceTicks,
-  scaleY,
-  tickText,
-  type Ticks,
-  type TrendDay,
-} from "./usageTrend";
+import { type TrendDay } from "./usageTrend";
 
 /** 请求编号's own honest word when the answer carried none. */
 const NO_REQUEST_ID = "未提供";
@@ -308,129 +303,57 @@ function LegFallback<T>({ panel, loadingText, testId }: { panel: Panel<T>; loadi
 }
 
 /* ------------------------------------------------------------------ *
- * 趋势卡：内联 SVG 柱（运行）＋方块折线（运行侧成本），断口不插值
+ * 趋势卡：两条平滑曲线（运行 / 运行侧成本），断口不插值
  * ------------------------------------------------------------------ */
 
-const CHART = { w: 700, h: 132, l: 38, r: 14, t: 10, b: 36 } as const;
-const PLOT_W = CHART.w - CHART.l - CHART.r;
-const PLOT_H = CHART.h - CHART.t - CHART.b;
+/**
+ * 走势卡：两条平滑曲线（运行 / 运行侧成本），面积竖向渐变，缺读数的日留断口。
+ *
+ * 形制与总览页同一件（`@/components/charts/TrendCurve`）：monotone 曲线 +
+ * 面积渐变 + 横向实线网格 + 整数档 Y 轴；两条腿各自取自己的量纲，不共享刻度
+ * （运行是次数、成本是美元，混轴会把成本压成一条贴 0 的线）。
+ * 逐日读数仍在下方表格里，曲线只是走向，不替代读数。
+ */
+const TREND_RUNS_H = 208;
+const TREND_COST_H = 108;
 
-interface SeriesLine {
-  d: string;
-  points: Array<{ cx: number; cy: number; key: string; label: string; value: number }>;
-}
-
-/** 把成本点连成「相邻有读数日之间」的段——缺读数的日两边一律断线。 */
-function costSegments(days: TrendDay[], top: number): SeriesLine[] {
-  const slotW = PLOT_W / Math.max(1, days.length);
-  const segments: SeriesLine[] = [];
-  let current: SeriesLine | null = null;
-  days.forEach((day, index) => {
-    const has = day.costUsd !== null;
-    if (!has) {
-      current = null;
-      return;
-    }
-    const cx = CHART.l + slotW * (index + 0.5);
-    const cy = CHART.t + scaleY(day.costUsd ?? 0, top, PLOT_H);
-    const point = { cx, cy, key: day.key, label: day.label, value: day.costUsd ?? 0 };
-    if (current === null) {
-      current = { d: `M${cx.toFixed(1)} ${cy.toFixed(1)}`, points: [point] };
-      segments.push(current);
-    } else {
-      current.d += ` L${cx.toFixed(1)} ${cy.toFixed(1)}`;
-      current.points.push(point);
-    }
-  });
-  return segments;
-}
-
-function TrendChart({ days, maxRuns, maxCost }: { days: TrendDay[]; maxRuns: number; maxCost: number }): ReactNode {
-  const runsTicks: Ticks = niceTicks(maxRuns, 4, 0);
-  const costTicks: Ticks = niceTicks(maxCost, 4, 2);
-  const slotW = PLOT_W / Math.max(1, days.length);
-  const barW = Math.min(34, slotW * 0.46);
+function TrendChart({ days }: { days: TrendDay[] }): ReactNode {
   const readCount = days.filter((day) => day.hasReading).length;
-  const baseline = CHART.t + PLOT_H;
-  const segments = costSegments(days, costTicks.top);
-
+  const runsPoints = days.map((day) => ({ label: day.label, y: day.runs }));
+  const costPoints = days.map((day) => ({ label: day.label, y: day.costUsd }));
+  // 一条腿全无读数就不画它的空轴：空白图会被读成「贴 0 的实测」。
+  const hasRuns = days.some((day) => day.runs !== null);
+  const hasCost = days.some((day) => day.costUsd !== null);
   return (
-    <svg
-      viewBox={`0 0 ${CHART.w} ${CHART.h}`}
-      className="usg4-trend-svg block h-auto w-full min-w-0"
-      style={{ aspectRatio: `${CHART.w} / ${CHART.h}` }}
-      role="img"
-      aria-label={`近 7 天趋势：${days.length} 天里 ${readCount} 天有读数，柱为当日运行数，方块连线为运行侧成本`}
-      data-testid="usg4-trend-chart"
-    >
-      {runsTicks.values.slice(1).map((value) => {
-        const y = CHART.t + scaleY(value, runsTicks.top, PLOT_H);
-        return (
-          <g key={`grid-${value}`}>
-            <line x1={CHART.l} x2={CHART.w - CHART.r} y1={y} y2={y} style={{ stroke: "var(--color-border-subtle-ls)" }} strokeWidth={1} />
-            <text x={CHART.l - 6} y={y + 3} textAnchor="end" fontSize={10} style={{ fill: "var(--color-text-subtle-ls)" }}>
-              {tickText(value, runsTicks.decimals)}
-            </text>
-          </g>
-        );
-      })}
-      {days.map((day, index) => {
-        const cx = CHART.l + slotW * (index + 0.5);
-        return (
-          <g key={day.key}>
-            {!day.hasReading ? (
-              <rect
-                x={cx - slotW * 0.42}
-                y={CHART.t}
-                width={slotW * 0.84}
-                height={PLOT_H}
-                rx={2}
-                opacity={0.34}
-                style={{ fill: "var(--color-text-faint-ls)" }}
-              />
-            ) : null}
-            {day.runs !== null ? (
-              <rect
-                x={cx - barW / 2}
-                y={CHART.t + scaleY(day.runs, runsTicks.top, PLOT_H)}
-                width={barW}
-                height={Math.max(1, baseline - (CHART.t + scaleY(day.runs, runsTicks.top, PLOT_H)))}
-                rx={1.5}
-                style={{ fill: "var(--color-info-ls)" }}
-              >
-                <title>{`${day.label} 运行 ${day.runs}`}</title>
-              </rect>
-            ) : null}
-            <text x={cx} y={CHART.h - 12} textAnchor="middle" fontSize={11} style={{ fill: "var(--color-text-subtle-ls)" }}>
-              {day.label}
-            </text>
-          </g>
-        );
-      })}
-      {segments.map((segment) => (
-        <path
-          key={segment.points[0]?.key ?? segment.d}
-          d={segment.d}
-          fill="none"
-          strokeWidth={1.6}
-          style={{ stroke: "var(--color-warning-ls)" }}
+    <div className="min-w-0">
+      {hasRuns ? (
+        <TrendCurve
+          points={runsPoints}
+          height={TREND_RUNS_H}
+          tone="info"
+          testId="usg4-trend-chart"
+          ariaLabel={`近 7 天运行趋势：${days.length} 天里 ${readCount} 天有读数；曲线为当日运行数，缺读数的日留断口不补零`}
+          formatY={(value) => value.toLocaleString("en-US")}
+          peakLabel={(value) => `峰值 ${value.toLocaleString("en-US")} 次`}
         />
-      ))}
-      {segments.flatMap((segment) =>
-        segment.points.map((point) => (
-          <rect
-            key={`dot-${point.key}`}
-            x={point.cx - 2.6}
-            y={point.cy - 2.6}
-            width={5.2}
-            height={5.2}
-            style={{ fill: "var(--color-warning-ls)" }}
-          >
-            <title>{`${point.label} 运行侧成本 ${usd(point.value)}`}</title>
-          </rect>
-        )),
-      )}
-    </svg>
+      ) : null}
+      {hasCost ? (
+        <TrendCurve
+          className="mt-2"
+          points={costPoints}
+          height={TREND_COST_H}
+          tone="warning"
+          primary={false}
+          showGrid={false}
+          showX={false}
+          pad={{ l: 56, r: 12, t: 14, b: 8 }}
+          testId="usg4-trend-cost-chart"
+          ariaLabel={`近 7 天运行侧成本走势：${days.length} 天里 ${readCount} 天有读数；缺读数的日留断口`}
+          formatY={(value) => (value === 0 ? "0" : usd(value))}
+          peakLabel={(value) => `峰值 ${usd(value)}`}
+        />
+      ) : null}
+    </div>
   );
 }
 
@@ -441,7 +364,7 @@ function TrendCardBody({ panel }: { panel: Panel<TrendPanel> }): ReactNode {
   const { days, summary, offWindow } = panel.data;
   return (
     <>
-      <TrendChart days={days} maxRuns={summary.maxRuns} maxCost={summary.maxCost} />
+      <TrendChart days={days} />
       <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 pt-1 text-[11px]" style={{ color: "var(--color-text-muted-ls)" }}>
         <span className="inline-flex items-center gap-1">
           <i aria-hidden="true" style={{ width: 8, height: 8, borderRadius: 2, background: "var(--color-info-ls)" }} />

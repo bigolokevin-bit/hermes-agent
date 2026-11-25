@@ -96,31 +96,47 @@ describe('OM-17 视觉层：火花／点阵／趋势／热力', () => {
     expect(employees.querySelectorAll('.ov5-gate')).toHaveLength(4);
   });
 
-  it('趋势图：折线+轻填充、缺桶斜线断口、整数刻度、峰值点', async () => {
+  it('趋势图：平滑曲线+面积渐变、缺桶断口、整数刻度、峰值点', async () => {
     await render(view());
-    const svg = container.querySelector('.ov5-trend-svg');
+    const svg = container.querySelector('[data-testid="ov6-trend-svg"]');
     expect(svg).toBeTruthy();
-    // 峰值 8 → nice ticks 10/5/0（整数档），三条网格线。
-    const gridLines = svg?.querySelectorAll('.ov5-grid-line') ?? [];
+    // 峰值 8 → yDomainLadder 8（整数档），三档网格线（横向实线，无竖线）。
+    const gridLines = svg?.querySelectorAll('.tc-grid') ?? [];
     expect(gridLines.length).toBeGreaterThanOrEqual(3);
-    const yLabels = Array.from(svg?.querySelectorAll('.ov5-axis-lbl') ?? [])
+    expect(svg?.querySelectorAll('line.tc-grid').length).toBe(gridLines.length);
+    const yLabels = Array.from(svg?.querySelectorAll('.tc-tick') ?? [])
       .map((el) => el.textContent ?? '')
       .filter((text) => /^\d+(\.\d+)?$/.test(text));
     expect(yLabels).toContain('0');
     for (const label of yLabels) expect(Number.isInteger(Number(label))).toBe(true);
-    // 折线按缺读数断开：第 1 天单独一段、第 3–4 天一段。
-    expect(svg?.querySelectorAll('.ov5-trend-line')).toHaveLength(2);
-    // 骨架形制：只画实测折线，不画面积楔形；跨缺读数不再画插值虚线
-    // （虚线会被读成「贴 0 的实测线」），缺日只留底部断口标记。
-    expect(svg?.querySelectorAll('.ov5-trend-area')).toHaveLength(0);
-    expect(svg?.querySelectorAll('.ov5-trend-connector')).toHaveLength(0);
-    expect(svg?.querySelectorAll('.ov5-trend-pt')).toHaveLength(3);
-    expect(svg?.querySelectorAll('.ov5-trend-void')).toHaveLength(1);
+    // 曲线按缺读数断开：第 1 天单独一段、第 3–4 天一段。
+    const lines = Array.from(svg?.querySelectorAll('.tc-line') ?? []);
+    expect(lines).toHaveLength(2);
+    // 平滑判据：两点段退化成直线，三点以上的段必须是三次贝塞尔（monotone），
+    // 且没有任何一段是折线 M…L… 的多点拼接。
+    for (const line of lines) {
+      const d = line.getAttribute('d') ?? '';
+      expect(d.startsWith('M')).toBe(true);
+      expect(d).not.toContain('NaN');
+      expect((d.match(/C/g) ?? []).length + (d.match(/L/g) ?? []).length).toBeLessThanOrEqual(1);
+    }
+    // 本夹具最长的一段只有两天 ⇒ 退化成一条直线（不是多点折线）；
+    // 三点以上的平滑由 charts/monotone.test.ts 与 overview.trend 的曲线用例钉住。
+    expect(lines[1].getAttribute('d') ?? '').toMatch(/^M[^CL]*L[^CL]*$/);
+    // 面积渐变：有读数的段各一条闭合面积（fill 指向本图自己的 linearGradient）。
+    const areas = Array.from(svg?.querySelectorAll('.tc-area') ?? []);
+    expect(areas).toHaveLength(1);
+    const gradientId = (areas[0].getAttribute('fill') ?? '').replace(/^url\(#|\)$/g, '');
+    expect(svg?.querySelector(`linearGradient#${gradientId}`)).toBeTruthy();
+    // 无跨缺读数的插值连线：断日只留底部断口标记 + 孤立读数一个中性小点。
+    expect(svg?.querySelectorAll('.tc-gap')).toHaveLength(1);
+    expect(svg?.querySelectorAll('.tc-iso')).toHaveLength(1);
     // 悬停列仍逐桶 4 列（不画柱，只做命中层）。
     expect(container.querySelectorAll('[data-testid="ov6-trend"] .ov5-bar')).toHaveLength(4);
-    // 峰值点（8 次）保留圆点 + 标注。
-    expect(container.querySelector('.ov5-peak-mark')).toBeTruthy();
-    expect(container.querySelector('.ov5-peak-dot')).toBeTruthy();
+    // 峰值点（8 次）保留中性圆点 + 标注。
+    expect(container.querySelector('.tc-peak-mark')).toBeTruthy();
+    expect(container.querySelector('.tc-peak-dot')).toBeTruthy();
+    expect(container.querySelector('.tc-peak-label')?.textContent).toContain('峰值 8');
   });
 
   it('趋势悬停读数走 role=status aria-live=polite，缺桶不折 0', async () => {
@@ -155,10 +171,16 @@ describe('OM-17 视觉层：火花／点阵／趋势／热力', () => {
     expect(heat.textContent).toContain('没有运行活跃读数');
   });
 
-  it('判据④：OverviewPage.tsx 内联 <svg> 站点 ≥ 20（视觉层真的在源码里）', () => {
+  it('判据④：页内 + 曲线件内联 <svg> 站点 ≥ 20（视觉层真的在源码里）', () => {
     // jsdom 面下 import.meta.url 不是 file: 协议，按 vitest 的 cwd（web/）取路径。
-    const source = readFileSync(resolve(process.cwd(), 'src/modules/overview/OverviewPage.tsx'), 'utf8');
-    const svgSites = source.match(/<svg/g) ?? [];
-    expect(svgSites.length).toBeGreaterThanOrEqual(20);
+    // 趋势图搬到公共件 TrendCurve 后，源码站点按「页 + 件」合计：判据钉的是
+    // 「视觉层是手写 SVG，不是图片/依赖」，不是「全挤在一个文件里」。
+    const read = (relative: string) => readFileSync(resolve(process.cwd(), relative), 'utf8');
+    const page = read('src/modules/overview/OverviewPage.tsx');
+    const curve = read('src/components/charts/TrendCurve.tsx');
+    const svgSites = (page.match(/<svg/g) ?? []).length + (curve.match(/<svg/g) ?? []).length;
+    expect(svgSites).toBeGreaterThanOrEqual(20);
+    // 页内自己仍留有图标/热力等内联 svg（不为凑数把整页搬走）。
+    expect((page.match(/<svg/g) ?? []).length).toBeGreaterThanOrEqual(19);
   });
 });

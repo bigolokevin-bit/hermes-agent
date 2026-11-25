@@ -1,0 +1,99 @@
+/**
+ * 平滑走势曲线（TrendCurve）的形制。
+ *
+ * 令牌纪律：颜色一律走 tokens.css 的语义名（禁裸 hex）；渐变只写 opacity
+ * 数字（IN 原文 0.24 / 0.22 → 0.02），不写色值。
+ * 轴字 13px、线宽 2 / 1.5 / 1.25、网格只横向实线且无 dasharray。
+ */
+
+.tc-chart {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+}
+
+.tc-svg {
+  --tc-stroke: var(--color-text-subtle-ls);
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.tc-svg[data-tone='info'] {
+  --tc-stroke: var(--color-info-ls);
+}
+
+.tc-svg[data-tone='warning'] {
+  --tc-stroke: var(--color-warning-ls);
+}
+
+/* 横向实线：无竖向、无虚线 */
+.tc-grid {
+  stroke: var(--color-border-subtle-ls);
+  stroke-width: 1;
+}
+
+.tc-tick {
+  fill: var(--color-text-faint-ls);
+  font-family: var(--font-family-mono-ls);
+  font-size: 13px;
+  font-variant-numeric: var(--tabular-ls);
+}
+
+.tc-line {
+  fill: none;
+  stroke: var(--tc-stroke);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.tc-line.is-secondary {
+  stroke-width: 1.5;
+}
+
+.tc-line.is-thin {
+  stroke-width: 1.25;
+}
+
+/* 渐变停止点：同一根线的色，透明度由属性给出 */
+.tc-stop {
+  stop-color: var(--tc-stroke);
+}
+
+/* 缺读数：底部小断口，不补 0、不连线 */
+.tc-gap {
+  fill: color-mix(in srgb, var(--color-text-ls) 8%, transparent);
+}
+
+/* 孤立读数（左右皆缺）：一个中性小点，不画线段 */
+.tc-iso {
+  fill: var(--color-text-muted-ls);
+}
+
+/* 峰值：中性虚线 + 中性描点 + 文案，不用红 */
+.tc-peak-mark {
+  stroke: var(--color-text-subtle-ls);
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+  opacity: 0.55;
+}
+
+.tc-peak-dot {
+  fill: var(--color-text-muted-ls);
+}
+
+.tc-peak-label {
+  fill: var(--color-text-muted-ls);
+  font-family: var(--font-family-mono-ls);
+  font-size: 11px;
+  font-variant-numeric: var(--tabular-ls);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tc-line,
+  .tc-area {
+    transition: none;
+  }
+}

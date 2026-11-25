@@ -75,6 +75,28 @@ function view(specs: BucketSpec[], days: 7 | 14 | 30 = 14) {
   );
 }
 
+describe('曲线形制（monotone + 面积 + 断口）', () => {
+  it('连续七天有读数 → 一条三次贝塞尔，且没有断口标记', async () => {
+    await render(view([1, 5, 3, 9, 2, 4, 6].map((runs) => ({ runs, failed: 0 })), 7));
+    const svg = container.querySelector('[data-testid="ov6-trend-svg"]');
+    expect(svg).toBeTruthy();
+    const lines = Array.from(svg?.querySelectorAll('.tc-line') ?? []);
+    expect(lines).toHaveLength(1);
+    expect((lines[0].getAttribute('d') ?? '').includes('C')).toBe(true);
+    expect(svg?.querySelectorAll('.tc-gap')).toHaveLength(0);
+    expect(svg?.querySelectorAll('.tc-area')).toHaveLength(1);
+  });
+
+  it('中间断一天 → 两段曲线、一个断口，且没有任何段跨越缺日', async () => {
+    await render(view([1, 5, null, 9, 2].map((runs) => ({ runs, failed: runs === null ? null : 0 })), 7));
+    const svg = container.querySelector('[data-testid="ov6-trend-svg"]');
+    const lines = Array.from(svg?.querySelectorAll('.tc-line') ?? []);
+    expect(lines).toHaveLength(2);
+    expect(svg?.querySelectorAll('.tc-gap').length).toBeGreaterThanOrEqual(1);
+    for (const line of lines) expect((line.getAttribute('d') ?? '').includes('NaN')).toBe(false);
+  });
+});
+
 describe('x 轴日格与三标', () => {
   it('首/中/末三标取自窗口首日/中间日/末日，末日=响应 to，不越窗出现未来日期', () => {
     const points = trendWindow(
