@@ -161,11 +161,13 @@ describe('OM-05 GAP-OV5-RUNS：运行统计缺与错', () => {
     zero.todayStats = ready({ totals: { runs: 0, failed: 0 }, asOf: '2026-11-19T04:21:00Z' }) as never;
     await render(view(zero));
     expect(valueText('ov6-kpi-runs')).toBe('0'); // 真 0 允许显示 0
-    // round9：失败率没有分母就整项不渲染（不写「不计算」），读数行只留在跑/失败。
-    const foot = card('ov6-kpi-runs')!.querySelector('.ov5-kpi-foot')!.textContent ?? '';
-    expect(foot).toContain('在跑 0');
-    expect(foot).toContain('失败 0');
-    expect(foot).not.toContain('失败率');
+    // round9：分母为 0 时成功率格写「—」并在 title 说清没有分母，不写「不计算 / 0%」。
+    const rate = card('ov6-kpi-runs')!.querySelector('[data-testid="ov6-kpi-runs-cell-rate"]') as HTMLElement;
+    expect(rate.textContent).toBe('—');
+    expect(rate.closest('.ov5-pop-row')?.getAttribute('title')).toContain('没有分母');
+    expect(card('ov6-kpi-runs')!.querySelector('[data-testid="ov6-kpi-runs-cell-running"]')!.textContent).toBe('0');
+    expect(card('ov6-kpi-runs')!.querySelector('[data-testid="ov6-kpi-runs-cell-failed"]')!.textContent).toBe('0');
+    expect(card('ov6-kpi-runs')!.textContent).not.toContain('失败率');
   });
 });
 

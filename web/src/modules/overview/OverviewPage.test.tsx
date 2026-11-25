@@ -148,8 +148,9 @@ describe('OverviewView', () => {
     expect(strip.querySelectorAll('.ov5-seg')).toHaveLength(3);
     expect(container.querySelector('[data-testid="ov6-kpi-employees"]')?.textContent).toContain('可上岗');
     expect(container.querySelector('[data-testid="ov6-kpi-runs"] .ov5-kpi-value')?.textContent).toBe('10');
-    // 夹具的运行统计没带在跑数 ⇒ 副行只写真得的「失败 2」，不补在跑 0。
-    expect(container.querySelector('[data-testid="ov6-kpi-runs"]')?.textContent).toContain('失败 2');
+    // 夹具的运行统计没带在跑数 ⇒ 在跑格写「—」，失败格写真得的 2，不补在跑 0。
+    expect(container.querySelector('[data-testid="ov6-kpi-runs-cell-failed"]')?.textContent).toBe('2');
+    expect(container.querySelector('[data-testid="ov6-kpi-runs-cell-running"]')?.textContent).toBe('—');
     // 在编人数与在跑数留在页头 facts；段内主数字只放各自那一个核读数。
     expect(text).toContain('2 名数字员工');
     expect(text).toContain('今日运行');
@@ -180,7 +181,8 @@ describe('OverviewView', () => {
     const cost = container.querySelector('[data-testid="ov6-kpi-cost"]')?.textContent ?? '';
     // 日账本覆盖不全 ⇒ 今日实扣不上屏，也不拿月数字顶位；主数字写「—」。
     expect(container.querySelector('[data-testid="ov6-kpi-cost"] .ov5-kpi-value')?.textContent).toBe('—');
-    expect(cost).toContain('本月 $12.00');
+    // 矩阵不可用 ⇒ 月配额缺，本月格只写实扣 $12.00，不补分母也不编百分比。
+    expect(container.querySelector('[data-testid="ov6-kpi-cost-cell-month"]')?.textContent).toBe('$12.00');
     expect(cost).not.toContain('$1.50');
     // 缺读口只在带底声明一次（不再每段一个折叠区）。
     expect(container.querySelector('[data-testid="ov6-kpi-gaps"]')?.textContent).toContain('今日实扣');

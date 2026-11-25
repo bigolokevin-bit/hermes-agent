@@ -94,48 +94,59 @@
 .ov5-homegrid.r3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .ov5-homegrid.r2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
-/* ---------- 首排 KPI 带：一张卡 · 左中右三段 · 段间 1px 竖分隔 ----------
-   每段 = 11px 标签 / 大号等宽主数字 / 一行副读数 / 3px 细条；整带高度目标 96–130px。
-   段与段只靠一条竖线分开，不画第二层卡框；带底一行 11px 缺读口声明 + 采集时刻。 */
+/* ---------- 首排 KPI 三卡：等高卡 · 五带同基线 · hover 浮层挂细读数 ----------
+   三卡并排（卡间 12px、各 1/3 等宽），卡高目标 145–180px。卡体固定带序：
+   11px 标签行 / 大号等宽主数字 / 两行关键副读数 / 4px 细条。
+   三卡逐带落在同一条水平基线上（每带高度锁死），错位即视为未完成。
+   更细的读数全部收进 hover / focus 浮层；带底另有一行 11px 缺读口声明 + 采集时刻。 */
 .ov5-kpistrip {
   min-width: 0;
-  border-radius: 6px;
-}
-
-.ov5-kpistrip-bd {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 10px 14px 8px;
 }
 
 .ov5-kpis-row {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
   align-items: stretch;
 }
 
+/* 卡的宿主：hover/focus 触发点、浮层定位上下文。卡体本身是里面的 Card。 */
 .ov5-seg {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  border-radius: 6px;
+  outline: none;
+}
+
+.ov5-seg:focus-visible {
+  outline: 1px solid var(--color-border-ls);
+  outline-offset: 2px;
+}
+
+.ov5-seg-card {
+  flex: 1 1 auto;
+  min-width: 0;
+  border-radius: 6px;
+}
+
+.ov5-seg-bd {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 0;
   min-width: 0;
-  padding: 0 14px;
-  border-left: 1px solid var(--color-border-subtle-ls);
+  padding: 16px 14px 15px;
 }
-
-.ov5-seg:first-child {
-  padding-left: 0;
-  border-left: 0;
-}
-
-.ov5-seg:last-child { padding-right: 0; }
 
 .ov5-seg-hd {
   display: flex;
   align-items: center;
   gap: 6px;
   min-width: 0;
+  min-height: 17px;
 }
 
 .ov5-seg-label {
@@ -157,35 +168,142 @@
   align-items: baseline;
   gap: 5px;
   min-width: 0;
-  /* 主数字位固定一行高：无值降到「—」时整带不高矮跳。 */
-  min-height: 28px;
+  /* 主数字位固定一行高：无值降到「—」时整张卡不高矮跳。 */
+  min-height: 48px;
+  margin-top: 6px;
 }
 
 .ov5-seg .ov5-kpi-value {
-  font-size: 22px;
-  line-height: 1.15;
+  font-size: 26px;
+  line-height: 1.1;
   white-space: nowrap;
 }
 
-/* 副行一行读完：超宽省略，不折行把整带撑高。 */
-.ov5-seg .ov5-kpi-foot {
+/* 两行副读数：各锁一行高，三卡第 3、4 带同基线；超宽省略，不折行把卡撑高。 */
+.ov5-seg .ov5-seg-foot {
   margin: 0;
   overflow: hidden;
   color: var(--color-text-muted-ls);
   font-size: 11px;
-  line-height: 1.35;
+  line-height: 15px;
+  min-height: 15px;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 
-/* 3px 细条：只做占比提示，不铺图例；读数没回时整条画 unknown。
-   上下留白让它是「一条条」而不是压在下分隔线上的下划线。 */
+.ov5-seg .ov5-seg-foot + .ov5-seg-foot { margin-top: 3px; }
+
+.ov5-seg .ov5-seg-foot + .ov5-seg-bar { margin-top: 9px; }
+
+.ov5-seg-bar { margin-top: 9px; }
+
+/* ---------- 卡内浮层：--panel-2 底 + 1px --line + 6px 圆角 + 12px 内距 ----------
+   朝下开；卡贴近视口底部时 data-flip=1 翻到卡上方。右侧卡贴右边界对齐，
+   中间卡居中对齐；窄屏统一左对齐，宽度按视口收口，永不横向溢出。 */
+.ov5-seg-pop {
+  display: none;
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 6px);
+  left: 0;
+  width: 340px;
+  max-width: calc(100vw - 26px);
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel-2);
+  color: var(--color-text-ls);
+  text-align: left;
+  white-space: normal;
+}
+
+.ov5-seg-pop[data-open='1'] { display: block; }
+
+.ov5-seg-pop[data-flip='1'] {
+  top: auto;
+  bottom: calc(100% + 6px);
+}
+
+.ov5-seg:nth-child(2) .ov5-seg-pop {
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.ov5-seg:nth-child(3) .ov5-seg-pop {
+  left: auto;
+  right: 0;
+}
+
+.ov5-pop-hd {
+  margin: 0 0 4px;
+  color: var(--color-text-muted-ls);
+  font-size: 11px;
+  line-height: 15px;
+  letter-spacing: 0.04em;
+}
+
+.ov5-pop-sec + .ov5-pop-sec {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--color-border-subtle-ls);
+}
+
+.ov5-pop-t {
+  margin: 2px 0 2px;
+  color: var(--color-text-faint-ls);
+  font-size: 10.5px;
+  line-height: 14px;
+  letter-spacing: 0.04em;
+}
+
+.ov5-pop-dl { margin: 0; }
+
+.ov5-pop-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 24px;
+  min-width: 0;
+}
+
+.ov5-pop-k {
+  flex: 0 1 auto;
+  min-width: 0;
+  color: var(--color-text-subtle-ls);
+  font-size: 11px;
+  line-height: 16px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ov5-pop-v {
+  flex: none;
+  margin: 0;
+  color: var(--color-text-ls);
+  font-family: var(--font-family-mono-ls);
+  font-size: 12px;
+  font-variant-numeric: var(--tabular-ls);
+  line-height: 16px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.ov5-pop-row[data-tone='ok'] .ov5-pop-v { color: var(--color-success-ls); }
+.ov5-pop-row[data-tone='bad'] .ov5-pop-v { color: var(--color-danger-ls); }
+.ov5-pop-row[data-tone='unknown'] .ov5-pop-v { color: var(--color-text-subtle-ls); }
+
+/* 4px 细条：只做占比提示，不铺图例；读数没回时整条画 unknown。 */
 .ov5-seg-bar {
-  margin: 4px 0 2px;
+  display: flex;
+  align-items: center;
+  height: 4px;
 }
 
 .ov5-seg-bar .ov5-stack-svg {
-  height: 2.5px;
+  width: 100%;
+  height: 4px;
   border-radius: 2px;
 }
 
@@ -1655,15 +1773,29 @@ section.ov5-page > textarea[data-testid="ov6-summary-fallback"] {
 
 @media (max-width: 760px) {
   .ov5-page { gap: var(--space-ls-2); }
-  /* 首排三段在窄屏上下堆叠：竖分隔改成横分隔，主数字与副行各留一行。 */
-  .ov5-kpis-row { grid-template-columns: minmax(0, 1fr); }
-  .ov5-seg {
-    padding: 7px 0 0;
-    border-left: 0;
-    border-top: 1px solid var(--color-border-subtle-ls);
+  /* 首排三卡在窄屏上下堆叠：卡间竖排，高度让内容自己收口（375 不许横向溢出）。 */
+  .ov5-kpis-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
   }
-  .ov5-seg:first-child { padding-top: 0; border-top: 0; }
-  .ov5-seg .ov5-kpi-foot { white-space: normal; }
+  .ov5-seg-bd { padding: 16px 12px 14px; }
+  .ov5-seg-main { min-height: 44px; }
+  .ov5-seg .ov5-kpi-value { font-size: 24px; }
+  /* 窄屏副读数允许折行：堆叠后宽度够，宁可两行也不截断关键读数。 */
+  .ov5-seg .ov5-seg-foot {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+  }
+  /* 375 没有 hover：浮层靠点卡片开合；三卡同宽，统一左对齐，宽度按视口收口。 */
+  .ov5-seg-pop,
+  .ov5-seg:nth-child(2) .ov5-seg-pop,
+  .ov5-seg:nth-child(3) .ov5-seg-pop {
+    left: 0;
+    right: auto;
+    transform: none;
+    width: min(340px, calc(100vw - 26px));
+  }
   .ov5-head { align-items: stretch; }
   .ov5-head-main { flex-basis: 100%; }
   .ov5-sub { white-space: normal; }
