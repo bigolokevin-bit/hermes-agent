@@ -189,6 +189,12 @@
   border-radius: 2px;
 }
 
+/* 2026-11-25：真零段（今日运行 0 次）原本画成空，读作「没渲染」。
+   把轨道提到可见的描边色，零值读成一条空轨，而不是缺失。 */
+.ov5-seg-bar .ov5-stack-svg rect.track {
+  fill: var(--color-border-subtle-ls);
+}
+
 .ov5-kpis-foot {
   display: flex;
   flex-wrap: wrap;
