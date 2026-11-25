@@ -107,22 +107,25 @@ describe('OM-05 GAP-OV5-EMPLOYEES：员工目录错误与连坐', () => {
     expect(urls.filter((u) => u.includes('/budget-usage'))).toHaveLength(0);
   });
 
-  it('stats ready 但缺 byLifecycle → 在岗计数「—」，不补 0', async () => {
+  it('stats ready 但缺 byLifecycle → 交集判不出就整段留「—」，不补 0', async () => {
     const data = base();
     data.stats = ready({ total: 2, asOf: '2026-11-19T04:20:00Z' }) as never;
     await render(view(data));
-    expect(card('ov6-kpi-employees')!.querySelector('.ov5-kpi-foot')!.textContent).toContain('在岗 —');
+    const emp = card('ov6-kpi-employees')!;
+    expect(emp.querySelector('.ov5-kpi-value')!.textContent).toBe('—');
+    // 交集判不出时「受限 0」是假读数（0 人在此＝没判，不是没人受限）⇒ 副行整句省略。
+    const sub = emp.querySelector('[data-testid="ov6-kpi-employees-sub"]')!.textContent;
+    expect(sub).toBe('—');
+    expect(sub).not.toContain('受限');
   });
 });
 
 describe('OM-05 GAP-OV5-RISK：风险矩阵缺与错', () => {
-  it('matrix ready 但 items 缺口径 → atRisk「—」＋note「风险口径未接入」带 gap title', async () => {
+  it('matrix ready 但 items 缺口径 → 带底缺读口声明点名「风险口径」', async () => {
     await render(view(base(), ready({}) as never));
     const emp = card('ov6-kpi-employees')!;
-    expect(emp.querySelector('.ov5-kpi-foot')!.textContent).toContain('有风险 —');
-    const gaps = emp.querySelector('.ov5-gaps') as HTMLElement;
+    const gaps = container.querySelector('[data-testid="ov6-kpi-gaps"]') as HTMLElement;
     expect(gaps.textContent).toContain('风险口径');
-    expect(gaps.textContent).toContain('风险矩阵');
     expect(emp.querySelector('[data-testid="ov6-kpi-employees-status"]')?.getAttribute('title')).toContain('数据源');
   });
 
@@ -197,7 +200,7 @@ describe('OM-05 GAP-OV5-COST：成本账本缺与错', () => {
     const row = card('ov6-kpi-cost')!.querySelector('.ov5-kpi-issue') as HTMLElement;
     expect(row.title).toBe(OVERVIEW_GAP.cost);
     expect(row.textContent).toContain('req-cost-5');
-    const gaps = card('ov6-kpi-cost')!.querySelector('.ov5-gaps') as HTMLElement;
+    const gaps = container.querySelector('[data-testid="ov6-kpi-gaps"]') as HTMLElement;
     expect(gaps.textContent).toContain('本月实扣');
     expect(card('ov6-kpi-cost')!.querySelector('[data-testid="ov6-kpi-cost-status"]')?.getAttribute('title')).toContain('数据源');
   });

@@ -85,10 +85,9 @@ describe('OverviewView', () => {
     );
     const ids = [
       'ov6-asof',
-      'ov6-kpi-employees-stamp',
-      'ov6-kpi-runs-stamp',
+      // 首排三卡并成一条三段带：整带只留一处采集时刻（带底），不再每段一行。
+      'ov6-kpi-strip-stamp',
       'ov6-kpi-pending-stamp',
-      'ov6-kpi-cost-stamp',
       'ov6-kpi-health-stamp',
       'ov6-trend-stamp',
       'ov6-activity-stamp',
@@ -144,20 +143,25 @@ describe('OverviewView', () => {
       />,
     );
     const text = container.textContent ?? '';
-    expect(container.querySelector('[data-testid="ov6-kpi-employees"]')?.textContent).toContain('2');
-    expect(text).toContain('在岗 1');
-    expect(text).toContain('有风险 1');
+    // 三段带：段名在屏，主数字只放真值（本夹具没有四门证据 ⇒ 可上岗主数「—」）。
+    const strip = container.querySelector('[data-testid="ov6-kpi-strip"]')!;
+    expect(strip.querySelectorAll('.ov5-seg')).toHaveLength(3);
+    expect(container.querySelector('[data-testid="ov6-kpi-employees"]')?.textContent).toContain('可上岗');
+    expect(container.querySelector('[data-testid="ov6-kpi-runs"] .ov5-kpi-value')?.textContent).toBe('10');
+    // 夹具的运行统计没带在跑数 ⇒ 副行只写真得的「失败 2」，不补在跑 0。
+    expect(container.querySelector('[data-testid="ov6-kpi-runs"]')?.textContent).toContain('失败 2');
+    // 在编人数与在跑数留在页头 facts；段内主数字只放各自那一个核读数。
+    expect(text).toContain('2 名数字员工');
     expect(text).toContain('今日运行');
-    expect(text).toContain('失败率 20%');
     expect(text).toContain('待审批');
     expect(text).toContain('$1.50');
     expect(container.querySelector('[data-testid="ov6-trend"]')?.textContent).toContain('近 14 天运行趋势');
     expect(container.querySelectorAll('[data-testid="ov6-activity-row"]').length).toBe(1);
     expect(container.querySelector('[data-testid="ov6-blockers"]')?.textContent).toContain('运行');
     expect(text).not.toContain('$0.00');
+    // 真读数段：今日运行 10 次 / 今日实扣 $1.50，都来自夹具真值。
     expect(text).not.toContain('GAP-');
     expect(text).toContain('数据截至 2026-11-19 12:20 · 来源 员工统计');
-    expect(text).toContain('数据截至 2026-11-19 12:23 · 来源 成本账本');
     expect((text.match(/数据截至/g) ?? []).length).toBeGreaterThanOrEqual(4);
     expect(text).not.toContain('读取于');
   });
@@ -174,13 +178,15 @@ describe('OverviewView', () => {
       />,
     );
     const cost = container.querySelector('[data-testid="ov6-kpi-cost"]')?.textContent ?? '';
-    // 日账本覆盖不全 ⇒ 今日实扣不上屏，也不拿月数字顶位；主数行写「—」。
+    // 日账本覆盖不全 ⇒ 今日实扣不上屏，也不拿月数字顶位；主数字写「—」。
     expect(container.querySelector('[data-testid="ov6-kpi-cost"] .ov5-kpi-value')?.textContent).toBe('—');
-    expect(cost).toContain('本月实扣');
+    expect(cost).toContain('本月 $12.00');
     expect(cost).not.toContain('$1.50');
+    // 缺读口只在带底声明一次（不再每段一个折叠区）。
+    expect(container.querySelector('[data-testid="ov6-kpi-gaps"]')?.textContent).toContain('今日实扣');
     const employeeCard = container.querySelector('[data-testid="ov6-kpi-employees"]');
     expect(employeeCard?.textContent).not.toContain('GAP-');
-    expect(employeeCard?.querySelector('.ov5-gaps')?.textContent).toContain('风险口径');
+    expect(container.querySelector('[data-testid="ov6-kpi-gaps"]')?.textContent).toContain('风险口径');
     expect(employeeCard?.querySelector('[data-testid="ov6-kpi-employees-status"]')?.getAttribute('title')).toContain('数据源');
     expect(employeeCard?.querySelector('.ov5-kpi-issue')?.textContent).toContain('风险矩阵未接入');
     expect(employeeCard?.querySelector('[data-testid="ov6-kpi-employees-issue-retry"]')).toBeTruthy();
@@ -192,14 +198,11 @@ describe('OverviewView', () => {
     await render(
       <OverviewView data={data} matrix={{ k: 'ready', data: { items: [] } }} loading={false} onRetry={() => {}} />,
     );
-    const cost = container.querySelector('[data-testid="ov6-kpi-cost"]')?.textContent ?? '';
-    // round9：同页同值——成本腿没带 asOf 时沿用本页采集时刻（12:24），原因进 title。
-    expect(cost).toContain('数据截至 2026-11-19 12:24 · 来源 成本账本');
-    expect(
-      container
-        .querySelector('[data-testid="ov6-kpi-cost-stamp"] .ov5-stamp')
-        ?.getAttribute('title'),
-    ).toContain('沿用本页采集时刻');
+    // 带底唯一采集时刻只上屏真来源时间（员工统计 12:20），不拿浏览器时钟顶位。
+    const stamp = container.querySelector('[data-testid="ov6-kpi-strip-stamp"]');
+    expect(stamp?.textContent).toContain('数据截至 2026-11-19 12:20');
+    // 成本账本自身没带 asOf ⇒ title 里如实写「采集时刻未返回」，不补一个编的时刻。
+    expect(stamp?.getAttribute('title')).toContain('成本账本：采集时刻未返回');
     expect(container.textContent ?? '').not.toContain('读取于');
   });
 

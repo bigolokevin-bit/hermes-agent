@@ -1,13 +1,14 @@
 // @vitest-environment jsdom
 /**
- * 可上岗卡的门数学口径（2026-11-24 产品口径变更）：
- * - 交集只取有读口的门（V1/V2/V6）；V3 引用门无读口，整门排除但保留一行。
- * - 主数字分母 = 「可判定门能给出判定的员工数」，不是全部分母行。
- * - 三段条按真实计数画，未知段有值必须画出。
+ * 可上岗段的门数学口径（2026-11-24 产品口径变更 + 2026-11-25 首排并成三段带）：
+ * - 交集只取有读口的门（V1/V2/V6）；V3 引用门无读口，整门排除，只在带底缺读口行点名。
+ * - 主数字 = 「可判定门全过人数 / 可判定门能给出判定的人数」，不是全部员工数。
+ * - 副行只拼算得出的片段：交集判不出时连「受限」一起省略，不写「受限 0」冒充。
+ * - 3px 细条按真实计数画，未知段有值必须画出。
  *
  * 允许 V3 不进分母的理由：V3 的 pass 需要「强制引用策略可读」，而 BFF 从未接线
- * 这条策略读口（api.ts 恒 policy.wired:false）。把它留在分母会让整张卡恒为
- * 「— / —」，读者既看不到其它三门的真读数，也看不到真实的可上岗人数。
+ * 这条策略读口（api.ts 恒 policy.wired:false）。把它留在分母会让整段恒为「— / —」，
+ * 读者既看不到其它三门的真读数，也看不到真实的可上岗人数。
  */
 import { act, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
@@ -87,50 +88,40 @@ function data(readiness: ReadinessEvidence | null): DutyData {
 
 const card = () => container.querySelector('[data-testid="ov6-kpi-employees"]')!;
 const text = (sel: string) => card().querySelector(sel)?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
+const stripGaps = () =>
+  container.querySelector('[data-testid="ov6-kpi-gaps"]')?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
 
-describe('可上岗卡：可判定门取交集（V3 不进分母）', () => {
-  it('主数字位 = 可判定门全过人数 / 可判定门能给出判定的人数，并注明基于 3 门', async () => {
+describe('可上岗段：可判定门取交集（V3 不进分母）', () => {
+  it('主数字位 = 可判定门全过人数 / 可判定门能给出判定的人数', async () => {
     await render(<OverviewView data={data(evidence())} matrix={ready({ items: [] })} loading={false} onRetry={() => {}} />);
 
-    expect(card().querySelector('.ov5-kpi-value')?.textContent).toBe('1');
-    expect(text('.ov5-unit')).toContain('/ 2 可上岗');
-    expect(text('.ov5-kpi-note')).toBe('交集基于 3 门（V3 引用门无读口，未计入）');
-    expect(text('.ov5-kpi-meta')).toContain('可判定 3 门交集');
+    expect(card().querySelector('.ov5-kpi-value')?.textContent).toBe('1 / 2');
+    // 副行：受限人数 + 拦下最多的一道可判定门，都是真读数现算。
+    expect(text('[data-testid="ov6-kpi-employees-sub"]')).toBe('受限 1 · 群@门拦下 1');
   });
 
-  it('四门表保留 V3 行：值写「未接策略」，行尾说明不影响其它三门交集', async () => {
+  it('V3 无读口 → 带底缺读口行点名「V3 强制引用策略」，交集仍给真值', async () => {
     await render(<OverviewView data={data(evidence())} matrix={ready({ items: [] })} loading={false} onRetry={() => {}} />);
 
-    const rows = Array.from(card().querySelectorAll('.ov5-gate')) as HTMLElement[];
-    expect(rows).toHaveLength(4);
-    const v3 = rows.find((row) => row.querySelector('.ov5-gv')?.textContent?.includes('未接策略'))!;
-    expect(v3).toBeTruthy();
-    expect(v3.textContent).toContain('上游无强制引用策略读口；不影响其它三门交集');
-    // 其它三门是实数字，不是「— / —」
-    const values = rows
-      .map((row) => row.querySelector('.ov5-gv')?.textContent?.replace(/\s+/g, ' ').trim())
-      .filter((v) => v && v !== '未接策略');
-    expect(values).toEqual(['1 / 2', '2 / 2', '1 / 2']);
+    // 四门表已并进三段带：V3 不再占一行，改由全带唯一的缺读口行声明。
+    expect(stripGaps()).toContain('V3 强制引用策略');
+    // 有读口的三门照旧给出真交集，不因 V3 缺读口塌成「—」。
+    expect(card().querySelector('.ov5-kpi-value')?.textContent).toBe('1 / 2');
   });
 
-  it('callout 只点没读口的门，并给出可判定门的交集人数', async () => {
+  it('状态点只报覆盖率：4/5 且点名缺 V3 策略读口', async () => {
     await render(<OverviewView data={data(evidence())} matrix={ready({ items: [] })} loading={false} onRetry={() => {}} />);
-    const callout = text('.ov5-hnarrow');
-    expect(callout).toContain('可判定 3 门交集 1 人可上岗');
-    expect(callout).toContain('引用门无读口，未计入');
-    // 有读口的三门不再被说成「无读口」
-    expect(callout).not.toContain('群@、ReBAC');
+    const title = card().querySelector('[data-testid="ov6-kpi-employees-status"]')?.getAttribute('title') ?? '';
+    expect(title).toContain('数据源 4/5');
+    expect(title).toContain('V3 强制引用策略');
   });
 
-  it('三段条按真实计数画：绿 50% / 红 50%，未知 0 不画', async () => {
+  it('3px 细条按真实计数画：绿 50% / 红 50%，未知 0 不画', async () => {
     await render(<OverviewView data={data(evidence())} matrix={ready({ items: [] })} loading={false} onRetry={() => {}} />);
     const svg = card().querySelector('.ov5-stack-svg')!;
     expect(svg.querySelector('rect.ok')?.getAttribute('width')).toBe('50');
     expect(svg.querySelector('rect.bad')?.getAttribute('width')).toBe('50');
     expect(svg.querySelector('rect.unknown')).toBeNull();
-    expect(text('.ov5-legend')).toContain('1 可上岗');
-    expect(text('.ov5-legend')).toContain('1 受限');
-    expect(text('.ov5-legend')).toContain('0 未知');
   });
 
   it('未知段有值时也画出（缺一条读口 → 该员工进未知段，不进交集分母）', async () => {
@@ -148,21 +139,17 @@ describe('可上岗卡：可判定门取交集（V3 不进分母）', () => {
     ]);
     await render(<OverviewView data={data(partial)} matrix={ready({ items: [] })} loading={false} onRetry={() => {}} />);
 
-    expect(card().querySelector('.ov5-kpi-value')?.textContent).toBe('1');
-    expect(text('.ov5-unit')).toContain('/ 1 可上岗');
+    expect(card().querySelector('.ov5-kpi-value')?.textContent).toBe('1 / 1');
     const svg = card().querySelector('.ov5-stack-svg')!;
     expect(svg.querySelector('rect.ok')?.getAttribute('width')).toBe('50');
     expect(svg.querySelector('rect.unknown')?.getAttribute('width')).toBe('50');
-    expect(text('.ov5-legend')).toContain('1 未知');
   });
 
-  it('可判定门全未回答时才写「—」，并点名缺哪几门', async () => {
+  it('可判定门全未回答时才写「—」，副行不补 0', async () => {
     const dark = evidence({ stations: {}, configs: {}, approvals: { k: 'error', status: 0, message: '审批腿没回答', requestId: null } });
     await render(<OverviewView data={data(dark)} matrix={ready({ items: [] })} loading={false} onRetry={() => {}} />);
     expect(card().querySelector('.ov5-kpi-value')?.textContent).toBe('—');
-    expect(text('.ov5-kpi-note')).toContain('缺：');
-    expect(text('.ov5-kpi-note')).toContain('群@');
-    expect(text('.ov5-kpi-note')).toContain('ReBAC');
-    expect(text('.ov5-kpi-note')).toContain('审批');
+    // 判不出交集时「受限 N」也是假读数：整句省略，只留一个「—」。
+    expect(text('[data-testid="ov6-kpi-employees-sub"]')).toBe('—');
   });
 });

@@ -94,22 +94,124 @@
 .ov5-homegrid.r3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .ov5-homegrid.r2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
-/* ---------- KPI 首排：三卡等高 + 骨架带逐行对齐 ----------
-   三卡共用同一行网格：卡头 / 主数（46px 定高）/ 口径脚注 / 一句说明 /
-   明细行组（gate 行同高）/ 堆叠条 / 采集戳。信息少的卡由真读数行补足高度，
-   剩余高度只允许摊在「堆叠条以上」的两段 auto 缝里，不留半卡空白。 */
-.ov5-homegrid.ov5-kpirow { align-items: stretch; }
-.ov5-homegrid.ov5-kpirow > .ov5-kpi { display: flex; flex-direction: column; }
-.ov5-homegrid.ov5-kpirow .ov5-kpi-bd { flex: 1 1 auto; }
-/* 卡头行三卡同高（带链接的 meta 比纯文本高 1px，补齐后主数行才对齐）。 */
-.ov5-homegrid.ov5-kpirow .ov5-kpi-hd { min-height: 21px; }
-.ov5-homegrid.ov5-kpirow .ov5-kr { min-height: 46px; }
-/* 旁注挤在右半列换行，不把主数行撑出三卡不同高。 */
-.ov5-homegrid.ov5-kpirow .ov5-kpi-note { max-width: 46%; }
-/* 堆叠条带钉在底部组（条/图例/采集戳/未接入）之上：三卡同 y；
-   剩余高度全部摊在明细与条带之间，脚注组从条带起就是固定节奏。 */
-.ov5-homegrid.ov5-kpirow .ov5-stack { margin-top: auto; }
-.ov5-homegrid.ov5-kpirow .ov5-kpi-footline { margin-top: 6px; }
+/* ---------- 首排 KPI 带：一张卡 · 左中右三段 · 段间 1px 竖分隔 ----------
+   每段 = 11px 标签 / 大号等宽主数字 / 一行副读数 / 3px 细条；整带高度目标 96–130px。
+   段与段只靠一条竖线分开，不画第二层卡框；带底一行 11px 缺读口声明 + 采集时刻。 */
+.ov5-kpistrip {
+  min-width: 0;
+  border-radius: 6px;
+}
+
+.ov5-kpistrip-bd {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 14px 8px;
+}
+
+.ov5-kpis-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
+}
+
+.ov5-seg {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  padding: 0 14px;
+  border-left: 1px solid var(--color-border-subtle-ls);
+}
+
+.ov5-seg:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.ov5-seg:last-child { padding-right: 0; }
+
+.ov5-seg-hd {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.ov5-seg-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0;
+  color: var(--color-text-subtle-ls);
+  font-size: 11px;
+  font-weight: var(--font-weight-ls-medium);
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.ov5-seg-label > .ov5-i { color: var(--color-text-faint-ls); }
+
+.ov5-seg-main {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  min-width: 0;
+  /* 主数字位固定一行高：无值降到「—」时整带不高矮跳。 */
+  min-height: 28px;
+}
+
+.ov5-seg .ov5-kpi-value {
+  font-size: 22px;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+/* 副行一行读完：超宽省略，不折行把整带撑高。 */
+.ov5-seg .ov5-kpi-foot {
+  margin: 0;
+  overflow: hidden;
+  color: var(--color-text-muted-ls);
+  font-size: 11px;
+  line-height: 1.35;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* 3px 细条：只做占比提示，不铺图例；读数没回时整条画 unknown。
+   上下留白让它是「一条条」而不是压在下分隔线上的下划线。 */
+.ov5-seg-bar {
+  margin: 4px 0 2px;
+}
+
+.ov5-seg-bar .ov5-stack-svg {
+  height: 2.5px;
+  border-radius: 2px;
+}
+
+.ov5-kpis-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 14px;
+  padding-top: 6px;
+  border-top: 1px solid var(--color-border-subtle-ls);
+}
+
+.ov5-kpis-gaps {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--color-text-faint-ls);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.ov5-kpis-foot .ov5-stamps {
+  flex: 0 1 auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
 
 .ov5-kpi,
 .ov5-block,
@@ -1547,6 +1649,15 @@ section.ov5-page > textarea[data-testid="ov6-summary-fallback"] {
 
 @media (max-width: 760px) {
   .ov5-page { gap: var(--space-ls-2); }
+  /* 首排三段在窄屏上下堆叠：竖分隔改成横分隔，主数字与副行各留一行。 */
+  .ov5-kpis-row { grid-template-columns: minmax(0, 1fr); }
+  .ov5-seg {
+    padding: 7px 0 0;
+    border-left: 0;
+    border-top: 1px solid var(--color-border-subtle-ls);
+  }
+  .ov5-seg:first-child { padding-top: 0; border-top: 0; }
+  .ov5-seg .ov5-kpi-foot { white-space: normal; }
   .ov5-head { align-items: stretch; }
   .ov5-head-main { flex-basis: 100%; }
   .ov5-sub { white-space: normal; }

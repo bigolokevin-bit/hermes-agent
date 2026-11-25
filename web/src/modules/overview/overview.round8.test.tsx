@@ -64,21 +64,22 @@ async function view(over: Partial<DutyData>) {
 
 const card = (id: string) => container.querySelector(`[data-testid="${id}"]`)!;
 
-describe('round8 ① 门行：名称左 / 数值右 / 状态在数值后，无第二枚色块', () => {
-  it('门行只有标签、数值、状态、状态点各一份；名称旁没有红色徽章', async () => {
+describe('round8 ① 首排段行：标签 / 主数字 / 副读数各一份，不再有门行与图例', () => {
+  // 2026-11-25 用户口径：首排三卡并成一条三段带，四门表与堆叠图例下线
+  // （门数学仍由 buildReadiness + overview.readiness.test.tsx 的段级断言钉住）。
+  it('段内只有一处标签、一处主数字、一处副读数、一条 3px 细条', async () => {
     await view({});
-    const rows = Array.from(card('ov6-kpi-employees').querySelectorAll('.ov5-gate')) as HTMLElement[];
-    expect(rows).toHaveLength(4);
-    for (const row of rows) {
-      expect(row.querySelectorAll('.ov5-gk')).toHaveLength(1);
-      expect(row.querySelectorAll('.ov5-gv')).toHaveLength(1);
-      expect(row.querySelectorAll('.ov5-gcut')).toHaveLength(1);
-      expect(row.querySelectorAll('.ov5-gdot')).toHaveLength(1);
-      expect(row.querySelectorAll('.ov5-gtag')).toHaveLength(0);
-      // DOM 顺序：名称 → 数值 → 状态 → 点（数值在状态之前）。
-      const kids = Array.from(row.children).map((el) => el.className.split(' ')[0]);
-      expect(kids).toEqual(['ov5-gk', 'ov5-gv', 'ov5-gcut', 'ov5-gdot']);
-    }
+    const segs = Array.from(card('ov6-kpi-employees').querySelectorAll(':scope > *')) as HTMLElement[];
+    expect(segs.length).toBeGreaterThan(0);
+    const emp = card('ov6-kpi-employees');
+    expect(emp.querySelectorAll('.ov5-seg-label')).toHaveLength(1);
+    expect(emp.querySelectorAll('.ov5-kpi-value')).toHaveLength(1);
+    expect(emp.querySelectorAll('[data-testid="ov6-kpi-employees-sub"]')).toHaveLength(1);
+    expect(emp.querySelectorAll('.ov5-stack-svg')).toHaveLength(1);
+    // 旧门行/图例结构不再回流：名称旁不许再挂第二枚色块或第二行读数。
+    expect(emp.querySelector('.ov5-gate')).toBeNull();
+    expect(emp.querySelector('.ov5-legend')).toBeNull();
+    expect(emp.querySelector('.ov5-gdot')).toBeNull();
   });
 });
 

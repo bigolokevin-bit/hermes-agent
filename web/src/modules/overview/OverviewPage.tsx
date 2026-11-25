@@ -10,7 +10,7 @@ import { beijing, dashed, duration, usd } from '../duty/format';
 import { useDutyData, type DutyData } from '../duty/useDutyData';
 import { DUTY_RANGES, DEFAULT_DUTY_RANGE, dutyRange, parseDutyRange, type DutyRangeId } from '../duty/dutyRange';
 import { num } from '../duty/types';
-import type { ActivityBody, EmployeeRow, Loadable, MatrixBody, RunRow, RunStatsBody } from '../duty/types';
+import type { ActivityBody, EmployeeRow, Loadable, MatrixBody, RunStatsBody } from '../duty/types';
 import {
   buildKpis,
   blockerRows,
@@ -52,13 +52,6 @@ const PageStampContext = createContext<string | null>(null);
 
 // OM-15：服务探针状态词表——只翻译 hermes-summary 真读数，没有读数就是未接。
 const HEALTH_LABEL: Record<string, string> = { ok: '正常', degraded: '降级', down: '异常' };
-
-const RUN_STATUS_LABEL: Record<string, string> = {
-  completed: '成功',
-  succeeded: '成功',
-  failed: '失败',
-  running: '运行中',
-};
 
 /** 运行耗时：亚秒级如实写「<1s」，不把 8ms 洗成 0s，也不编造分钟数。 */
 function shortDuration(start?: string, end?: string): string {
@@ -454,97 +447,14 @@ function IssueRows({
 }
 
 /* ============================================================================
- * 骨架 3 卡：卡头 11px 微标签 + 右上「数据源 N/M」；数值 26px 等宽；
- * 不可算的主数字写「待核实」（弱色小一号），不可得读数收进卡底折叠区。
+ * 首排 KPI 带（2026-11-25 用户口径）：一整张卡、内部左中右三段、段间 1px 竖分隔。
+ * 每段三样：11px 标签 + 大号等宽主数字 + 一行副读数（可选 3px 细条）。
+ * 缺读口全页只在带底 11px 行声明一次；段内不铺破折号、不塞图例/门表/读数行组。
  * ========================================================================== */
-type KpiGap = { label: string; reason: string };
 
 /** 主数字位的未知态：16px 弱色破折号（不写「待核实」三字）。 */
 function UnknownValue() {
   return <span className="ov5-kpi-unknown">—</span>;
-}
-
-function KpiCard({
-  title,
-  meta,
-  value,
-  unit,
-  note,
-  foot,
-  stamps,
-  testid,
-  issues,
-  onRetry,
-  icon,
-  viz,
-  status,
-  gaps,
-  children,
-}: {
-  title: string;
-  meta?: ReactNode;
-  value: ReactNode;
-  unit?: ReactNode;
-  /** 主数字位右侧 11px 旁注：无值时就写缺哪个读口，巨数字位不塌。 */
-  note?: ReactNode;
-  foot?: ReactNode;
-  stamps: StampSource[];
-  testid: string;
-  issues?: KpiIssue[];
-  onRetry?: () => void;
-  icon?: ReactNode;
-  viz?: ReactNode;
-  /** 卡右上角唯一的状态点（title 里写已接通读口数 / 缺什么）。 */
-  status?: { tone: 'ok' | 'unknown' | 'bad'; title: string };
-  /** 卡内不可得的读数：默认收起在「未接入 N 项」里。 */
-  gaps?: KpiGap[];
-  children?: ReactNode;
-}) {
-  return (
-    <Card className="ov5-kpi" data-testid={testid} data-duty-testid={testid.replace('ov6-', 'duty-')}>
-      <CardContent className="ov5-kpi-bd">
-        <div className="ov5-kpi-hd">
-          <h2 className="ov5-kpi-title">
-            {icon}
-            <span>{title}</span>
-          </h2>
-          {meta ? <span className="ov5-kpi-meta">{meta}</span> : null}
-          {status ? (
-            <span
-              className={`ov5-dot ${status.tone} ov5-card-status`}
-              title={status.title}
-              data-testid={`${testid}-status`}
-            />
-          ) : null}
-        </div>
-        <div className="ov5-kr">
-          <div className="ov5-kpi-value">{value}</div>
-          {unit ? <em className="ov5-unit">{unit}</em> : null}
-          {note ? <span className="ov5-kpi-note">{note}</span> : null}
-          {viz ? <span className="ov5-kpi-viz">{viz}</span> : null}
-        </div>
-        {foot ? <p className="ov5-kpi-foot">{foot}</p> : null}
-        {children}
-        <IssueRows issues={issues} onRetry={onRetry} testid={testid} />
-        <div className="ov5-kpi-footline">
-          <Freshness items={stamps} testid={`${testid}-stamp`} />
-        </div>
-        {gaps && gaps.length > 0 ? (
-          <details className="ov5-gaps">
-            <summary>未接入 {gaps.length} 项</summary>
-            <ul>
-              {gaps.map((gap) => (
-                <li key={gap.label}>
-                  <span className="ov5-gap-field">{gap.label} —</span>
-                  <span className="ov5-gap-why">缺：{gap.reason}</span>
-                </li>
-              ))}
-            </ul>
-          </details>
-        ) : null}
-      </CardContent>
-    </Card>
-  );
 }
 
 /* ============================================================================
@@ -602,19 +512,85 @@ function StackBar({ label, segments, fullUnknown }: {
 }
 
 /* ============================================================================
- * 可上岗：四门表 + 堆叠进度条 + 图例（骨架 hcard 1）
+ * 带内一段：11px 标签（右上唯一状态点）+ 大号主数字 + 一行副读数 + 3px 细条。
+ * 读数没回时主数字写「—」，副行整句省略为「—」，不把词写进主数字位。
  * ========================================================================== */
-function ReadyCard({
+function StripSegment({
+  testid,
+  duty,
+  label,
+  icon,
+  value,
+  unit,
+  sub,
+  status,
+  bar,
+  issues,
+  onRetry,
+}: {
+  testid: string;
+  duty: string;
+  label: string;
+  icon: ReactNode;
+  value: ReactNode;
+  unit?: ReactNode;
+  sub: string;
+  status: { tone: 'ok' | 'unknown' | 'bad'; title: string };
+  bar: { label: string; segments: StackSeg[]; fullUnknown: boolean };
+  issues: KpiIssue[];
+  onRetry: () => void;
+}) {
+  return (
+    <section className="ov5-seg" data-testid={testid} data-duty-testid={duty}>
+      <div className="ov5-seg-hd">
+        <h2 className="ov5-seg-label">
+          {icon}
+          <span>{label}</span>
+        </h2>
+        <span
+          className={`ov5-dot ${status.tone} ov5-card-status`}
+          title={status.title}
+          data-testid={`${testid}-status`}
+        />
+      </div>
+      <div className="ov5-seg-main">
+        <span className="ov5-kpi-value">{value}</span>
+        {unit ? <em className="ov5-unit">{unit}</em> : null}
+      </div>
+      <p className="ov5-kpi-foot" data-testid={`${testid}-sub`}>
+        {sub}
+      </p>
+      <div className="ov5-seg-bar">
+        <StackBar label={bar.label} segments={bar.segments} fullUnknown={bar.fullUnknown} />
+      </div>
+      <IssueRows issues={issues} onRetry={onRetry} testid={testid} />
+    </section>
+  );
+}
+
+/* ============================================================================
+ * 首排 KPI 带：可上岗 / 今日运行 / 今日成本 三段并排（窄屏上下堆叠）。
+ * 真读数优先：主数字只放真值，取不到写「—」；副行逐片段现算，缺一段就少一段。
+ * 全带只有一处缺读口声明（底部 11px 行），不再每段铺破折号或折叠「未接入 N 项」。
+ * ========================================================================== */
+function KpiStrip({
   data,
   matrix,
   kpis,
+  monthActual,
+  liveCostUsd,
+  busy,
   onRetry,
 }: {
   data: DutyData;
   matrix: Loadable<MatrixBody>;
   kpis: ReturnType<typeof buildKpis>;
+  monthActual: number | null;
+  liveCostUsd: number | null;
+  busy: boolean;
   onRetry: () => void;
 }) {
+  /* ---------- 段一：可上岗 ---------- */
   const employees = data.employees.k === 'ready' ? data.employees.data : null;
   const stats = data.stats.k === 'ready' ? data.stats.data : null;
   const evidence = data.readiness && data.readiness.k === 'ready' ? data.readiness.data : null;
@@ -625,511 +601,185 @@ function ReadyCard({
   const buckets = readiness.buckets;
   const total = readiness.total ?? kpis.total;
   const denom = total ?? (employees ? employees.length : null);
-  const narrowestKey = readiness.narrowest?.key ?? null;
-  const failingGates = readiness.gates.filter(
-    (gate) => (gate.fail ?? 0) > 0 && gate.decidable !== false,
-  );
-  const restricted =
-    buckets === null
-      ? '四门证据未到'
-      : failingGates.length === 0
-        ? '无单项超限'
-        : failingGates.map((gate) => `${gate.name} ${gate.fail}`).join(' · ');
   const pct = (n: number | null | undefined) =>
     n === null || n === undefined || !denom ? null : Math.round((n / denom) * 1000) / 10;
+  const confirmed = readiness.confirmed;
+  const decidableDenom = readiness.decidableDenom;
+  const failingGates = readiness.gates
+    .filter((gate) => (gate.fail ?? 0) > 0 && gate.decidable !== false)
+    .sort((a, b) => (b.fail ?? 0) - (a.fail ?? 0));
+  const topGate = failingGates[0] ?? null;
+  // 副行只拼算得出的片段：交集判不出时「受限」也一并省略（0 人在此等于没判，不是没人受限）。
+  const readyParts: string[] = [];
+  if (confirmed !== null && buckets !== null) readyParts.push(`受限 ${buckets.failing}`);
+  if (topGate) readyParts.push(`${topGate.name}门拦下 ${topGate.fail}`);
   const unknownGates = readiness.gates.filter((gate) => gate.state === 'unknown');
-  // 口径变更（2026-11-24）：交集只取「门本身有读口」的门。V3 引用门无读口，
-  // 整门排除；卡上要把「基于几门」和「哪门没进」写清楚，不能让人读成四门全判。
-  const excludedGates = readiness.excludedGates ?? [];
-  const excludedLabel = excludedGates
-    .map((gate) => (gate.key === 'V3' ? 'V3 引用门' : gate.label))
-    .join('、');
-  const decidableCount =
-    readiness.decidableGateCount ?? readiness.gates.filter((gate) => gate.decidable !== false).length;
-  const undecidedNames = readiness.undecidedGates ?? [];
-  const v3Known = readiness.gates.find((gate) => gate.key === 'V3')?.state !== 'unknown';
+  const v3Excluded = (readiness.excludedGates ?? []).some((gate) => gate.key === 'V3');
   const coverageReady = [
     data.employees.k === 'ready',
     data.stats.k === 'ready',
     matrix.k === 'ready',
     data.readiness?.k === 'ready',
-    v3Known,
+    !v3Excluded,
   ].filter(Boolean).length;
-  const gapList: KpiGap[] = [
-    ...(v3Known ? [] : [{ label: '引用门', reason: '强制引用策略读口' }]),
-    ...(kpis.atRisk === null ? [{ label: '风险口径', reason: '风险矩阵' }] : []),
+  const readyGapLabels = [
+    ...(v3Excluded ? ['V3 强制引用策略'] : []),
+    ...(kpis.atRisk === null ? ['风险口径'] : []),
   ];
-  const statusTone = gapList.length === 0 && unknownGates.length === 0 ? 'ok' : 'unknown';
-  // 交集句常驻：有数就说人数 + 最窄门；没有就点名「哪道可判定门本轮没回答」。
-  // 「无读口」只点真正没有读口的门（excludedGates），不再把有读口的三门一起说死。
-  const calloutTail =
-    readiness.narrowest !== null
-      ? `最窄的「${readiness.narrowest.name}」拦下 ${readiness.narrowest.fail} 人`
-      : '当前没有单独卡人的可判定门';
-  const noPortTail = excludedLabel ? `；${excludedLabel}无读口，未计入` : '';
-  const callout =
-    readiness.confirmed !== null ? (
-      <>
-        <b>
-          可判定 {decidableCount} 门交集 {readiness.confirmed} 人可上岗
-        </b>
-        <span className="ov5-hsep">·</span>
-        {calloutTail}
-        {noPortTail}
-      </>
-    ) : (
-      <>
-        <b>交集暂不给</b>
-        <span className="ov5-hsep">·</span>
-        {undecidedNames.length > 0
-          ? `${undecidedNames.join('、')} 读口本轮未回，交集人数不能确认`
-          : '可判定门读数未齐，交集人数不能确认'}
-        {noPortTail}
-      </>
-    );
-  return (
-    <KpiCard
-      title="可上岗"
-      meta={`${dashed(denom)} 名 · 可判定 ${decidableCount} 门交集`}
-      value={readiness.confirmed === null ? <UnknownValue /> : readiness.confirmed}
-      unit={`/ ${dashed(readiness.decidableDenom)} 可上岗`}
-      // 右上只放覆盖率微读数；「哪几门没回、V3 无读口」这类话只在卡内段落说一遍。
-      note={`数据源 ${coverageReady}/5`}
-      status={{
-        tone: statusTone,
-        title: `数据源 ${coverageReady}/5${gapList.length > 0 ? ` · 缺：${gapList.map((gap) => gap.label).join('、')}` : ''}`,
-      }}
-      gaps={gapList}
-      foot={
-        <>
-          在岗 <b>{dashed(kpis.active)}</b> · 有风险 <b>{dashed(kpis.atRisk)}</b> · 今日 00:00 起
-        </>
-      }
-      stamps={[
-        { source: '员工统计', state: data.stats },
-        { source: '风险矩阵', state: matrix },
-        { source: '四门证据', state: data.readiness ?? { k: 'loading' } },
-      ]}
-      testid="ov6-kpi-employees"
-      issues={[
-        { label: '员工统计', state: data.employees, gap: OVERVIEW_GAP.employees },
-        ...(matrix.k === 'error' ? [{ label: '风险矩阵', state: matrix, gap: OVERVIEW_GAP.risk }] : []),
-      ]}
-      onRetry={onRetry}
-      icon={<IconUsers className="ov5-i ov5-i-13" />}
-    >
-      <p className="ov5-hsay">
-        受限 <b>{dashed(buckets?.failing)}</b>：{restricted}
-      </p>
-      <div className="ov5-gline">
-        <span>各门独立通过</span>
-        <span>/ 可判定人数</span>
-      </div>
-      <div className="ov5-gates">
-        {readiness.gates.map((gate) => {
-          const decidable = gate.decidable !== false;
-          const dot = gate.state === 'pass' ? 'ok' : gate.state === 'fail' ? 'bad' : 'warn';
-          return (
-            <div
-              className={`ov5-gate${gate.key === narrowestKey ? ' is-narrow' : ''}${decidable ? '' : ' is-static'}`}
-              key={gate.key}
-            >
-              <span className="ov5-gk" title={gate.source}>
-                {gate.name}
-              </span>
-              {decidable ? (
-                <>
-                  <span className="ov5-gv">
-                    {gate.pass === null ? '—' : gate.pass} /{' '}
-                    {gate.decided === null || gate.decided === undefined ? '—' : gate.decided}
-                  </span>
-                  <span className="ov5-gcut">
-                    {gate.state === 'unknown' ? '—' : `未达 ${gate.fail ?? 0}`}
-                  </span>
-                </>
-              ) : (
-                <>
-                  {/* 无读口的门不写「— / —」：写清它没接，并在行尾说明为何不进交集。 */}
-                  <span className="ov5-gv">未接策略</span>
-                  <span className="ov5-gcut">
-                    {gate.excludedReason ?? '上游无强制引用策略读口；不影响其它三门交集'}
-                  </span>
-                </>
-              )}
-              <i
-                className={`ov5-gdot ${dot}`}
-                title={gate.whyNot ?? gate.excludedReason ?? `${gate.name}：${gate.state}`}
-              />
-            </div>
-          );
-        })}
-      </div>
-      <div className="ov5-hnarrow">{callout}</div>
-      <div className="ov5-stack">
-        <StackBar
-          label="可上岗 / 受限 / 未知占比"
-          fullUnknown={buckets === null}
-          segments={
-            buckets === null
-              ? []
-              : [
-                  { key: 'ok', w: pct(buckets.confirmed) ?? 0 },
-                  { key: 'bad', w: pct(buckets.failing) ?? 0 },
-                  { key: 'unknown', w: pct(buckets.pending) ?? 0 },
-                ]
-          }
-        />
-        <div className="ov5-legend">
-          <span>
-            <i className="ok" />
-            {dashed(buckets?.confirmed)} 可上岗
-          </span>
-          <span>
-            <i className="bad" />
-            {dashed(buckets?.failing)} 受限
-          </span>
-          <span>
-            <i className="unknown" />
-            {dashed(buckets?.pending)} 未知
-          </span>
-          <span className="ov5-legend-note">可判定各门独立判定后再取交集</span>
-        </div>
-      </div>
-    </KpiCard>
-  );
-}
 
-/* ============================================================================
- * 今日运行：次数 + 状态分布门行 + 堆叠条（骨架 hcard 2）。
- * 三卡共用同一条带序列（卡头/主数/口径脚/一句说明/门行组/堆叠条/采集戳/未接入）；
- * 明细行只在真有在跑/失败 run 时出现，空列表不铺占位行，缺计数在卡底声明一次。
- * ========================================================================== */
-function TodayRunsCard({
-  data,
-  kpis,
-  onRetry,
-}: {
-  data: DutyData;
-  kpis: ReturnType<typeof buildKpis>;
-  onRetry: () => void;
-}) {
+  /* ---------- 段二：今日运行 ---------- */
   const today = data.todayStats.k === 'ready' ? data.todayStats.data : null;
   const totals = today?.totals ?? null;
-  // 今日总运行数为 0 且列表已空 ⇒ 在跑=0 是可证的；有运行但统计没给 running 才留「—」。
-  const running =
-    today?.totals?.running ??
-    (data.todayRuns.k === 'ready' && kpis.runs === 0 ? 0 : null);
+  // 今日总运行数为 0 且列表已空 ⇒ 在跑=0 是可证的；有运行但统计没给 running 才留空。
+  const running = totals?.running ?? (data.todayRuns.k === 'ready' && kpis.runs === 0 ? 0 : null);
   const succeeded = totals?.succeeded ?? null;
-  // 「其它」= 总数 − 成功 − 失败：只有三项都有真读数才给，否则留「—」。
-  const other =
-    kpis.runs !== null && succeeded !== null && totals?.failed != null
-      ? Math.max(0, kpis.runs - succeeded - totals.failed)
-      : null;
-  // 占比列只在算得出时出现；算不出就留空，不再每行铺一个「—」。
-  const share = (n: number | null) =>
-    n !== null && kpis.runs !== null && kpis.runs > 0
-      ? `占 ${Math.round((n / kpis.runs) * 1000) / 10}%`
-      : '';
-  const statusRows: Array<{ name: string; n: number | null; dot: 'ok' | 'warn' | 'bad'; why: string }> = [
-    { name: '运行中', n: running, dot: running === null ? 'warn' : running > 0 ? 'warn' : 'ok', why: '当前有活动 Run' },
-    { name: '成功', n: succeeded, dot: (succeeded ?? 0) > 0 ? 'ok' : 'warn', why: '今日已结束且成功的 run' },
-    { name: '失败', n: kpis.failed, dot: (kpis.failed ?? 0) > 0 ? 'bad' : kpis.failed === null ? 'warn' : 'ok', why: '今日失败的 run' },
-    { name: '取消/中断', n: other, dot: other === null ? 'warn' : other > 0 ? 'warn' : 'ok', why: '总数 − 成功 − 失败（取消、中断、待处理）' },
-  ];
+  const runsParts = [
+    running !== null ? `在跑 ${running}` : null,
+    kpis.failed !== null ? `失败 ${kpis.failed}` : null,
+  ].filter((part): part is string => part !== null);
   const pctOf = (n: number | null) =>
     n === null || kpis.runs === null || kpis.runs === 0 ? 0 : Math.round((n / kpis.runs) * 1000) / 10;
-  const failureRateText =
-    kpis.failureRate !== null
-      ? `${kpis.failureRate}%`
-      : kpis.runs === 0
-        ? null
-        : '—';
-  const coverageReady = [data.todayStats.k === 'ready', data.todayRuns.k === 'ready'].filter(Boolean).length;
-  // 缺的计数只在这里声明一次（卡底折叠项），正文行只留「—」本身。
-  const gaps: KpiGap[] = [
-    { label: '今日已运行人数', reason: '当日按人去重读口' },
-    ...(succeeded === null ? [{ label: '成功计数', reason: '运行统计未返回成功项' }] : []),
-    ...(other === null ? [{ label: '取消/中断计数', reason: '总数与成功/失败未同时给出' }] : []),
-  ];
-  const realRows =
-    data.todayRuns.k === 'ready'
-      ? data.todayRuns.data.filter((run) => run.status === 'running' || run.status === 'failed').slice(0, 3)
-      : [];
-  return (
-    <KpiCard
-      title="今日运行"
-      meta={<Link to="/work?tab=runs">运行记录 →</Link>}
-      value={kpis.runs === null ? <UnknownValue /> : kpis.runs}
-      unit="次"
-      note={`数据源 ${coverageReady}/2`}
-      status={{
-        tone: gaps.length === 0 ? 'ok' : 'unknown',
-        title: `数据源 ${coverageReady}/2${gaps.length > 0 ? ` · 缺 ${gaps.length} 项（见卡底）` : ''}`,
-      }}
-      gaps={gaps}
-      // 读数行只留能证的数：失败率没有分母（今日 0 次）就整项不渲染，不写「不计算」。
-      foot={
-        <>
-          在跑 <b>{dashed(running)}</b> · 失败 <b>{dashed(kpis.failed)}</b>
-          {failureRateText !== null ? (
-            <>
-              {' '}· 失败率 <b>{failureRateText}</b>
-            </>
-          ) : null}
-        </>
-      }
-      stamps={[{ source: '运行统计', state: data.todayStats }]}
-      testid="ov6-kpi-runs"
-      issues={[{ label: '运行统计', state: data.todayStats, gap: OVERVIEW_GAP.runs }]}
-      onRetry={onRetry}
-      icon={<IconGauge className="ov5-i ov5-i-13" />}
-    >
-      <p className="ov5-hsay">窗口＝今日 00:00 起 · 状态计数以运行统计口径为准</p>
-      <div className="ov5-gline">
-        <span>状态各自计数</span>
-        <span>/ 今日总数</span>
-      </div>
-      <div className="ov5-gates">
-        {statusRows.map((row) => (
-          <div className="ov5-gate" key={row.name}>
-            <span className="ov5-gk" title={row.why}>
-              {row.name}
-            </span>
-            <span className="ov5-gv">{dashed(row.n)}</span>
-            <span className="ov5-gcut">{share(row.n)}</span>
-            <i className={`ov5-gdot ${row.dot}`} title={row.why} />
-          </div>
-        ))}
-      </div>
-      {/* 真在跑/失败 run 才上明细行；没有就整块不渲染，不再铺占位 pill 行。 */}
-      {realRows.length > 0 ? (
-        <div className="ov5-hlist">
-          {realRows.map((run) => (
-            <RunRowLine key={run.runId} run={run} />
-          ))}
-        </div>
-      ) : null}
-      <div className="ov5-stack">
-        <StackBar
-          label="今日运行成功 / 失败 / 其它占比"
-          fullUnknown={kpis.runs === null || kpis.runs === 0}
-          segments={[
-            { key: 'ok', w: pctOf(succeeded) },
-            { key: 'bad', w: pctOf(kpis.failed) },
-            {
-              key: 'unknown',
-              w: Math.max(
-                0,
-                100 - pctOf(succeeded) - pctOf(kpis.failed),
-              ),
-            },
-          ]}
-        />
-        <div className="ov5-legend">
-          {succeeded !== null ? (
-            <span>
-              <i className="ok" />
-              {succeeded} 成功
-            </span>
-          ) : null}
-          <span>
-            <i className="bad" />
-            {dashed(kpis.failed)} 失败
-          </span>
-          {other !== null ? (
-            <span>
-              <i className="unknown" />
-              {other} 其它
-            </span>
-          ) : null}
-          <span className="ov5-legend-note">
-            {succeeded !== null && other !== null ? '分段＝今日运行统计合计' : '未返回的分段计数见卡底声明'}
-          </span>
-        </div>
-      </div>
-    </KpiCard>
-  );
-}
 
-function RunRowLine({ run }: { run: RunRow }) {
-  const bad = run.status === 'failed';
-  return (
-    <div className="ov5-hrow">
-      <span className={`ov5-pill ${bad ? 'bad' : 'info'}`}>{bad ? '失败' : '在跑'}</span>
-      <span className="ov5-ht" title={run.runId}>
-        {runCode(run.runId)} · {RUN_STATUS_LABEL[run.status ?? ''] ?? '—'}
-      </span>
-      <span className="ov5-hm">{run.startedAt ? beijing(run.startedAt).slice(11) : '—'}</span>
-    </div>
-  );
-}
-
-/* ============================================================================
- * 今日成本：主数=今日实扣，日账本没回时以本月实扣顶位（em 写明口径）；
- * 四行读数与另两卡门行同高（月配额/本月实扣/今日占月/缺读口合并行），
- * 缺读口的组写「—」，原因统一收进卡底「未接入」一次性声明。
- * ========================================================================== */
-function CostCard({
-  data,
-  kpis,
-  matrix,
-  monthActual,
-  liveCostUsd,
-  coveredRows,
-  onRetry,
-}: {
-  data: DutyData;
-  kpis: ReturnType<typeof buildKpis>;
-  matrix: Loadable<MatrixBody>;
-  monthActual: number | null;
-  liveCostUsd: number | null;
-  coveredRows: number | null;
-  onRetry: () => void;
-}) {
+  /* ---------- 段三：今日成本 ---------- */
   const quota = monthQuota(matrix);
-  const covered = kpis.costPartial ? kpis.costMissing : 0;
   const displayCost = kpis.costUsd ?? liveCostUsd;
-  // 主数行优先今日实扣；日账本没回时用本月实扣当真值顶位（口径写进 em），
-  // 「日账本未返回」收进卡底一次性声明，不再占主数右侧。
-  const mainVal = displayCost;
-  const mainIsToday = displayCost !== null;
-  const unitTail = mainIsToday
-    ? monthActual !== null
-      ? `今日实扣 / ${usd(monthActual)} 本月`
-      : '今日实扣'
-    : quota !== null
-      ? `本月实扣 / ${usd(quota)} 月配额`
-      : '本月实扣';
-  // 今日上限：BFF 没有预算日上限读口 ⇒ 斜杠后就写「—」，不把月配额挪到今日位。
-  // 本月实扣：月账本自身逐员工相加（日账本缺人不连坐月口径）。
-  const monthShare =
-    monthActual !== null && monthActual > 0 && displayCost !== null
-      ? Math.round((displayCost / monthActual) * 1000) / 10
-      : null;
-  // 本月占配额：只在本月实扣与配额都有真读数时给，缺一个就是「—」。
+  // 本月占比 = 本月实扣 ÷ 月配额，两项都有真读数才给，缺一个就不写百分比。
   const monthPct =
     monthActual !== null && quota !== null && quota > 0
       ? Math.round((monthActual / quota) * 1000) / 10
       : null;
-  const gaps: KpiGap[] = [
-    ...(displayCost === null ? [{ label: '今日实扣', reason: '日账本未返回' }] : []),
-    { label: '日上限合计', reason: '预算日上限读口' },
-    ...(quota === null ? [{ label: '月配额合计', reason: '矩阵月配额读口' }] : []),
-    ...(monthActual === null
-      ? [{ label: '本月实扣', reason: covered > 0 ? `月账本覆盖（${covered} 人缺账本）` : '月账本' }]
-      : []),
-    { label: '预估月底', reason: '月底预测读口' },
-    { label: '浪费（失败与重试）', reason: '失败/重试分类读口' },
-  ];
-  const coverageReady = [
-    data.budgetDay.k === 'ready',
-    data.budgetMonth.k === 'ready',
-    quota !== null,
-  ].filter(Boolean).length;
-  // 四行读数与「可上岗／今日运行」门行同形制同高（4 行对 4 行）：
-  // 月配额 · 本月实扣 · 今日占月 · 缺读口合并行；明细收进卡底「未接入 N 项」。
-  const readoutRows: Array<{ name: string; v: string; cut: string; dot: 'ok' | 'warn'; why: string }> = [
-    {
-      name: '月配额合计',
-      v: quota === null ? '—' : usd(quota),
-      cut: quota === null ? '' : '矩阵逐项相加',
-      dot: quota === null ? 'warn' : 'ok',
-      why: '矩阵月配额逐项相加',
-    },
-    {
-      name: '本月实扣',
-      v: monthActual === null ? '—' : usd(monthActual),
-      cut: monthPct === null ? '' : `已用 ${monthPct}%`,
-      dot: monthActual === null ? 'warn' : 'ok',
-      why: '月账本逐项相加',
-    },
-    {
-      name: '今日占月',
-      v: monthShare === null ? '—' : `${monthShare}%`,
-      cut: monthShare === null ? '' : '今日 ÷ 本月实扣',
-      dot: monthShare === null ? 'warn' : 'ok',
-      why: '今日实扣 ÷ 本月实扣',
-    },
-    {
-      name: '缺读口',
-      v: '—',
-      cut: '日上限 / 预估月底 / 浪费',
-      dot: 'warn',
-      why: '三项读口未接入，明细见卡底「未接入」',
-    },
-  ];
+  const costParts: string[] = [];
+  if (monthActual !== null && quota !== null) {
+    costParts.push(`本月 ${usd(monthActual)} / ${usd(quota)}`);
+    if (monthPct !== null) costParts.push(`${monthPct}%`);
+  } else if (monthActual !== null) {
+    costParts.push(`本月 ${usd(monthActual)}`);
+  } else if (quota !== null) {
+    costParts.push(`月配额 ${usd(quota)}`);
+  }
   const usedPct = monthPct === null ? null : Math.min(monthPct, 100);
+
+  /* ---------- 带底：全页唯一的缺读口声明 ---------- */
+  const gapParts = [
+    ...(displayCost === null ? ['今日实扣'] : []),
+    '日上限',
+    ...(quota === null ? ['月配额'] : []),
+    ...(monthActual === null ? ['本月实扣'] : []),
+    '预估月底',
+    '浪费',
+    ...(kpis.atRisk === null ? ['风险口径'] : []),
+    ...(v3Excluded ? ['V3 强制引用策略'] : []),
+  ];
+
   return (
-    <KpiCard
-      title="今日成本"
-      meta={<Link to="/overview?tab=usage">成本账本 →</Link>}
-      value={mainVal === null ? <UnknownValue /> : usd(mainVal)}
-      unit={mainVal === null ? undefined : unitTail}
-      note={`数据源 ${coverageReady}/3`}
-      status={{
-        tone: gaps.length === 0 ? 'ok' : 'unknown',
-        title: `数据源 ${coverageReady}/3${gaps.length > 0 ? ` · 缺 ${gaps.length} 项（见卡底）` : ''}`,
-      }}
-      gaps={gaps}
-      foot={
-        <>
-          账本覆盖 <b>{coveredRows === null ? '—' : coveredRows}/{dashed(kpis.total)}</b> · 今日 00:00 起
-        </>
-      }
-      stamps={[
-        { source: '成本账本', state: data.budgetDay },
-        { source: '月账本', state: data.budgetMonth },
-      ]}
-      testid="ov6-kpi-cost"
-      issues={[{ label: '成本账本', state: data.budgetDay, gap: OVERVIEW_GAP.cost }]}
-      onRetry={onRetry}
-      icon={<IconCoins className="ov5-i ov5-i-13" />}
-    >
-      <p className="ov5-hsay">实扣取月账本 · 配额取矩阵，各自逐项相加</p>
-      <div className="ov5-gline">
-        <span>本月读数</span>
-        <span>/ 已用占比</span>
-      </div>
-      <div className="ov5-gates">
-        {readoutRows.map((row) => (
-          <div className="ov5-gate" key={row.name}>
-            <span className="ov5-gk" title={row.why}>
-              {row.name}
-            </span>
-            <span className="ov5-gv">{row.v}</span>
-            <span className="ov5-gcut">{row.cut}</span>
-            <i className={`ov5-gdot ${row.dot}`} title={row.why} />
-          </div>
-        ))}
-      </div>
-      <div className="ov5-stack">
-        <StackBar
-          label="本月实扣占月配额比例"
-          fullUnknown={usedPct === null}
-          segments={[
-            { key: usedPct !== null && usedPct > 90 ? 'bad' : 'ok', w: usedPct ?? 0 },
-            { key: 'unknown', w: usedPct === null ? 0 : Math.max(0, 100 - usedPct) },
-          ]}
-        />
-        <div className="ov5-legend">
-          {monthPct !== null ? (
-            <>
-              <span>
-                <i className={monthPct > 90 ? 'bad' : 'ok'} />
-                {monthPct}% 已用
-              </span>
-              <span>
-                <i className="unknown" />
-                {Math.round((100 - monthPct) * 10) / 10}% 剩余
-              </span>
-            </>
-          ) : null}
-          <span className="ov5-legend-note">
-            {monthPct !== null ? '分段＝月实扣 ÷ 月配额' : '实扣或配额未回，见卡底声明'}
-          </span>
+    <Card className="ov5-kpistrip" data-testid="ov6-kpi-strip" data-busy={busy ? '1' : undefined}>
+      <CardContent className="ov5-kpistrip-bd">
+        <div className="ov5-kpis-row">
+          <StripSegment
+            testid="ov6-kpi-employees"
+            duty="duty-kpi-employees"
+            label="可上岗"
+            icon={<IconUsers className="ov5-i ov5-i-13" />}
+            value={
+              confirmed === null || decidableDenom === null
+                ? <UnknownValue />
+                : `${confirmed} / ${decidableDenom}`
+            }
+            sub={readyParts.length > 0 ? readyParts.join(' · ') : '—'}
+            status={{
+              tone: readyGapLabels.length === 0 && unknownGates.length === 0 ? 'ok' : 'unknown',
+              title: `数据源 ${coverageReady}/5${
+                readyGapLabels.length > 0 ? ` · 缺：${readyGapLabels.join('、')}` : ''
+              }`,
+            }}
+            bar={{
+              label: '可上岗 / 受限 / 未知占比',
+              fullUnknown: buckets === null,
+              segments:
+                buckets === null
+                  ? []
+                  : [
+                      { key: 'ok', w: pct(buckets.confirmed) ?? 0 },
+                      { key: 'bad', w: pct(buckets.failing) ?? 0 },
+                      { key: 'unknown', w: pct(buckets.pending) ?? 0 },
+                    ],
+            }}
+            issues={[
+              { label: '员工统计', state: data.employees, gap: OVERVIEW_GAP.employees },
+              ...(matrix.k === 'error' ? [{ label: '风险矩阵', state: matrix, gap: OVERVIEW_GAP.risk }] : []),
+            ]}
+            onRetry={onRetry}
+          />
+          <StripSegment
+            testid="ov6-kpi-runs"
+            duty="duty-kpi-runs"
+            label="今日运行"
+            icon={<IconGauge className="ov5-i ov5-i-13" />}
+            value={kpis.runs === null ? <UnknownValue /> : kpis.runs}
+            unit={kpis.runs === null ? undefined : '次'}
+            sub={runsParts.length > 0 ? runsParts.join(' · ') : '—'}
+            status={{
+              tone: data.todayStats.k === 'ready' && data.todayRuns.k === 'ready' ? 'ok' : 'unknown',
+              title: `数据源 ${
+                [data.todayStats.k === 'ready', data.todayRuns.k === 'ready'].filter(Boolean).length
+              }/2`,
+            }}
+            bar={{
+              label: '今日运行成功 / 失败 / 其它占比',
+              fullUnknown: kpis.runs === null || kpis.runs === 0,
+              segments: [
+                { key: 'ok', w: pctOf(succeeded) },
+                { key: 'bad', w: pctOf(kpis.failed) },
+                { key: 'unknown', w: Math.max(0, 100 - pctOf(succeeded) - pctOf(kpis.failed)) },
+              ],
+            }}
+            issues={[{ label: '运行统计', state: data.todayStats, gap: OVERVIEW_GAP.runs }]}
+            onRetry={onRetry}
+          />
+          <StripSegment
+            testid="ov6-kpi-cost"
+            duty="duty-kpi-cost"
+            label="今日成本"
+            icon={<IconCoins className="ov5-i ov5-i-13" />}
+            value={displayCost === null ? <UnknownValue /> : usd(displayCost)}
+            sub={costParts.length > 0 ? costParts.join(' · ') : '—'}
+            status={{
+              tone: displayCost !== null && monthPct !== null ? 'ok' : 'unknown',
+              title: `数据源 ${
+                [data.budgetDay.k === 'ready', data.budgetMonth.k === 'ready', quota !== null].filter(Boolean)
+                  .length
+              }/3`,
+            }}
+            bar={{
+              label: '本月实扣占月配额比例',
+              fullUnknown: usedPct === null,
+              segments: [
+                { key: usedPct !== null && usedPct > 90 ? 'bad' : 'ok', w: usedPct ?? 0 },
+                { key: 'unknown', w: usedPct === null ? 0 : Math.max(0, 100 - usedPct) },
+              ],
+            }}
+            issues={[{ label: '成本账本', state: data.budgetDay, gap: OVERVIEW_GAP.cost }]}
+            onRetry={onRetry}
+          />
         </div>
-      </div>
-    </KpiCard>
+        <div className="ov5-kpis-foot">
+          <span className="ov5-kpis-gaps" data-testid="ov6-kpi-gaps">
+            {`缺读口：${gapParts.join(' · ')}`}
+          </span>
+          <Freshness
+            items={[
+              { source: '员工统计', state: data.stats },
+              { source: '运行统计', state: data.todayStats },
+              { source: '成本账本', state: data.budgetDay },
+              { source: '月账本', state: data.budgetMonth },
+              { source: '风险矩阵', state: matrix },
+              { source: '四门证据', state: data.readiness ?? { k: 'loading' } },
+            ]}
+            testid="ov6-kpi-strip-stamp"
+          />
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -2069,20 +1719,16 @@ export function OverviewView({
         />
       ) : null}
 
-      {/* 首读时不盖整页骨架：每张卡各自有「读取中 / —」形制，页面不会先空一块再跳版。 */}
-      <div className="ov5-homegrid r3 ov5-kpirow" data-busy={anyLoading ? '1' : undefined}>
-        <ReadyCard data={data} matrix={matrix} kpis={kpis} onRetry={onRetry} />
-        <TodayRunsCard data={data} kpis={kpis} onRetry={onRetry} />
-        <CostCard
-          data={data}
-          kpis={kpis}
-          matrix={matrix}
-          monthActual={monthActual}
-          liveCostUsd={liveCostUsd}
-          coveredRows={costView.covered}
-          onRetry={onRetry}
-        />
-      </div>
+      {/* 首读时不盖整页骨架：带内每段自带「读取中 / —」形制，页面不会先空一块再跳版。 */}
+      <KpiStrip
+        data={data}
+        matrix={matrix}
+        kpis={kpis}
+        monthActual={monthActual}
+        liveCostUsd={liveCostUsd}
+        busy={anyLoading}
+        onRetry={onRetry}
+      />
 
       <ChainStrip
         kpis={kpis}

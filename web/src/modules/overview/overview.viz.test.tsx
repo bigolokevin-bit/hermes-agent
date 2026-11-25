@@ -83,17 +83,21 @@ function view(cells?: Array<{ dow: number; hour: number; count: number }>) {
 }
 
 describe('OM-17 视觉层：火花／点阵／趋势／热力', () => {
-  it('单卡不再画无轴火花小图；没有趋势源也不拿点阵占位', async () => {
+  it('首排三段带：不画无轴火花小图、不铺点阵占位、不复活门行', async () => {
     await render(view());
     const runs = container.querySelector('[data-testid="ov6-kpi-runs"]')!;
-    // P0 修复：删掉看起来「图坏了」的 40px 小图，卡高按内容收紧。
+    // P0 修复：删掉看起来「图坏了」的 40px 小图；空列表也不再铺占位 pill 行。
     expect(runs.querySelector('.ov5-spark')).toBeNull();
-    expect(runs.textContent).toContain('今天没有在跑或失败的 run');
+    expect(runs.querySelector('.ov5-hlist')).toBeNull();
+    // 三段带只有标签/主数字/副读数/细条，门行与点阵不再回流。
+    expect(runs.querySelector('.ov5-gate')).toBeNull();
+    expect(runs.querySelector('.ov5-kpi-value')?.textContent).toBe('4');
 
-    // 无趋势源的卡不拿点阵占位：员工卡换成一排四门真读数行。
     const employees = container.querySelector('[data-testid="ov6-kpi-employees"]')!;
     expect(employees.querySelector('.ov5-dots')).toBeNull();
-    expect(employees.querySelectorAll('.ov5-gate')).toHaveLength(4);
+    expect(employees.querySelector('.ov5-gate')).toBeNull();
+    // 三段在同一行网格里并排（窄屏才堆叠，那由 CSS 负责）。
+    expect(container.querySelectorAll('[data-testid="ov6-kpi-strip"] .ov5-seg')).toHaveLength(3);
   });
 
   it('趋势图：平滑曲线+面积渐变、缺桶断口、整数刻度、峰值点', async () => {
