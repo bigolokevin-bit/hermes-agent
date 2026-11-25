@@ -487,13 +487,15 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     const timeCells = [...container.querySelectorAll('[data-testid="knw5-space-time"]')];
     expect(timeCells.map((n) => n.getAttribute("title")).join(" ")).toContain("上游未返回时间");
     expect(text).toContain("租户空间");
-    // 状态认不出来就待核实，不猜。
-    expect(text).toContain("待核实");
+    // 上游没给状态的行不占位：整卡只在卡底「数据可用性」声明一次，不逐行写「待核实」。
+    const spaceDetailCard = container.querySelector('[data-testid="knv-spaces-detail"]');
+    expect(spaceDetailCard?.textContent ?? "").toContain("空间状态");
+    expect(text).toContain("上游没有给出状态的行不占位");
     const statusCells = [...container.querySelectorAll('[data-testid="knw5-space-status"]')];
-    expect(statusCells.map((n) => n.getAttribute("title"))).toContain("上游没有给出空间状态");
-    // 缺名字的那一行也不放样例：屏上直说「空间名未返回」，不拿标识或样例充名字。
+    expect(statusCells.map((n) => n.getAttribute("title"))).not.toContain("上游没有给出空间状态");
+    // 缺名字的那一行也不放样例：名称位写 11px「未命名空间」，不拿标识或样例充名字。
     const namelessRow = [...container.querySelectorAll('[data-testid="knw5-spaces-row"]')][4];
-    expect((namelessRow?.textContent ?? "").replace(/\s+/g, " ")).toContain("空间名未返回");
+    expect((namelessRow?.textContent ?? "").replace(/\s+/g, " ")).toContain("未命名空间");
     // 原始值与英文状态词不上屏。
     for (const raw of ["space_123456789", "space_zero", "space_thin", "indexed", "indexing", "tenant"]) {
       expect(text, raw).not.toContain(raw);
@@ -501,6 +503,38 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     expect(text).not.toContain("documents");
     expect(text).not.toContain("chunkCount");
     expect(attr("knw5-spaces-row", "title")).toBe("space_123456789");
+  });
+
+  it("reports upstream「未核实」as 未核实 and leaves the status slot empty when no status was given (2026-11-25 dash治理)", async () => {
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) {
+        return Promise.resolve({
+          asOf: "2026-11-19T07:00:00Z",
+          items: [
+            { spaceId: "sp_unv", name: "被上游标未核实的空间", scope: "team", docCount: 3, status: "unverified" },
+            { spaceId: "sp_no_status", name: "没给状态的空间", docCount: 2 },
+          ],
+        });
+      }
+      return fail(404, "这个数据接口还没有接入。", "rid-dash-x");
+    });
+    await render("/knowledge?tab=spaces");
+    const rows = [...container.querySelectorAll('[data-testid="knw5-spaces-row"]')];
+    const pills = rows.map((row) => row.querySelector('[data-testid="knw5-space-status"]'));
+    // 上游原话「unverified」映射成「未核实」，不落进「认不出⇒待核实」
+    expect((pills[0]?.textContent ?? "").replace(/\s+/g, " ")).toContain("未核实");
+    expect((pills[0]?.textContent ?? "")).not.toContain("待核实");
+    // 完全没给状态：状态位不占位，缺口在卡底「数据可用性」声明一次
+    expect(pills[1]).toBeNull();
+    const card = container.querySelector('[data-testid="knv-spaces-detail"]');
+    expect(card?.textContent ?? "").toContain("空间状态");
+    // 空格子与列头：向量/命中率/索引三列保留列头，格内无「—」
+    const text = container.textContent ?? "";
+    for (const head of ["文档", "向量", "命中率", "索引", "最近更新"]) expect(text).toContain(head);
+    for (const id of ["knw5-space-vectors", "knw5-space-hitrate", "knw5-space-index"]) {
+      const cells = [...container.querySelectorAll(`[data-testid="${id}"]`)];
+      expect(cells.map((n) => (n.textContent ?? "").trim())).toEqual(["", ""]);
+    }
   });
 
   it("renders spaces depth: 空间名 / 来源人话 / 文档数真 0 与缺失分开 / 最近同步 BJT / 状态词", async () => {
@@ -560,10 +594,11 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     expect(cell(3, "knw5-space-docs-extra")).toBe("分块 512 段");
 
     // 全缺的一条：逐项说缺，绝不借别条或别端点的数字
-    expect(cell(4, "knw5-space-name")).toBe("—");
+    // 名称位写 11px「未命名空间」，状态位不占位（缺读口在卡底声明一次）。
+    expect(cell(4, "knw5-space-name")).toBe("未命名空间");
     expect(cell(4, "knw5-space-docs")).toBe("—");
     expect(cell(4, "knw5-space-time")).toBe("—");
-    expect(cell(4, "knw5-space-status")).toContain("待核实");
+    expect(cell(4, "knw5-space-status")).toBe("");
 
     // 没有标识的空间不硬造链接，直说点不进去
     const nameless = rows[5]?.querySelector('[data-testid="kn-space-open"]');
@@ -2810,7 +2845,7 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     await type("kn6-search-input", "查无此词");
     expect(gBtn()?.disabled).toBe(true);
     expect(gBtn()?.getAttribute("title")).toBe("当前没有可复制的结果");
-    expect((byTestid("knG-lines")?.textContent ?? "")).toBe("—"); // R62：不写 0 冒充空集
+    expect((byTestid("knG-lines")?.textContent ?? "")).toBe(""); // R62：不写 0 冒充空集；2026-11-25 起副行不铺「—」
     await click("knG-copy");
     expect(writeText2).toHaveBeenCalledTimes(1); // 守卫兜底
     expect(fetchMock.mock.calls.length).toBe(urlsBefore);
@@ -2916,7 +2951,7 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     await type("kn8-global-input", "查无此空间");
     expect(iBtn()?.disabled).toBe(true);
     expect(iBtn()?.getAttribute("title")).toBe("当前没有可复制的空间");
-    expect((byTestid("knI-lines")?.textContent ?? "")).toBe("—"); // R62：不写 0 冒充空集
+    expect((byTestid("knI-lines")?.textContent ?? "")).toBe(""); // R62：不写 0 冒充空集；2026-11-25 起副行不铺「—」
     await click("knI-copy");
     expect(writeText2).toHaveBeenCalledTimes(1);
 
@@ -3288,8 +3323,8 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     expect(byTestid("knG-row")).toBeTruthy();
     expect((byTestid("knI-copy") as HTMLButtonElement).disabled).toBe(true);
     expect((byTestid("knI-copy")?.getAttribute("title") ?? "")).toContain("还在读取");
-    expect((byTestid("knI-lines")?.textContent ?? "")).toBe("—");
-    expect((byTestid("knG-lines")?.textContent ?? "")).toBe("—");
+    expect((byTestid("knI-lines")?.textContent ?? "")).toBe("");
+    expect((byTestid("knG-lines")?.textContent ?? "")).toBe("");
     const rowNode = byTestid("knI-row");
     releaseSpaces({
       asOf: "2026-11-19T08:00:00Z",
@@ -3353,7 +3388,7 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
       expect(byTestid("knN-retry-doc-search")).toBeTruthy();
       expect((byTestid("knG-copy") as HTMLButtonElement).disabled).toBe(true);
       expect((byTestid("knG-copy")?.getAttribute("title") ?? "")).toContain("读口未接入或没有权限");
-      expect((byTestid("knG-lines")?.textContent ?? "")).toBe("—");
+      expect((byTestid("knG-lines")?.textContent ?? "")).toBe("");
       return byTestid("kn6-search-unwired");
     };
     const goneNode = await probe404();
@@ -3761,8 +3796,8 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
       expect(RETRY_ON(id)).toBe("false"); // 还没结束，不摆重试
       expect(find(`kn-gates-${id}`)?.getAttribute("data-export")).toBe("absent");
     }
-    expect((byTestid("knI-lines")?.textContent ?? "").trim()).toBe("—");
-    expect((byTestid("knG-lines")?.textContent ?? "").trim()).toBe("—");
+    expect((byTestid("knI-lines")?.textContent ?? "").trim()).toBe("");
+    expect((byTestid("knG-lines")?.textContent ?? "").trim()).toBe("");
 
     // ---------- 2. ready 六格对照（spaces 面）：能复制才写可复制句，计数恢复 N 行 ----------
     fetchMock.mockImplementation((url: string) => {
@@ -3828,7 +3863,7 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     expect(REASON("knI")).toBe("这次读取没有成功");
     expect(STATUS("knI")).toBe("当前不可复制：这次读取没有成功");
     expect(STATUS("knG")).toBe("当前不可复制：这次读取没有成功");
-    expect((byTestid("knI-lines")?.textContent ?? "")).toBe("—");
+    expect((byTestid("knI-lines")?.textContent ?? "")).toBe("");
     expect((byTestid("knw5-spaces-retry")?.getAttribute("title") ?? "")).toBe("重试这一次读取：这次读取没有成功");
 
     // ---------- 7. knF/knL 的六格抽样（详情 ready + 抽屉 ready/ghost）+ 复制成功路径仍同源 ----------

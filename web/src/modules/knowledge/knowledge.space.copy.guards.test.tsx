@@ -191,7 +191,7 @@ describe("knowledge space-list copy (knI) guards (R265)", () => {
     const f = q("knI-copy") as HTMLButtonElement | null;
     expect(f?.disabled).toBe(true);
     expect(f?.getAttribute("title")).toBe("当前没有可复制的空间"); // 实测锁定原文（回执同步记录）
-    expect(txt(q("knI-lines"))).toBe("—"); // 计数位空帧「—」
+    expect(txt(q("knI-lines"))).toBe(""); // 计数位空帧不铺「—」（2026-11-25 治理）
     expect(q("kn3-page-cap")).toBeNull(); // 空间面无 cap（不存在该锚——非 0 断言）
     const c0 = urls().length;
     await clickNode(f, "click gated knI");

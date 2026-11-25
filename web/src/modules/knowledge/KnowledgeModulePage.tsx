@@ -1002,7 +1002,8 @@ function SpaceTable({
             const previewActive = !sdocOpen && previewKey === rowKey;
             const previewId = `kn-space-preview-${index}`;
             const code = shortId(row.id);
-            // 名称缺失但标识在场：表格身份仍写「—」，短码只作行内预览的临时身份。
+            // 名称缺失但标识在场：屏上写 11px「未命名空间」，不再用「—」占位；
+            // 短码只作行内预览的临时身份。
             const nameText =
               row.nameReason === null ? row.name : code !== null ? `空间 · ${code}` : "该字段未返回";
             const nameTitle =
@@ -1011,63 +1012,63 @@ function SpaceTable({
                 : code !== null
                   ? row.id
                   : `空间名：${row.nameReason}`;
+            const nameLabel = row.nameReason === null ? row.name : "未命名空间";
             // 授权不可用的行：字段是「未核实」而不是「空」——一个词说清整行，不再逐格堆「—」。
-            const scopeCell = row.kind ?? (row.blocked ? "未核实" : "—");
+            const scopeCell = row.kind ?? (row.blocked ? "未核实" : "");
             const docsCell = row.docsReason !== null && row.blocked ? "未核实" : row.docs;
             const atCell = row.atReason !== null && row.blocked ? "未核实" : updatedText(row.atRaw).value;
-            // 向量 / 命中率 / 索引三列今天没有读口：三格一律留「—」，列头照骨架保留；
-            // 这一行的可见范围与文档仍按授权状态写「未核实」，不混用两种口径。
-            const naCell = "—";
             return (
               <Fragment key={rowKey}>
                 <tr data-testid="knw5-spaces-row" data-active={index} data-preview={previewActive ? "1" : "0"} title={row.id || undefined}>
                   <td data-label="知识库">
                     {row.id ? (
                       <Link
-                        className="knw5-name knw5-rowlink"
+                        className={row.nameReason === null ? "knw5-name knw5-rowlink" : "knw5-name knw5-rowlink knw5-sub"}
                         data-testid="kn-space-open"
                         to={spaceLink(row.id)}
                         tabIndex={tabIndexFor(index)}
                         aria-current={active === index ? "true" : undefined}
-                        title="看这个空间里的文档——文档预览抽屉只对文档行打开，请进入空间后预览文档"
+                        title="看这个空间里的文档：文档预览抽屉只对文档行打开，请进入空间后预览文档"
                       >
-                        <Highlight text={row.name} needle={needle} testid="kn9-mark-space" />
+                        <Highlight text={nameLabel} needle={needle} testid="kn9-mark-space" />
                       </Link>
                     ) : (
                       <>
-                        <span className="knw5-name" data-testid="knw5-space-name" title={nameTitle}>
-                          <Highlight text={row.name} needle={needle} testid="kn9-mark-space" />
+                        <span
+                          className={row.nameReason === null ? "knw5-name" : "knw5-sub"}
+                          data-testid="knw5-space-name"
+                          title={nameTitle}
+                        >
+                          <Highlight text={nameLabel} needle={needle} testid="kn9-mark-space" />
                         </span>
                         {/* R102：无标识行不给链接，只给这块文本；不写剪贴板、不造 id。 */}
                         <span className="knw5-sub" data-testid="kn-space-nolink" title="该空间没有可用标识">
-                          — 点不进文档列表
+                          点不进文档列表：该空间没有可用标识
                         </span>
                       </>
                     )}
-                    {row.nameReason !== null && row.id !== "" ? (
-                      <span className="knw5-sub" data-testid="knw5-space-name-missing" title={nameTitle}>
-                        空间名未返回
+                    {/* 状态跟着名字走：骨架的「索引」列今天没有读口，整列不渲染；
+                        上游真给的状态词仍是真值（认不出的值写「待核实」，不猜）。
+                        上游根本没给状态的行不占位：整卡只在卡底「数据可用性」声明一次。 */}
+                    {row.statusRaw !== null ? (
+                      <span
+                        className="knv-cell-pill"
+                        data-testid="knw5-space-status"
+                        title={row.statusReason ?? row.statusRaw ?? undefined}
+                      >
+                        <Pill
+                          tone={
+                            row.status === "已同步" || row.status === "可用"
+                              ? "ok"
+                              : row.status === "失败" || row.status === "部分可用"
+                                ? "bad"
+                                : "mut"
+                          }
+                        >
+                          {row.status}
+                        </Pill>
                       </span>
                     ) : null}
-                    {/* 状态跟着名字走：骨架的「索引」列今天没有读口，整列不渲染；
-                        上游真给的状态词仍是真值（认不出的值写「待核实」，不猜）。 */}
-                    <span
-                      className="knv-cell-pill"
-                      data-testid="knw5-space-status"
-                      title={row.statusReason ?? row.statusRaw ?? undefined}
-                    >
-                      <Pill
-                        tone={
-                          row.status === "已同步" || row.status === "可用"
-                            ? "ok"
-                            : row.status === "失败" || row.status === "部分可用"
-                              ? "bad"
-                              : "mut"
-                        }
-                      >
-                        {row.status}
-                      </Pill>
-                    </span>
                     {row.note !== null && row.nameReason !== null ? (
                       <span className="knw5-sub" data-testid="knw5-space-note" title={row.noteRaw ?? undefined}>
                         {row.note}
@@ -1110,20 +1111,16 @@ function SpaceTable({
                     </span>
                     {row.docsExtra ? <span className="knw5-sub" data-testid="knw5-space-docs-extra">{row.docsExtra}</span> : null}
                   </td>
+                  {/* 向量 / 命中率 / 索引三列今天没有读口：列头照骨架保留，格内留空（不铺「—」），
+                      缺口由卡底「数据可用性」一次点名；可见范围与文档仍按授权状态写「未核实」。 */}
                   <td data-label="向量" className="num">
-                    <span data-testid="knw5-space-vectors" title="向量数没有读口：接上后逐格恢复">
-                      {naCell}
-                    </span>
+                    <span data-testid="knw5-space-vectors" title="向量数没有读口：接上后逐格恢复" />
                   </td>
                   <td data-label="命中率" className="num">
-                    <span data-testid="knw5-space-hitrate" title="检索命中率没有读口：接上后逐格恢复">
-                      {naCell}
-                    </span>
+                    <span data-testid="knw5-space-hitrate" title="检索命中率没有读口：接上后逐格恢复" />
                   </td>
                   <td data-label="索引">
-                    <span data-testid="knw5-space-index" title="索引状态没有读口：接上后逐格恢复">
-                      {naCell}
-                    </span>
+                    <span data-testid="knw5-space-index" title="索引状态没有读口：接上后逐格恢复" />
                   </td>
                   <td data-label="最近更新" className="num">
                     <span className="knv-mono" data-testid="knw5-space-time" title={updatedText(row.atRaw).title}>
@@ -1438,13 +1435,15 @@ function ScopeCard({ rows }: { rows: SpaceRow[] }): ReactNode {
                 <tr key={row.id || `scope-${index}`}>
                   <td data-label="知识空间">{name}</td>
                   <td data-label="可见范围" className="xs muted" title={row.kindRaw ?? undefined}>
-                    {row.kind ?? (row.blocked ? "未核实" : "—")}
+                    {row.kind ?? (row.blocked ? "未核实" : "")}
                   </td>
                   <td data-label="文档" className="num">
                     {row.docsReason !== null && row.blocked ? "未核实" : row.docs}
                   </td>
-                  <td data-label="写入">{row.blocked ? "未核实" : "—"}</td>
-                  <td data-label="引用">{row.blocked ? "未核实" : "—"}</td>
+                  {/* 写入 / 引用两列没有任何读口：列头照骨架保留，格内留空，
+                      卡底一行说明，不逐格铺「—」。 */}
+                  <td data-label="写入" />
+                  <td data-label="引用" />
                 </tr>
               );
             })}
@@ -1452,7 +1451,7 @@ function ScopeCard({ rows }: { rows: SpaceRow[] }): ReactNode {
         </table>
       </div>
       <p className="knv-missing">
-        可见范围只取上游的空间类型字段（常规空间等），不推断到具体部门；缺口维度见卡底「数据可用性」。
+        权限模型上游无读口：写入与引用两列保留列头、本页不列值；可见范围只取上游的空间类型字段（常规空间等），不推断到具体部门。缺口维度见卡底「数据可用性」。
       </p>
     </CardBlock>
   );
@@ -1727,9 +1726,10 @@ function SpacesSurface({
               testid="knv-spaces-detail"
               flush
               availability={[
-                { label: "向量数", reason: "上游不返回向量条数：列头与占位格保留" },
+                { label: "向量数", reason: "上游不返回向量条数：列头保留、格内留空" },
                 { label: "命中率", reason: "检索命中率没有读口：不画百分比、不补样例" },
                 { label: "索引状态", reason: "索引队列与重建进度没有读口：不写状态、不猜时间" },
+                { label: "空间状态", reason: "上游没有给出状态的行不占位：状态只写上游真值" },
               ]}
             >
               <SpaceTable
@@ -1771,7 +1771,7 @@ function SpacesSurface({
           复制清单
         </Button>
         <span className="knw5-sub" data-testid="knI-lines" title={kniGates.lines?.title}>
-          {kniGates.lines?.text ?? "—"}
+          {kniGates.copy.enabled ? (kniGates.lines?.text ?? "") : ""}
         </span>
         <span
           data-testid="kn-gates-knI"
@@ -3637,7 +3637,7 @@ function DocumentNameSearch({
           复制结果
         </Button>
         <span className="knw5-sub" data-testid="knG-lines" title={kngGates.lines?.title}>
-          {kngGates.lines?.text ?? "—"}
+          {kngGates.copy.enabled ? (kngGates.lines?.text ?? "") : ""}
         </span>
         <span
           data-testid="kn-gates-knG"

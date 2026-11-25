@@ -1385,6 +1385,8 @@ function spaceStatusLabel(raw: string | null): string {
     return "待同步";
   }
   if (["failed", "error", "broken"].includes(lower)) return "失败";
+  // 上游自己就说「未核实」：这是它的原话，不是我们认不出的词，照实写成「未核实」。
+  if (["unverified", "un_verified", "unconfirmed"].includes(lower)) return "未核实";
   if (["disabled", "paused", "offline", "archived"].includes(lower)) return "已停用";
   if (["active", "enabled", "ready", "normal", "available", "ok"].includes(lower)) return "可用";
   if (["degraded", "partial", "warning"].includes(lower)) return "部分可用";

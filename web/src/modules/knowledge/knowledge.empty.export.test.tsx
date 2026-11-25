@@ -107,7 +107,7 @@ describe("knowledge empty-state export counters & search-face rid guards (R215, 
     const fLines = (q("knF-lines")?.textContent ?? "").trim();
     const gLines = (q("knG-lines")?.textContent ?? "").trim();
     expect(fLines).toBe("—"); // 产品真值：零行不显 0，计数位落「—」（R138 只在 error 态锁过，真 0 未锁）
-    expect(gLines).toBe("—");
+    expect(gLines).toBe(""); // knG 与 knF 分开锁：knG 副行不再落「—」（2026-11-25 治理）
     // 禁裸 0 冒充空集（全文）；空态句在场
     expect(container.textContent ?? "").not.toMatch(/(^|[^0-9.])0\s*(条|篇|个)/);
     expect(q("knN-empty-text-space-docs")).toBeTruthy();
