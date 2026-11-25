@@ -49,7 +49,7 @@ export const zh: Translations = {
   },
 
   app: {
-    brand: "sekoi AgentOS",
+    brand: "SEAKOI Agent OS",
     brandShort: "HA",
     closeNavigation: "关闭导航",
     closeModelTools: "关闭模型与工具",

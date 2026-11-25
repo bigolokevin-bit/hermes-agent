@@ -55,7 +55,7 @@ export const en: Translations = {
   },
 
   app: {
-    brand: "sekoi AgentOS",
+    brand: "SEAKOI Agent OS",
     brandShort: "HA",
     // R4 item 6: Chinese is the only navigation system (L0 ruling).
     closeNavigation: "关闭导航",

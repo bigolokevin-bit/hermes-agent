@@ -50,7 +50,7 @@ export const es: Translations = {
   },
 
   app: {
-    brand: "sekoi AgentOS",
+    brand: "SEAKOI Agent OS",
     brandShort: "HA",
     closeNavigation: "Cerrar navegación",
     closeModelTools: "Cerrar modelo y herramientas",

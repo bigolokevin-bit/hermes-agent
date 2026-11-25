@@ -41,13 +41,20 @@
 
 .sidebar-brand-mark {
   flex: none;
-  width: 19px;
-  height: 19px;
+  /* 鱼形标 viewBox 1343×1024（≈1.31:1）：只钉高、宽度随比例，
+     钉成 19×19 会把鱼压扁。 */
+  width: auto;
+  height: 20px;
   color: var(--fg);
 }
 
-/* 折叠档品牌：两行 sekoi / AGENT OS 收成居中的单字「S」（等宽 18px --fg），
- * 不再留一个空描边框（用户实机投诉：收起后品牌整块消失、原位只剩空框）。 */
+/* 折叠档品牌：56px 图标轨里放鱼形标（2026-11-25 用户要求换 logo，
+ * 原先的居中单字「S」保留规则但不再使用）。 */
+.sidebar-brand-mark--rail {
+  height: 18px;
+  margin: 0 auto;
+}
+
 .sidebar-brand-letter {
   display: inline-flex;
   align-items: center;

@@ -12,6 +12,7 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
+import { SeakoiFishMark } from "./components/brand/SeakoiFishMark";
 import {
   Routes,
   Route,
@@ -1036,57 +1037,12 @@ export default function App() {
               >
                 <PluginSlot name="header-left" />
 
-                {/* 骨架品牌的 7×7 像素标（console-v4-skeleton.html .brand .mark）。 */}
-                <svg
-                  aria-hidden="true"
-                  className="sidebar-brand-mark"
-                  viewBox="0 0 23 23"
-                  width="19"
-                  height="19"
-                >
-                  <g fill="currentColor">
-                    <rect x="0" y="0" width="2" height="2" />
-                    <rect x="3" y="0" width="2" height="2" />
-                    <rect x="6" y="0" width="2" height="2" />
-                    <rect x="0" y="3" width="2" height="2" />
-                    <rect x="0" y="6" width="2" height="2" />
-                    <rect x="3" y="3" width="2" height="2" opacity=".22" />
-                    <rect x="6" y="3" width="2" height="2" opacity=".22" />
-                    <rect x="3" y="6" width="2" height="2" opacity=".22" />
-                    <rect x="6" y="6" width="2" height="2" opacity=".9" />
-                    <rect x="12" y="0" width="2" height="2" opacity=".22" />
-                    <rect x="15" y="0" width="2" height="2" opacity=".22" />
-                    <rect x="18" y="0" width="2" height="2" opacity=".22" />
-                    <rect x="12" y="3" width="2" height="2" opacity=".22" />
-                    <rect x="15" y="3" width="2" height="2" opacity=".9" />
-                    <rect x="18" y="3" width="2" height="2" opacity=".22" />
-                    <rect x="12" y="6" width="2" height="2" opacity=".9" />
-                    <rect x="15" y="6" width="2" height="2" opacity=".22" />
-                    <rect x="18" y="6" width="2" height="2" opacity=".22" />
-                    <rect x="0" y="12" width="2" height="2" opacity=".22" />
-                    <rect x="3" y="12" width="2" height="2" opacity=".22" />
-                    <rect x="6" y="12" width="2" height="2" opacity=".22" />
-                    <rect x="0" y="15" width="2" height="2" opacity=".22" />
-                    <rect x="3" y="15" width="2" height="2" opacity=".9" />
-                    <rect x="6" y="15" width="2" height="2" opacity=".22" />
-                    <rect x="0" y="18" width="2" height="2" opacity=".9" />
-                    <rect x="3" y="18" width="2" height="2" opacity=".22" />
-                    <rect x="6" y="18" width="2" height="2" opacity=".22" />
-                    <rect x="12" y="12" width="2" height="2" opacity=".22" />
-                    <rect x="15" y="12" width="2" height="2" opacity=".22" />
-                    <rect x="18" y="12" width="2" height="2" opacity=".22" />
-                    <rect x="12" y="15" width="2" height="2" opacity=".22" />
-                    <rect x="15" y="15" width="2" height="2" opacity=".22" />
-                    <rect x="18" y="15" width="2" height="2" opacity=".22" />
-                    <rect x="12" y="18" width="2" height="2" opacity=".22" />
-                    <rect x="15" y="18" width="2" height="2" opacity=".22" />
-                    <rect x="18" y="18" width="2" height="2" opacity=".9" />
-                  </g>
-                </svg>
+                {/* SEAKOI 鱼形标（用户提供的 鱼-01.svg，2026-11-25 换掉骨架像素标）。 */}
+                <SeakoiFishMark size={20} className="sidebar-brand-mark" />
 
-                {/* 品牌两行：sekoi / AGENT OS（18px、0.09em、0.95 行高、紧排）。 */}
+                {/* 品牌两行：SEAKOI / Agent OS（18px、0.09em、0.95 行高、紧排）。 */}
                 <span className="sidebar-brand">
-                  <span className="sidebar-brand-name">sekoi</span>
+                  <span className="sidebar-brand-name">SEAKOI</span>
                   <span className="sidebar-brand-sub">Agent OS</span>
                 </span>
               </div>
@@ -1104,12 +1060,10 @@ export default function App() {
               {/* 折叠档品牌：两行 sekoi / AGENT OS 收成单字 S，居中对齐 56px 轨，
                   不留空描边框（2026-11-24，用户实机投诉）。 */}
               {collapsed && (
-                <span
-                  className="sidebar-brand-letter hidden lg:inline-flex"
-                  aria-hidden="true"
-                >
-                  S
-                </span>
+                <SeakoiFishMark
+                  size={18}
+                  className="sidebar-brand-mark sidebar-brand-mark--rail hidden lg:block"
+                />
               )}
 
               {/* n17 (UI-SHELL): the collapse control moved to the top bar
