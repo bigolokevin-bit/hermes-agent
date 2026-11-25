@@ -94,6 +94,23 @@
 .ov5-homegrid.r3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .ov5-homegrid.r2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
+/* ---------- KPI 首排：三卡等高 + 骨架带逐行对齐 ----------
+   三卡共用同一行网格：卡头 / 主数（46px 定高）/ 口径脚注 / 一句说明 /
+   明细行组（gate 行同高）/ 堆叠条 / 采集戳。信息少的卡由真读数行补足高度，
+   剩余高度只允许摊在「堆叠条以上」的两段 auto 缝里，不留半卡空白。 */
+.ov5-homegrid.ov5-kpirow { align-items: stretch; }
+.ov5-homegrid.ov5-kpirow > .ov5-kpi { display: flex; flex-direction: column; }
+.ov5-homegrid.ov5-kpirow .ov5-kpi-bd { flex: 1 1 auto; }
+/* 卡头行三卡同高（带链接的 meta 比纯文本高 1px，补齐后主数行才对齐）。 */
+.ov5-homegrid.ov5-kpirow .ov5-kpi-hd { min-height: 21px; }
+.ov5-homegrid.ov5-kpirow .ov5-kr { min-height: 46px; }
+/* 旁注挤在右半列换行，不把主数行撑出三卡不同高。 */
+.ov5-homegrid.ov5-kpirow .ov5-kpi-note { max-width: 46%; }
+/* 堆叠条带钉在底部组（条/图例/采集戳/未接入）之上：三卡同 y；
+   剩余高度全部摊在明细与条带之间，脚注组从条带起就是固定节奏。 */
+.ov5-homegrid.ov5-kpirow .ov5-stack { margin-top: auto; }
+.ov5-homegrid.ov5-kpirow .ov5-kpi-footline { margin-top: 6px; }
+
 .ov5-kpi,
 .ov5-block,
 .ov5-error-card,
@@ -108,7 +125,7 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 11px 13px 10px;
+  padding: 12px 13px;
 }
 
 .ov5-kpi-hd {
@@ -526,47 +543,6 @@
   min-width: 0;
 }
 
-/* 今日成本：本月一行 + 六组读数两列三行（骨架形制），空值留「—」。 */
-.ov5-cost-month {
-  margin: 1px 0 0;
-  color: var(--color-text-muted-ls);
-  font-size: 11.5px;
-  line-height: 1.45;
-}
-
-.ov5-cost-month b {
-  color: var(--color-text-ls);
-  font-family: var(--font-family-mono-ls);
-  font-weight: var(--font-weight-ls-regular);
-  font-variant-numeric: var(--tabular-ls);
-}
-
-.ov5-cost-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1px 14px;
-  margin-top: 2px;
-  padding-top: 3px;
-  border-top: 1px solid var(--color-border-subtle-ls);
-  color: var(--color-text-faint-ls);
-  font-size: 10.5px;
-  line-height: 1.55;
-}
-
-.ov5-cost-grid span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.ov5-cost-grid b {
-  color: var(--color-text-muted-ls);
-  font-family: var(--font-family-mono-ls);
-  font-weight: var(--font-weight-ls-regular);
-  font-variant-numeric: var(--tabular-ls);
-}
-
 /* 列表卡头右侧的计数入口（待我处理卡：N 待批）。 */
 .ov5-headcount {
   color: var(--color-text-ls);
@@ -643,6 +619,13 @@
   color: var(--color-info-ls);
   border-color: color-mix(in srgb, var(--color-info-ls) 34%, transparent);
   background: color-mix(in srgb, var(--color-info-ls) 8%, transparent);
+}
+
+/* 「成功 N 次」行用的绿签：与失败/在跑同形制，不新造视觉语言。 */
+.ov5-pill.ok {
+  color: var(--color-success-ls);
+  border-color: color-mix(in srgb, var(--color-success-ls) 34%, transparent);
+  background: color-mix(in srgb, var(--color-success-ls) 8%, transparent);
 }
 
 /* ---------- 三条细长条：单行紧凑（骨架 9px 12px 内边距，无前置图标） ---------- */
