@@ -6,6 +6,7 @@ import { fetchJSON, setManagementProfile } from "@/lib/api";
 import { ptyAttachToken } from "@/lib/pty-attach-token";
 import { ProfileContext } from "@/contexts/profile-context";
 import { useProfileScope } from "@/contexts/useProfileScope";
+import { loadEmployeeSoul, SOUL_MARKER } from "./employeeSoul";
 import "./chat-module.css";
 import {
   EmptyBlock,
@@ -179,6 +180,108 @@ function useEmployeeGuard(employeeId: string): {
   return { state, armedFor, reload: () => setNonce((n) => n + 1) };
 }
 
+// ── per-employee Hermes profile（2026-11-26 用户拍板走 A：同进程多 profile） ──
+//
+// 每个数字员工在自己的 profile 下开会话：会话、工作区、历史都互不可见，
+// 但仍在同一个 Hermes 进程里跑（不新造容器，不新造第二套对话宿主）。
+//
+// 名字规则：员工 id 常带大写十六进制，不是合法 profile 名，所以取尾段 8 位转小写，
+// 前缀 emp-。同一员工每次都映射到同一个名字（幂等，不随刷新变化）。
+//
+// 创建策略：只有在**打开这位员工的对话时**才确保 profile 存在（不在名册页批量建档）。
+// 首次创建用 clone_from_default 继承当前可用的模型/凭据，但**人格不继承**：
+// 建档请求同时带上按该员工岗位职责合成的人设（soul=，见 employeeSoul.ts），
+// 否则克隆来的 system_prompt 会让它自称上一位员工。
+// 人设素材读不齐（缺姓名/岗位/岗位职责）时不建档，退回默认档并如实说明；
+// 绝不拿别人的开场白顶上去。
+
+export function employeeProfileName(employeeId: string): string | null {
+  const tail = employeeId
+    .replace(/^(?:emp|run|rn|task|apr|aud|cs|session)[_:-]?/i, "")
+    .replace(/[^0-9a-z]/gi, "")
+    .toLowerCase()
+    .slice(0, 8);
+  return tail ? `emp-${tail}` : null;
+}
+
+type ProfileState =
+  | { k: "idle"; name: "" }
+  | { k: "resolving"; name: "" }
+  | { k: "ready"; name: string; created: boolean }
+  | { k: "failed"; name: ""; reason: string };
+
+function useEmployeeProfile(employeeId: string, enabled = true): ProfileState {
+  const [state, setState] = useState<ProfileState>({ k: "idle", name: "" });
+
+  useEffect(() => {
+    const name = employeeProfileName(employeeId);
+    if (!enabled || !employeeId || !name) {
+      setState({ k: "idle", name: "" });
+      return;
+    }
+    let alive = true;
+    setState({ k: "resolving", name: "" });
+    (async () => {
+      const listed = await fetchJSON<{
+        profiles?: Array<{ name?: string; description?: string }>;
+      }>("/api/profiles");
+      const rec = (listed?.profiles ?? []).find((p) => p?.name === name);
+      const exists = !!rec;
+      // 判断「这一档是不是控制台建的」：建档时我们写了带「控制台自动创建」的描述。
+      // 是 → 人格归控制台管（可校正）；不是且没有受管标记 → 是用户自己的档，不碰。
+      const managedByConsole =
+        typeof rec?.description === "string" && rec.description.includes("控制台自动创建");
+      if (exists) {
+        // 已存在也要核对人格：现有的档案可能是「克隆默认档」造的，system_prompt 里
+        // 是上一位员工；也可能员工改了岗位职责。两种都由 SOUL.md 校正。
+        // 但只改带受管标记的文件 —— 用户手写的人格不抢笔。
+        const cur = await fetchJSON<{ content?: string; exists?: boolean }>(
+          `/api/profiles/${encodeURIComponent(name)}/soul`,
+        ).catch(() => null);
+        const content = typeof cur?.content === "string" ? cur.content : "";
+        if (content.trim() && !content.includes(SOUL_MARKER) && !managedByConsole) {
+          if (alive) setState({ k: "ready", name, created: false });
+          return;
+        }
+        const { soul } = await loadEmployeeSoul(employeeId, (u) => fetchJSON<unknown>(u));
+        if (content.trim() !== soul.trim()) {
+          await fetchJSON<unknown>(`/api/profiles/${encodeURIComponent(name)}/soul`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ content: soul }),
+          });
+        }
+        if (alive) setState({ k: "ready", name, created: false });
+        return;
+      }
+      // 建档前先取这位员工自己的人设：clone_from_default 会把「上一位员工」的
+      // system_prompt 一起复制过来（实测会自称别人），而 POST /api/profiles
+      // 支持 soul= ，所以一次就把人格写对，不留补救步骤。
+      const { soul } = await loadEmployeeSoul(employeeId, (u) => fetchJSON<unknown>(u));
+      await fetchJSON<unknown>("/api/profiles", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          clone_from_default: true,
+          soul,
+          description: `数字员工 ${employeeId} 的独立对话档（控制台自动创建）`,
+        }),
+      });
+      if (alive) setState({ k: "ready", name, created: true });
+    })().catch((err: unknown) => {
+      if (!alive) return;
+      const reason = err instanceof Error && err.message ? err.message : "创建独立对话档失败";
+      setState({ k: "failed", name: "", reason });
+    });
+    return () => {
+      alive = false;
+    };
+  }, [employeeId, enabled]);
+
+  return state;
+}
+
 // ── scoped profile（对话主机只认这个上下文，不新造第二套） ────────────────
 
 /**
@@ -241,12 +344,12 @@ export default function ChatModulePage({
   // scope — the right column's session.create goes over WS where the proxy
   // cannot rewrite the frame. "" = no dedicated profile on this host → the
   // gateway falls back to its default profile (honest, not an error).
-  // 2026-11-26（用户实机投诉「session / workplace 都没显示」）：员工工号解析出的
-  // 空 profile（如 emp_001）在本机没有任何会话，按它过滤后侧栏必然为空，而真实
-  // 会话都属于启动档 default。本机只有一个注入了员工人格的默认档，故不再把员工
-  // 钉到专用 profile，统一用 ""（不带 profile）——会话/工作区列表回到 default，
-  // 人格仍由 ~/.hermes/config.yaml 的 agent.system_prompt 提供。
-  const chatProfile = "";
+  // 2026-11-26 用户拍板走 A：每位员工一个独立 Hermes profile（同进程、会话隔离）。
+  // profile 未解析完之前不挂对话宿主，避免先用默认档建出会话再切走（会留下脏会话）。
+  // 解析失败时退回默认档（""），并在页面上写明「本次落在默认档」，不假装隔离已生效。
+  const forced = searchParams.get("state");
+  const profileState = useEmployeeProfile(employeeId, forced === null);
+  const chatProfile = profileState.k === "ready" ? profileState.name : "";
 
   // Render-phase mirror of the write target, the ProfileProvider contract
   // (ProfileProvider.tsx:69-71): child effects in the same commit must see
@@ -263,7 +366,6 @@ export default function ChatModulePage({
   }, [outer.profile]);
   useEffect(() => () => setManagementProfile(outerProfileRef.current), []);
 
-  const forced = searchParams.get("state");
   const forceRid = searchParams.get("rid");
   const { state, armedFor, reload } = useEmployeeGuard(forced ? "" : employeeId);
 
@@ -272,7 +374,12 @@ export default function ChatModulePage({
   // host subtree is keyed by id, so an id switch unmounts the old ChatPage —
   // closing its WebSocket (ChatPage.tsx:1546-1584 cleanup) — before a new
   // host can arm for the incoming employee.
-  const showHost = forced === null && employeeId !== "" && state.k === "ready" && armedFor === employeeId;
+  const showHost =
+    forced === null &&
+    employeeId !== "" &&
+    state.k === "ready" &&
+    armedFor === employeeId &&
+    (profileState.k === "ready" || profileState.k === "failed");
   const showBusy = forced === null && employeeId !== "" && !showHost && state.k !== "error";
 
   return (
@@ -333,6 +440,20 @@ export default function ChatModulePage({
       )}
 
       {showBusy && <BusyHost />}
+
+      {/* 隔离口径上屏：让「这条会话归谁」这件事可见，而不是靠猜。
+          失败时明说落回默认档 —— 不把共享档伪装成独立档。 */}
+      {forced === null && employeeId !== "" && profileState.k === "ready" ? (
+        <p className="text-xs text-muted-foreground" data-testid="chat-profile-scope">
+          本对话运行在员工独立档 <code className="font-mono">{profileState.name}</code>
+          {profileState.created ? "（首次打开时自动创建）" : ""}；会话与历史只属于这位员工。
+        </p>
+      ) : null}
+      {forced === null && employeeId !== "" && profileState.k === "failed" ? (
+        <p className="text-xs text-muted-foreground" data-testid="chat-profile-fallback">
+          独立对话档创建失败（{profileState.reason}）：本次对话落在默认档，会话不会归属到该员工。
+        </p>
+      ) : null}
 
       {/* Error / denied (CHAT-03): human words + request id + retry;
           403/404 collapse into the honest 「无权限或未开放」 wording. */}
