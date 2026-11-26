@@ -62,9 +62,24 @@ interface HeaderInfo {
   name: string | null;
   role: string | null;
   department: string | null;
+  /** 生命周期原值（active / draft / suspended …）；读不到就是 null，不猜。 */
+  lifecycle: string | null;
 }
 
-const EMPTY_HEADER: HeaderInfo = { name: null, role: null, department: null };
+const EMPTY_HEADER: HeaderInfo = { name: null, role: null, department: null, lifecycle: null };
+
+/**
+ * 生命周期词表：只用于「为什么这一屏全是 —」的说明句，不替换字段原值。
+ * 未在册的值一律显示原值本身（待核实），不硬翻译。
+ */
+const LIFECYCLE_COPY: Record<string, string> = {
+  draft: "草稿",
+  pending: "待启用",
+  active: "在岗",
+  suspended: "已停用",
+  offboarded: "已离职",
+  retired: "已归档",
+};
 
 /** 标题只用详情读口回传的字段；任何失败都静默退到「员工 · 短码」。 */
 function useHeaderInfo(employeeId: string): HeaderInfo {
@@ -86,6 +101,7 @@ function useHeaderInfo(employeeId: string): HeaderInfo {
             name: pickString(rec.name),
             role: pickString(rec.title, rec.role, rec.position),
             department: pickString(rec.department),
+            lifecycle: pickString(rec.lifecycleState, rec.lifecycle),
           },
         });
       })
@@ -179,6 +195,17 @@ export default function EmployeeDetailWorkbench({
           {chatOnly ? "退出全屏" : "对话全屏"}
         </button>
       </div>
+
+      {/* 未上岗员工的「空」要说清楚：名册里第一条常常是草稿态员工，
+          点进来右侧大半是「—」。那不是加载失败，是还没有任何记账与运行。
+          这句话只在生命周期不是 active 时出现，在岗员工不受影响。 */}
+      {header.lifecycle && header.lifecycle !== "active" ? (
+        <p className="edw-write-note" data-testid="ed5-workbench-lifecycle-note">
+          该员工当前是「{LIFECYCLE_COPY[header.lifecycle] ?? header.lifecycle}」状态：
+          运行、费用、任务等记录尚未产生，右侧的「—」是真实空集，不是加载失败。
+          到「配置 → 生命周期」切换到在岗后，这些分区才会开始记账。
+        </p>
+      ) : null}
 
       <div
         className={
