@@ -60,18 +60,52 @@ const ROUTES = [
 const only = process.env.ONLY
   ? process.env.ONLY.split(',').map((s) => s.trim()).filter(Boolean)
   : process.argv.slice(2);
+
+/**
+ * 员工详情三脸：id 不写死，从名册第一行的真实链接解析。
+ * 之所以要进闸：用户投诉过「详情页三排 tab / 对话消失」，而它此前不在探针里，
+ * 于是每次回归都「全绿」——闸不覆盖的页等于没人看。
+ */
+async function resolveEmployeePath(browser) {
+  const ctx = await browser.newContext({ storageState: state, viewport: { width: 1440, height: 1000 } });
+  const page = await ctx.newPage();
+  let href = null;
+  try {
+    await page.goto(`${BASE}/employees`, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await page.waitForTimeout(2500);
+    href = await page.evaluate(() => {
+      const a = document.querySelector('a[href^="/employees/"]');
+      return a ? a.getAttribute('href') : null;
+    });
+  } catch {
+    href = null;
+  }
+  await ctx.close();
+  return href;
+}
 // ONLY 既接受路由名（overview、work-runs），也接受真实路径（/employees?tab=matrix）。
 // 早前直接把选择项当路径用，导致 `${BASE}overview` 这种非法 URL（全页 LOAD FAIL）。
 const byName = new Map(ROUTES.map(([n, p]) => [n, p]));
-const targets = only.length
-  ? only.map((sel) => {
-      if (byName.has(sel)) return [sel, byName.get(sel)];
-      if (sel.startsWith('/')) {
-        return [sel.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, ''), sel];
-      }
-      throw new Error(`ONLY 无法识别：${sel}（用路由名或 /path）`);
-    })
-  : ROUTES;
+function buildTargets(detailPath) {
+  const routes = detailPath
+    ? [
+        ...ROUTES,
+        ['employee-detail', detailPath],
+        ['employee-detail-config', `${detailPath}?zone=config`],
+        ['employee-detail-evidence', `${detailPath}?zone=evidence`],
+      ]
+    : ROUTES;
+  const map = new Map(routes.map(([n, p]) => [n, p]));
+  if (!only.length) return routes;
+  return only.map((sel) => {
+    if (map.has(sel)) return [sel, map.get(sel)];
+    if (sel.startsWith('/')) {
+      return [sel.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, ''), sel];
+    }
+    throw new Error(`ONLY 无法识别：${sel}（用路由名或 /path）`);
+  });
+  void byName;
+}
 
 const VIEWPORTS = [
   { w: Number(process.env.W || 1440), h: Number(process.env.H || 1000) },
@@ -80,6 +114,26 @@ const VIEWPORTS = [
 
 const state = JSON.parse(readFileSync(AUTH, 'utf8'));
 mkdirSync(OUT, { recursive: true });
+
+// 2026-11-26：匿名态假绿教训。storageState 里只有一枚 session cookie，过期后整轮探针
+// 仍在「页壳齐全」的匿名页上读出 tabs=1 / svg=N / ox=0 的全绿表。所以在拍任何一张图之前
+// 先断言 whoami==200；不成立直接非零退出，不给任何读数。
+async function assertSession(browser) {
+  const ctx = await browser.newContext({ storageState: state, viewport: { width: 1280, height: 800 } });
+  const page = await ctx.newPage();
+  let status = 0;
+  try {
+    await page.goto(`${BASE}/login`, { waitUntil: 'domcontentloaded', timeout: 20000 });
+    status = await page.evaluate(async () => {
+      const r = await fetch('/auth/whoami', { credentials: 'same-origin' });
+      return r.status;
+    });
+  } catch {
+    status = 0;
+  }
+  await ctx.close();
+  return status;
+}
 
 const probe = async (page) =>
   page.evaluate(() => {
@@ -101,7 +155,22 @@ const probe = async (page) =>
   });
 
 const browser = await chromium.launch({ channel: 'chrome' });
+// 登录态闸：whoami != 200 时整轮作废（匿名页的「全绿」不是产品读数）。
+const whoStatus = await assertSession(browser);
+if (whoStatus !== 200) {
+  console.error(
+    `AUTH FAIL: whoami=${whoStatus} —— storageState 已过期或认证上游没起，本轮不产生任何读数。\n` +
+      `先跑：node web/scripts/login-refresh.mjs（要求 docker 里 bisheng-backend 在跑）`,
+  );
+  await browser.close();
+  process.exit(2);
+}
 const rows = [];
+const detailPath = await resolveEmployeePath(browser);
+const targets = buildTargets(detailPath);
+if (!detailPath && !only.length) {
+  console.warn('WARN: 名册里没有 /employees/<id> 链接 —— 员工详情三脸本轮缺席（不算通过）。');
+}
 for (const { w, h } of VIEWPORTS) {
   const ctx = await browser.newContext({
     storageState: state,
