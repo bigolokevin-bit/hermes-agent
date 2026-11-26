@@ -384,6 +384,22 @@ describe("ChatModulePage", () => {
     const body = JSON.parse(String((put?.[1] as { body?: string } | undefined)?.body ?? "{}")) as { content?: string };
     expect(body.content).toContain("# 小鲤 · 产品助理（产品部）");
     expect(body.content).toContain("负责控制台需求。");
+
+    // 叠加层同拍校正：不删这一层，只把内容换成这位员工的「组织上下文」，
+    // 并明确把身份让给 SOUL.md —— 否则克隆来的另一位员工说明会与 SOUL 打架。
+    const cfg = fetchJSON.mock.calls.find(
+      (c) =>
+        String(c[0]).startsWith("/api/config?profile=") &&
+        (c[1] as { method?: string } | undefined)?.method === "PUT",
+    );
+    expect(String(cfg?.[0])).toContain("profile=emp-aaaa1111");
+    const cfgBody = JSON.parse(String((cfg?.[1] as { body?: string } | undefined)?.body ?? "{}")) as {
+      config?: { agent?: { system_prompt?: string } };
+    };
+    const overlay = cfgBody.config?.agent?.system_prompt ?? "";
+    expect(overlay).toContain("## 组织上下文");
+    expect(overlay).toContain("- 员工：小鲤");
+    expect(overlay).toContain("以 SOUL.md 为准");
     expect(hostEvents).toEqual(["mount:emp-aaaa1111"]);
   });
 

@@ -137,6 +137,9 @@ function route(opts: { post?: (init: RequestInit) => Promise<unknown>; reads?: (
     // 建档腿：创建 2xx 后会顺带为这位员工建独立 profile（POST /api/profiles）。
     // 它不属于「员工创建契约」，在这里静默成功即可，不参与 POST 断言。
     if (_url === "/api/profiles") return Promise.resolve({ ok: true });
+    // 叠加层写回（PUT /api/config?profile=…）：同样不属于创建契约，静默成功。
+    // 必须在这里短路：否则它会走到 reads()，把「重读应答」的 resolve 抢走。
+    if (_url.startsWith("/api/config?profile=")) return Promise.resolve({ ok: true });
     if (init?.method === "POST") return (opts.post ?? (() => Promise.reject(new Error("unexpected POST"))))(init);
     return Promise.resolve((opts.reads ?? (() => FULL))());
   });

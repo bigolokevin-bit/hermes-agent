@@ -33,7 +33,7 @@ import { Button } from "@nous-research/ui";
 
 import { RequestIdCopy } from "@/components/RequestIdCopy";
 import { fetchJSON } from "@/lib/api";
-import { composeEmployeeSoul } from "@/modules/chat/employeeSoul";
+import { composeEmployeeOverlay, composeEmployeeSoul } from "@/modules/chat/employeeSoul";
 import { employeeProfileDescription, employeeProfileName } from "@/modules/chat/employeeProfile";
 import { ApiError } from "@/lib/api-error";
 import { csrfFailureCopy, csrfWriteHeaders } from "@/lib/csrf";
@@ -260,17 +260,20 @@ export function CreateEmployeeModal({
     const newId = createdId(res);
     const profileName = newId ? employeeProfileName(newId) : null;
     if (newId && profileName) {
-      const soulText =
-        soul.trim() ||
-        composeEmployeeSoul({
-          name: n,
-          title: t,
-          department: dept || null,
-          jobDescription: j,
-          // 与初始版本的 fail-closed 缺省一致：仅被 @ 提及触发、realtime 应答。
-          triggers: ["被 @ 提及"],
-          mode: "realtime",
-        });
+      // 同一份素材两处用：SOUL.md（身份）与 agent.system_prompt（组织上下文叠加层）。
+      // 新员工此刻还没有可读的版本号，所以版本行留空，不编 v1。
+      const source = {
+        name: n,
+        title: t,
+        department: dept || null,
+        jobDescription: j,
+        // 与初始版本的 fail-closed 缺省一致：仅被 @ 提及触发、realtime 应答。
+        triggers: ["被 @ 提及"],
+        mode: "realtime",
+        versionNo: null,
+        effectiveFrom: null,
+      };
+      const soulText = soul.trim() || composeEmployeeSoul(source);
       // 不 await：这一步不能拖慢「创建 → 重读确认」这条主链（确认句依赖它）。
       // 失败由对话页的 ensure 路径兜底重试，并在那里如实说明原因。
       void fetchJSON<unknown>("/api/profiles", {
@@ -282,7 +285,19 @@ export function CreateEmployeeModal({
           soul: soulText,
           description: employeeProfileDescription(newId),
         }),
-      }).catch(() => undefined);
+      })
+        .then(() =>
+          // 叠加层同拍写对：克隆默认档会带「上一位员工」的组织说明，必须换掉。
+          // 这一层不能删（Hermes 的补充说明能力），只换内容。
+          fetchJSON<unknown>(`/api/config?profile=${encodeURIComponent(profileName)}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              config: { agent: { system_prompt: composeEmployeeOverlay(source) } },
+            }),
+          }),
+        )
+        .catch(() => undefined);
     }
     setPhase("verifying");
     const outcome = await onVerifyCreated({ id: createdId(res), name: n });

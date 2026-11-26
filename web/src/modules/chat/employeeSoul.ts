@@ -60,7 +60,41 @@ export type SoulSource = {
   jobDescription: string;
   triggers: string[];
   mode: string | null;
+  /** 生效版本号（读口可能只给 versionNo；给不出就是 null）。 */
+  versionNo: string | null;
+  /** 生效时间（ISO）；用来在叠加层里写「自 X 起生效」。 */
+  effectiveFrom: string | null;
 };
+
+/**
+ * 「组织上下文」叠加层 —— 写进该档 `config.yaml` 的 `agent.system_prompt`。
+ *
+ * 这一层在运行时是真叠加（`system + "\n\n" + overlay`，见 turn_context.py），
+ * 所以**不删它**，只把内容换成这位员工自己的组织关系，并明确把身份让给 SOUL.md，
+ * 避免两处各说一套身份。克隆默认档留下的那一份属于**另一位员工**，必须在首次
+ * 打开时被替换掉，否则模型会同时看到两个人。
+ */
+export const OVERLAY_MARKER = "sekoi:employee-overlay";
+
+export function composeEmployeeOverlay(src: SoulSource): string {
+  const org = src.department ? `${src.title}（${src.department}）` : src.title;
+  const lines = [
+    `<!-- ${OVERLAY_MARKER}：控制台维护，手改会在下次打开对话时被覆盖 -->`,
+    "## 组织上下文",
+    `- 员工：${src.name}`,
+    `- 岗位：${org}`,
+  ];
+  if (src.versionNo) {
+    const when = src.effectiveFrom ? src.effectiveFrom.slice(0, 10) : null;
+    lines.push(`- 当前生效版本：v${src.versionNo}${when ? `（自 ${when} 起）` : ""}`);
+  }
+  lines.push(
+    "",
+    "身份、职责边界与说话方式以 SOUL.md 为准；本段只补充组织关系，不重复身份描述。",
+    "",
+  );
+  return lines.join("\n");
+}
 
 /**
  * 人设正文。写成 markdown：Hermes 的 SOUL.md 原样读入上下文，
@@ -135,6 +169,15 @@ export async function loadEmployeeSoul(
     : [];
   const mode = str(policy.mode);
 
-  const source: SoulSource = { name, title, department, jobDescription, triggers, mode };
+  // versionNo 在回包里是数字（实测 1），不是字符串 —— 别用 str() 一刀切，否则版本行永远空着。
+  const versionNo = version
+    ? typeof version.versionNo === "number"
+      ? String(version.versionNo)
+      : str(version.versionNo)
+    : null;
+  const effectiveFrom = version ? str(version.effectiveFrom) : null;
+  const source: SoulSource = {
+    name, title, department, jobDescription, triggers, mode, versionNo, effectiveFrom,
+  };
   return { soul: composeEmployeeSoul(source), source };
 }

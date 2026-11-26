@@ -6,7 +6,12 @@ import { fetchJSON, setManagementProfile } from "@/lib/api";
 import { ptyAttachToken } from "@/lib/pty-attach-token";
 import { ProfileContext } from "@/contexts/profile-context";
 import { useProfileScope } from "@/contexts/useProfileScope";
-import { loadEmployeeSoul, SOUL_MARKER } from "./employeeSoul";
+import {
+  composeEmployeeOverlay,
+  loadEmployeeSoul,
+  SOUL_MARKER,
+  type SoulSource,
+} from "./employeeSoul";
 import {
   employeeProfileDescription,
   employeeProfileName,
@@ -210,8 +215,26 @@ export {
 type ProfileState =
   | { k: "idle"; name: "" }
   | { k: "resolving"; name: "" }
-  | { k: "ready"; name: string; created: boolean }
+  | { k: "ready"; name: string; created: boolean; overlayWarning?: string }
   | { k: "failed"; name: ""; reason: string };
+
+/**
+ * 把「组织上下文」写进该档的 `agent.system_prompt`（运行时叠加层）。
+ * 只替换内容、不删除这一层：它承载的是 Hermes 的补充说明能力。
+ * 返回失败原因（不抛）：叠加层写失败不影响对话本身，但必须在界面上说出来。
+ */
+async function writeEmployeeOverlay(name: string, source: SoulSource): Promise<string | undefined> {
+  try {
+    await fetchJSON<unknown>(`/api/config?profile=${encodeURIComponent(name)}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ config: { agent: { system_prompt: composeEmployeeOverlay(source) } } }),
+    });
+    return undefined;
+  } catch (err: unknown) {
+    return err instanceof Error && err.message ? err.message : "叠加层写回失败";
+  }
+}
 
 function useEmployeeProfile(employeeId: string, enabled = true): ProfileState {
   const [state, setState] = useState<ProfileState>({ k: "idle", name: "" });
@@ -245,21 +268,28 @@ function useEmployeeProfile(employeeId: string, enabled = true): ProfileState {
           if (alive) setState({ k: "ready", name, created: false });
           return;
         }
-        const { soul } = await loadEmployeeSoul(employeeId, (u) => fetchJSON<unknown>(u));
-        if (content.trim() !== soul.trim()) {
+        const { soul, source } = await loadEmployeeSoul(employeeId, (u) => fetchJSON<unknown>(u));
+        let overlayWarning: string | undefined;
+        const soulRewritten = content.trim() !== soul.trim();
+        if (soulRewritten) {
           await fetchJSON<unknown>(`/api/profiles/${encodeURIComponent(name)}/soul`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ content: soul }),
           });
         }
-        if (alive) setState({ k: "ready", name, created: false });
+        // 控制台建的档：每次打开都把叠加层对齐一次（幂等 PUT）。
+        // 只在校正人格时写是不够的 —— 已校正过的档可能还留着上一位员工的组织说明。
+        if (soulRewritten || managedByConsole) {
+          overlayWarning = await writeEmployeeOverlay(name, source);
+        }
+        if (alive) setState({ k: "ready", name, created: false, overlayWarning });
         return;
       }
       // 建档前先取这位员工自己的人设：clone_from_default 会把「上一位员工」的
       // system_prompt 一起复制过来（实测会自称别人），而 POST /api/profiles
       // 支持 soul= ，所以一次就把人格写对，不留补救步骤。
-      const { soul } = await loadEmployeeSoul(employeeId, (u) => fetchJSON<unknown>(u));
+      const { soul, source } = await loadEmployeeSoul(employeeId, (u) => fetchJSON<unknown>(u));
       await fetchJSON<unknown>("/api/profiles", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -270,7 +300,8 @@ function useEmployeeProfile(employeeId: string, enabled = true): ProfileState {
           description: employeeProfileDescription(employeeId),
         }),
       });
-      if (alive) setState({ k: "ready", name, created: true });
+      const overlayWarning = await writeEmployeeOverlay(name, source);
+      if (alive) setState({ k: "ready", name, created: true, overlayWarning });
     })().catch((err: unknown) => {
       if (!alive) return;
       const reason = err instanceof Error && err.message ? err.message : "创建独立对话档失败";
@@ -449,6 +480,15 @@ export default function ChatModulePage({
         <p className="text-xs text-muted-foreground" data-testid="chat-profile-scope">
           本对话运行在员工独立档 <code className="font-mono">{profileState.name}</code>
           {profileState.created ? "（首次打开时自动创建）" : ""}；会话与历史只属于这位员工。
+        </p>
+      ) : null}
+      {forced === null &&
+      employeeId !== "" &&
+      profileState.k === "ready" &&
+      profileState.overlayWarning ? (
+        <p className="text-xs text-muted-foreground" data-testid="chat-profile-overlay-warning">
+          组织上下文叠加层没能写回（{profileState.overlayWarning}）：该档里可能仍残留上一位员工的补充说明。
+          对话可以正常用，但人格可能受它影响；重开本页会重试。
         </p>
       ) : null}
       {forced === null && employeeId !== "" && profileState.k === "failed" ? (
