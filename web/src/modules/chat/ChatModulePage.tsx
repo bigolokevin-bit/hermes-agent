@@ -7,6 +7,11 @@ import { ptyAttachToken } from "@/lib/pty-attach-token";
 import { ProfileContext } from "@/contexts/profile-context";
 import { useProfileScope } from "@/contexts/useProfileScope";
 import { loadEmployeeSoul, SOUL_MARKER } from "./employeeSoul";
+import {
+  employeeProfileDescription,
+  employeeProfileName,
+  isConsoleProfile,
+} from "./employeeProfile";
 import "./chat-module.css";
 import {
   EmptyBlock,
@@ -195,14 +200,12 @@ function useEmployeeGuard(employeeId: string): {
 // 人设素材读不齐（缺姓名/岗位/岗位职责）时不建档，退回默认档并如实说明；
 // 绝不拿别人的开场白顶上去。
 
-export function employeeProfileName(employeeId: string): string | null {
-  const tail = employeeId
-    .replace(/^(?:emp|run|rn|task|apr|aud|cs|session)[_:-]?/i, "")
-    .replace(/[^0-9a-z]/gi, "")
-    .toLowerCase()
-    .slice(0, 8);
-  return tail ? `emp-${tail}` : null;
-}
+export { employeeProfileName };
+export {
+  CONSOLE_PROFILE_MARK,
+  employeeProfileDescription,
+  isConsoleProfile,
+} from "./employeeProfile";
 
 type ProfileState =
   | { k: "idle"; name: "" }
@@ -229,8 +232,7 @@ function useEmployeeProfile(employeeId: string, enabled = true): ProfileState {
       const exists = !!rec;
       // 判断「这一档是不是控制台建的」：建档时我们写了带「控制台自动创建」的描述。
       // 是 → 人格归控制台管（可校正）；不是且没有受管标记 → 是用户自己的档，不碰。
-      const managedByConsole =
-        typeof rec?.description === "string" && rec.description.includes("控制台自动创建");
+      const managedByConsole = isConsoleProfile(rec?.description);
       if (exists) {
         // 已存在也要核对人格：现有的档案可能是「克隆默认档」造的，system_prompt 里
         // 是上一位员工；也可能员工改了岗位职责。两种都由 SOUL.md 校正。
@@ -265,7 +267,7 @@ function useEmployeeProfile(employeeId: string, enabled = true): ProfileState {
           name,
           clone_from_default: true,
           soul,
-          description: `数字员工 ${employeeId} 的独立对话档（控制台自动创建）`,
+          description: employeeProfileDescription(employeeId),
         }),
       });
       if (alive) setState({ k: "ready", name, created: true });

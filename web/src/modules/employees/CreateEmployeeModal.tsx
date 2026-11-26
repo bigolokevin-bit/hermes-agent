@@ -33,6 +33,8 @@ import { Button } from "@nous-research/ui";
 
 import { RequestIdCopy } from "@/components/RequestIdCopy";
 import { fetchJSON } from "@/lib/api";
+import { composeEmployeeSoul } from "@/modules/chat/employeeSoul";
+import { employeeProfileDescription, employeeProfileName } from "@/modules/chat/employeeProfile";
 import { ApiError } from "@/lib/api-error";
 import { csrfFailureCopy, csrfWriteHeaders } from "@/lib/csrf";
 
@@ -124,6 +126,8 @@ export function CreateEmployeeModal({
   const [ownerUserId, setOwnerUserId] = useState("");
   const [jobDescription, setJobDescription] = useState("");
   const [department, setDepartment] = useState("");
+  // 人格（SOUL）：留空则按姓名/岗位/部门/职责自动生成；填写则原样使用。
+  const [soul, setSoul] = useState("");
   const [phase, setPhase] = useState<Phase>("editing");
   const [feedback, setFeedback] = useState<{ message: string; requestId: string | null } | null>(null);
   // 幂等键：每轮打开（新编辑会话）生成一次，存 ref；本轮内所有重试沿用同键，
@@ -248,6 +252,38 @@ export function CreateEmployeeModal({
     }
     // 拿到 2xx：本轮幂等键已终结（成功会落库），先换新键再重读列表。
     idemRef.current = crypto.randomUUID();
+
+    // 建档那一刻就给它独立身份：专属 profile + 该员工自己的 SOUL.md。
+    // 留空用自动生成的那份（姓名/岗位/部门/职责），填写则原样使用。
+    // 失败不阻断创建（员工已在域侧落库）：打开对话时会再试一次并如实说明，
+    // 所以这里不显示「已建好人格」这种没证据的话。
+    const newId = createdId(res);
+    const profileName = newId ? employeeProfileName(newId) : null;
+    if (newId && profileName) {
+      const soulText =
+        soul.trim() ||
+        composeEmployeeSoul({
+          name: n,
+          title: t,
+          department: dept || null,
+          jobDescription: j,
+          // 与初始版本的 fail-closed 缺省一致：仅被 @ 提及触发、realtime 应答。
+          triggers: ["被 @ 提及"],
+          mode: "realtime",
+        });
+      // 不 await：这一步不能拖慢「创建 → 重读确认」这条主链（确认句依赖它）。
+      // 失败由对话页的 ensure 路径兜底重试，并在那里如实说明原因。
+      void fetchJSON<unknown>("/api/profiles", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: profileName,
+          clone_from_default: true,
+          soul: soulText,
+          description: employeeProfileDescription(newId),
+        }),
+      }).catch(() => undefined);
+    }
     setPhase("verifying");
     const outcome = await onVerifyCreated({ id: createdId(res), name: n });
     if (outcome.k === "found") {
@@ -328,6 +364,18 @@ export function CreateEmployeeModal({
               disabled={locked}
               className="min-w-0 rounded-md border border-white/10 bg-white/5 px-2 py-1.5 text-sm"
               data-testid="emp-create-job"
+            />
+          </label>
+          <label className="flex min-w-0 flex-col gap-1 text-xs">
+            <span className="text-white/55">人格 SOUL（可选；留空则按姓名/岗位/部门/职责自动生成一份）</span>
+            <textarea
+              value={soul}
+              onChange={(e) => setSoul(e.target.value)}
+              rows={4}
+              disabled={locked}
+              placeholder="留空即可。填写会原样写进这位员工的 SOUL.md，成为它的身份与行为基调。"
+              className="min-w-0 rounded-md border border-white/10 bg-white/5 px-2 py-1.5 text-sm"
+              data-testid="emp-create-soul"
             />
           </label>
           <label className="flex min-w-0 flex-col gap-1 text-xs">

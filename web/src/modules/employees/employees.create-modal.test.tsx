@@ -134,6 +134,9 @@ const FULL = { items: [ROW_A] };
 /** 读→ready（可换形），POST→由用例摆布。 */
 function route(opts: { post?: (init: RequestInit) => Promise<unknown>; reads?: () => unknown }) {
   fetchJSON.mockImplementation((_url: string, init?: RequestInit) => {
+    // 建档腿：创建 2xx 后会顺带为这位员工建独立 profile（POST /api/profiles）。
+    // 它不属于「员工创建契约」，在这里静默成功即可，不参与 POST 断言。
+    if (_url === "/api/profiles") return Promise.resolve({ ok: true });
     if (init?.method === "POST") return (opts.post ?? (() => Promise.reject(new Error("unexpected POST"))))(init);
     return Promise.resolve((opts.reads ?? (() => FULL))());
   });
@@ -154,12 +157,17 @@ function fillForm(over: Partial<{ name: string; title: string; owner: string; jo
 }
 
 function lastPost(): { url: string; init: RequestInit } {
-  const calls = fetchJSON.mock.calls.filter((c) => (c[1] as RequestInit | undefined)?.method === "POST");
+  const calls = fetchJSON.mock.calls.filter(
+    (c) => (c[1] as RequestInit | undefined)?.method === "POST" && String(c[0]) !== "/api/profiles",
+  );
   const last = calls[calls.length - 1];
   return { url: String(last?.[0]), init: last?.[1] as RequestInit };
 }
 function postCalls() {
-  return fetchJSON.mock.calls.filter((c) => (c[1] as RequestInit | undefined)?.method === "POST");
+  // 只数「员工创建」这一条写口；顺带的 /api/profiles 建档不算（见 route() 注释）。
+  return fetchJSON.mock.calls.filter(
+    (c) => (c[1] as RequestInit | undefined)?.method === "POST" && String(c[0]) !== "/api/profiles",
+  );
 }
 function headersOf(init: RequestInit): Record<string, string> {
   return init.headers as Record<string, string>;
@@ -373,6 +381,48 @@ describe("PE-08① create modal (EMP-02 write contract)", () => {
     expect(q("emp-create-modal"), "modal stays open for correction").toBeTruthy();
   });
 
+  it("⑧ 管理员填了人格：原样写进 SOUL，不被自动生成覆盖", async () => {
+    route({ post: () => Promise.resolve({ id: "emp_ABCD1234" }) });
+    await render("/employees");
+    await openModal();
+    fillForm();
+    setValue(q("emp-create-soul") as HTMLTextAreaElement, "# 小录\n只说三句话以内的结论。");
+    click(q("emp-create-submit"), "submit");
+    await flush();
+
+    const call = fetchJSON.mock.calls.find(
+      (c) => String(c[0]) === "/api/profiles" && (c[1] as RequestInit | undefined)?.method === "POST",
+    );
+    const body = JSON.parse(String((call?.[1] as RequestInit).body)) as { soul?: string };
+    expect(body.soul).toBe("# 小录\n只说三句话以内的结论。");
+  });
+
+  it("⑦ 建档即有人格：创建成功后按档案自动生成 SOUL 写入该员工专属档", async () => {
+    route({ post: () => Promise.resolve({ id: "emp_ABCD1234" }) });
+    await render("/employees");
+    await openModal();
+    fillForm({ name: "小录", title: "巡检助理", job: "整理巡检周报并跟进异常。", dept: "增长组" });
+    click(q("emp-create-submit"), "submit");
+    await flush();
+
+    const call = fetchJSON.mock.calls.find(
+      (c) => String(c[0]) === "/api/profiles" && (c[1] as RequestInit | undefined)?.method === "POST",
+    );
+    expect(call, "创建成功后应发起独立档建档").toBeTruthy();
+    const body = JSON.parse(String((call?.[1] as RequestInit).body)) as {
+      name?: string;
+      soul?: string;
+      description?: string;
+    };
+    expect(body.name).toBe("emp-abcd1234");
+    expect(body.description).toContain("控制台自动创建");
+    // 自动生成的人格：身份是这位员工本人，不是克隆来的别人
+    expect(body.soul).toContain("小录");
+    expect(body.soul).toContain("巡检助理");
+    expect(body.soul).toContain("整理巡检周报并跟进异常。");
+    expect(body.soul).toContain("增长组");
+  });
+
   it("⑥ refetch that misses the row never fakes success and never closes", async () => {
     route({
       post: () => Promise.resolve({ id: "emp_GHOST" }),
@@ -382,6 +432,8 @@ describe("PE-08① create modal (EMP-02 write contract)", () => {
     await openModal();
     fillForm();
     click(q("emp-create-submit"), "submit");
+    await flush();
+    // 建档（POST /api/profiles）是后台发起的，不参与「创建 → 确认」这条主链。
     await flush();
     expect(q("emp-create-modal"), "unverified success keeps the form open").toBeTruthy();
     expect(document.querySelector('[role="status"]'), "no toast without confirmation").toBeNull();
