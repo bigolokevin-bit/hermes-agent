@@ -1768,11 +1768,41 @@ function yesNo(v: unknown): string {
   return "—";
 }
 
-function ToolsSection() {
-  // 两个读口都是具名行数组（servers / tools）：走列表腿，空集落 empty，
-  // 不在 ready 里再判一次 length（否则类型上要收窄两遍）。
+function ToolsSection({ empId }: { empId: string }) {
+  // 工具组按「这位员工」的运行时档案读：`/api/tools/toolsets?profile=` 直接问
+  // Hermes（不经 BFF），回包是裸数组，每行带 enabled/available/configured。
+  // MCP 仍是租户级清单（本代次没有按档案的 MCP 读口）。
+  const profileName = employeeProfileName(empId) ?? "";
+  const profileQuery = profileName ? `?profile=${encodeURIComponent(profileName)}` : "";
   const [mcp, mcpRetry] = useList(`/agent-api/api/mcp/servers`, (b) => listAt(b, "servers"));
-  const [tools, toolsRetry] = useList(`/agent-api/api/tools`, (b) => listAt(b, "tools"));
+  const [tools, toolsRetry, toolsRefresh] = useList(`/api/tools/toolsets${profileQuery}`, (b) =>
+    Array.isArray(b) ? (b as Rec[]) : [],
+  );
+  const [busy, setBusy] = useState<string | null>(null);
+  const [toggleError, setToggleError] = useState<string | null>(null);
+
+  const toggleToolset = async (name: string, enabled: boolean) => {
+    if (busy) return;
+    if (!profileName) {
+      setToggleError("这位员工没有可用的档案名，不能按员工保存工具开关。");
+      return;
+    }
+    setBusy(name);
+    setToggleError(null);
+    try {
+      await fetchJSON<unknown>(`/api/tools/toolsets/${encodeURIComponent(name)}${profileQuery}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled, profile: profileName }),
+      });
+      toolsRefresh();
+    } catch (err: unknown) {
+      const e = writeErrorText(err, "工具组开关没有保存成功：");
+      setToggleError(`${name}：${e.text}`);
+    } finally {
+      setBusy(null);
+    }
+  };
 
   return (
     <>
@@ -1801,8 +1831,17 @@ function ToolsSection() {
                   <li key={`${pickString(t.name) ?? i}`} className="px-4 py-3" data-testid={`edcfg-tools-group-${i}`}>
                     <div className="flex min-w-0 flex-wrap items-baseline justify-between gap-2">
                       <span className="min-w-0 text-sm">{pickString(t.label, t.name) ?? "—"}</span>
-                      <span className="text-[11px] text-white/50">
+                      <span className="flex items-center gap-2 text-[11px] text-white/50">
                         已启用 {yesNo(t.enabled)} · 可用 {yesNo(t.available)}
+                        <Button
+                          size="sm"
+                          outlined
+                          disabled={busy === pickString(t.name) || !pickString(t.name)}
+                          onClick={() => toggleToolset(pickString(t.name)!, t.enabled !== true)}
+                          data-testid={`edcfg-tools-toggle-${i}`}
+                        >
+                          {busy === pickString(t.name) ? "保存中…" : t.enabled === true ? "停用" : "启用"}
+                        </Button>
                       </span>
                     </div>
                     <div className="mt-1 flex min-w-0 flex-wrap gap-1">
@@ -1822,8 +1861,13 @@ function ToolsSection() {
             </ul>
           )}
           <p className="px-4 py-2 text-[11px] text-white/45">
-            口径：按工具组（toolset）分组展示真回包字段；组内只列工具名，不编用途与风险级。
+            口径：按工具组（toolset）分组展示该员工档案的真回包字段；开关写的是这位员工的档案，下一次新会话生效（已打开的会话仍用旧工具面）。
           </p>
+          {toggleError ? (
+            <p className="px-4 pb-2 text-[11px] text-red-300/80" data-testid="edcfg-tools-toggle-error">
+              {toggleError}
+            </p>
+          ) : null}
         </CardContent>
       </Card>
       <Card data-testid="edcfg-mcp">
@@ -2589,7 +2633,7 @@ function ConfigZone({ empId, initial }: { empId: string; initial: ConfigSub }) {
       {sub === "lifecycle" ? <LifecycleSection empId={empId} /> : null}
       {sub === "permission" ? <PermissionSection empId={empId} /> : null}
       {sub === "capability" ? <CapabilitySection empId={empId} /> : null}
-      {sub === "tools" ? <ToolsSection /> : null}
+      {sub === "tools" ? <ToolsSection empId={empId} /> : null}
       {sub === "budget" ? <BudgetSection empId={empId} /> : null}
       {sub === "versions" ? <VersionsSection empId={empId} /> : null}
       {sub === "knowledge" ? <KnowledgeSection /> : null}
