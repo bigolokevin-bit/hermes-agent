@@ -819,15 +819,11 @@ function IdentityEditor({
 }) {
   const original = readIdentityDraft(d);
   const [draft, setDraft] = useState<IdentityDraft>(original);
-  const [baseRev, setBaseRev] = useState<number | null>(readRevision(d));
   const [state, setState] = useState<SaveState>({ k: "idle" });
   const [readOnly, setReadOnly] = useState(false);
 
-  // 读口/写口回包更新 revision 后只同步基线，不动用户正在编辑的草稿。
+  // revision 始终取当前 prop 里的档案：写口回包/静默重读会更新 d，下次保存就用新值。
   const rev = readRevision(d);
-  useEffect(() => {
-    if (rev !== null) setBaseRev(rev);
-  }, [rev]);
 
   const issues = validateIdentityDraft(draft);
   const issueOf = (field: "name" | "title" | "department") => issues.find((i) => i.field === field)?.message ?? null;
@@ -849,7 +845,7 @@ function IdentityEditor({
       return;
     }
     if (!dirty) return;
-    if (baseRev === null) {
+    if (rev === null) {
       setState({
         k: "error",
         text: "档案没有回传 revision，无法安全保存（缺 If-Match 会被服务端 428 拒）。请重读后再试。",
@@ -859,11 +855,10 @@ function IdentityEditor({
     }
     setState({ k: "saving" });
     try {
-      const body = await saveEmployeeIdentity(empId, baseRev, patch);
+      const body = await saveEmployeeIdentity(empId, rev, patch);
       onSaved(body);
       setDraft(readIdentityDraft(body));
-      const nextRev = readRevision(body) ?? baseRev + 1;
-      setBaseRev(nextRev);
+      const nextRev = readRevision(body) ?? rev + 1;
       setState({ k: "ok", text: `已保存（revision ${nextRev}）` });
     } catch (err: unknown) {
       const e = writeErrorText(err, "保存没有成功：");
