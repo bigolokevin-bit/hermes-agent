@@ -574,18 +574,20 @@ type ConfigSub = "identity" | "lifecycle" | "permission" | "capability" | "tools
 type EvidenceSub = "approvals" | "audit" | "sessions";
 
 /** 配置左竖栏八节（飞书设置式：一列文字分类 + 右侧对应内容）。 */
-// writable 是这个分类在当前代次**有没有写口**（不是「该不该能改」）：
+// writable 是这个分类在当前代次**有没有写口**（不是「该不该能改」）。
+// 2026-11-26 复核：capability(技能开关)/tools(工具组开关)/model(人格正文) 已接真写口，
+// 与控件一致；knowledge/budget 仍只有读口，保持 false。
 // 左栏直接标出来，管理员一眼知道点进去是能改还是只能看，不用逐节试。
 const CONFIG_SUBS: ReadonlyArray<{ id: ConfigSub; label: string; writable: boolean }> = [
   { id: "identity", label: "身份与组织", writable: true },
   { id: "lifecycle", label: "生命周期", writable: true },
   { id: "permission", label: "权限与授权", writable: true },
-  { id: "capability", label: "能力与技能", writable: false },
-  { id: "tools", label: "工具与 MCP", writable: false },
+  { id: "capability", label: "能力与技能", writable: true },
+  { id: "tools", label: "工具与 MCP", writable: true },
   { id: "budget", label: "预算与成本", writable: false },
   { id: "versions", label: "版本与变更", writable: true },
   { id: "knowledge", label: "知识与范围", writable: false },
-  { id: "model", label: "模型与提示词", writable: false },
+  { id: "model", label: "模型与提示词", writable: true },
 ];
 
 const EVIDENCE_SUBS: ReadonlyArray<{ id: EvidenceSub; label: string }> = [
