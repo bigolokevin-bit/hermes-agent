@@ -389,16 +389,18 @@
   max-width: 460px;
 }
 
-/* ---------- 模型凭据（本页唯一的写口） ----------
- * 卡内三段：现有凭据（读池）→ 新增（写池）→ 默认模型（PUT /api/config）。
+/* ---------- 模型接入（本页唯一的写口） ----------
+ * 接入卡三段：选供应商 → 填并校验 key → 选模型并真验证；池卡只列正在服务的条目。
  * 段与段之间只画一条上边框，不再套第二层卡；行尾按钮是页面自有的 .cap-btn，
  * 与表格里的裸文字动作区分开。 */
-.cap-cred {
+.cap-cred,
+.cap-prov {
   display: flex;
   flex-direction: column;
   min-width: 0;
 }
-.cap-cred-sec {
+.cap-cred-sec,
+.cap-prov-sec {
   display: flex;
   flex-direction: column;
   gap: var(--space-ls-2);
@@ -407,10 +409,64 @@
   padding-top: 10px;
   border-top: 1px solid var(--color-border-subtle-ls);
 }
-.cap-cred-sec:first-child {
+.cap-cred-sec:first-child,
+.cap-prov-sec:first-child {
   margin-top: 0;
   padding-top: 0;
   border-top: 0;
+}
+/* 接入卡的形制：一段一步，段内只一行控件 + 一行结果原话。 */
+.cap-prov-pick {
+  display: flex;
+  align-items: end;
+  gap: var(--space-ls-2);
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.cap-prov-pick > .cap-field {
+  flex: 1 1 240px;
+  max-width: 420px;
+}
+.cap-prov-state {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-ls-2);
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.cap-prov-desc {
+  margin: 0;
+  font-size: var(--font-size-ls-1);
+  line-height: var(--line-height-ls-2);
+  color: var(--color-text-muted-ls);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.cap-prov-mode {
+  display: inline-flex;
+  gap: 6px;
+}
+/* 模式切换的两个按钮用 aria-pressed 表明选中态（不是 tablist）。 */
+.cap-prov-mode .cap-btn[aria-pressed="true"] {
+  border-color: var(--color-primary-ls);
+  color: var(--color-primary-ls);
+}
+.cap-prov-live {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-ls-2);
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.cap-prov-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.cap-prov-key-input {
+  flex: 1 1 160px;
+  min-width: 0;
 }
 .cap-cred-list {
   display: flex;

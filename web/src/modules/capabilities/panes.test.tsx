@@ -248,11 +248,32 @@ describe("能力与接入 · 模型与单价", () => {
     return (t.match(/—/g) ?? []).length + (t.match(/未接入/g) ?? []).length + (t.match(/待核实/g) ?? []).length;
   }
 
-  it("七块（首块是模型凭据写口）；价目未接线时单价整列不画、缺列在卡底可用性点名，真读数照实上屏", async () => {
-    stub(liveStubs);
+  it("八块（首块是接入模型供应商写口，次块是正在服务的凭据池）；价目未接线时单价整列不画、缺列在卡底可用性点名，真读数照实上屏", async () => {
+    stub({
+      ...liveStubs,
+      "/api/env": {
+        status: 200,
+        body: {
+          DASHSCOPE_API_KEY: {
+            is_set: true,
+            redacted_value: "«redacted:sk-w...ufVG»",
+            category: "provider",
+            is_password: true,
+            provider: "alibaba",
+            provider_label: "Qwen Cloud",
+            provider_primary: true,
+            provider_profiles: [{ provider: "alibaba", provider_label: "Qwen Cloud", primary: true }],
+          },
+        },
+      },
+      "/api/config": { status: 200, body: { model: "qwen-plus", fallback_providers: [] } },
+      "/api/model/info": { status: 200, body: { model: "qwen-plus", provider: "alibaba-cn" } },
+      "/api/credentials/pool": { status: 200, body: { providers: [] } },
+      "/api/providers/custom-endpoints": { status: 200, body: { endpoints: [], current: null } },
+    });
     await mount(<CapModelsPane />);
 
-    expect(cards()).toBe(7);
+    expect(cards()).toBe(8);
     expect(q(".cap-sub")!.textContent).toBe("1 个可用模型 · — 条单价");
     // 台账回了名称/供应商/上下文/状态；输入、输出、7 天调用整列无读口，不画。
     expect(headers(0)).toEqual(["模型", "Provider", "上下文", "状态"]);
@@ -383,9 +404,18 @@ describe("能力与接入 · 模型凭据写口", () => {
     // last_status 为 null 就是「—」，不能写「正常」。
     expect(first).toContain("状态 —");
     expect(rows[1]!.textContent).toContain("状态 已耗尽");
-    // 默认模型是真读数，写口在手（有「修改」）。
+    // 默认模型是真读数，写口在手：第 3 步常驻「模型名」输入框（旧卡是先点「修改」
+    // 才展开输入框；现在填 key 与填模型名在同一趟里完成，少一次点击）。
     expect(text()).toContain("qwen-plus");
-    expect(all("button").some((node) => (node.textContent ?? "").trim() === "修改")).toBe(true);
+    expect(q('.cap-prov-sec input[placeholder="qwen-plus"]')).toBeTruthy();
+    // 写口是真能用的，不是摆设：填了模型名，「保存模型」就可点。
+    typeInto('.cap-prov-sec input[placeholder="qwen-plus"]', "qwen3-max");
+    await act(async () => {});
+    expect(
+      all("button").some(
+        (node) => (node.textContent ?? "").trim() === "保存模型" && !(node as HTMLButtonElement).disabled,
+      ),
+    ).toBe(true);
     expect(text()).not.toMatch(/sk-[A-Za-z0-9]{8,}/);
     shapeGuards();
   });
