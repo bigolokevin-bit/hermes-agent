@@ -1433,6 +1433,50 @@ a.ov5-cs:hover { border-color: var(--color-border-ls); }
   text-underline-offset: 3px;
 }
 
+/* 近 7 天「运行 / 成本」明细表（骨架同块，2026-11-26 补） */
+.ov5-wtable {
+  width: 100%;
+  min-width: 0;
+  border-collapse: collapse;
+  font-size: 12px;
+  color: var(--color-text-muted-ls);
+}
+
+.ov5-wtable th,
+.ov5-wtable td {
+  padding: 6px 8px;
+  text-align: left;
+  border-top: 1px solid var(--color-border-subtle-ls);
+  white-space: nowrap;
+}
+
+.ov5-wtable thead th {
+  border-top: 0;
+  font-weight: 500;
+  color: var(--color-text-faint-ls, var(--color-text-muted-ls));
+}
+
+.ov5-wtable .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.ov5-wtable tbody tr[data-today='1'] td {
+  color: var(--color-text-ls);
+}
+
+.ov5-wtable tfoot td {
+  border-top: 1px solid var(--color-border-ls, var(--color-border-subtle-ls));
+  color: var(--color-text-ls);
+  font-weight: 600;
+}
+
+.ov5-wtable-note {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--color-text-faint-ls, var(--color-text-muted-ls));
+}
+
 .ov5-mono {
   margin-left: auto;
   color: var(--color-text-faint-ls);

@@ -1879,6 +1879,78 @@ function PendingCard({ data, onRetry }: { data: DutyData; onRetry: () => void })
   );
 }
 
+/**
+ * 骨架有、我们此前缺的一块：近 7 天「运行 / 成本」明细表。
+ * 与趋势图同一条腿（run-stats 桶），不新开读口；缺读数写「—」，不按 0 计。
+ * 「单次均值」= 当日成本 ÷ 当日运行次数（两者都有真读数才算）。
+ */
+function WeekTable({ trend }: { trend?: Loadable<RunStatsBody> }) {
+  const body = trend && trend.k === 'ready' ? trend.data : null;
+  const mini = useMemo(() => miniDays(body, 7), [body]);
+  const rows = mini.days;
+  const complete = rows.length > 0 && rows.every((d) => d.runs !== null && d.costUsd !== null);
+  const sumRuns = complete ? rows.reduce((n, d) => n + (d.runs as number), 0) : null;
+  const sumCost = complete ? Math.round(rows.reduce((n, d) => n + (d.costUsd as number), 0) * 100) / 100 : null;
+  return (
+    <Card className="ov5-block" data-testid="ov6-week-table">
+      <CardContent className="ov5-block-bd">
+        <div className="ov5-block-hd">
+          <h2>
+            <IconChart className="ov5-i ov5-i-16" />
+            近 7 天运行 / 成本
+          </h2>
+          <Source>运行统计</Source>
+        </div>
+        {trend === undefined || trend.k === 'loading' ? (
+          <div className="ov5-skeleton" aria-busy="true" aria-label="近 7 天明细加载中"><span /><span /><span /></div>
+        ) : rows.length === 0 ? (
+          <div className="ov5-empty-line">
+            <IconInbox className="ov5-i ov5-i-16" />
+            <span>运行统计没有返回任何一天的桶，所以没有明细可列。</span>
+          </div>
+        ) : (
+          <table className="ov5-wtable" data-testid="ov6-week-table-grid">
+            <thead>
+              <tr>
+                <th scope="col">日期</th>
+                <th scope="col" className="num">运行</th>
+                <th scope="col" className="num">成本</th>
+                <th scope="col" className="num">单次均值</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((d) => {
+                const avg = d.runs !== null && d.costUsd !== null && d.runs > 0 ? d.costUsd / d.runs : null;
+                return (
+                  <tr key={d.label} data-today={d.today ? '1' : undefined}>
+                    <td>{d.today ? `${d.label} · 今天` : d.label}</td>
+                    <td className="num">{d.runs === null ? '—' : d.runs}</td>
+                    <td className="num">{d.costUsd === null ? '—' : usd(d.costUsd)}</td>
+                    <td className="num">{avg === null ? '—' : usd(avg)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td>合计</td>
+                <td className="num">{sumRuns === null ? '—' : sumRuns}</td>
+                <td className="num">{sumCost === null ? '—' : usd(sumCost)}</td>
+                <td className="num">
+                  {sumRuns && sumCost !== null && sumRuns > 0 ? usd(sumCost / sumRuns) : '—'}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        )}
+        <p className="ov5-wtable-note">
+          缺读数写「—」，不按 0 计；合计只在七天都有读数时才给。
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
 function RecentActivity({ data, onRetry }: { data: DutyData; onRetry: () => void }) {
   const runs = data.recentRuns;
   const names = new Map<string, string>();
@@ -2340,6 +2412,8 @@ export function OverviewView({
         <PendingCard data={data} onRetry={onRetry} />
         <RecentActivity data={data} onRetry={onRetry} />
       </div>
+
+      <WeekTable trend={trend} />
 
       <footer className="ov5-pagefoot">
         <span>只展示已接通读口的数据，缺失显示「—」 · 采集 {summaryAsOf ?? '—'}（北京时间） · SEAKOI · 数字员工控制台</span>
