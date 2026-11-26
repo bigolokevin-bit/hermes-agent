@@ -195,3 +195,85 @@
   white-space: nowrap;
 }
 
+/* ------------------------------------------------------------------ *
+ * 2026-11-26 导航收口：配置/证据的左侧竖向分类栏（<nav> 按钮，
+ * 不是 tab；375 收进「分类」下拉，不在模块内横向成排）。
+ * ------------------------------------------------------------------ */
+
+.edw-nav {
+  position: sticky;
+  top: 1rem;
+  align-self: start;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.edw-nav-item {
+  min-width: 0;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--fg-3);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.edw-nav-item:hover {
+  color: var(--fg);
+}
+
+.edw-nav-item:focus-visible {
+  outline: 2px solid var(--fg-3);
+  outline-offset: 2px;
+}
+
+.edw-nav-item--active {
+  background: var(--panel-2);
+  color: var(--fg);
+}
+
+/* 四门判定行：门号+门名+判定一行，证据源一行截断，375 不横溢。 */
+.edw-gate-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.edw-gate-row {
+  display: block;
+  padding: 8px 16px;
+  border-top: 1px solid var(--line-3);
+}
+
+.edw-gate-row:first-child {
+  border-top: 0;
+}
+
+.edw-gate-top {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.edw-gate-name {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.edw-gate-source {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  color: var(--fg-3);
+}
+

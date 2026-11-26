@@ -238,33 +238,53 @@ describe("EmployeeDetailModulePage — overview", () => {
   });
 });
 
-describe("EmployeeDetailModulePage — capability (reuse: /v1/matrix/employees)", () => {
-  it("missing values render 待核实, never a fake 0", async () => {
+describe("EmployeeDetailModulePage — 能力与技能节（配置竖栏 · reuse: /api/matrix）", () => {
+  // 2026-11-26 收口：原「能力与权限」分区已并入配置竖栏的「能力与技能」节
+  // (?zone=capability 别名直达)。读口仍是全量矩阵行 + 前端按 employeeId 匹配。
+  const qid = (id: string) => container.querySelector(`[data-testid="${id}"]`);
+
+  it("a missing skillCount reads — while a real empty refs set says 真 0 (never a fake number)", async () => {
     mockApi((url) =>
       url.includes("/api/matrix")
-        ? Promise.resolve({ items: [{ capabilities: ["数据查询", { name: "外呼" }], scope: "系统内置" }] })
+        ? Promise.resolve({ items: [{ employeeId: EMP, skillRefs: [] }] })
         : Promise.resolve({ items: [] }),
     );
-    await renderAt(page, at("config"));
-    const card = container.querySelector('[data-testid="ed5-capability"]');
-    expect(card?.textContent).toContain("数据查询");
-    expect(card?.textContent).toContain("外呼");
-    expect(card?.textContent).toContain("待核实");
-    expect(card?.textContent).not.toMatch(/风险级别\s*0/);
+    await renderAt(page, at("capability"));
+    const card = container.querySelector('[data-testid="edcfg-cap"]');
+    expect(card).toBeTruthy();
+    // 缺 skillCount → 「—」，不回退成 0（缺失与真 0 必须可区分）。
+    expect(qid("edcfg-cap-field-count")?.textContent).toBe("—");
+    expect(qid("edcfg-cap-field-refs")?.textContent).toBe("0 项挂载（真 0）");
+    expect(qid("edcfg-cap-field-refs")?.getAttribute("title")).toContain("skillRefs 为空集");
+    expect(card?.textContent).not.toMatch(/技能数\s*0 项/);
+    // 矩阵读口没有按员工过滤的能力：本页前端筛选，口径常驻。
+    expect(qid("edcfg-cap-note")?.textContent).toContain("矩阵读口不支持按员工过滤，本页为前端筛选");
+  });
+
+  it("a matrix row for another employee is never borrowed (honest empty row state)", async () => {
+    mockApi((url) =>
+      url.includes("/api/matrix")
+        ? Promise.resolve({ items: [{ employeeId: "emp_OTHER0001", skillCount: 9, skillRefs: ["skill_other"] }] })
+        : Promise.resolve({ items: [] }),
+    );
+    await renderAt(page, at("capability"));
+    const card = container.querySelector('[data-testid="edcfg-cap"]');
+    expect(card?.textContent).toContain("矩阵里没有这位员工的行");
+    expect(card?.textContent).not.toContain("skill_other");
   });
 
   it("403 → permission sentence, not a fake empty", async () => {
     mockApi((url) => forbidden(url));
-    await renderAt(page, at("config"));
-    const denied = container.querySelector('[data-testid="ed5-capability-denied"]');
+    await renderAt(page, at("capability"));
+    const denied = container.querySelector('[data-testid="edcfg-cap-denied"]');
     expect(denied?.textContent).toContain("这块数据还没接入，或你没有查看权限");
     expect(denied?.textContent).toContain("重试");
   });
 
   it("404 → honest not-connected state", async () => {
     mockApi((url) => missing(url));
-    await renderAt(page, at("config"));
-    const denied = container.querySelector('[data-testid="ed5-capability-denied"]');
+    await renderAt(page, at("capability"));
+    const denied = container.querySelector('[data-testid="edcfg-cap-denied"]');
     expect(denied?.textContent).toContain("还没接入");
   });
 
@@ -297,7 +317,7 @@ describe("EmployeeDetailModulePage — approvals / runs / audit", () => {
       url.includes("/api/approvals")
         ? Promise.resolve({
             items: [
-              { taskId: "task_9F3A1B2C3D", status: "pending", title: "预算上调", createdAt: "2026-11-18T04:00:00Z", amountUsd: 300 },
+              { taskId: "task_9F3A1B2C3D", status: "pending", title: "预算上调", createdAt: "2026-11-18T04:00:00Z", amountUsd: 300, requestedBy: { id: EMP } },
             ],
           })
         : Promise.resolve({}),
@@ -369,7 +389,8 @@ describe("EmployeeDetailModulePage — approvals / runs / audit", () => {
           })
         : Promise.resolve({}),
     );
-    await renderAt(page, at("evidence"));
+    // 证据区左竖栏把「审计」单列：?zone=audit 直达该节（证据区默认落在审批）。
+    await renderAt(page, at("audit"));
     const card = container.querySelector('[data-testid="ed5-audit"]');
     expect(card?.textContent).toContain("预算调整");
     expect(card?.textContent).toContain("B2C4D6E8");
@@ -393,7 +414,7 @@ describe("EmployeeDetailModulePage — approvals / runs / audit", () => {
           })
         : Promise.resolve({}),
     );
-    await renderAt(page, at("evidence"));
+    await renderAt(page, at("audit"));
     const card = container.querySelector('[data-testid="ed5-audit"]');
     expect(card?.querySelector('[data-testid="ed5-zone-audit-row"]')).toBeTruthy();
     expect(card?.textContent).toContain("2026-11-16 22:46");
@@ -408,9 +429,11 @@ describe("EmployeeDetailModulePage — approvals / runs / audit", () => {
     await renderAt(page, at("approvals"));
     const card = container.querySelector('[data-testid="ed5-approvals-empty"]');
     // R93: 空集主句与队列 apv-state 单点同值（该条件下无审批），
-    // hint 保留本区范围说明（登录身份、全部状态、不是把缺失当 0）。
-    expect(card?.textContent).toContain("该条件下无审批");
-    expect(card?.textContent).toContain("暂不支持按员工筛选");
+    // hint 保留本区范围说明；11px 口径行在有行/空集两种态都常驻。
+    expect(card?.textContent).toContain(APPROVAL_EMPTY_SENTENCE);
+    expect(card?.textContent).toContain("聚合为空集");
+    const note = container.querySelector('[data-testid="ed8-appr-note"]');
+    expect(note?.textContent).toContain("服务端未按员工过滤，本页为前端筛选");
   });
 });
 
@@ -422,8 +445,8 @@ describe("EmployeeDetailModulePage — approvals zone R49", () => {
       if (url.includes("/api/approvals")) {
         return Promise.resolve({
           items: [
-            { approvalId: "apr_R49A", status: "expired", riskLevel: "high", updatedAt: "2026-11-19T02:30:00Z", title: "密钥轮换" },
-            { approvalId: "ap_R49B", status: "weird_state", riskLevel: "purple" },
+            { approvalId: "apr_R49A", status: "expired", riskLevel: "high", updatedAt: "2026-11-19T02:30:00Z", title: "密钥轮换", requestedBy: { id: EMP } },
+            { approvalId: "ap_R49B", status: "weird_state", riskLevel: "purple", requestedBy: { id: EMP } },
           ],
         });
       }
@@ -433,11 +456,11 @@ describe("EmployeeDetailModulePage — approvals zone R49", () => {
     const calls = urls.filter((u) => u.includes("/api/approvals"));
     expect(calls).toHaveLength(1);
     expect(calls[0]).toContain("status=all");
-    expect(calls[0]).toContain("limit=20");
+    expect(calls[0]).toContain("limit=200");
     expect(calls[0]).not.toContain("employeeId");
     const note = container.querySelector('[data-testid="ed8-appr-note"]');
-    expect(note?.textContent).toContain("暂不支持按员工筛选");
-    expect(note?.getAttribute("title")).toContain("白名单");
+    expect(note?.textContent).toContain("服务端未按员工过滤，本页为前端筛选");
+    expect(note?.getAttribute("title")).toContain("requestedBy");
     const card = container.querySelector('[data-testid="ed5-approvals"]');
     expect(container.querySelector('[data-testid="ed8-appr-title-0"]')?.textContent).toBe("密钥轮换");
     expect(container.querySelector('[data-testid="ed8-appr-risk-0"]')?.textContent).toBe("高风险");
@@ -509,34 +532,67 @@ describe("EmployeeDetailModulePage — sessions zone R52", () => {
   });
 });
 
-describe("EmployeeDetailModulePage — tabs", () => {
-  it("one plain-link segment row (no second tablist), shell-zone spellings", async () => {
-    mockApi(() => Promise.resolve({}));
-    await renderAt(page, at("approvals"));
-    // 2026-11-24 收口：模块内两排 tab 合并为一排普通链接「分段」条；
-    // 详情页唯一的 role="tablist" 归外壳 zone 条，模块内必须是 0。
+describe("EmployeeDetailModulePage — shell zone spelling (收口后)", () => {
+  it("no in-module segment row and no tab role: the five shell zones each land on real content", async () => {
+    mockApi(() => Promise.resolve({ items: [] }));
+    // 2026-11-26 收口：模块内「分区/小节」两排导航全部删除；唯一导航是外壳
+    // zone 条。模块内必须 0 条 tablist / tab / data-zone 行。
+    await renderAt(page, at("config"));
     expect(container.querySelectorAll('[role="tablist"]')).toHaveLength(0);
     expect(container.querySelectorAll('[role="tab"]')).toHaveLength(0);
-    const segs = Array.from(
-      (container.querySelector('[data-testid="ed5-tabs"]') ?? document).querySelectorAll("[data-zone]"),
-    );
-    expect(segs.map((t) => t.textContent)).toEqual(["概览", "能力与权限", "审批", "运行", "审计", "任务"]);
-    expect(segs[0]?.getAttribute("href")).toBe(`/employees/${encodeURIComponent(EMP)}?zone=overview`);
-    expect(segs[1]?.getAttribute("href")).toContain("?zone=capability");
-    const active = segs.find((t) => t.getAttribute("aria-current") === "page");
-    expect(active?.textContent).toBe("审批");
+    expect(container.querySelector('[data-testid="ed5-tabs"]')).toBeNull();
+    expect(container.querySelectorAll("[data-zone]")).toHaveLength(0);
+    expect(container.querySelector('[data-testid="ed5-module"]')).toBeTruthy();
+
+    // 五格各自有真内容（用页面根节点判，不看导航）。
+    const panels: Array<[string, string]> = [
+      ["workbench", "ed5-overview-wrap"],
+      ["config", "edcfg-rail"],
+      ["tasks", "ed5-zone-tasks-empty"],
+      ["runs", "ed5-zone-runs-wrap"],
+      ["evidence", "edevi-rail"],
+    ];
+    for (const [zone, testid] of panels) {
+      await renderAt(page, at(zone));
+      expect(container.querySelector(`[data-testid="${testid}"]`), `${zone} → ${testid}`).toBeTruthy();
+      expect(container.querySelectorAll('[role="tablist"]')).toHaveLength(0);
+      expect(container.querySelectorAll("[data-zone]")).toHaveLength(0);
+    }
   });
+
+  it("legacy spellings resolve: capability→配置·能力节, tasklist→任务, usage→运行, audit→证据·审计, chat→工作台", async () => {
+    mockApi(() => Promise.resolve({ items: [] }));
+
+    await renderAt(page, at("capability"));
+    expect(container.querySelector('[data-testid="edcfg-rail-item-capability"]')?.getAttribute("aria-current")).toBe("true");
+    expect(container.querySelector('[data-testid="edcfg-cap"]')).toBeTruthy();
+
+    await renderAt(page, at("tasklist"));
+    expect(container.querySelector('[data-testid="ed5-zone-tasks-empty"]')).toBeTruthy();
+
+    await renderAt(page, at("usage"));
+    expect(container.querySelector('[data-testid="ed5-zone-runs-wrap"]')).toBeTruthy();
+
+    await renderAt(page, at("audit"));
+    expect(container.querySelector('[data-testid="edevi-rail-item-audit"]')?.getAttribute("aria-current")).toBe("true");
+    expect(container.querySelector('[data-testid="ed5-audit-empty"]')).toBeTruthy();
+
+    await renderAt(page, at("chat"));
+    expect(container.querySelector('[data-testid="ed5-overview-wrap"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="ed9-sessions"]')).toBeNull();
+  });
+
   it("renders the capability panel for ?zone=capability and the approvals panel for ?zone=approvals", async () => {
     mockApi((url) =>
       url.includes("/api/matrix")
-        ? Promise.resolve({ items: [{ capabilities: ["数据查询"] }] })
+        ? Promise.resolve({ items: [{ employeeId: EMP, skillCount: 2, skillRefs: ["skill_query", "skill_call"] }] })
         : url.includes("/api/approvals")
-          ? Promise.resolve({ items: [{ taskId: "task_1", status: "pending", title: "预算上调" }] })
+          ? Promise.resolve({ items: [{ taskId: "task_1", status: "pending", title: "预算上调", requestedBy: { id: EMP } }] })
           : Promise.resolve({ items: [] }),
     );
     await renderAt(page, at("capability"));
-    expect(container.querySelector('[data-testid="ed5-capability"]')).toBeTruthy();
-    expect(container.querySelector('[data-testid="ed5-capability"]')?.textContent).toContain("数据查询");
+    expect(container.querySelector('[data-testid="edcfg-cap"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="edcfg-cap-field-refs"]')?.textContent).toContain("skill_query");
     await renderAt(page, at("approvals"));
     expect(container.querySelector('[data-testid="ed5-approvals"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="ed5-approvals"]')?.textContent).toContain("预算上调");
@@ -599,7 +655,9 @@ describe("EmployeeDetailModulePage — R28 not-found honesty", () => {
 
   // ---- R35 · PRD 聊天区：真数据或诚实未接入（只读摘要，禁第二 chat host） ----
 
-  it("chat zone: real session rows render title/BJT minute/count/plain status", async () => {
+  it("sessions zone: real session rows render title/BJT minute/count/plain status", async () => {
+    // 2026-11-26 收口：原「对话区」并入证据区左竖栏的「会话」节
+    // （?zone=sessions 直达）；本区仍是只读摘要，不是宿主、零写入口。
     mockApi((url) => {
       if (url.includes("console-sessions")) {
         return Promise.resolve({
@@ -611,9 +669,9 @@ describe("EmployeeDetailModulePage — R28 not-found honesty", () => {
       }
       return Promise.resolve({ items: [] });
     });
-    await renderAt(<EmployeeDetailModulePage />, `/employees/${EMP}?zone=chat`);
-    expect(container.querySelector('[data-testid="ed5-zone-chat"]')).toBeTruthy();
-    expect(container.querySelectorAll('[data-testid="ed5-zone-chat-row"]')).toHaveLength(2);
+    await renderAt(<EmployeeDetailModulePage />, `/employees/${EMP}?zone=sessions`);
+    expect(container.querySelector('[data-testid="ed9-sessions"]')).toBeTruthy();
+    expect(container.querySelectorAll('[data-testid="ed9-sessions-row-0"], [data-testid="ed9-sessions-row-1"]')).toHaveLength(2);
     const text = container.textContent ?? "";
     expect(text).toContain("周报讨论");
     expect(text).toContain("2026-11-18 10:00");
@@ -624,36 +682,39 @@ describe("EmployeeDetailModulePage — R28 not-found honesty", () => {
     // ②本区不是宿主、不是消息流、零写入口
     expect(container.querySelector("[data-chat-host]")).toBeNull();
     expect(text).not.toContain("发送");
-    // 导航条仍是五区
-    const tabs = Array.from(container.querySelectorAll("[role='tab'], [data-zone]")).filter((el) => el.getAttribute("data-zone") !== "chat");
-    expect(tabs.length).toBeGreaterThanOrEqual(5);
   });
 
-  it("chat zone: an empty server answer states 尚未接入 with the reason in the title", async () => {
+  it("sessions zone: an empty server answer states the real empty set with the reason", async () => {
     mockApi((url) => Promise.resolve(url.includes("console-sessions") ? { items: [] } : { items: [] }));
-    await renderAt(<EmployeeDetailModulePage />, `/employees/${EMP}?zone=chat`);
-    const empty = container.querySelector('[data-testid="ed5-zone-chat-empty"]');
+    await renderAt(<EmployeeDetailModulePage />, `/employees/${EMP}?zone=sessions`);
+    const empty = container.querySelector('[data-testid="ed9-sessions-empty"]');
     expect(empty).toBeTruthy();
-    expect(container.textContent).toContain("该员工的对话记录尚未接入");
+    expect(empty?.textContent).toContain("该员工暂无可查会话");
+    expect(empty?.textContent).toContain("真实空集");
     expect(container.textContent).not.toContain("会话摘要为空（bug");
   });
 
-  it("chat zone: error keeps plain copy with a copyable rid and retry", async () => {
+  it("sessions zone: error keeps plain copy with a copyable rid and retry", async () => {
     mockApi((url) => (url.includes("console-sessions") ? silent502(url, "req-chat-1") : Promise.resolve({ items: [] })));
-    await renderAt(<EmployeeDetailModulePage />, `/employees/${EMP}?zone=chat`);
-    const err = container.querySelector('[data-testid="ed5-zone-chat-error"]');
+    await renderAt(<EmployeeDetailModulePage />, `/employees/${EMP}?zone=sessions`);
+    const err = container.querySelector('[data-testid="ed9-sessions-error"]');
     expect(err).toBeTruthy();
     expect(container.textContent).toContain("请求编号：req-chat-1");
+    expect(container.querySelector('[data-testid="req-copy"]')).toBeTruthy();
     expect(container.textContent).toContain("重试");
   });
 
-  it("chat zone: 403 and 404 share one denied body and echo no path", async () => {
+  it("sessions zone: 403 and 404 share one denied body and echo no path", async () => {
+    let first: string | null = null;
     for (const fail of [forbidden, missing]) {
       mockApi((url) => (url.includes("console-sessions") ? fail(url) : Promise.resolve({ items: [] })));
-      await renderAt(<EmployeeDetailModulePage />, `/employees/${EMP}?zone=chat`);
-      expect(container.querySelector('[data-testid="ed5-zone-chat-denied"]')).toBeTruthy();
-      expect(container.textContent).toContain("这块数据还没接入，或你没有查看权限");
+      await renderAt(<EmployeeDetailModulePage />, `/employees/${EMP}?zone=sessions`);
+      const denied = container.querySelector('[data-testid="ed9-sessions-denied"]');
+      expect(denied).toBeTruthy();
+      expect(denied?.textContent).toContain("这块数据还没接入，或你没有查看权限");
       expect(container.textContent).not.toContain("console-sessions");
+      if (first === null) first = denied?.textContent ?? "";
+      else expect(denied?.textContent).toBe(first);
     }
   });
 });
@@ -676,12 +737,12 @@ describe("EmployeeDetailModulePage — tasks zone (R43)", () => {
     await renderAt(page, at("tasks"));
     const call = urls.find((u) => u.includes("/api/tasks"));
     expect(call).toContain("assignee=employee%3A" + EMP);
-    expect(call).toContain("limit=20");
+    expect(call).toContain("status=all");
     const link = container.querySelector('[data-testid="ed5-zone-tasks-name-tk_0762C4D5"]');
     expect(link?.getAttribute("href")).toBe("/tasks/tk_0762C4D5");
     expect(link?.textContent).toBe("周报合并");
     expect(link?.getAttribute("title")).toBe("tk_0762C4D5");
-    expect(container.textContent).toContain("待处理");
+    expect(container.textContent).toContain("待分配"); // 任务看板同一状态词表（open=待分配）
     expect(container.textContent).toContain("待核实");
     expect(container.textContent).toContain("高优先级");
     expect(container.textContent).toContain("2026-11-18 10:00");
@@ -792,28 +853,30 @@ describe("R47 cross-zone consistency (edx-*)", () => {
   });
 });
 
-describe("EmployeeDetailModulePage — zone nav (R51)", () => {
-  it("renders six reachable segment links with real ?zone= links and marks the current one", async () => {
-    mockApi(() => Promise.resolve({ items: [] }));
+describe("EmployeeDetailModulePage — zone nav (R51 → 收口后)", () => {
+  it("the five shell zones are addressable by ?zone= and the module owns no nav link of its own", async () => {
+    mockApi((url) =>
+      url.includes("/api/tasks")
+        ? Promise.resolve({ items: [{ taskId: "tk_A1", title: "周报合并", status: "open" }] })
+        : Promise.resolve({ items: [] }),
+    );
     await renderAt(page, at("tasks"));
-    expect(container.querySelector('[data-testid="ed5-tabs"]')).toBeTruthy();
-    const overview = container.querySelector('[data-testid="edz-nav-overview"]') as HTMLAnchorElement;
-    const tasks = container.querySelector('[data-testid="edz-nav-tasklist"]') as HTMLAnchorElement;
-    const runs = container.querySelector('[data-testid="edz-nav-runs"]') as HTMLAnchorElement;
-    const approvals = container.querySelector('[data-testid="edz-nav-approvals"]') as HTMLAnchorElement;
-    for (const el of [overview, tasks, runs, approvals]) {
-      expect(el?.tagName).toBe("A");
-      expect(el?.getAttribute("aria-disabled")).toBeNull();
-      expect(el?.className).toContain("focus-visible:outline");
+    expect(container.querySelector('[data-testid="ed5-module"]')).toBeTruthy();
+    // 收口契约：模块内不再自己画一排分区链接（导航归外壳 zone 条）。
+    expect(container.querySelectorAll('a[href*="?zone="]')).toHaveLength(0);
+    expect(container.querySelectorAll('[role="tablist"]')).toHaveLength(0);
+    // 五格各自可达：每格渲出自己的真内容根节点。
+    const reachable: Array<[string, string]> = [
+      ["workbench", "ed5-overview-wrap"],
+      ["config", "edcfg-rail"],
+      ["tasks", "ed5-zone-tasks"],
+      ["runs", "ed5-zone-runs-wrap"],
+      ["evidence", "edevi-rail"],
+    ];
+    for (const [zone, testid] of reachable) {
+      await renderAt(page, at(zone));
+      expect(container.querySelector(`[data-testid="${testid}"]`), `${zone} → ${testid}`).toBeTruthy();
     }
-    expect(overview.getAttribute("href")).toBe(`/employees/${encodeURIComponent(EMP)}?zone=overview`);
-    expect(tasks.getAttribute("href")).toBe(`/employees/${encodeURIComponent(EMP)}?zone=tasklist`);
-    expect(runs.getAttribute("href")).toContain("?zone=runs");
-    expect(approvals.getAttribute("href")).toContain("?zone=approvals");
-    expect(tasks.getAttribute("aria-current")).toBe("page");
-    expect(overview.getAttribute("aria-current")).toBeNull();
-    // 唯一 tablist 归外壳；模块内 0 条。
-    expect(container.querySelectorAll('[role="tablist"]').length).toBe(0);
   });
 
   it("entering a zone fetches only that zone's data — measured request counts", async () => {
@@ -823,7 +886,7 @@ describe("EmployeeDetailModulePage — zone nav (R51)", () => {
       return Promise.resolve({ items: [] });
     });
     await renderAt(page, at("runs"));
-    const runsCalls = urls.filter((u) => u.includes("/api/runs"));
+    const runsCalls = urls.filter((u) => u.includes("/api/runs?"));
     expect(runsCalls).toHaveLength(1);
     expect(runsCalls[0]).toContain("employeeId=");
     expect(urls.some((u) => u.includes("/api/tasks"))).toBe(false);
@@ -835,7 +898,7 @@ describe("EmployeeDetailModulePage — zone nav (R51)", () => {
     await renderAt(page, at("tasks"));
     expect(urls.filter((u) => u.includes("/api/tasks"))).toHaveLength(1);
     expect(urls.some((u) => u.includes("/api/runs"))).toBe(false);
-    expect(container.querySelector('[data-testid="edz-nav-tasklist"]')?.getAttribute("aria-current")).toBe("page");
+    expect(container.querySelector('[data-testid="ed5-zone-tasks-empty"]')).toBeTruthy();
   });
 });
 
@@ -1031,7 +1094,7 @@ describe("R86 approvals zone announcement (apv-live)", () => {
   it("the zone speaks through one derived status node, empty and error share the sentences", async () => {
     mockApi(async (url: string) => {
       if (String(url).includes("/api/approvals"))
-        return { items: [{ approvalId: "ap_e86", status: "pending", title: "播报单" }] };
+        return { items: [{ approvalId: "ap_e86", status: "pending", title: "播报单", requestedBy: { id: EMP } }] };
       return {};
     });
     await renderAt(page, at("approvals"));
@@ -1085,7 +1148,7 @@ describe("R87 cost caliber note (ed10-cost-caliber)", () => {
 describe("R89 approvals zone honest scope (ed8-appr-scope)", () => {
   const APPROVALS_BODY = {
     items: [
-      { approvalId: "ap_r89", status: "pending", action: "rotate.secret", riskLevel: "high", updatedAt: "2026-11-19T02:30:00Z" },
+      { approvalId: "ap_r89", status: "pending", action: "rotate.secret", riskLevel: "high", updatedAt: "2026-11-19T02:30:00Z", requestedBy: { id: EMP } },
     ],
     nextCursor: null,
   };
@@ -1099,9 +1162,9 @@ describe("R89 approvals zone honest scope (ed8-appr-scope)", () => {
     mockApi(approvalsHandler);
     await renderAt(page, at("approvals"));
     const scope = container.querySelector('[data-testid="ed8-appr-scope"]');
-    expect(scope?.textContent).toContain("本区按聚合口径读取，单页最多 20 条，超出部分请到");
+    expect(scope?.textContent).toContain("本区按聚合口径单页最多 200 条，超出部分请到");
     expect(scope?.textContent).toContain("审批队列");
-    expect(scope?.getAttribute("title")).toContain("nextCursor 恒 null");
+    expect(scope?.getAttribute("title")).toContain("不在这里伪造加载更多");
     const link = container.querySelector('[data-testid="ed8-appr-scope-queue"]') as HTMLAnchorElement | null;
     expect(link?.getAttribute("href")).toBe("/approvals?status=all");
     expect(container.querySelector('[data-testid="ed8-appr-row-0"]')).toBeTruthy();
@@ -1179,14 +1242,14 @@ describe("R52-obs employee approvals scope carrier", () => {
     mockApi((url) =>
       url.includes("/api/approvals")
         ? Promise.resolve({
-            items: [{ approvalId: "ap_c81", status: "pending", title: "口径载体单", createdAt: "2026-11-18T04:00:00Z" }],
+            items: [{ approvalId: "ap_c81", status: "pending", title: "口径载体单", createdAt: "2026-11-18T04:00:00Z", requestedBy: { id: EMP } }],
           })
         : Promise.resolve({}),
     );
     await renderAt(page, at("approvals"));
     const scope = container.querySelector('[data-testid="ed8-appr-scope"]');
     expect(scope, "cap sentence").toBeTruthy();
-    expect(scope!.getAttribute("data-ed8-appr-scope")).toBe("aggregate-cap-20");
+    expect(scope!.getAttribute("data-ed8-appr-scope")).toBe("aggregate-cap-200");
   });
 });
 
