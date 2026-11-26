@@ -37,9 +37,15 @@ function stub(routeset: Record<string, Reply>) {
   for (const [url, value] of Object.entries(routeset)) routes.set(url, value);
   vi.stubGlobal(
     "fetch",
-    vi.fn(async (input: RequestInfo | URL) => {
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
-      const hit = routes.get(url) ?? routes.get(new URL(url, "http://x").pathname);
+      const method = (init?.method ?? "GET").toUpperCase();
+      // 写口按「METHOD /url」注册，读口仍按裸 URL（老用例不用改）。
+      const hit =
+        routes.get(`${method} ${url}`) ??
+        routes.get(url) ??
+        routes.get(`${method} ${new URL(url, "http://x").pathname}`) ??
+        routes.get(new URL(url, "http://x").pathname);
       if (!hit) return reply(404, { code: "console.unknown_route" });
       return reply(hit.status, hit.body);
     }),
@@ -242,11 +248,11 @@ describe("能力与接入 · 模型与单价", () => {
     return (t.match(/—/g) ?? []).length + (t.match(/未接入/g) ?? []).length + (t.match(/待核实/g) ?? []).length;
   }
 
-  it("六块；价目未接线时单价整列不画、缺列在卡底可用性点名，真读数照实上屏", async () => {
+  it("七块（首块是模型凭据写口）；价目未接线时单价整列不画、缺列在卡底可用性点名，真读数照实上屏", async () => {
     stub(liveStubs);
     await mount(<CapModelsPane />);
 
-    expect(cards()).toBe(6);
+    expect(cards()).toBe(7);
     expect(q(".cap-sub")!.textContent).toBe("1 个可用模型 · — 条单价");
     // 台账回了名称/供应商/上下文/状态；输入、输出、7 天调用整列无读口，不画。
     expect(headers(0)).toEqual(["模型", "Provider", "上下文", "状态"]);
@@ -295,6 +301,166 @@ describe("能力与接入 · 模型与单价", () => {
     expect(all('[data-testid="cap-model-row"]')).toHaveLength(0);
     expect(text()).toContain("缺读口：上游端点未接线");
     expect(dashCount()).toBeLessThanOrEqual(8);
+  });
+});
+
+describe("能力与接入 · 模型凭据写口", () => {
+  const credStubs = {
+    "/api/credentials/pool": {
+      status: 200,
+      body: {
+        providers: [
+          {
+            provider: "alibaba",
+            entries: [
+              {
+                index: 1,
+                id: "c99691",
+                label: "DASHSCOPE_API_KEY",
+                auth_type: "api_key",
+                source: "env:DASHSCOPE_API_KEY",
+                priority: 0,
+                last_status: null,
+                request_count: 1,
+                token_preview: "sk-w...ufVG",
+                has_refresh: false,
+              },
+              {
+                index: 2,
+                id: "a1b2c3",
+                label: "主账号",
+                auth_type: "api_key",
+                source: "manual",
+                priority: 1,
+                last_status: "exhausted",
+                request_count: 7,
+                token_preview: "sk-w...9f2Q",
+                has_refresh: false,
+              },
+            ],
+          },
+        ],
+      },
+    },
+    "/api/config": { status: 200, body: { model: "qwen-plus" } },
+    "/api/env": {
+      status: 200,
+      body: { DASHSCOPE_API_KEY: { provider: "alibaba", provider_primary: true, is_password: true } },
+    },
+  };
+
+  const calls = () =>
+    (fetch as unknown as { mock: { calls: Array<[string, RequestInit | undefined]> } }).mock.calls;
+
+  function click(label: string) {
+    const button = all("button")
+      .map((node) => node as HTMLButtonElement)
+      .find((node) => (node.textContent ?? "").trim() === label && !node.disabled);
+    expect(button, `找不到可点的按钮：${label}`).toBeTruthy();
+    button!.click();
+  }
+
+  function typeInto(selector: string, value: string) {
+    const input = q(selector) as HTMLInputElement;
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
+    setter.call(input, value);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  }
+
+  it("凭据池真读数上屏：只显示脱敏预览，last_status 为空写「—」，页面没有明文 key", async () => {
+    stub(credStubs);
+    await mount(<CapModelsPane />);
+
+    const rows = all('[data-testid="cap-cred-row"]');
+    expect(rows).toHaveLength(2);
+    const first = rows[0]!.textContent ?? "";
+    expect(first).toContain("alibaba");
+    expect(first).toContain("DASHSCOPE_API_KEY");
+    expect(first).toContain("sk-w...ufVG");
+    expect(first).toContain("env:DASHSCOPE_API_KEY");
+    expect(first).toContain("优先级 0");
+    expect(first).toContain("请求 1");
+    // last_status 为 null 就是「—」，不能写「正常」。
+    expect(first).toContain("状态 —");
+    expect(rows[1]!.textContent).toContain("状态 已耗尽");
+    // 默认模型是真读数，写口在手（有「修改」）。
+    expect(text()).toContain("qwen-plus");
+    expect(all("button").some((node) => (node.textContent ?? "").trim() === "修改")).toBe(true);
+    expect(text()).not.toMatch(/sk-[A-Za-z0-9]{8,}/);
+    shapeGuards();
+  });
+
+  it("保存成功：key 输入框立刻清空，列表重读，页面只说「已写入凭据池」", async () => {
+    stub({ ...credStubs, "POST /api/credentials/pool": { status: 200, body: { ok: true } } });
+    await mount(<CapModelsPane />);
+
+    typeInto('input[placeholder="alibaba"]', "alibaba");
+    typeInto('input[type="password"]', "sk-ws-SECRET-123456");
+    await act(async () => {});
+    click("保存");
+    await act(async () => {});
+    await act(async () => {});
+
+    expect(text()).toContain("已写入凭据池");
+    expect((q('input[type="password"]') as HTMLInputElement).value).toBe("");
+    const post = calls().find(([url, init]) => String(url) === "/api/credentials/pool" && init?.method === "POST");
+    expect(post).toBeTruthy();
+    expect(JSON.parse(String(post![1]!.body))).toEqual({
+      provider: "alibaba",
+      api_key: "sk-ws-SECRET-123456",
+    });
+    expect(all('[data-testid="cap-cred-row"]')).toHaveLength(2);
+    shapeGuards();
+  });
+
+  it("保存失败：上游 detail 原文上屏（不提「保存失败」），且不回显明文 key", async () => {
+    stub({
+      ...credStubs,
+      "POST /api/credentials/pool": {
+        status: 422,
+        body: { detail: [{ loc: ["body", "provider"], msg: "Field required", type: "missing" }] },
+      },
+    });
+    await mount(<CapModelsPane />);
+
+    typeInto('input[placeholder="alibaba"]', "alibaba");
+    typeInto('input[type="password"]', "sk-ws-SECRET-123456");
+    await act(async () => {});
+    click("保存");
+    await act(async () => {});
+    await act(async () => {});
+
+    expect(text()).toContain("Field required");
+    expect(text()).toContain("HTTP 422");
+    expect(text()).not.toContain("保存失败");
+    expect(text()).not.toContain("sk-ws-SECRET-123456");
+    expect(text()).not.toContain("已写入凭据池");
+  });
+
+  it("删除是二次确认：先点「删除」不发请求，点「确认删除」才发 DELETE 并重读", async () => {
+    stub({
+      ...credStubs,
+      "DELETE /api/credentials/pool/alibaba/1": {
+        status: 200,
+        body: { ok: true, provider: "alibaba", count: 1, cleaned: [], hints: [] },
+      },
+    });
+    await mount(<CapModelsPane />);
+
+    const deletes = () => calls().filter(([, init]) => init?.method === "DELETE");
+    expect(deletes()).toHaveLength(0);
+
+    click("删除");
+    await act(async () => {});
+    expect(text()).toContain("确认删除");
+    expect(deletes()).toHaveLength(0);
+
+    click("确认删除");
+    await act(async () => {});
+    await act(async () => {});
+    expect(deletes()).toHaveLength(1);
+    expect(String(deletes()[0]![0])).toBe("/api/credentials/pool/alibaba/1");
+    expect(text()).toContain("已删除 alibaba 的第 1 条凭据");
   });
 });
 

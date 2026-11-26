@@ -1,0 +1,29 @@
+现有凭据
+池内 2 条
+alibaba
+DASHSCOPE_API_KEY
+sk-w...ufVG
+env:DASHSCOPE_API_KEY
+优先级 0
+请求 1
+状态 —
+删除
+alibaba-cn
+DASHSCOPE_API_KEY
+sk-w...ufVG
+env:DASHSCOPE_API_KEY
+优先级 0
+请求 1
+状态 已耗尽
+删除
+新增
+供应商
+标签（可留空）
+API Key
+校验
+保存
+保存成功后 key 进凭据池（auth.json），页面只回显脱敏预览；失败时这里显示上游原文。
+默认模型
+qwen-plus
+修改
+只改默认模型这一项，其它配置项不动。
