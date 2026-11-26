@@ -47,7 +47,14 @@ import { Button } from "@nous-research/ui/ui/components/button";
 
 import { useI18n } from "@/i18n/context";
 import { resolvePageTitle } from "@/lib/resolve-page-title";
-import { CONSOLE_MODULES, ZONE_TITLE, findRoute, type DetailZone } from "./routes";
+import {
+  CONSOLE_MODULES,
+  ZONE_ALIAS,
+  ZONE_TITLE,
+  ZONES,
+  findRoute,
+  type DetailZone,
+} from "./routes";
 import "./console-chrome.css";
 
 /** Mount point rendered by App.tsx in the main column, outside <main>. */
@@ -71,8 +78,11 @@ type Crumb = { label: string; to?: string };
  *
  * 详情页的层级是真实路径，不是猜的：`findRoute` 已经解出 `zone` 与
  * `params.employeeId`，这里只把它们拼成「分组 › 模块 › 员工详情」。  */
-function consoleSurface(pathname: string): { trail: Crumb[]; title: string } | null {
-  const hit = findRoute(pathname);
+function consoleSurface(
+  pathname: string,
+  search: string,
+): { trail: Crumb[]; title: string } | null {
+  const hit = findRoute(pathname + search);
   if (hit === null) return null;
   const meta = CONSOLE_MODULES.find((m) => m.module === hit.entry.module);
   if (meta === undefined) return null;
@@ -83,7 +93,15 @@ function consoleSurface(pathname: string): { trail: Crumb[]; title: string } | n
   }
 
   const employeeId = hit.params.employeeId ?? "";
-  const zone = (hit.entry.zone ?? "workbench") as DetailZone;
+  // 分区可能写在路径段（/employees/:id/config），也可能写在查询串（?zone=config）。
+  // 查询串形制是分区条自己生成的链接，而 `findRoute` 的路径匹配会先命中工作台那行，
+  // 于是 entry.zone 恒为 workbench —— 这里必须自己读一次 query，否则点「配置」
+  // 顶栏仍显示「员工详情」（2026-11-26 全局审查发现，29 条路由里唯一一处不一致）。
+  const queryZone = new URLSearchParams(search).get("zone") ?? "";
+  const aliased = ZONE_ALIAS[queryZone] ?? queryZone;
+  const zone = (ZONES as readonly string[]).includes(aliased)
+    ? (aliased as DetailZone)
+    : ((hit.entry.zone ?? "workbench") as DetailZone);
   const employeesCrumb: Crumb = { label: meta.label, to: "/employees" };
 
   // 裸详情（工作台）：不再自己链自己，返回靠左侧箭头。
@@ -105,7 +123,7 @@ function consoleSurface(pathname: string): { trail: Crumb[]; title: string } | n
 }
 
 export function ConsoleTopBar({ collapsed, onToggleCollapse }: ConsoleTopBarProps) {
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   const navigate = useNavigate();
   const { t } = useI18n();
   const [slot, setSlot] = useState<HTMLElement | null>(null);
@@ -116,7 +134,7 @@ export function ConsoleTopBar({ collapsed, onToggleCollapse }: ConsoleTopBarProp
 
   if (slot === null) return null;
 
-  const surface = consoleSurface(pathname);
+  const surface = consoleSurface(pathname, search);
   // Off-shell routes fall back to the shared resolver, which owns builtin nav
   // labels and residual zh titles. Plugin tabs are not passed down here: an
   // empty list means a plugin route shows the resolver's pathname-derived title

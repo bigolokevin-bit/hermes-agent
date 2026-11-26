@@ -134,7 +134,7 @@ describe("n17 top bar: one h1 outside main, no inline style, no minted tokens", 
   });
 
   it("a console route's h1 title comes from the shell module table, not a derived string", () => {
-    expect(topbarCode).toContain("consoleSurface(pathname)");
+    expect(topbarCode).toContain("consoleSurface(pathname, search)");
     expect(topbarCode).toContain(
       "surface !== null ? surface.title : resolvePageTitle(pathname, t, [])",
     );
@@ -147,5 +147,8 @@ describe("n17 top bar: one h1 outside main, no inline style, no minted tokens", 
     expect(topbarCode).toContain("<Link to={crumb.to}");
     expect(topbarCode).toContain('data-testid="shell-topbar-back"');
     expect(topbarCode).toContain("ZONE_TITLE[zone]");
+    // 查询串形制（?zone=config）与路径段形制必须给出同一个分区名：
+    // 分区条自己生成的是查询串链接，只读 entry.zone 会永远落回「工作台」。
+    expect(topbarCode).toContain('URLSearchParams(search).get("zone")');
   });
 });
