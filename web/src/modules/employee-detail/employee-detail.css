@@ -277,3 +277,144 @@
   color: var(--fg-3);
 }
 
+
+/* 2026-11-26：工作台右栏顶部的「会话与工作区」块（挂 ChatSessionList）。
+   组件自带列表/错误/重试，这里只给容器高度与分隔，不改其内部样式。 */
+.edw-sessions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-bottom: 1px solid var(--line-3, rgba(255, 230, 203, 0.07));
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+}
+
+.edw-sessions-body {
+  min-height: 11rem;
+  max-height: 42vh;
+  overflow: hidden;
+}
+
+@media (max-width: 760px) {
+  .edw-sessions-body {
+    min-height: 9rem;
+    max-height: 32vh;
+  }
+}
+
+/* 会话与工作区：头部（标题 + 新会话）、工作区一行、滚动列表。 */
+.edw-sessions-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.edw-sessions-new {
+  border: 0;
+  background: none;
+  padding: 0;
+  font-size: 11px;
+  color: var(--fg-2, rgba(255, 230, 203, 0.68));
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.edw-sessions-new:hover {
+  color: var(--fg, #ffe6cb);
+}
+
+.edw-sessions-ws {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 2px 0 0;
+  font-size: 11px;
+  color: var(--fg-3, #9aa49e);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.edw-sessions-ws-label {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.edw-sessions-ws-value {
+  font-family: var(--mono, ui-monospace, SFMono-Regular, monospace);
+  color: var(--fg-2, rgba(255, 230, 203, 0.68));
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.edw-sessions-ws-count {
+  margin-left: auto;
+  color: var(--fg-4, #8d9791);
+}
+
+.edw-sessions-body {
+  min-height: 11rem;
+  max-height: 42vh;
+  overflow-y: auto;
+}
+
+.edw-sessions-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.edw-sessions-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  border: 0;
+  background: none;
+  padding: 6px 6px;
+  text-align: left;
+  border-radius: var(--r-sm, 4px);
+  cursor: pointer;
+  color: var(--fg-2, rgba(255, 230, 203, 0.68));
+}
+
+.edw-sessions-row:hover {
+  background: var(--panel-2, #082424);
+  color: var(--fg, #ffe6cb);
+}
+
+.edw-sessions-row[aria-current="true"] {
+  background: var(--panel-2, #082424);
+  color: var(--fg, #ffe6cb);
+  box-shadow: inset 2px 0 0 var(--ok, #4ade80);
+}
+
+.edw-sessions-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.edw-sessions-time {
+  margin-left: auto;
+  flex: none;
+  font-size: 11px;
+  color: var(--fg-4, #8d9791);
+  font-variant-numeric: tabular-nums;
+}
+
+.edw-sessions-empty {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 6px;
+  font-size: 11px;
+  color: var(--fg-3, #9aa49e);
+}

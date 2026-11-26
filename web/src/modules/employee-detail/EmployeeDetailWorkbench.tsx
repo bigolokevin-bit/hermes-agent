@@ -30,6 +30,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router";
 
+import { ChatSessionsMini } from "./ChatSessionsMini";
 import { fetchJSON } from "@/lib/api";
 import EmployeeDetailRail from "./EmployeeDetailRail";
 import "./employee-detail.css";
@@ -103,6 +104,9 @@ export default function EmployeeDetailWorkbench({
   renderChatHost,
 }: EmployeeDetailWorkbenchProps) {
   const [chatOnly, setChatOnly] = useState(false);
+  // 2026-11-26：上游 ChatPage 的桌面直排分支不带会话列表（只有移动抽屉里
+  // 才有 ChatSessionList），所以我们把同一个组件挂到工作台右栏：它自己读写
+  // `?resume=<id>`，选中即让对话宿主重开该会话。「新会话」清空该参数。
   const header = useHeaderInfo(employeeId);
   const code = employeeId ? shortCode(employeeId) : "—";
   const title = header.name ? `${header.name} · ${code}` : `员工 · ${code}`;
@@ -198,6 +202,7 @@ export default function EmployeeDetailWorkbench({
           aria-label="工作台侧栏"
           data-testid="ed5-workbench-rail-slot"
         >
+          <ChatSessionsMini />
           <EmployeeDetailRail employeeId={employeeId} hidden={chatOnly} />
         </aside>
       </div>
