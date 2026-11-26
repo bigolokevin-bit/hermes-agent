@@ -131,7 +131,10 @@ function perM(value: number | null): string {
 const STATUS_TONE = { 可用: "ok", 限流中: "warn" } as const;
 
 export function CapModelsPane() {
-  const models = usePort("/api/models", parseModels, (rows) => rows.length === 0);
+  // 模型目录的真读口是 `/api/model/options`（`/api/models` 在 54458 上 404）。
+  // 该口在「进程代码落后于检出」时会回 503 restart required——本页如实上屏，
+  // 不换个口子假装目录为空。
+  const models = usePort("/api/model/options", parseModels, (rows) => rows.length === 0);
   const prices = usePort("/api/models/pricing", parsePrices, (rows) => rows.length === 0);
   const pool = usePort("/api/credentials/pool", parseCredentials, (rows) => rows.length === 0);
   // 供应商目录（GET /api/env）两张卡都要用：向导卡拿它选写哪把 key，凭据池拿它判断

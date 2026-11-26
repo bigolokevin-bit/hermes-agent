@@ -223,7 +223,7 @@ describe("能力与接入 · 工具与 MCP", () => {
 
 describe("能力与接入 · 模型与单价", () => {
   const liveStubs = {
-    "/api/models": {
+    "/api/model/options": {
       status: 200,
       body: { items: [{ id: "qwen3-max", name: "qwen3-max", provider: "dashscope", context_window: 131072, status: "ok" }] },
     },
@@ -306,7 +306,7 @@ describe("能力与接入 · 模型与单价", () => {
   it("模型目录没有读口时保留骨架表头 + 一行声明，不抹掉整表", async () => {
     stub({
       ...liveStubs,
-      "/api/models": { status: 404, body: { code: "console.unknown_route" } },
+      "/api/model/options": { status: 404, body: { code: "console.unknown_route" } },
     });
     await mount(<CapModelsPane />);
 
