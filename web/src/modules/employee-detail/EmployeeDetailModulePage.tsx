@@ -1693,7 +1693,37 @@ function CapabilitySection({ empId }: { empId: string }) {
   const [matrix, matrixRetry] = useOne(`/agent-api/api/matrix?limit=50`, (b) =>
     itemsOf(b).find((row) => pickString(row.employeeId, row.employee_id, row.id) === empId) ?? null,
   );
-  const [skills, skillsRetry] = useList(`/agent-api/api/skills`, (b) => itemsOf(b));
+  // 技能按「这位员工」的档案读：`/api/skills?profile=` 回裸数组，每行带
+  // name/enabled/locked；开关写 `PUT /api/skills/toggle`，同样带 profile。
+  const profileName = employeeProfileName(empId) ?? "";
+  const profileQuery = profileName ? `?profile=${encodeURIComponent(profileName)}` : "";
+  const [skills, skillsRetry, skillsRefresh] = useList(`/api/skills${profileQuery}`, (b) =>
+    Array.isArray(b) ? (b as Rec[]) : [],
+  );
+  const [skillBusy, setSkillBusy] = useState<string | null>(null);
+  const [skillError, setSkillError] = useState<string | null>(null);
+  const toggleSkill = async (name: string, enabled: boolean) => {
+    if (skillBusy) return;
+    if (!profileName) {
+      setSkillError("这位员工没有可用的档案名，不能按员工保存技能开关。");
+      return;
+    }
+    setSkillBusy(name);
+    setSkillError(null);
+    try {
+      await fetchJSON<unknown>(`/api/skills/toggle`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, enabled, profile: profileName }),
+      });
+      skillsRefresh();
+    } catch (err: unknown) {
+      const e = writeErrorText(err, "技能开关没有保存成功：");
+      setSkillError(`${name}：${e.text}`);
+    } finally {
+      setSkillBusy(null);
+    }
+  };
 
   return (
     <>
@@ -1753,10 +1783,38 @@ function CapabilitySection({ empId }: { empId: string }) {
               本租户暂无已发布技能（服务端返回空集，是真 0，不是加载失败）。
             </p>
           ) : (
-            <p className="px-4 py-3 text-xs text-white/55" data-testid="edcfg-skills-count">
-              已发布技能 {skills.data.length} 条：{skills.data.map((r, i) => pickString(r.name, r.title, r.id) ?? `#${i + 1}`).join(" · ")}
-            </p>
+            <ul className="divide-y divide-white/5" data-testid="edcfg-skills-list">
+              {skills.data.map((r, i) => {
+                const name = pickString(r.name, r.id) ?? "";
+                const enabled = r.enabled === true;
+                const locked = r.locked === true;
+                return (
+                  <li key={`${name || i}`} className="flex min-w-0 flex-wrap items-center justify-between gap-2 px-4 py-2" data-testid={`edcfg-skills-row-${i}`}>
+                    <span className="min-w-0 flex-1 truncate text-sm" title={name}>{name || "—"}</span>
+                    <span className="flex items-center gap-2 text-[11px] text-white/50">
+                      {locked ? <span data-testid={`edcfg-skills-locked-${i}`}>已锁定</span> : null}
+                      {yesNo(enabled)}
+                      <Button
+                        size="sm"
+                        outlined
+                        disabled={locked || !name || skillBusy === name}
+                        onClick={() => toggleSkill(name, !enabled)}
+                        data-testid={`edcfg-skills-toggle-${i}`}
+                      >
+                        {skillBusy === name ? "保存中…" : enabled ? "停用" : "启用"}
+                      </Button>
+                    </span>
+                  </li>
+                );
+              })}
+              <li className="px-4 py-2 text-[11px] text-white/45">
+                共 {skills.data.length} 条；开关写的是这位员工的档案，下一次新会话生效。
+              </li>
+            </ul>
           )}
+          {skillError ? (
+            <p className="px-4 pb-2 text-[11px] text-red-300/80" data-testid="edcfg-skills-toggle-error">{skillError}</p>
+          ) : null}
         </CardContent>
       </Card>
     </>
@@ -1775,8 +1833,10 @@ function ToolsSection({ empId }: { empId: string }) {
   const profileName = employeeProfileName(empId) ?? "";
   const profileQuery = profileName ? `?profile=${encodeURIComponent(profileName)}` : "";
   const [mcp, mcpRetry] = useList(`/agent-api/api/mcp/servers`, (b) => listAt(b, "servers"));
+  // 实测回包是 `{toolsets: [...]}`（不是裸数组）；裸数组写法会静默落 empty，
+  // 界面上看起来像"真 0"——那是读法错误，不是数据为空。
   const [tools, toolsRetry, toolsRefresh] = useList(`/api/tools/toolsets${profileQuery}`, (b) =>
-    Array.isArray(b) ? (b as Rec[]) : [],
+    listAt(b, "toolsets"),
   );
   const [busy, setBusy] = useState<string | null>(null);
   const [toggleError, setToggleError] = useState<string | null>(null);
