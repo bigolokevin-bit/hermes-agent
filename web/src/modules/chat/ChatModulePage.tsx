@@ -29,10 +29,12 @@ import {
  * useChat. It only:
  *
  *  1. resolves the bound employee id (prop → route param → `?employee=`),
- *  2. scopes the dashboard to it: `setManagementProfile(employeeId)` mirrored
- *     during render, the same contract the root switcher uses
- *     (ProfileProvider.tsx:69-71), plus a ProfileContext re-provider carrying
- *     `profile: employeeId` — so ChatPage's own `useProfileScope()`
+ *  2. scopes the dashboard to it: resolves the employee id into a legal, real
+ *     Hermes profile (`resolveChatProfile` — ids are frequently uppercase and
+ *     therefore illegal), mirrors that into `setManagementProfile` during
+ *     render (the same contract the root switcher uses,
+ *     ProfileProvider.tsx:69-71), and re-provides ProfileContext with
+ *     `profile: <resolved>` — so ChatPage's own `useProfileScope()`
  *     (ChatPage.tsx:334) spawns the PTY under that profile
  *     (ChatPage.tsx:1210 `if (scopedProfile) params.profile = scopedProfile`),
  *  3. gates the four page states around the host: the host mounts ONLY after
@@ -79,6 +81,51 @@ function resolveEmployeeId(
 ): string {
   const query = search.get("employee") ?? search.get("employee_id") ?? "";
   return (prop ?? "").trim() || (routeParam ?? "").trim() || (routeLegacy ?? "").trim() || query.trim();
+}
+
+// ── scoped profile 解析（右栏 WS 改不了帧，只能在派发前把 profile 修正）─────
+//
+// Hermes 的 profile 目录名有硬性形制：[a-z0-9][a-z0-9_-]{0,63}（后端列目录用的
+// 就是这个正则，见 hermes_state_sessions.py 的 is_profile_dir 判定）。员工的
+// 内部编号常带大写十六进制（emp_86A8…），原样塞进 profile 位就非法。左侧终端
+// 之所以还能连，是代理侧 _sanitize_profile_query 把非法名当「未指定」转发了；
+// 但右侧 ChatSidebar 的 session.create 走 WebSocket JSON-RPC 直连网关，代理改
+// 不动帧体，于是网关回一句 `Profile '<大写id>' does not exist.` 把右栏打红。
+//
+// 所以派发前必须把工号规整成一个「合法且磁盘上真实存在」的 profile：候选取
+// 原样 / 小写化 / 非法字符替换三种形制，只保留出现在 /api/profiles 列表里
+// （即 outer.profiles，后端据磁盘目录而来）的那一个。一个都匹配不上就返回空串
+// ——ChatPage 与 ChatSidebar 都只在 profile 为真值时才写进 session.create
+// （ChatPage.tsx:1210 / sidecarSessionCreateParams），空串 = 不带 profile =
+// 网关回落默认 profile，右栏照常可用且不报红。绝不臆造磁盘上没有的名字。
+const PROFILE_NAME_RE = /^[a-z0-9][a-z0-9_-]{0,63}$/;
+
+/** 工号 → 合法 profile 候选（原样 / 小写化 / 非法字符替换），去重、只留合法形制。 */
+function profileCandidates(employeeId: string): string[] {
+  const raw = employeeId.trim();
+  if (!raw) return [];
+  const lowered = raw.toLowerCase();
+  const slashed = lowered
+    .replace(/[^a-z0-9_-]/g, "_") // 点、空格、冒号等非法字符 → 下划线
+    .replace(/^[^a-z0-9]+/, "") // 首字符必须是字母/数字
+    .slice(0, 64); // 总长 ≤ 64
+  const out: string[] = [];
+  for (const c of [raw, lowered, slashed]) {
+    if (c && PROFILE_NAME_RE.test(c) && !out.includes(c)) out.push(c);
+  }
+  return out;
+}
+
+/**
+ * 把员工工号解析成一个合法且真实存在的 profile 名；匹配不到返回 ""，
+ * 表示「不带 profile」，由网关回落到默认 profile（缺失是事实，不是错误）。
+ */
+function resolveChatProfile(employeeId: string, knownProfiles: readonly string[]): string {
+  if (!employeeId) return "";
+  for (const c of profileCandidates(employeeId)) {
+    if (knownProfiles.includes(c)) return c;
+  }
+  return "";
 }
 
 // ── employee guard（宿主挂载前的四态门） ──────────────────────────────────
@@ -165,21 +212,30 @@ function useEmployeeGuard(employeeId: string): {
 // ── scoped profile（对话主机只认这个上下文，不新造第二套） ────────────────
 
 /**
- * Re-provides the dashboard's profile scope pinned to one employee. The
- * profile value IS the employee id (the console's contract: 员工即档案).
- * `setProfile` is passed through untouched — re-targeting belongs to the
- * sidebar switcher above, not to a scoped view.
+ * Re-provides the dashboard's profile scope pinned to the employee's resolved
+ * Hermes profile (NOT its raw id — ids are frequently uppercase and therefore
+ * illegal profile names; see resolveChatProfile above). The empty string means
+ * "no dedicated profile on this host" and lets ChatPage/ChatSidebar omit
+ * profile from session.create, so the gateway falls back to its default
+ * profile instead of erroring. `setProfile` is passed through untouched —
+ * re-targeting belongs to the sidebar switcher above, not to a scoped view.
  */
-function ScopedToEmployee({ employeeId, children }: { employeeId: string; children: ReactNode }) {
+function ScopedToEmployee({
+  profile,
+  children,
+}: {
+  profile: string;
+  children: ReactNode;
+}) {
   const outer = useProfileScope();
   const value = useMemo(
     () => ({
-      profile: employeeId,
+      profile,
       currentProfile: outer.currentProfile,
       profiles: outer.profiles,
       setProfile: outer.setProfile,
     }),
-    [employeeId, outer],
+    [profile, outer],
   );
   return <ProfileContext.Provider value={value}>{children}</ProfileContext.Provider>;
 }
@@ -210,10 +266,17 @@ export default function ChatModulePage({
   const outer = useProfileScope();
   const employeeId = resolveEmployeeId(employeeIdProp, routeParam, routeLegacy, searchParams);
 
+  // The employee's raw id is NOT a legal Hermes profile name (uppercase hex).
+  // Resolve it to a real, valid profile before anything downstream reads the
+  // scope — the right column's session.create goes over WS where the proxy
+  // cannot rewrite the frame. "" = no dedicated profile on this host → the
+  // gateway falls back to its default profile (honest, not an error).
+  const chatProfile = employeeId ? resolveChatProfile(employeeId, outer.profiles) : "";
+
   // Render-phase mirror of the write target, the ProfileProvider contract
   // (ProfileProvider.tsx:69-71): child effects in the same commit must see
   // the scope or they would fire against the dashboard's own profile.
-  if (employeeId) setManagementProfile(employeeId);
+  if (employeeId) setManagementProfile(chatProfile);
 
   // Leaving the module hands the scope back to the global selection. The
   // root provider only re-asserts on its own renders, so restore here too.
@@ -312,18 +375,29 @@ export default function ChatModulePage({
       {/* Ready (CHAT-01): the upstream page IS the chat. Keyed by employee
           id so a switch tears the old WS down before the new host arms. */}
       {showHost && (
-        <div
-          data-chat-host
-          data-profile={employeeId}
-          data-scope="employee"
-          className="chat-module-shell flex min-h-0 flex-1 flex-col"
-        >
-          <ScopedToEmployee key={employeeId} employeeId={employeeId}>
-            <Suspense fallback={<BusyHost />}>
-              <ChatHost isActive={isActive} />
-            </Suspense>
-          </ScopedToEmployee>
-        </div>
+        <>
+          {/* 兜底说明：该员工在本机没有对应的合法 profile（工号非法或磁盘无此
+              目录），右栏不带 profile 连默认 profile——这是配置事实，不是错误，
+              故用一行中性小字说明，不报红、不夸大成「已就绪」。 */}
+          {chatProfile === "" ? (
+            <div className="chat-profile-fallback" role="note">
+              该员工未配置独立 Hermes profile，当前使用默认 profile。
+            </div>
+          ) : null}
+          <div
+            data-chat-host
+            data-profile={chatProfile}
+            data-profile-fallback={chatProfile === "" ? "true" : undefined}
+            data-scope="employee"
+            className="chat-module-shell flex min-h-0 flex-1 flex-col"
+          >
+            <ScopedToEmployee key={employeeId} profile={chatProfile}>
+              <Suspense fallback={<BusyHost />}>
+                <ChatHost isActive={isActive} />
+              </Suspense>
+            </ScopedToEmployee>
+          </div>
+        </>
       )}
     </div>
   );

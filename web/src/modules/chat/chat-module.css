@@ -18,3 +18,14 @@
   font-size: 12px;
   letter-spacing: 0.02em;
 }
+
+/**
+ * 兜底说明 — 员工工号没有对应的合法 Hermes profile 时，右栏不带 profile 连默认
+ * profile。这是配置事实而非错误，所以用一行中性小字说明，绝不渲染成红色报错。
+ */
+.chat-profile-fallback {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--color-muted-foreground, rgb(255 255 255 / 55%));
+  padding: 0 0.25rem;
+}

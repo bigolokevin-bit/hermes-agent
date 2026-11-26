@@ -11,11 +11,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ApiError } from "@/lib/api-error";
 import { useProfileScope } from "@/contexts/useProfileScope";
+import { ProfileContext } from "@/contexts/profile-context";
 
 const fetchJSON = vi.fn();
 const setManagementProfile = vi.fn();
 const ptyAttachToken = vi.fn();
 const hostEvents: string[] = [];
+
+// The root profile scope the page reads to resolve a legal profile. `/api/
+// profiles` always lists at least "default"; the ids below stand in for the
+// profiles that genuinely exist on the host's disk. Tests that exercise the
+// fallback leave the employee's resolved name out of this list.
+const DEFAULT_PROFILES = ["default", "emp_9f3a4b7c", "emp_aaaa1111", "emp_bbbb2222"];
 
 vi.mock("@/lib/api", () => ({
   fetchJSON: (...args: unknown[]) => fetchJSON(...args),
@@ -54,7 +61,12 @@ const ok = (detail: unknown = { id: "emp_9f3a4b7c", name: "小鲤" }) =>
   Promise.resolve(detail);
 const settle = () => act(async () => {});
 
-async function mount(entry: string, props?: { employeeId?: string | null }) {
+async function mount(
+  entry: string,
+  props?: { employeeId?: string | null },
+  opts?: { profiles?: string[] },
+) {
+  const profiles = opts?.profiles ?? DEFAULT_PROFILES;
   if (root) act(() => root.unmount());
   if (container) container.remove();
   container = document.createElement("div");
@@ -62,9 +74,13 @@ async function mount(entry: string, props?: { employeeId?: string | null }) {
   root = createRoot(container);
   await act(async () => {
     root.render(
-      <MemoryRouter initialEntries={[entry]}>
-        <ChatModulePage {...props} />
-      </MemoryRouter>,
+      <ProfileContext.Provider
+        value={{ profile: "", currentProfile: "default", profiles, setProfile: () => {} }}
+      >
+        <MemoryRouter initialEntries={[entry]}>
+          <ChatModulePage {...props} />
+        </MemoryRouter>
+      </ProfileContext.Provider>,
     );
   });
   await settle();
@@ -124,37 +140,47 @@ describe("ChatModulePage", () => {
   it("同员工重渲染不重建宿主（刷新态不断连）", async () => {
     fetchJSON.mockImplementation(() => ok());
     await mount("/chat", { employeeId: "emp_AAAA1111" });
-    expect(hostEvents).toEqual(["mount:emp_AAAA1111"]);
+    // 工号大写非法，磁盘上存在的是小写 emp_aaaa1111 → 作用域下发改后者。
+    expect(hostEvents).toEqual(["mount:emp_aaaa1111"]);
+    expect(setManagementProfile).toHaveBeenCalledWith("emp_aaaa1111");
 
     await act(async () => {
       root.render(
-        <MemoryRouter initialEntries={["/chat"]}>
-          <ChatModulePage employeeId="emp_AAAA1111" />
-        </MemoryRouter>,
+        <ProfileContext.Provider
+          value={{ profile: "", currentProfile: "default", profiles: DEFAULT_PROFILES, setProfile: () => {} }}
+        >
+          <MemoryRouter initialEntries={["/chat"]}>
+            <ChatModulePage employeeId="emp_AAAA1111" />
+          </MemoryRouter>
+        </ProfileContext.Provider>,
       );
     });
     await settle();
-    expect(hostEvents).toEqual(["mount:emp_AAAA1111"]);
+    expect(hostEvents).toEqual(["mount:emp_aaaa1111"]);
     expect(hosts().length).toBe(1);
   });
 
   it("CHAT-04 换员工：旧宿主先拆除，新宿主按新员工重新轮换 token", async () => {
     fetchJSON.mockImplementation(() => ok());
     await mount("/chat", { employeeId: "emp_AAAA1111" });
-    expect(hostEvents).toEqual(["mount:emp_AAAA1111"]);
+    expect(hostEvents).toEqual(["mount:emp_aaaa1111"]);
 
     await act(async () => {
       root.render(
-        <MemoryRouter initialEntries={["/chat"]}>
-          <ChatModulePage employeeId="emp_BBBB2222" />
-        </MemoryRouter>,
+        <ProfileContext.Provider
+          value={{ profile: "", currentProfile: "default", profiles: DEFAULT_PROFILES, setProfile: () => {} }}
+        >
+          <MemoryRouter initialEntries={["/chat"]}>
+            <ChatModulePage employeeId="emp_BBBB2222" />
+          </MemoryRouter>
+        </ProfileContext.Provider>,
       );
     });
     await settle();
 
     expect(hosts().length).toBe(1); // 不留第二个宿主
-    expect(hostEvents).toContain("unmount:emp_AAAA1111"); // 旧 WS 随卸载关闭
-    expect(hostEvents[hostEvents.length - 1]).toBe("mount:emp_BBBB2222");
+    expect(hostEvents).toContain("unmount:emp_aaaa1111"); // 旧 WS 随卸载关闭
+    expect(hostEvents[hostEvents.length - 1]).toBe("mount:emp_bbbb2222");
     expect(ptyAttachToken.mock.calls).toEqual([[true], [true]]);
   });
 
@@ -240,5 +266,42 @@ describe("ChatModulePage", () => {
     release({ id: "emp_AAAA1111", name: "小鲤" });
     await settle();
     expect(hosts().length).toBe(1);
+  });
+
+  it("工号非法且磁盘无对应 profile：宿主不带 profile（回落默认），中性说明而非报错", async () => {
+    fetchJSON.mockImplementation(() => ok({ id: "emp_86A81CE8FF6F42E187BCF2B540", name: "某员工" }));
+    // 本机磁盘只有 emp_001，该大写工号既非法也匹配不上 → 不带 profile。
+    await mount("/chat", { employeeId: "emp_86A81CE8FF6F42E187BCF2B540" }, { profiles: ["default", "emp_001"] });
+
+    expect(hosts().length).toBe(1); // 右栏照常工作，不拒绝挂载
+    expect(hostEvents).toEqual(["mount:—"]); // 下发的是空 profile
+    expect(setManagementProfile).toHaveBeenCalledWith("");
+    const host = container.querySelector(`[${HOST_ATTR}]`) as HTMLElement;
+    expect(host.getAttribute("data-profile-fallback")).toBe("true");
+    expect(host.getAttribute("data-profile")).toBe("");
+    const text = container.textContent ?? "";
+    expect(text).toContain("该员工未配置独立 Hermes profile，当前使用默认 profile");
+    expect(text).not.toContain("does not exist");
+    expect(text).not.toContain("emp_86A81CE8FF6F42E187BCF2B540"); // 不泄漏裸编号
+  });
+});
+
+describe("profile 解析（工号 → 合法且真实存在的 profile）", () => {
+  it("大写+非法字符工号：规整成合法候选后命中磁盘上存在的那个", async () => {
+    fetchJSON.mockImplementation(() => ok({ id: "Emp:001", name: "某员工" }));
+    await mount("/chat", { employeeId: "Emp:001" }, { profiles: ["default", "emp_001"] });
+    expect(hosts().length).toBe(1);
+    expect(hostEvents).toEqual(["mount:emp_001"]); // 冒号→_、大写→小写后命中
+    expect(setManagementProfile).toHaveBeenCalledWith("emp_001");
+  });
+
+  it("profile 列表尚未加载：先不带 profile 回落默认，绝不先塞非法名", async () => {
+    fetchJSON.mockImplementation(() => ok());
+    await mount("/chat", { employeeId: "EMP_001" }, { profiles: [] });
+    expect(hosts().length).toBe(1);
+    expect(hostEvents).toEqual(["mount:—"]); // 空 profile，非大写非法名
+    expect(
+      container.querySelector(`[${HOST_ATTR}]`)?.getAttribute("data-profile-fallback"),
+    ).toBe("true");
   });
 });
