@@ -47,6 +47,7 @@ import { ConsoleSelect } from "@/shell/ConsoleSelect";
 import { RequestIdCopy } from "@/components/RequestIdCopy";
 import { Pill, type PillTone } from "@/components/console/Pill";
 import SessionDrawer from "@/modules/employee-detail/SessionDrawer";
+import { employeeProfileName } from "@/modules/chat/employeeProfile";
 import { priorityLabel, short8, statusLabel } from "@/modules/tasks/tasksBoard";
 import { riskView, statusView } from "@/modules/approvals/model";
 import { RelativeTime } from "@/modules/approvals/RelativeTime";
@@ -2428,17 +2429,147 @@ function KnowledgeSection() {
   );
 }
 
-function ModelSection() {
+/**
+ * 模型与提示词 —— 真读数 + 可写的身份正文。
+ *
+ * 数据都在 Hermes 自己的档案接口上（同一员工 = 同一档案 `emp-<8位>`）：
+ *   GET /api/profiles              模型 / provider / 显示名 / 描述
+ *   GET /api/profiles/<n>/soul     身份正文（SOUL.md）
+ *   PUT /api/profiles/<n>/soul     保存身份正文
+ * 此前这一节写「没有任何按员工的只读读口」，是因为只查了员工域与版本域；
+ * 实际上运行时档案里就有，接上即可，不需要新增后端写口。
+ *
+ * 纪律：档案不存在时如实说明「打开对话即自动创建」，不在这里抢先建；
+ * 保存只走 PUT soul，不改 model/provider（那是运行时分的活，本页只读）。
+ */
+function ModelSection({ empId }: { empId: string }) {
+  const profileName = employeeProfileName(empId);
+  const [profiles, , , profilesRefresh] = useOne("/api/profiles", (b) => {
+    const list = isRecord(b) && Array.isArray(b.profiles) ? (b.profiles as unknown[]) : [];
+    return list.filter((x): x is Rec => isRecord(x));
+  });
+  const soulUrl = profileName ? `/api/profiles/${encodeURIComponent(profileName)}/soul` : "";
+  const [soul, , replaceSoul] = useOne(soulUrl, (b) => ({
+    content: isRecord(b) ? (pickString(b.content) ?? "") : "",
+    exists: isRecord(b) ? b.exists === true : false,
+  }));
+  const [draft, setDraft] = useState<string | null>(null);
+  const [state, setState] = useState<SaveState>({ k: "idle" });
+
+  const rec = profiles.phase === "ready" && profileName
+    ? profiles.data.find((p) => pickString(p.name) === profileName) ?? null
+    : null;
+  const text = draft ?? (soul.phase === "ready" ? soul.data.content : "");
+  const saved = soul.phase === "ready" ? soul.data.content : "";
+  const soulExists = soul.phase === "ready" && soul.data.exists;
+  const dirty = draft !== null && draft !== saved;
+  const saving = state.k === "saving";
+
+  const save = async () => {
+    if (!profileName || saving || !dirty) return;
+    setState({ k: "saving" });
+    try {
+      await fetchJSON<unknown>(soulUrl, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: text }),
+      });
+      replaceSoul({ content: text, exists: true });
+      setDraft(null);
+      profilesRefresh();
+      setState({ k: "ok", text: "已保存。下一次新会话生效（已打开的会话仍用旧的人格）。" });
+    } catch (err: unknown) {
+      const e = writeErrorText(err, "身份正文没有保存成功：");
+      setState({ k: "error", text: e.text, requestId: e.requestId });
+    }
+  };
+
+  if (!profileName) {
+    return (
+      <Card data-testid="edcfg-model">
+        <CardContent className="flex flex-col items-start gap-2 p-5">
+          <div className="ui-c-head"><h3 className="ui-c-head-title">模型与提示词</h3></div>
+          <p className="text-xs text-white/55" data-testid="edcfg-model-note">
+            这位员工的编号无法映射到运行时档案名（需要至少一位数字或字母），因此本页不展示模型与人设。
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card data-testid="edcfg-model">
-      <CardContent className="flex flex-col items-start gap-2 p-5">
+      <CardContent className="p-0">
         <div className="ui-c-head">
           <h3 className="ui-c-head-title">模型与提示词</h3>
+          <span className="font-mono text-[11px] text-white/45" data-testid="edcfg-model-profile">{profileName}</span>
         </div>
-        <p className="text-xs text-white/55" data-testid="edcfg-model-note">
-          模型路由、提示词人格与对话唤起三项配置在本代次没有任何按员工的只读读口（员工/版本回包里不带这些字段）。
-          这里不猜值、不铺占位；接线后本节自动改为真读数。
-        </p>
+
+        {profiles.phase === "loading" || soul.phase === "loading" ? (
+          <p className="px-4 py-3 text-xs text-white/50" data-testid="edcfg-model-loading">正在读取该员工的运行时档案…</p>
+        ) : profiles.phase === "error" || soul.phase === "error" ? (
+          <p className="px-4 py-3 text-xs text-white/60" data-testid="edcfg-model-error">
+            运行时档案读不到（{profiles.phase === "error" ? profiles.message : soul.phase === "error" ? soul.message : ""}），
+            此处不猜值；恢复后重开本节即可。
+          </p>
+        ) : rec === null ? (
+          <p className="px-4 py-3 text-xs text-white/55" data-testid="edcfg-model-absent">
+            该员工还没有运行时档案（<code className="font-mono">{profileName}</code>）：打开一次它的对话会自动创建，
+            创建时按员工档案写入身份。这里不抢先建档，避免出现没有对话的空档案。
+          </p>
+        ) : (
+          <>
+            <SectionKv
+              prefix="edcfg-model"
+              rows={[
+                { id: "model", label: "模型", value: pickString(rec.model) ?? FIELD_MISSING, title: pickString(rec.model) ? undefined : FIELD_MISSING_TITLE },
+                { id: "provider", label: "提供方", value: pickString(rec.provider) ?? FIELD_MISSING, title: pickString(rec.provider) ? undefined : FIELD_MISSING_TITLE },
+                { id: "display", label: "显示名", value: pickString(rec.display_name, rec.displayName) ?? FIELD_MISSING },
+                { id: "desc", label: "档案说明", value: pickString(rec.description) ?? FIELD_MISSING },
+              ]}
+            />
+            <div className="console-divider" />
+            <div className="edw-form">
+              <label className="edw-form-field">
+                <span className="edw-form-label">身份正文（SOUL.md）</span>
+                <textarea
+                  className="edw-input min-h-[220px] font-mono text-xs"
+                  data-testid="edcfg-model-soul"
+                  value={text}
+                  onChange={(e) => {
+                    setDraft(e.target.value);
+                    if (state.k !== "idle") setState({ k: "idle" });
+                  }}
+                  disabled={saving}
+                  spellCheck={false}
+                />
+              </label>
+              <div className="edw-form-actions">
+                <Button size="sm" onClick={() => void save()} disabled={saving || !dirty} data-testid="edcfg-model-save">
+                  {saving ? "保存中…" : "保存身份正文"}
+                </Button>
+                {dirty && !saving ? (
+                  <span className="text-[11px] text-white/60" data-testid="edcfg-model-dirty">未保存改动</span>
+                ) : null}
+                <Button size="sm" outlined disabled={!dirty || saving} onClick={() => { setDraft(null); setState({ k: "idle" }); }} data-testid="edcfg-model-reset">
+                  放弃改动
+                </Button>
+              </div>
+              {state.k === "ok" ? <p className="edw-write-ok" role="status" data-testid="edcfg-model-status">{state.text}</p> : null}
+              {state.k === "error" ? (
+                <p className="edw-write-error" role="alert" data-testid="edcfg-model-error-save">
+                  {state.text}
+                  {state.requestId ? <span className="edw-write-rid">请求编号 {state.requestId}</span> : null}
+                </p>
+              ) : null}
+              <p className="edw-write-note" data-testid="edcfg-model-soul-note">
+                {soulExists
+                  ? "这份正文决定它「是谁」。保存后只影响新会话；正在进行的会话沿用旧值。"
+                  : "该档案还没有身份正文，保存会把上面的内容写入。"}
+              </p>
+            </div>
+          </>
+        )}
       </CardContent>
     </Card>
   );
@@ -2462,7 +2593,7 @@ function ConfigZone({ empId, initial }: { empId: string; initial: ConfigSub }) {
       {sub === "budget" ? <BudgetSection empId={empId} /> : null}
       {sub === "versions" ? <VersionsSection empId={empId} /> : null}
       {sub === "knowledge" ? <KnowledgeSection /> : null}
-      {sub === "model" ? <ModelSection /> : null}
+      {sub === "model" ? <ModelSection empId={empId} /> : null}
     </RailGrid>
   );
 }
