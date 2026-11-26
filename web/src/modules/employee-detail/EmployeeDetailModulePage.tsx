@@ -2018,8 +2018,9 @@ function PublishVersionPanel({
   const [state, setState] = useState<SaveState>({ k: "idle" });
   const [readOnly, setReadOnly] = useState(false);
   const [attempted, setAttempted] = useState(false);
-  // 一次发布一个幂等键：失败重试复用同一条，避免重复发版。
-  const [idemKey] = useState(() => newIdempotencyKey());
+  // 幂等键按「一次发布意图」走：失败重试复用同一条（避免重复发版），
+  // 成功后再换一条，免得第二次发布被后端当成同一次请求的缓存回包。
+  const [idemKey, setIdemKey] = useState(() => newIdempotencyKey());
   const [cfg, , , cfgRefresh] = useOne(`/agent-api/api/effective-config?id=${enc}`, (b) => (isRecord(b) ? b : {}));
 
   const previousGrantIds = Array.isArray(latest?.grantIds)
@@ -2074,6 +2075,7 @@ function PublishVersionPanel({
     setState({ k: "saving" });
     try {
       const pub = await publishVersion(empId, draft, idemKey);
+      setIdemKey(newIdempotencyKey());
       // 成功后刷新版本链与有效配置：刚纳入的 grant 才会出现在有效授权里。
       onPublished();
       cfgRefresh();
