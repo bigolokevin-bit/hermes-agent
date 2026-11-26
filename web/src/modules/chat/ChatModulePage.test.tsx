@@ -131,8 +131,8 @@ describe("ChatModulePage", () => {
     expect(fetchJSON.mock.calls[0][0]).toBe("/agent-api/api/employees/emp_9f3a4b7c");
     expect(ptyAttachToken).toHaveBeenCalledWith(true);
     expect(hosts().length).toBe(1);
-    expect(hostEvents).toEqual(["mount:emp_9f3a4b7c"]);
-    expect(setManagementProfile).toHaveBeenCalledWith("emp_9f3a4b7c");
+    expect(hostEvents).toEqual(["mount:—"]); // 2026-11-26：不再把员工钉到专用 profile
+    expect(setManagementProfile).toHaveBeenCalledWith(""); // 2026-11-26：用默认档，会话列表才有内容
     // 页面上不得出现裸员工编号
     expect(container.textContent ?? "").not.toContain("emp_9f3a4b7c");
   });
@@ -141,8 +141,8 @@ describe("ChatModulePage", () => {
     fetchJSON.mockImplementation(() => ok());
     await mount("/chat", { employeeId: "emp_AAAA1111" });
     // 工号大写非法，磁盘上存在的是小写 emp_aaaa1111 → 作用域下发改后者。
-    expect(hostEvents).toEqual(["mount:emp_aaaa1111"]);
-    expect(setManagementProfile).toHaveBeenCalledWith("emp_aaaa1111");
+    expect(hostEvents).toEqual(["mount:—"]);
+    expect(setManagementProfile).toHaveBeenCalledWith(""); // 2026-11-26：用默认档，会话列表才有内容
 
     await act(async () => {
       root.render(
@@ -156,14 +156,14 @@ describe("ChatModulePage", () => {
       );
     });
     await settle();
-    expect(hostEvents).toEqual(["mount:emp_aaaa1111"]);
+    expect(hostEvents).toEqual(["mount:—"]);
     expect(hosts().length).toBe(1);
   });
 
   it("CHAT-04 换员工：旧宿主先拆除，新宿主按新员工重新轮换 token", async () => {
     fetchJSON.mockImplementation(() => ok());
     await mount("/chat", { employeeId: "emp_AAAA1111" });
-    expect(hostEvents).toEqual(["mount:emp_aaaa1111"]);
+    expect(hostEvents).toEqual(["mount:—"]);
 
     await act(async () => {
       root.render(
@@ -179,8 +179,8 @@ describe("ChatModulePage", () => {
     await settle();
 
     expect(hosts().length).toBe(1); // 不留第二个宿主
-    expect(hostEvents).toContain("unmount:emp_aaaa1111"); // 旧 WS 随卸载关闭
-    expect(hostEvents[hostEvents.length - 1]).toBe("mount:emp_bbbb2222");
+    expect(hostEvents).toContain("unmount:—"); // 旧 WS 随卸载关闭
+    expect(hostEvents[hostEvents.length - 1]).toBe("mount:—");
     expect(ptyAttachToken.mock.calls).toEqual([[true], [true]]);
   });
 
@@ -291,8 +291,8 @@ describe("profile 解析（工号 → 合法且真实存在的 profile）", () =
     fetchJSON.mockImplementation(() => ok({ id: "Emp:001", name: "某员工" }));
     await mount("/chat", { employeeId: "Emp:001" }, { profiles: ["default", "emp_001"] });
     expect(hosts().length).toBe(1);
-    expect(hostEvents).toEqual(["mount:emp_001"]); // 冒号→_、大写→小写后命中
-    expect(setManagementProfile).toHaveBeenCalledWith("emp_001");
+    expect(hostEvents).toEqual(["mount:—"]); // 默认档承载会话，员工不再钉专用 profile
+    expect(setManagementProfile).toHaveBeenCalledWith(""); // 2026-11-26：用默认档，会话列表才有内容
   });
 
   it("profile 列表尚未加载：先不带 profile 回落默认，绝不先塞非法名", async () => {

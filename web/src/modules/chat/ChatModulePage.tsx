@@ -98,36 +98,6 @@ function resolveEmployeeId(
 // ——ChatPage 与 ChatSidebar 都只在 profile 为真值时才写进 session.create
 // （ChatPage.tsx:1210 / sidecarSessionCreateParams），空串 = 不带 profile =
 // 网关回落默认 profile，右栏照常可用且不报红。绝不臆造磁盘上没有的名字。
-const PROFILE_NAME_RE = /^[a-z0-9][a-z0-9_-]{0,63}$/;
-
-/** 工号 → 合法 profile 候选（原样 / 小写化 / 非法字符替换），去重、只留合法形制。 */
-function profileCandidates(employeeId: string): string[] {
-  const raw = employeeId.trim();
-  if (!raw) return [];
-  const lowered = raw.toLowerCase();
-  const slashed = lowered
-    .replace(/[^a-z0-9_-]/g, "_") // 点、空格、冒号等非法字符 → 下划线
-    .replace(/^[^a-z0-9]+/, "") // 首字符必须是字母/数字
-    .slice(0, 64); // 总长 ≤ 64
-  const out: string[] = [];
-  for (const c of [raw, lowered, slashed]) {
-    if (c && PROFILE_NAME_RE.test(c) && !out.includes(c)) out.push(c);
-  }
-  return out;
-}
-
-/**
- * 把员工工号解析成一个合法且真实存在的 profile 名；匹配不到返回 ""，
- * 表示「不带 profile」，由网关回落到默认 profile（缺失是事实，不是错误）。
- */
-function resolveChatProfile(employeeId: string, knownProfiles: readonly string[]): string {
-  if (!employeeId) return "";
-  for (const c of profileCandidates(employeeId)) {
-    if (knownProfiles.includes(c)) return c;
-  }
-  return "";
-}
-
 // ── employee guard（宿主挂载前的四态门） ──────────────────────────────────
 
 type GuardState = BlockState<Rec>;
@@ -271,7 +241,12 @@ export default function ChatModulePage({
   // scope — the right column's session.create goes over WS where the proxy
   // cannot rewrite the frame. "" = no dedicated profile on this host → the
   // gateway falls back to its default profile (honest, not an error).
-  const chatProfile = employeeId ? resolveChatProfile(employeeId, outer.profiles) : "";
+  // 2026-11-26（用户实机投诉「session / workplace 都没显示」）：员工工号解析出的
+  // 空 profile（如 emp_001）在本机没有任何会话，按它过滤后侧栏必然为空，而真实
+  // 会话都属于启动档 default。本机只有一个注入了员工人格的默认档，故不再把员工
+  // 钉到专用 profile，统一用 ""（不带 profile）——会话/工作区列表回到 default，
+  // 人格仍由 ~/.hermes/config.yaml 的 agent.system_prompt 提供。
+  const chatProfile = "";
 
   // Render-phase mirror of the write target, the ProfileProvider contract
   // (ProfileProvider.tsx:69-71): child effects in the same commit must see
