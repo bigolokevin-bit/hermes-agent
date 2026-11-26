@@ -1,0 +1,38 @@
+schema: spec-driven
+
+context: |
+  项目：sekoi-agent-os —— 企业内部「数字员工 OS」。一个数字员工 = 一个有岗位、职权、
+  知识范围、工位与绩效的 Agent，在企业 IM（飞书）里被人类 @ 到就能干活。
+
+  本仓：Hermes fork（`forks/hermes-agent`）—— 控制台前端（`web/src`）+ Agent 运行时。
+  行为规格**分仓存放、互不复制**，靠能力名与契约 ID 互链：
+  - 域服务（员工/策略/审计/知识）：`l2-dataplane/openspec`
+  - BFF（鉴权、受控写路由、代理）：`bff-v4-serve/openspec`
+  - 本仓：控制台前端可观察行为 + Hermes 的 profile/SOUL/会话隔离行为
+
+  技术栈（已冻结，不在 spec 里重新讨论）：Hermes 运行时按 profile 分片；控制台 React +
+  TypeScript；登录与身份走 Bisheng；域数据经 BFF 读。
+
+  两级事实源的分工（照 BFF 仓的口径）：
+  - `openspec/` 管**行为规格**：用户/系统可观察的行为、验收场景、边界条件；
+  - `docs/contracts/` 与 `docs/_artifacts/` 管**线上真形**：端点形状、实测读数、截图证据。
+  一条规矩：**spec 描述「必须发生什么」，contract/evidence 描述「线上跑的是什么形状」**。
+
+  写 spec 时不要做的事：
+  - 不写实现细节（用什么库、组件怎么拆、状态放哪）
+  - 不写「应该尽量」「建议」这类不可判定的词
+  - 不把实测读数写成需求（读数属于 evidence）
+
+  每个数字员工在运行时的两层人格（已由代码取证，spec 里按此口径写）：
+  - `SOUL.md` 是身份槽 —— 有它就用它，不用默认身份；
+  - `config.yaml` 的 `agent.system_prompt` 是叠加层 —— 调用时拼在 system 之后；
+  - Hermes 的行为约束（任务完成/工具使用/执行指导）与身份槽无关，换 SOUL 不影响能力。
+
+operations:
+  apply:
+    guidance:
+      - 每个任务落地后必须给出可复现命令与读数（截图或测试输出），不写「已完成」就算数
+      - 同一份 9122 构建只服务一个验收结论；重建后旧截图作废
+  archive:
+    guidance:
+      - 归档前把 evidence 目录补齐（命令、exit code、关键读数），并在 proposal 里写明结论
