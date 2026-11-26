@@ -1954,6 +1954,10 @@ function VersionsSection({ empId }: { empId: string }) {
   const enc = encodeURIComponent(empId);
   const [versions, retry, refreshVersions] = useList(`/agent-api/api/employee-versions?id=${enc}`, (b) => itemsOf(b));
   const [publishing, setPublishing] = useState(false);
+  // 「以此为底稿」：从历史版本起草新版本。域侧没有原地回滚的写口，也不该有——
+  // 回滚等于改写历史版本的语义，历史必须可追溯。所以这里做的是「复制旧版 → 发布新版」，
+  // 与 agent-pilot 的 rollback 在结果上等价（当前生效配置回到旧值），但留下完整版本链。
+  const [seed, setSeed] = useState<Rec | null>(null);
   if (versions.phase === "loading") return <ZoneLoading testid="edcfg-vers-loading" />;
   if (versions.phase === "denied") return <ZoneDenied title="版本与变更" message={versions.message} requestId={versions.requestId} onRetry={retry} testid="edcfg-vers-denied" />;
   if (versions.phase === "error") return <ZoneError title="版本与变更" message={versions.message} requestId={versions.requestId} onRetry={retry} testid="edcfg-vers-error" />;
@@ -1978,17 +1982,40 @@ function VersionsSection({ empId }: { empId: string }) {
             </Button>
           </div>
         </div>
+        {publishing && seed ? (
+          <p className="px-4 py-2 text-[11px] text-white/55" data-testid="edcfg-vers-seed-note">
+            正在以 v{pickString(seed.versionNo) ?? pickNumber(seed.versionNo) ?? "?"} 为底稿起草：
+            发布后生成<strong>新版本</strong>，历史版本不被改写。
+            <button
+              type="button"
+              className="ml-2 underline underline-offset-2 hover:text-white"
+              onClick={() => setSeed(null)}
+              data-testid="edcfg-vers-seed-clear"
+            >
+              改回用最近一版
+            </button>
+          </p>
+        ) : null}
         {publishing ? (
-          <PublishVersionPanel empId={empId} latest={latest} onPublished={refreshVersions} />
+          <PublishVersionPanel
+            key={seed ? `seed-${pickString(seed.id) ?? pickNumber(seed.versionNo) ?? "x"}` : "latest"}
+            empId={empId}
+            latest={seed ?? latest}
+            onPublished={() => {
+              setSeed(null);
+              refreshVersions();
+            }}
+          />
         ) : (
           <p className="px-4 py-2 text-[11px] text-white/45" data-testid="edcfg-vers-publish-hint">
             新建的授权要随一次发版写进 grantIds 才会进入有效授权；点右上「发布新版本」，表单按最近一版的真字段起草。
+            要把当前生效配置退回某个历史版本，点该行的「以此为底稿」，它会复制那一版再发一次新版本。
           </p>
         )}
         <div className="console-divider" />
         <ul className="divide-y divide-white/5" data-testid="edcfg-vers-list">
           {versions.data.map((v, i) => (
-            <li key={`${pickString(v.id) ?? i}`} className="grid grid-cols-1 gap-1 px-4 py-3 sm:grid-cols-[minmax(0,0.5fr)_minmax(0,1.2fr)_minmax(0,1fr)] sm:items-center sm:gap-2" data-testid={`edcfg-vers-row-${i}`}>
+            <li key={`${pickString(v.id) ?? i}`} className="grid grid-cols-1 gap-1 px-4 py-3 sm:grid-cols-[minmax(0,0.5fr)_minmax(0,1.2fr)_minmax(0,1fr)_auto] sm:items-center sm:gap-2" data-testid={`edcfg-vers-row-${i}`}>
               <span className="text-sm">v{dash(pickString(v.versionNo) ?? pickNumber(v.versionNo))}</span>
               <span className="min-w-0 truncate text-xs text-white/60" title={pickString(v.changeNote) ?? undefined}>
                 {pickString(v.changeNote) ?? "（无变更说明）"}
@@ -1996,6 +2023,18 @@ function VersionsSection({ empId }: { empId: string }) {
               <span className="font-mono text-xs text-white/55" title={`生效时间 ${pickString(v.effectiveFrom) ?? "未回传"}`}>
                 {beijing(pickString(v.effectiveFrom))} · {actorLabel(pickString(v.createdBy))}
               </span>
+              <Button
+                size="sm"
+                outlined
+                onClick={() => {
+                  setSeed(v);
+                  setPublishing(true);
+                }}
+                data-testid={`edcfg-vers-seed-${i}`}
+                title="复制这一版的字段到发布表单；发布后是新版本，历史不改写"
+              >
+                以此为底稿
+              </Button>
             </li>
           ))}
         </ul>
