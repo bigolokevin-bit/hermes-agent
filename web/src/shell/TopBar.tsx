@@ -2,11 +2,22 @@
  * Console top bar — UI-DIRECTION-20261123-v2 §3 + UI-FOUNDATION-CONTRACT
  * clause 6 (`single-h1-in-topbar`).
  *
- * One 56px row carrying, in DOM order: the sidebar collapse control, a 12px
- * breadcrumb, and the page's single <h1>. Nothing else. The right-hand global
- * tools (language / theme / identity) still live in the sidebar footer — those
- * are upstream files outside this lane's write scope, so the right side is
- * deliberately empty rather than holding a look-alike dead control.
+ * One 56px row carrying, in DOM order: the sidebar collapse control, an
+ * optional back arrow (employee detail only), a 12px clickable breadcrumb, and
+ * the page's single <h1>. Nothing else. The right-hand global tools (language /
+ * theme / identity) still live in the sidebar footer — those are upstream files
+ * outside this lane's write scope, so the right side is deliberately empty
+ * rather than holding a look-alike dead control.
+ *
+ * 2026-11-26 — 面包屑改造（用户实机投诉：「进了员工详情不知道怎么返回，路径也不清晰」）：
+ *   · 旧实现把面包屑写死成 `${group} · 控制台`，与真实路径无关，详情页也照旧；
+ *   · 现在 `consoleSurface()` 返回 `{trail, title}`：
+ *       模块列表页 → 运营
+ *       员工详情工作台 → 运营 › 数字员工
+ *       员工详情分区 → 运营 › 数字员工 › 员工详情
+ *     前两段可点（回列表 / 回该员工工作台），h1 显示分区名。
+ *   · 详情页左侧多一个显式返回钮（history.back），375 也可见——
+ *     用户的原话是「不知道怎么返回」，所以不能只靠可点面包屑。
  *
  * Why a portal: the acceptance gate reads an h1's surface as
  *   inTopbar  = closest("header,[data-testid*='topbar'],[data-testid*='-head']")
@@ -30,13 +41,13 @@
  * ------------------------------------------------------------------ */
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { useLocation } from "react-router";
-import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router";
+import { ArrowLeft, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { Button } from "@nous-research/ui/ui/components/button";
 
 import { useI18n } from "@/i18n/context";
 import { resolvePageTitle } from "@/lib/resolve-page-title";
-import { CONSOLE_MODULES, findRoute } from "./routes";
+import { CONSOLE_MODULES, ZONE_TITLE, findRoute, type DetailZone } from "./routes";
 import "./console-chrome.css";
 
 /** Mount point rendered by App.tsx in the main column, outside <main>. */
@@ -48,22 +59,54 @@ interface ConsoleTopBarProps {
   onToggleCollapse: () => void;
 }
 
+/** One breadcrumb segment. `to` present ⇒ rendered as a link; absent ⇒ plain text. */
+type Crumb = { label: string; to?: string };
+
 /* Console routes own their title vocabulary. The shell's route table names every
  * module with a Chinese label, and that label is what the single <h1> must show.
  * The upstream resolver used to be the only source here rendered an English word
  * on the dev face: for /overview it misses the nav registry and falls through to
  * a pathname-derived string, so the shell table wins first and the resolver is
- * only consulted off-shell. */
-function consoleSurface(pathname: string): { group: string; label: string } | null {
+ * only consulted off-shell.
+ *
+ * 详情页的层级是真实路径，不是猜的：`findRoute` 已经解出 `zone` 与
+ * `params.employeeId`，这里只把它们拼成「分组 › 模块 › 员工详情」。  */
+function consoleSurface(pathname: string): { trail: Crumb[]; title: string } | null {
   const hit = findRoute(pathname);
   if (hit === null) return null;
   const meta = CONSOLE_MODULES.find((m) => m.module === hit.entry.module);
   if (meta === undefined) return null;
-  return { group: meta.group, label: meta.label };
+
+  // 模块列表页 / 模块 tab 页：一段分组，标题是模块名。
+  if (hit.entry.kind !== "detail-zone") {
+    return { trail: [{ label: meta.group }], title: meta.label };
+  }
+
+  const employeeId = hit.params.employeeId ?? "";
+  const zone = (hit.entry.zone ?? "workbench") as DetailZone;
+  const employeesCrumb: Crumb = { label: meta.label, to: "/employees" };
+
+  // 裸详情（工作台）：不再自己链自己，返回靠左侧箭头。
+  if (zone === "workbench" || employeeId === "") {
+    return {
+      trail: [{ label: meta.group }, employeesCrumb],
+      title: employeeId === "" ? meta.label : "员工详情",
+    };
+  }
+
+  return {
+    trail: [
+      { label: meta.group },
+      employeesCrumb,
+      { label: "员工详情", to: `/employees/${encodeURIComponent(employeeId)}` },
+    ],
+    title: ZONE_TITLE[zone] ?? "员工详情",
+  };
 }
 
 export function ConsoleTopBar({ collapsed, onToggleCollapse }: ConsoleTopBarProps) {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
   const { t } = useI18n();
   const [slot, setSlot] = useState<HTMLElement | null>(null);
 
@@ -79,7 +122,9 @@ export function ConsoleTopBar({ collapsed, onToggleCollapse }: ConsoleTopBarProp
   // empty list means a plugin route shows the resolver's pathname-derived title
   // rather than a guessed one, and the upstream header still shows its own title
   // on those routes.
-  const title = surface !== null ? surface.label : resolvePageTitle(pathname, t, []);
+  const title = surface !== null ? surface.title : resolvePageTitle(pathname, t, []);
+  // 详情页才给返回钮：模块页没有「上一层」，多一个箭头只会让层级更糊。
+  const showBack = surface !== null && surface.trail.length >= 2;
 
   return createPortal(
     <header
@@ -101,13 +146,45 @@ export function ConsoleTopBar({ collapsed, onToggleCollapse }: ConsoleTopBarProp
         )}
       </Button>
 
-      <div className="flex min-w-0 flex-col justify-center">
-        <span
-          data-testid="shell-topbar-crumb"
-          className="console-note truncate text-[length:var(--font-size-ls-1)] leading-[var(--line-height-ls-2)]"
+      {showBack ? (
+        <Button
+          ghost
+          size="icon"
+          onClick={() => navigate(-1)}
+          data-testid="shell-topbar-back"
+          aria-label="返回上一页"
+          className="text-text-secondary hover:text-midground"
         >
-          {surface === null ? "数字员工控制台" : `${surface.group} · 控制台`}
-        </span>
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
+      ) : null}
+
+      <div className="flex min-w-0 flex-col justify-center">
+        <nav
+          aria-label="面包屑"
+          data-testid="shell-topbar-crumb"
+          className="console-note flex min-w-0 items-center gap-1 truncate text-[length:var(--font-size-ls-1)] leading-[var(--line-height-ls-2)]"
+        >
+          {surface === null ? (
+            <span className="truncate">数字员工控制台</span>
+          ) : (
+            surface.trail.map((crumb, index) => (
+              <span
+                key={`${crumb.label}-${index}`}
+                className="flex min-w-0 items-center gap-1"
+              >
+                {index > 0 ? <span aria-hidden="true">›</span> : null}
+                {crumb.to !== undefined ? (
+                  <Link to={crumb.to} className="truncate hover:text-midground">
+                    {crumb.label}
+                  </Link>
+                ) : (
+                  <span className="truncate">{crumb.label}</span>
+                )}
+              </span>
+            ))
+          )}
+        </nav>
         <h1
           data-testid="shell-topbar-title"
           className="truncate text-[length:var(--font-size-ls-5)] leading-[var(--line-height-ls-1)] font-medium text-midground"

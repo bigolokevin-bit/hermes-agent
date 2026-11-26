@@ -130,6 +130,19 @@ export const ZONE_ALIAS: Readonly<Record<string, DetailZone>> = {
   audit: 'evidence',
 };
 
+/**
+ * 详情分区的中文名（顶栏面包屑最后一段 + 唯一 h1）。
+ * 放在路由表而不放进 `shell/console.tsx`：顶栏是外壳件，不该 import 模块大文件。
+ * `console.tsx` 自己那份 ZONE_LABELS 供页面内的分区条使用，两处词表必须一致。
+ */
+export const ZONE_TITLE: Readonly<Record<DetailZone, string>> = {
+  workbench: '工作台',
+  config: '配置',
+  tasks: '任务',
+  runs: '运行',
+  evidence: '证据',
+};
+
 /* ------------------------------------------------------------------ *
  * Appendix A rows 1-22 — the 22 visible tab forwards.
  * Also exported as CONSOLE_TABS; +1 hidden detail pane = 23 tabname

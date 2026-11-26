@@ -136,11 +136,16 @@ describe("n17 top bar: one h1 outside main, no inline style, no minted tokens", 
   it("a console route's h1 title comes from the shell module table, not a derived string", () => {
     expect(topbarCode).toContain("consoleSurface(pathname)");
     expect(topbarCode).toContain(
-      "surface !== null ? surface.label : resolvePageTitle(pathname, t, [])",
+      "surface !== null ? surface.title : resolvePageTitle(pathname, t, [])",
     );
     // Regression guard: the resolver alone rendered a pathname-derived English
     // word on /overview, which is the defect this clause pins shut.
     expect(topbarCode).not.toMatch(/^\s*const title = resolvePageTitle/m);
-    expect(topbarCode).toContain("${surface.group} · 控制台");
+    // 2026-11-26 面包屑改造：写死的「分组 · 控制台」被真实层级取代。
+    // 这里钉住新契约的三件：可点层级（Link）、返回钮、以及详情分区名来源。
+    expect(topbarCode).toContain("surface.trail.map");
+    expect(topbarCode).toContain("<Link to={crumb.to}");
+    expect(topbarCode).toContain('data-testid="shell-topbar-back"');
+    expect(topbarCode).toContain("ZONE_TITLE[zone]");
   });
 });
