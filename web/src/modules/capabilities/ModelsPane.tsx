@@ -50,7 +50,38 @@ function num(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
+/** 把 "$6.40" 这类带符号金额转成数字；空字符串/无数字返回 null（不写 0）。 */
+function money(value: unknown): number | null {
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  const text = textOf(value);
+  if (text === null) return null;
+  const digits = text.replace(/[^0-9.]/g, "");
+  if (!digits) return null;
+  const n = Number(digits);
+  return Number.isFinite(n) ? n : null;
+}
+
 function parseModels(body: unknown): ModelRow[] | null {
+  // `/api/model/options` 的形状是 {providers:[{slug,name,is_current,models:[…],pricing:{…}}]}，
+  // models 是裸字符串。这里把 5 个供应商 × 148 个模型摊平成行；不是行数组就直接判缺失，
+  // 不退回「按通用键猜」——猜错会静默空表。
+  const root = recordOf(body);
+  const providers = Array.isArray(root.providers) ? root.providers : null;
+  if (providers) {
+    const rows: ModelRow[] = [];
+    for (const item of providers) {
+      const provider = recordOf(item);
+      const slug = textOf(provider.slug) ?? textOf(provider.name) ?? "—";
+      const current = provider.is_current === true;
+      const models = Array.isArray(provider.models) ? provider.models : [];
+      for (const entry of models) {
+        const id = textOf(entry) ?? textOf(recordOf(entry).id);
+        if (!id) continue;
+        rows.push({ id, name: id, provider: slug, context: null, status: current ? "当前默认" : null });
+      }
+    }
+    return rows;
+  }
   const items = listOf(body);
   if (items === null) return null;
   return items.map((item, index) => {
@@ -75,22 +106,33 @@ function parseModels(body: unknown): ModelRow[] | null {
 }
 
 function parsePrices(body: unknown): PriceRow[] | null {
-  const items = listOf(body);
-  if (items === null) return null;
-  return items.map((item, index) => {
-    const row = recordOf(item);
-    return {
-      id: textOf(row.id) ?? textOf(row.model) ?? `price-${index}`,
-      vendor: textOf(row.provider) ?? textOf(row.vendor),
-      model: textOf(row.model) ?? textOf(row.name),
-      input: num(row.input_usd_per_1m ?? row.input_per_1m ?? row.input),
-      output: num(row.output_usd_per_1m ?? row.output_per_1m ?? row.output),
-      currency: textOf(row.currency),
-      effective: textOf(row.effectiveAt) ?? textOf(row.effective_date) ?? textOf(row.asOf),
-      version: textOf(row.version) ?? textOf(row.price_version),
-      source: textOf(row.source) ?? textOf(row.origin),
-    };
-  });
+  // 价目没有独立端点：随 `/api/model/options` 的 providers[].pricing 下发
+  // （{model: {input:"$6.40", output:"$32.00", currency?}}），字符串带 $ 先剥符号再转数。
+  // 没有 providers[].pricing 就是「价目未接线」——不从模型列表里编价目行。
+  const root = recordOf(body);
+  const providers = Array.isArray(root.providers) ? root.providers : null;
+  if (!providers) return null;
+  const rows: PriceRow[] = [];
+  for (const item of providers) {
+    const provider = recordOf(item);
+    const slug = textOf(provider.slug) ?? textOf(provider.name) ?? "—";
+    const pricing = recordOf(provider.pricing);
+    for (const [model, entry] of Object.entries(pricing)) {
+      const row = recordOf(entry);
+      rows.push({
+        id: `${slug}/${model}`,
+        vendor: slug,
+        model,
+        input: money(row.input),
+        output: money(row.output),
+        currency: textOf(row.currency) ?? "USD",
+        effective: textOf(row.effectiveAt) ?? null,
+        version: null,
+        source: "上游价目表",
+      });
+    }
+  }
+  return rows;
 }
 
 function parseUsage(body: unknown): Usage | null {
@@ -135,7 +177,8 @@ export function CapModelsPane() {
   // 该口在「进程代码落后于检出」时会回 503 restart required——本页如实上屏，
   // 不换个口子假装目录为空。
   const models = usePort("/api/model/options", parseModels, (rows) => rows.length === 0);
-  const prices = usePort("/api/models/pricing", parsePrices, (rows) => rows.length === 0);
+  // 价目没有独立端点：随同一个 /api/model/options 的 providers[].pricing 下发。
+  const prices = usePort("/api/model/options", parsePrices, (rows) => rows.length === 0);
   const pool = usePort("/api/credentials/pool", parseCredentials, (rows) => rows.length === 0);
   // 供应商目录（GET /api/env）两张卡都要用：向导卡拿它选写哪把 key，凭据池拿它判断
   // 校验键名映射。读口只有一个，放在页里读一次，别每张卡各打一遍。

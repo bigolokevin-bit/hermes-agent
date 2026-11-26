@@ -225,7 +225,14 @@ describe("能力与接入 · 模型与单价", () => {
   const liveStubs = {
     "/api/model/options": {
       status: 200,
-      body: { items: [{ id: "qwen3-max", name: "qwen3-max", provider: "dashscope", context_window: 131072, status: "ok" }] },
+      body: {
+        items: [
+          {
+            id: "qwen3-max", name: "qwen3-max", provider: "dashscope", context_window: 131072, status: "ok",
+
+          },
+        ],
+      },
     },
     "/api/models/pricing": { status: 404, body: { code: "models.pricing_not_wired" } },
     "/api/hermes-usage?days=1": {
