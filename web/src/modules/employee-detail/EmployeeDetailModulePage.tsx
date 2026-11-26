@@ -959,6 +959,9 @@ function IdentityEditor({
             >
               {saving ? "保存中…" : "保存"}
             </Button>
+            {dirty && !saving ? (
+              <span className="text-[11px] text-white/60" data-testid="edcfg-id-dirty">未保存改动</span>
+            ) : null}
             <Button
               size="sm"
               outlined
@@ -973,6 +976,14 @@ function IdentityEditor({
           </div>
           {state.k === "ok" ? (
             <p className="edw-write-ok" role="status" data-testid="edcfg-id-status">{state.text}</p>
+          ) : null}
+          {state.k === "ok" ? (
+            <p className="edw-write-note" data-testid="edcfg-id-next">
+              {version
+                ? `改动已立即生效；当前生效版本仍是 v${shortCode(version)}（保存不生成新版本）。`
+                : "改动已立即生效；该员工当前没有生效版本，发布后才会形成版本。"}
+              本次改动如需留痕成版，请到「版本与变更」发布。
+            </p>
           ) : null}
           {state.k === "error" ? (
             <p className="edw-write-error" role="alert" data-testid="edcfg-id-error">
@@ -2387,6 +2398,12 @@ function ConfigZone({ empId, initial }: { empId: string; initial: ConfigSub }) {
   const [sub, setSub] = useState<ConfigSub>(initial);
   return (
     <RailGrid navLabel="配置分类" testid="edcfg-rail" items={CONFIG_SUBS} active={sub} onSelect={setSub}>
+      {/* 保存语义先讲清楚：本页没有「草稿 → 发布」两步，保存即生效。
+          用户此前反复问「保存了为什么版本没变」，根因是这层没说。 */}
+      <p className="edw-write-note" data-testid="edcfg-save-semantics">
+        本页的保存是<strong>立即生效</strong>，没有「草稿 → 发布」两步，也不会自动生成新版本；
+        需要留版或回滚，请到「版本与变更」发布一次。
+      </p>
       {sub === "identity" ? <IdentitySection empId={empId} /> : null}
       {sub === "lifecycle" ? <LifecycleSection empId={empId} /> : null}
       {sub === "permission" ? <PermissionSection empId={empId} /> : null}
