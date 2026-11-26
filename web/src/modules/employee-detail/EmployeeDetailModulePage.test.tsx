@@ -1343,3 +1343,370 @@ describe("UI-C2 header department reads the same caliber as the identity card", 
     expect(headerDept()?.getAttribute("title")).toContain("读口没有回传");
   });
 });
+
+/* ------------------------------------------------------------------ *
+ * 配置三族写口（身份 / 生命周期 / 授权）—— EMP-EDIT 2026-11-26
+ * ------------------------------------------------------------------ */
+
+describe("EmployeeDetailModulePage — 配置写口（身份 / 生命周期 / 授权）", () => {
+  const qid = (id: string) => container.querySelector(`[data-testid="${id}"]`);
+  const EMPLOYEE = {
+    id: EMP,
+    name: "AgentOS 产品助理",
+    title: "产品助理（数字员工 · Pilot）",
+    department: "产品部",
+    lifecycleState: "active",
+    revision: 5,
+    updatedAt: "2026-11-26T03:53:07.456Z",
+  };
+
+  type Call = { url: string; init?: RequestInit };
+
+  function serveCalls(handler: (url: string, init?: RequestInit) => Promise<unknown>) {
+    vi.mocked(fetchJSON).mockImplementation(((url: string, init?: RequestInit) => handler(url, init)) as never);
+  }
+
+  async function typeInto(testid: string, value: string) {
+    const el = container.querySelector(`[data-testid="${testid}"]`) as HTMLInputElement | HTMLTextAreaElement | null;
+    expect(el, testid).toBeTruthy();
+    const proto = el instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+    const setter = Object.getOwnPropertyDescriptor(proto, "value")!.set!;
+    await act(async () => {
+      setter.call(el!, value);
+      el!.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+  }
+
+  async function press(testid: string) {
+    const el = container.querySelector(`[data-testid="${testid}"]`) as HTMLElement | null;
+    expect(el, testid).toBeTruthy();
+    await act(async () => {
+      el!.click();
+    });
+    for (let i = 0; i < 4; i += 1) await act(async () => {});
+  }
+
+  async function openConfigSub(sub: "lifecycle" | "permission") {
+    await renderAt(page, at("config"));
+    await press(`edcfg-rail-item-${sub}`);
+  }
+
+  afterEach(() => {
+    document.cookie = "console_csrf=; path=/; max-age=0";
+  });
+
+  it("身份三输入可编辑：PATCH 带 If-Match=当前 revision / 幂等键 / CSRF，成功后用回包刷新并提示 revision", async () => {
+    document.cookie = "console_csrf=csrf-test; path=/";
+    const calls: Call[] = [];
+    serveCalls((url, init) => {
+      calls.push({ url, init });
+      if (init?.method === "PATCH") {
+        return Promise.resolve({ ...EMPLOYEE, title: "资深产品助理", revision: 6 });
+      }
+      return Promise.resolve(EMPLOYEE);
+    });
+    await renderAt(page, at("config"));
+    expect((qid("edcfg-id-input-name") as HTMLInputElement).value).toBe("AgentOS 产品助理");
+    expect((qid("edcfg-id-input-department") as HTMLInputElement).value).toBe("产品部");
+    expect(qid("edcfg-id-revision")?.textContent).toBe("revision 5");
+
+    await typeInto("edcfg-id-input-title", "资深产品助理");
+    await press("edcfg-id-save");
+
+    const patch = calls.find((c) => c.init?.method === "PATCH");
+    expect(patch?.url).toBe(`/agent-api/api/employee?id=${encodeURIComponent(EMP)}`);
+    const headers = patch!.init!.headers as Record<string, string>;
+    expect(headers["If-Match"]).toBe("5");
+    expect(headers["Idempotency-Key"]).toBeTruthy();
+    expect(headers["X-Console-CSRF"]).toBe("csrf-test");
+    expect(headers["content-type"]).toBe("application/json");
+    expect(JSON.parse(String(patch!.init!.body))).toEqual({ title: "资深产品助理" });
+
+    expect(qid("edcfg-id-status")?.textContent).toBe("已保存（revision 6）");
+    expect(qid("edcfg-id-revision")?.textContent).toBe("revision 6");
+    expect((qid("edcfg-id-input-title") as HTMLInputElement).value).toBe("资深产品助理");
+  });
+
+  it("409 revision 过期：原样显示上游码并静默重读新 revision，用户输入不清空", async () => {
+    document.cookie = "console_csrf=csrf-test; path=/";
+    let getCount = 0;
+    const patches: Call[] = [];
+    serveCalls((url, init) => {
+      if (init?.method === "PATCH") {
+        patches.push({ url, init });
+        return Promise.reject(
+          new ApiError("revision is stale", {
+            status: 409,
+            body: JSON.stringify({ code: "request.precondition_failed", message: "revision is stale" }),
+            url,
+            requestId: "rid-conflict",
+          }),
+        );
+      }
+      getCount += 1;
+      return Promise.resolve({ ...EMPLOYEE, revision: getCount === 1 ? 5 : 8 });
+    });
+    await renderAt(page, at("config"));
+    await typeInto("edcfg-id-input-title", "改到一半");
+    await press("edcfg-id-save");
+
+    const err = qid("edcfg-id-error");
+    expect(err?.textContent).toContain("request.precondition_failed");
+    expect(err?.textContent).toContain("revision is stale");
+    expect(err?.textContent).toContain("别处已更新，已为你刷新");
+    expect(err?.textContent).toContain("rid-conflict");
+    // 静默重读拿到新 revision，但草稿保留。
+    expect(qid("edcfg-id-revision")?.textContent).toBe("revision 8");
+    expect((qid("edcfg-id-input-title") as HTMLInputElement).value).toBe("改到一半");
+
+    await press("edcfg-id-save");
+    const headers = patches[1]!.init!.headers as Record<string, string>;
+    expect(headers["If-Match"]).toBe("8");
+  });
+
+  it("写口 405 时降级只读并注明「写口未接」，不伪装成功", async () => {
+    document.cookie = "console_csrf=csrf-test; path=/";
+    serveCalls((url, init) => {
+      if (init?.method === "PATCH") {
+        return Promise.reject(
+          new ApiError("该操作当前只读", {
+            status: 405,
+            body: JSON.stringify({ code: "console.read_only", message: "read only" }),
+            url,
+          }),
+        );
+      }
+      return Promise.resolve(EMPLOYEE);
+    });
+    await renderAt(page, at("config"));
+    await typeInto("edcfg-id-input-title", "不允许保存的标题");
+    await press("edcfg-id-save");
+
+    expect(qid("edcfg-id-readonly")?.textContent).toContain("写口未接");
+    expect(qid("edcfg-id-status")).toBeNull();
+    expect((qid("edcfg-id-save") as HTMLButtonElement).disabled).toBe(true);
+    expect(qid("edcfg-id-error")?.textContent).toContain("console.read_only");
+  });
+
+  it("生命周期：只显示当前态可达的按钮（active → 暂停 / 离职）", async () => {
+    serveCalls(() => Promise.resolve(EMPLOYEE));
+    await openConfigSub("lifecycle");
+    expect(qid("edcfg-life-field-state")?.textContent).toBe("在岗");
+    expect(qid("edcfg-life-to-paused")).toBeTruthy();
+    expect(qid("edcfg-life-to-offboarding")).toBeTruthy();
+    expect(qid("edcfg-life-to-archived")).toBeNull();
+  });
+
+  it("生命周期：离职中 → 已归档 置灰并注明域侧未实现（恒 409）", async () => {
+    serveCalls(() => Promise.resolve({ ...EMPLOYEE, lifecycleState: "offboarding" }));
+    await openConfigSub("lifecycle");
+    const archived = qid("edcfg-life-to-archived") as HTMLButtonElement;
+    expect(archived).toBeTruthy();
+    expect(archived.disabled).toBe(true);
+    expect(archived.getAttribute("title")).toContain("恒 409");
+    expect(qid("edcfg-life-disabled-note")?.textContent).toContain("尚未实现");
+    expect(qid("edcfg-life-field-state")?.textContent).toBe("离职中");
+  });
+
+  it("生命周期：确认要填原因，POST 体对且成功后回显新状态", async () => {
+    document.cookie = "console_csrf=csrf-test; path=/";
+    const posts: Call[] = [];
+    serveCalls((url, init) => {
+      if (init?.method === "POST") {
+        posts.push({ url, init });
+        return Promise.resolve({ lifecycleState: "paused" });
+      }
+      return Promise.resolve(EMPLOYEE);
+    });
+    await openConfigSub("lifecycle");
+    await press("edcfg-life-to-paused");
+    expect(qid("edcfg-life-confirm")).toBeTruthy();
+
+    await press("edcfg-life-confirm-submit");
+    expect(posts).toHaveLength(0);
+    expect(qid("edcfg-life-error-line")?.textContent).toContain("原因必填");
+
+    await typeInto("edcfg-life-reason", "例行排期暂停");
+    await press("edcfg-life-confirm-submit");
+    expect(posts).toHaveLength(1);
+    expect(posts[0]!.url).toBe("/agent-api/api/employee-transitions");
+    expect(JSON.parse(String(posts[0]!.init!.body))).toEqual({
+      employeeId: EMP,
+      to: "paused",
+      reason: "例行排期暂停",
+    });
+    expect(qid("edcfg-life-status")?.textContent).toContain("已提交迁移");
+    expect(qid("edcfg-life-field-state")?.textContent).toBe("已暂停");
+    expect(qid("edcfg-life-confirm")).toBeNull();
+  });
+
+  it("生命周期：开始离职必须选交接对象，handoverTo 进 POST 体", async () => {
+    document.cookie = "console_csrf=csrf-test; path=/";
+    const posts: Call[] = [];
+    serveCalls((url, init) => {
+      if (init?.method === "POST") {
+        posts.push({ url, init });
+        return Promise.resolve({});
+      }
+      if (url.includes("/api/employees?")) return Promise.resolve({ items: [] });
+      return Promise.resolve(EMPLOYEE);
+    });
+    await openConfigSub("lifecycle");
+    await press("edcfg-life-to-offboarding");
+    await typeInto("edcfg-life-reason", "转岗交接");
+    await press("edcfg-life-confirm-submit");
+    expect(posts).toHaveLength(0);
+    expect(qid("edcfg-life-error-line")?.textContent).toContain("交接");
+
+    await typeInto("edcfg-life-handover-input", "emp_HANDOVER01");
+    await press("edcfg-life-confirm-submit");
+    expect(posts).toHaveLength(1);
+    expect(JSON.parse(String(posts[0]!.init!.body))).toEqual({
+      employeeId: EMP,
+      to: "offboarding",
+      reason: "转岗交接",
+      handoverTo: "emp_HANDOVER01",
+    });
+  });
+
+  const EFFECTIVE = {
+    version: { versionNo: 5 },
+    grants: [
+      { id: "gr_A", scopeType: "channel", actions: ["send"], source: "role", expiresAt: "2026-12-31T00:00:00.000Z" },
+      { id: "gr_B", scopeType: "business_api", actions: ["execute"], source: "temporary", expiresAt: "2027-12-31T00:00:00.000Z" },
+    ],
+    resolvedAt: "2026-11-26T03:58:02.193Z",
+    snapshotRef: "snap_7d6dfe80",
+    evidence: { schemaVersion: "v2" },
+  };
+
+  function servePermission(handler: (url: string, init?: RequestInit) => Promise<unknown>) {
+    serveCalls((url, init) => {
+      if (url.includes("/api/effective-config")) return Promise.resolve(EFFECTIVE);
+      if (url.includes("/api/workstations")) return Promise.resolve({ items: [] });
+      if (url.includes("/api/approvals")) return Promise.resolve({ items: [] });
+      return handler(url, init);
+    });
+  }
+
+  it("授权：列出 grants[] 的 scopeType/actions/来源/到期，撤销走 DELETE 并从列表移除", async () => {
+    document.cookie = "console_csrf=csrf-test; path=/";
+    const deletes: Call[] = [];
+    servePermission((url, init) => {
+      if (init?.method === "DELETE") {
+        deletes.push({ url, init });
+        return Promise.resolve({ grantId: "gr_A", revokedAt: "2026-11-26T04:00:00.000Z" });
+      }
+      return Promise.resolve({});
+    });
+    await openConfigSub("permission");
+    const first = qid("edcfg-perm-grant-0");
+    expect(first?.textContent).toContain("通信渠道");
+    expect(first?.textContent).toContain("send");
+    expect(first?.textContent).toContain("角色");
+    expect(first?.textContent).toContain("2026-12-31");
+
+    await press("edcfg-perm-revoke-0");
+    expect(deletes).toHaveLength(1);
+    expect(deletes[0]!.url).toBe(`/agent-api/api/employee-grants/gr_A?employeeId=${encodeURIComponent(EMP)}`);
+    expect((deletes[0]!.init!.headers as Record<string, string>)["X-Console-CSRF"]).toBe("csrf-test");
+    expect(qid("edcfg-perm-revoke-status")?.textContent).toContain("已撤销（gr_A）");
+    expect(qid("edcfg-perm-grants")?.textContent).not.toContain("gr_A");
+    expect(qid("edcfg-perm-grants")?.textContent).toContain("execute");
+  });
+
+  it("授权：创建返回 200 的 gr_ 编号，如实说明要随下一版发布才进入有效授权；本次新建可直接撤销", async () => {
+    document.cookie = "console_csrf=csrf-test; path=/";
+    const posts: Call[] = [];
+    const deletes: Call[] = [];
+    servePermission((url, init) => {
+      if (init?.method === "POST") {
+        posts.push({ url, init });
+        return Promise.resolve({ id: "gr_NEW", employeeId: EMP, scopeType: "tool" });
+      }
+      if (init?.method === "DELETE") {
+        deletes.push({ url, init });
+        return Promise.resolve({ grantId: "gr_NEW", revokedAt: "2026-11-26T04:10:00.000Z" });
+      }
+      return Promise.resolve({});
+    });
+    await openConfigSub("permission");
+    await typeInto("edcfg-perm-grant-actions", "send, read");
+    await press("edcfg-perm-grant-submit");
+
+    expect(posts).toHaveLength(1);
+    expect(posts[0]!.url).toBe("/agent-api/api/employee-grants");
+    const body = JSON.parse(String(posts[0]!.init!.body));
+    expect(body.employeeId).toBe(EMP);
+    expect(body.scopeType).toBe("tool");
+    expect(body.source).toBe("role");
+    expect(body.resourceSelector).toEqual({ types: ["tool"] });
+    expect(body.actions).toEqual(["send", "read"]);
+    expect(Number.isFinite(Date.parse(body.expiresAt))).toBe(true);
+    expect("approvalRef" in body).toBe(false);
+    expect("scopeId" in body).toBe(false);
+
+    expect(qid("edcfg-perm-grant-status")?.textContent).toContain("已创建（gr_NEW）");
+    expect(qid("edcfg-perm-grant-status")?.textContent).toContain("需随下一版发布");
+    expect(qid("edcfg-perm-grant-created-list")?.textContent).toContain("gr_NEW");
+    // 可见性纪律：新建行不本地塞进「有效授权」列表充数。
+    expect(qid("edcfg-perm-grants")?.textContent).not.toContain("gr_NEW");
+    expect(qid("edcfg-perm-grant-visibility")?.textContent).toContain("下一次发版");
+
+    // 新建行不在有效授权列表，但本次会话可以直接撤销（撤销口只认 grantId）。
+    await press("edcfg-perm-created-revoke-0");
+    expect(deletes).toHaveLength(1);
+    expect(deletes[0]!.url).toBe(`/agent-api/api/employee-grants/gr_NEW?employeeId=${encodeURIComponent(EMP)}`);
+    expect(qid("edcfg-perm-grant-created-list")).toBeNull();
+    expect(qid("edcfg-perm-revoke-status")?.textContent).toContain("已撤销（gr_NEW）");
+  });
+
+  it("授权：来源≠角色时审批引用必填，缺了就拦住提交（400 grant.approval_ref_required 不上演）", async () => {
+    document.cookie = "console_csrf=csrf-test; path=/";
+    const posts: Call[] = [];
+    servePermission((url, init) => {
+      if (init?.method === "POST") {
+        posts.push({ url, init });
+        return Promise.resolve({ id: "gr_SHOULD_NOT_EXIST" });
+      }
+      return Promise.resolve({});
+    });
+    await openConfigSub("permission");
+    await typeInto("edcfg-perm-grant-actions", "invoke");
+    await press("edcfg-perm-grant-source");
+    const temp = Array.from(container.querySelectorAll('[role="option"]')).find((el) =>
+      (el.textContent ?? "").includes("temporary"),
+    );
+    expect(temp).toBeTruthy();
+    await act(async () => {
+      (temp as HTMLElement).click();
+    });
+    // 未点提交前不先铺红字；点了才把校验摆出来并拦在本地。
+    expect(qid("edcfg-perm-grant-issue-approval")).toBeNull();
+    await press("edcfg-perm-grant-submit");
+    expect(posts).toHaveLength(0);
+    expect(qid("edcfg-perm-grant-issue-approval")?.textContent).toContain("审批引用");
+    expect(qid("edcfg-perm-grant-error")?.textContent).toContain("审批引用");
+  });
+
+  it("授权：写口 405 时整节降级只读并注明写口未接", async () => {
+    document.cookie = "console_csrf=csrf-test; path=/";
+    servePermission((url, init) => {
+      if (init?.method === "POST") {
+        return Promise.reject(
+          new ApiError("该操作当前只读", {
+            status: 405,
+            body: JSON.stringify({ code: "console.read_only", message: "read only" }),
+            url,
+          }),
+        );
+      }
+      return Promise.resolve({});
+    });
+    await openConfigSub("permission");
+    await typeInto("edcfg-perm-grant-actions", "send");
+    await press("edcfg-perm-grant-submit");
+    expect(qid("edcfg-perm-readonly")?.textContent).toContain("写口未接");
+    expect(qid("edcfg-perm-grant-status")).toBeNull();
+  });
+});

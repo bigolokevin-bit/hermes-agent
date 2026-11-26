@@ -1,0 +1,68 @@
+{
+  "steps": [
+    {
+      "step": "save-title",
+      "at": "2026-11-26T04:09:55.610Z",
+      "status": 200,
+      "notice": "已保存（revision 10）",
+      "revisionText": "revision 10",
+      "titleValue": "产品助理（数字员工 · Pilot·写口实测）"
+    },
+    {
+      "step": "restore-title",
+      "at": "2026-11-26T04:09:56.622Z",
+      "status": 200,
+      "notice": "已保存（revision 11）",
+      "revisionText": "revision 11",
+      "titleValue": "产品助理（数字员工 · Pilot）"
+    },
+    {
+      "step": "create-temporary-grant",
+      "at": "2026-11-26T04:09:58.259Z",
+      "status": 200,
+      "notice": "已创建（gr_74F7713FA0B04996984FD15B1F），需随下一版发布才会出现在有效授权中。",
+      "grantId": "gr_74F7713FA0B04996984FD15B1F",
+      "expiresAtLocal": "2026-11-26T12:14",
+      "createdList": "本次新建（尚未进入有效授权）：gr_74F7713FA0B04996984FD15B1F撤销"
+    },
+    {
+      "step": "revoke-created-grant",
+      "at": "2026-11-26T04:09:58.509Z",
+      "status": 200,
+      "notice": "已撤销（gr_74F7713FA0B04996984FD15B1F） · 2026-11-26 12:09"
+    }
+  ],
+  "shot1440": "/Users/kevin_studio/Projects/forks/hermes-agent/docs/_artifacts/employee-detail/config-edit-1440.png",
+  "shot375": "/Users/kevin_studio/Projects/forks/hermes-agent/docs/_artifacts/employee-detail/config-edit-375.png",
+  "structure": {
+    "viewport1440": {
+      "tablist": 1,
+      "h1": 1,
+      "overflow": 0,
+      "plaintextFixture": 0
+    },
+    "viewport375": {
+      "tablist": 1,
+      "h1": 1,
+      "overflow": 0,
+      "railNavVisible": false,
+      "railSelectVisible": true,
+      "identityFormVisible": true
+    }
+  },
+  "whoami": 200,
+  "consoleErrors": [
+    "Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "Failed to load resource: the server responded with a status of 404 (File not found)",
+    "Failed to load resource: the server responded with a status of 404 (File not found)",
+    "Failed to load resource: the server responded with a status of 404 (File not found)",
+    "Failed to load resource: the server responded with a status of 404 (File not found)",
+    "Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "Failed to load resource: the server responded with a status of 404 (File not found)",
+    "Failed to load resource: the server responded with a status of 404 (File not found)",
+    "Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "Failed to load resource: the server responded with a status of 404 (File not found)",
+    "Failed to load resource: the server responded with a status of 404 (File not found)"
+  ]
+}

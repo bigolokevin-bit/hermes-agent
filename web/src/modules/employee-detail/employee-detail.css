@@ -418,3 +418,155 @@
   font-size: 11px;
   color: var(--fg-3, #9aa49e);
 }
+
+/* ------------------------------------------------------------------ *
+ * 配置写口表单（身份编辑 / 生命周期确认 / 新增授权）
+ * 只用语义类与主题令牌；375 单列，不横向溢出。
+ * ------------------------------------------------------------------ */
+
+.edw-form {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 16px 14px;
+}
+
+.edw-form-title {
+  margin: 0;
+  color: var(--fg);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.edw-form-grid {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+}
+
+@media (min-width: 640px) {
+  .edw-form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .edw-form-grid--three {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.edw-form-field {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.edw-form-field--wide {
+  grid-column: 1 / -1;
+}
+
+.edw-form-label {
+  color: var(--fg-3);
+  font-size: 11px;
+}
+
+.edw-input {
+  width: 100%;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-sm);
+  background: var(--panel-2);
+  color: var(--fg);
+  font-size: 13px;
+}
+
+.edw-input:focus-visible {
+  outline: 2px solid var(--fg-3);
+  outline-offset: 1px;
+}
+
+.edw-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.edw-input[aria-invalid="true"] {
+  border-color: var(--danger, #b4544b);
+}
+
+.edw-textarea {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  resize: vertical;
+}
+
+.edw-field-error {
+  color: var(--danger, #b4544b);
+  font-size: 11px;
+}
+
+.edw-form-actions {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.edw-write-ok,
+.edw-write-error,
+.edw-write-note {
+  margin: 0;
+  padding: 6px 16px;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.edw-write-ok {
+  color: var(--success, #4a9d6b);
+}
+
+.edw-write-error {
+  color: var(--danger, #b4544b);
+}
+
+.edw-write-note {
+  color: var(--fg-3);
+}
+
+.edw-write-rid {
+  margin-left: 8px;
+  font-family: var(--font-mono);
+  color: var(--fg-3);
+}
+
+.edw-inline-btn {
+  padding: 2px 6px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--fg-2);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.edw-inline-btn:hover:not(:disabled) {
+  background: var(--panel-2);
+  color: var(--fg);
+}
+
+.edw-inline-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.edw-life-actions {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px 16px 6px;
+}

@@ -75,6 +75,40 @@ import {
 } from "@/modules/duty/readiness";
 import { fetchJSON } from "@/lib/api";
 import { API_UNREACHABLE_MESSAGE, ApiError, humanizeStatus } from "@/lib/api-error";
+import {
+  DEPARTMENT_MAX,
+  GRANT_SOURCES,
+  NAME_MAX,
+  NoWriteSessionError,
+  SCOPE_LABEL,
+  TITLE_MAX,
+  SCOPE_TYPES,
+  SOURCE_LABEL,
+  buildIdentityPatch,
+  buildGrantBody,
+  createGrant,
+  defaultExpiryLocal,
+  failureLine,
+  patchIsEmpty,
+  postTransition,
+  readHandoverCandidates,
+  readIdentityDraft,
+  readRevision,
+  revokeGrant,
+  saveEmployeeIdentity,
+  transitionNeedsHandover,
+  transitionOptions,
+  validateGrantDraft,
+  validateIdentityDraft,
+  writeFailure,
+  type GrantDraft,
+  type GrantIssue,
+  type GrantSource,
+  type HandoverCandidate,
+  type IdentityDraft,
+  type ScopeType,
+  type TransitionOption,
+} from "./employeeEdits";
 import "./employee-detail.css";
 
 /* ------------------------------------------------------------------ *
@@ -289,11 +323,26 @@ function useList<T>(url: string, read: (body: unknown) => T[]): [Resource<T[]>, 
   return [resource, retry];
 }
 
-/** 单对象腿：整包（含信封键）交给分节自己投影；空对象不算 empty。 */
-function useOne<T>(url: string, read: (body: unknown) => T): [Resource<T>, () => void] {
+/** 单对象腿：整包（含信封键）交给分节自己投影；空对象不算 empty。
+ *  第三个返回值：写口成功后用回包就地替换（不用再打一次读口）。
+ *  第四个返回值：后台静默重读（保留当前内容与用户输入，只更新基线；用于
+ *  409 revision 过期后取新 revision，绝不把编辑器打回骨架屏）。 */
+function useOne<T>(
+  url: string,
+  read: (body: unknown) => T,
+): [Resource<T>, () => void, (data: T) => void, () => void] {
   const [resource, setResource] = useState<Resource<T>>({ phase: "loading" });
   const [nonce, setNonce] = useState(0);
   const retry = useCallback(() => setNonce((n) => n + 1), []);
+  const replace = useCallback((data: T) => setResource({ phase: "ready", data }), []);
+  const refresh = useCallback(() => {
+    fetchJSON<unknown>(url)
+      .then((body) => setResource({ phase: "ready", data: read(body) }))
+      .catch(() => {
+        /* 静默重读失败不覆盖现有内容；用户可继续看旧值与错误提示 */
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reader is a module-level pure function
+  }, [url]);
 
   useEffect(() => {
     if (!url) return;
@@ -312,7 +361,7 @@ function useOne<T>(url: string, read: (body: unknown) => T): [Resource<T>, () =>
     // eslint-disable-next-line react-hooks/exhaustive-deps -- readers are module-level pure functions
   }, [url, nonce]);
 
-  return [resource, retry];
+  return [resource, retry, replace, refresh];
 }
 
 /** 异步加载 duty 纯读口的共用状态（fetchWorkstations / fetchApprovalsEvidence）。 */
@@ -498,12 +547,13 @@ function sessionStatusLabel(raw: string | null): { text: string; title?: string 
  * ------------------------------------------------------------------ */
 
 type ZoneKey = "workbench" | "config" | "tasks" | "runs" | "evidence";
-type ConfigSub = "identity" | "permission" | "capability" | "tools" | "budget" | "versions" | "knowledge" | "model";
+type ConfigSub = "identity" | "lifecycle" | "permission" | "capability" | "tools" | "budget" | "versions" | "knowledge" | "model";
 type EvidenceSub = "approvals" | "audit" | "sessions";
 
 /** 配置左竖栏八节（飞书设置式：一列文字分类 + 右侧对应内容）。 */
 const CONFIG_SUBS: ReadonlyArray<{ id: ConfigSub; label: string }> = [
   { id: "identity", label: "身份与组织" },
+  { id: "lifecycle", label: "生命周期" },
   { id: "permission", label: "权限与授权" },
   { id: "capability", label: "能力与技能" },
   { id: "tools", label: "工具与 MCP" },
@@ -717,51 +767,478 @@ function RailGrid<A extends string>({
 }
 
 /* ------------------------------------------------------------------ *
- * 配置区：八个分类，一列一内容，一节一真读口
+ * 配置区：九个分类，一列一内容，一节一真读口（身份/生命周期/授权三节可真写）
  * ------------------------------------------------------------------ */
+
+type SaveState =
+  | { k: "idle" }
+  | { k: "saving" }
+  | { k: "ok"; text: string }
+  | { k: "error"; text: string; requestId: string | null };
+
+/** 写失败一句话：上游 code 与 message 原样带上，不翻译、不吞。 */
+function writeErrorText(err: unknown, lead: string): { text: string; requestId: string | null; stale: boolean; readOnly: boolean } {
+  if (err instanceof NoWriteSessionError) {
+    return { text: err.message, requestId: null, stale: false, readOnly: false };
+  }
+  const f = writeFailure(err);
+  const prefix = f.staleRevision
+    ? "别处已更新，已为你刷新。"
+    : f.missingPrecondition
+      ? "保存缺少版本前置条件（If-Match）。"
+      : f.readOnly
+        ? "写口未接，已降级为只读。"
+        : lead;
+  return { text: `${prefix}${failureLine(f)}`, requestId: f.requestId, stale: f.staleRevision, readOnly: f.readOnly };
+}
 
 function IdentitySection({ empId }: { empId: string }) {
   const enc = encodeURIComponent(empId);
-  const [res, retry] = useOne(`/agent-api/api/employee?id=${enc}`, (b) => (isRecord(b) ? b : {}));
+  const [res, retry, replace, refresh] = useOne(`/agent-api/api/employee?id=${enc}`, (b) => (isRecord(b) ? b : {}));
   return (
     <SectionState
       resource={res}
       retry={retry}
       title="身份与组织"
       prefix="edcfg-id"
-      render={(d) => {
-        const name = pickString(d.name);
-        const version = pickString(d.currentVersionId);
-        const owner = pickString(d.ownerUserId);
-        return (
-          <Card data-testid="edcfg-id">
-            <CardContent className="p-0">
-              <div className="ui-c-head">
-                <h3 className="ui-c-head-title">身份与组织</h3>
-              </div>
-              <SectionKv
-                prefix="edcfg-id-field"
-                rows={[
-                  { id: "name", label: "姓名", value: name ?? FIELD_MISSING, title: name ? undefined : FIELD_MISSING_TITLE },
-                  { id: "code", label: "工号", value: employeeCode(empId), title: empId },
-                  { id: "title", label: "岗位", value: pickString(d.title) ?? FIELD_MISSING, title: pickString(d.title) ? undefined : FIELD_MISSING_TITLE },
-                  {
-                    id: "state",
-                    label: "在职态",
-                    value: rosterLifecycleLabel(pickString(d.lifecycleState)),
-                    title: pickString(d.lifecycleState) ? `原始值：${pickString(d.lifecycleState)}` : FIELD_MISSING_TITLE,
-                  },
-                  { id: "version", label: "当前版本", value: version ? shortCode(version) : FIELD_MISSING, title: version ?? FIELD_MISSING_TITLE },
-                  { id: "owner", label: "责任账号", value: owner ?? FIELD_MISSING, title: owner ? undefined : FIELD_MISSING_TITLE },
-                  { id: "created", label: "创建时间", num: true, value: pickString(d.createdAt) ? beijing(pickString(d.createdAt)) : FIELD_MISSING, title: pickString(d.createdAt) ? "北京时间，精确到分" : FIELD_MISSING_TITLE },
-                  { id: "updated", label: "更新时间", num: true, value: pickString(d.updatedAt) ? beijing(pickString(d.updatedAt)) : FIELD_MISSING, title: pickString(d.updatedAt) ? "北京时间，精确到分" : FIELD_MISSING_TITLE },
-                ]}
-              />
-            </CardContent>
-          </Card>
-        );
-      }}
+      render={(d) => <IdentityEditor d={d} empId={empId} onSaved={replace} onReload={refresh} />}
     />
+  );
+}
+
+function IdentityEditor({
+  d,
+  empId,
+  onSaved,
+  onReload,
+}: {
+  d: Rec;
+  empId: string;
+  onSaved: (next: Rec) => void;
+  onReload: () => void;
+}) {
+  const original = readIdentityDraft(d);
+  const [draft, setDraft] = useState<IdentityDraft>(original);
+  const [baseRev, setBaseRev] = useState<number | null>(readRevision(d));
+  const [state, setState] = useState<SaveState>({ k: "idle" });
+  const [readOnly, setReadOnly] = useState(false);
+
+  // 读口/写口回包更新 revision 后只同步基线，不动用户正在编辑的草稿。
+  const rev = readRevision(d);
+  useEffect(() => {
+    if (rev !== null) setBaseRev(rev);
+  }, [rev]);
+
+  const issues = validateIdentityDraft(draft);
+  const issueOf = (field: "name" | "title" | "department") => issues.find((i) => i.field === field)?.message ?? null;
+  const patch = buildIdentityPatch(original, draft);
+  const dirty = !patchIsEmpty(patch);
+  const saving = state.k === "saving";
+  const version = pickString(d.currentVersionId);
+  const owner = pickString(d.ownerUserId);
+
+  const fill = (field: keyof IdentityDraft) => (value: string) => {
+    setDraft((prev) => ({ ...prev, [field]: value }));
+    if (state.k === "error") setState({ k: "idle" });
+  };
+
+  async function submit() {
+    if (saving || readOnly) return;
+    if (issues.length > 0) {
+      setState({ k: "error", text: issues[0]!.message, requestId: null });
+      return;
+    }
+    if (!dirty) return;
+    if (baseRev === null) {
+      setState({
+        k: "error",
+        text: "档案没有回传 revision，无法安全保存（缺 If-Match 会被服务端 428 拒）。请重读后再试。",
+        requestId: null,
+      });
+      return;
+    }
+    setState({ k: "saving" });
+    try {
+      const body = await saveEmployeeIdentity(empId, baseRev, patch);
+      onSaved(body);
+      setDraft(readIdentityDraft(body));
+      const nextRev = readRevision(body) ?? baseRev + 1;
+      setBaseRev(nextRev);
+      setState({ k: "ok", text: `已保存（revision ${nextRev}）` });
+    } catch (err: unknown) {
+      const e = writeErrorText(err, "保存没有成功：");
+      if (e.readOnly) setReadOnly(true);
+      setState({ k: "error", text: e.text, requestId: e.requestId });
+      // revision 过期：按契约重读，让下一次保存用新 revision；草稿保持不动。
+      if (e.stale) onReload();
+    }
+  }
+
+  return (
+    <Card data-testid="edcfg-id">
+      <CardContent className="p-0">
+        <div className="ui-c-head">
+          <h3 className="ui-c-head-title">身份与组织</h3>
+          <span className="text-[11px] text-white/45" data-testid="edcfg-id-revision">
+            {rev === null ? "revision 未回传" : `revision ${rev}`}
+          </span>
+        </div>
+        <div className="edw-form">
+          <div className="edw-form-grid">
+            <label className="edw-form-field">
+              <span className="edw-form-label">姓名</span>
+              <input
+                className="edw-input"
+                data-testid="edcfg-id-input-name"
+                value={draft.name}
+                onChange={(e) => fill("name")(e.target.value)}
+                maxLength={NAME_MAX}
+                disabled={saving || readOnly}
+                aria-invalid={issueOf("name") ? "true" : undefined}
+              />
+              {issueOf("name") ? (
+                <span className="edw-field-error" data-testid="edcfg-id-issue-name">{issueOf("name")}</span>
+              ) : null}
+            </label>
+            <label className="edw-form-field">
+              <span className="edw-form-label">岗位</span>
+              <input
+                className="edw-input"
+                data-testid="edcfg-id-input-title"
+                value={draft.title}
+                onChange={(e) => fill("title")(e.target.value)}
+                maxLength={TITLE_MAX}
+                disabled={saving || readOnly}
+                aria-invalid={issueOf("title") ? "true" : undefined}
+              />
+              {issueOf("title") ? (
+                <span className="edw-field-error" data-testid="edcfg-id-issue-title">{issueOf("title")}</span>
+              ) : null}
+            </label>
+            <label className="edw-form-field">
+              <span className="edw-form-label">部门</span>
+              <input
+                className="edw-input"
+                data-testid="edcfg-id-input-department"
+                value={draft.department}
+                onChange={(e) => fill("department")(e.target.value)}
+                maxLength={DEPARTMENT_MAX}
+                placeholder="留空表示清空部门"
+                disabled={saving || readOnly}
+                aria-invalid={issueOf("department") ? "true" : undefined}
+              />
+              {issueOf("department") ? (
+                <span className="edw-field-error" data-testid="edcfg-id-issue-department">{issueOf("department")}</span>
+              ) : null}
+            </label>
+          </div>
+          <div className="edw-form-actions">
+            <Button
+              size="sm"
+              onClick={() => void submit()}
+              disabled={saving || readOnly || !dirty || issues.length > 0}
+              aria-disabled={saving || readOnly || !dirty || issues.length > 0 ? "true" : undefined}
+              data-testid="edcfg-id-save"
+            >
+              {saving ? "保存中…" : "保存"}
+            </Button>
+            <Button
+              size="sm"
+              outlined
+              disabled
+              aria-disabled="true"
+              title="责任人转交需要域侧审批验证，当前恒 409 employee.approval_verification_unavailable，故不开放。"
+              data-testid="edcfg-id-transfer"
+            >
+              转交责任人
+            </Button>
+            <span className="text-[11px] text-white/45">姓名 ≤ {NAME_MAX} 字，岗位 ≤ {TITLE_MAX} 字，部门 ≤ {DEPARTMENT_MAX} 字。</span>
+          </div>
+          {state.k === "ok" ? (
+            <p className="edw-write-ok" role="status" data-testid="edcfg-id-status">{state.text}</p>
+          ) : null}
+          {state.k === "error" ? (
+            <p className="edw-write-error" role="alert" data-testid="edcfg-id-error">
+              {state.text}
+              {state.requestId ? <span className="edw-write-rid">请求编号 {state.requestId}</span> : null}
+            </p>
+          ) : null}
+          {readOnly ? (
+            <p className="edw-write-note" data-testid="edcfg-id-readonly">
+              写口未接：本环境的后端没有接员工的保存接口，本节已降级为只读；上面的值仍按真实读口显示。
+            </p>
+          ) : null}
+          <p className="edw-write-note" data-testid="edcfg-id-transfer-note">
+            责任人转交走审批验证，当前不可用（ownerUserId 写入恒 409）；如需换责任人，请走审批流程。
+          </p>
+        </div>
+        <div className="console-divider" />
+        <SectionKv
+          prefix="edcfg-id-field"
+          rows={[
+            { id: "code", label: "工号", value: employeeCode(empId), title: empId },
+            {
+              id: "state",
+              label: "在职态",
+              value: rosterLifecycleLabel(pickString(d.lifecycleState)),
+              title: pickString(d.lifecycleState) ? `原始值：${pickString(d.lifecycleState)}` : FIELD_MISSING_TITLE,
+            },
+            { id: "version", label: "当前版本", value: version ? shortCode(version) : FIELD_MISSING, title: version ?? FIELD_MISSING_TITLE },
+            { id: "owner", label: "责任账号", value: owner ?? FIELD_MISSING, title: owner ? undefined : FIELD_MISSING_TITLE },
+            { id: "created", label: "创建时间", num: true, value: pickString(d.createdAt) ? beijing(pickString(d.createdAt)) : FIELD_MISSING, title: pickString(d.createdAt) ? "北京时间，精确到分" : FIELD_MISSING_TITLE },
+            { id: "updated", label: "更新时间", num: true, value: pickString(d.updatedAt) ? beijing(pickString(d.updatedAt)) : FIELD_MISSING, title: pickString(d.updatedAt) ? "北京时间，精确到分" : FIELD_MISSING_TITLE },
+          ]}
+        />
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ * 生命周期：当前态 + 可达下一步（每步一个小确认）
+ * ------------------------------------------------------------------ */
+
+function LifecycleSection({ empId }: { empId: string }) {
+  const enc = encodeURIComponent(empId);
+  const [res, retry, replace, refresh] = useOne(`/agent-api/api/employee?id=${enc}`, (b) => (isRecord(b) ? b : {}));
+  const [pending, setPending] = useState<TransitionOption | null>(null);
+  const [readOnly, setReadOnly] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  if (res.phase === "loading") return <ZoneLoading testid="edcfg-life-loading" />;
+  if (res.phase === "denied") {
+    return <ZoneDenied title="生命周期" message={res.message} requestId={res.requestId} onRetry={retry} testid="edcfg-life-denied" />;
+  }
+  if (res.phase === "error") {
+    return <ZoneError title="生命周期" message={res.message} requestId={res.requestId} onRetry={retry} testid="edcfg-life-error" />;
+  }
+  if (res.phase === "empty") {
+    return <ZoneEmpty testid="edcfg-life-empty" title="档案里没有生命周期状态" hint="这是服务端的真实回答，不猜在职态。" />;
+  }
+
+  const d = res.data;
+  const rawState = pickString(d.lifecycleState);
+  const options = transitionOptions(rawState);
+  return (
+    <>
+      <Card data-testid="edcfg-life">
+        <CardContent className="p-0">
+          <div className="ui-c-head">
+            <h3 className="ui-c-head-title">生命周期</h3>
+          </div>
+          <SectionKv
+            prefix="edcfg-life-field"
+            rows={[
+              {
+                id: "state",
+                label: "当前状态",
+                value: rosterLifecycleLabel(rawState),
+                title: rawState ? `原始值：${rawState}` : FIELD_MISSING_TITLE,
+              },
+            ]}
+          />
+          <div className="console-divider" />
+          <div className="edw-life-actions">
+            {options.length === 0 ? (
+              <p className="edw-write-note" data-testid="edcfg-life-terminal">
+                {rawState === "archived"
+                  ? "已归档是终态，没有可执行的迁移。"
+                  : "当前状态没有已登记的合法迁移。"}
+              </p>
+            ) : (
+              options.map((opt) => (
+                <Button
+                  key={opt.to}
+                  size="sm"
+                  outlined
+                  disabled={!opt.enabled || readOnly}
+                  aria-disabled={!opt.enabled || readOnly ? "true" : undefined}
+                  title={opt.reason ?? undefined}
+                  data-testid={`edcfg-life-to-${opt.to}`}
+                  onClick={() => {
+                    setPending(opt);
+                    setNotice(null);
+                  }}
+                >
+                  {opt.label}
+                </Button>
+              ))
+            )}
+          </div>
+          {options.some((o) => !o.enabled) ? (
+            <p className="edw-write-note" data-testid="edcfg-life-disabled-note">
+              「归档」按钮置灰：域侧尚未实现「离职中 → 已归档」这条迁移（调用恒 409）。
+            </p>
+          ) : null}
+          {notice ? (
+            <p className="edw-write-ok" role="status" data-testid="edcfg-life-status">{notice}</p>
+          ) : null}
+          {readOnly ? (
+            <p className="edw-write-note" data-testid="edcfg-life-readonly">
+              写口未接：本环境的后端没有接生命周期迁移接口，本节已降级为只读。
+            </p>
+          ) : null}
+          <p className="edw-write-note">
+            只显示当前状态可达的下一步；每次迁移都要填原因，开始离职还要选交接到谁。
+          </p>
+        </CardContent>
+      </Card>
+      {pending ? (
+        <TransitionConfirm
+          empId={empId}
+          option={pending}
+          onCancel={() => setPending(null)}
+          onDone={(next, message) => {
+            setPending(null);
+            setNotice(message);
+            if (next) replace(next);
+            else refresh();
+          }}
+          onBlocked={() => setReadOnly(true)}
+        />
+      ) : null}
+    </>
+  );
+}
+
+function TransitionConfirm({
+  empId,
+  option,
+  onCancel,
+  onDone,
+  onBlocked,
+}: {
+  empId: string;
+  option: TransitionOption;
+  onCancel: () => void;
+  onDone: (next: Rec | null, message: string) => void;
+  onBlocked: () => void;
+}) {
+  const needsHandover = transitionNeedsHandover(option.to);
+  const [reason, setReason] = useState("");
+  const [handover, setHandover] = useState("");
+  const [candidates, setCandidates] = useState<HandoverCandidate[]>([]);
+  const [candidateError, setCandidateError] = useState<string | null>(null);
+  const [state, setState] = useState<SaveState>({ k: "idle" });
+
+  useEffect(() => {
+    if (!needsHandover) return;
+    let cancelled = false;
+    fetchJSON<unknown>("/agent-api/api/employees?limit=200")
+      .then((body) => {
+        if (!cancelled) setCandidates(readHandoverCandidates(body, empId));
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) setCandidateError(writeFailure(err).message);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [needsHandover, empId]);
+
+  const saving = state.k === "saving";
+  const reasonOk = reason.trim().length > 0;
+  const handoverOk = !needsHandover || handover.trim().length > 0;
+
+  async function submit() {
+    if (saving) return;
+    if (!reasonOk) {
+      setState({ k: "error", text: "原因必填：请写一句这次迁移为什么发生。", requestId: null });
+      return;
+    }
+    if (!handoverOk) {
+      setState({ k: "error", text: "开始离职必须选一个交接对象。", requestId: null });
+      return;
+    }
+    setState({ k: "saving" });
+    try {
+      const body = await postTransition(empId, option.to, reason, handover || null);
+      const next = pickString(body.lifecycleState, body.lifecycle) ? (isRecord(body.employee) ? body.employee : body) : null;
+      onDone(next, `已提交迁移：${option.label}。`);
+    } catch (err: unknown) {
+      const e = writeErrorText(err, "迁移没有成功：");
+      if (e.readOnly) onBlocked();
+      setState({ k: "error", text: e.text, requestId: e.requestId });
+    }
+  }
+
+  return (
+    <Card data-testid="edcfg-life-confirm" role="dialog" aria-label="确认生命周期迁移">
+      <CardContent className="p-0">
+        <div className="ui-c-head">
+          <h3 className="ui-c-head-title">确认迁移：{option.label}</h3>
+        </div>
+        <div className="edw-form">
+          <label className="edw-form-field">
+            <span className="edw-form-label">原因（必填）</span>
+            <input
+              className="edw-input"
+              data-testid="edcfg-life-reason"
+              value={reason}
+              onChange={(e) => {
+                setReason(e.target.value);
+                if (state.k === "error") setState({ k: "idle" });
+              }}
+              maxLength={200}
+              disabled={saving}
+            />
+          </label>
+          {needsHandover ? (
+            <div className="edw-form-field">
+              <span className="edw-form-label">交接给（必填）</span>
+              {candidates.length > 0 ? (
+                <ConsoleSelect
+                  aria-label="交接对象"
+                  data-testid="edcfg-life-handover"
+                  value={handover}
+                  onChange={setHandover}
+                  options={[
+                    { value: "", label: "选一位交接对象" },
+                    ...candidates.map((c) => ({
+                      value: c.employeeId,
+                      label: c.name ? `${c.name} · ${employeeCode(c.employeeId)}` : employeeCode(c.employeeId),
+                    })),
+                  ]}
+                />
+              ) : (
+                <input
+                  className="edw-input"
+                  data-testid="edcfg-life-handover-input"
+                  value={handover}
+                  onChange={(e) => setHandover(e.target.value)}
+                  placeholder="员工读口不可用时可填交接人工号"
+                  disabled={saving}
+                />
+              )}
+              {candidateError ? (
+                <span className="edw-field-error" data-testid="edcfg-life-handover-error">
+                  交接对象列表读取失败（{candidateError}），可直接填工号。
+                </span>
+              ) : null}
+            </div>
+          ) : null}
+          <div className="edw-form-actions">
+            <Button
+              size="sm"
+              onClick={() => void submit()}
+              disabled={saving}
+              data-testid="edcfg-life-confirm-submit"
+            >
+              {saving ? "提交中…" : "确认迁移"}
+            </Button>
+            <Button size="sm" outlined onClick={onCancel} disabled={saving} data-testid="edcfg-life-cancel">
+              取消
+            </Button>
+          </div>
+          {state.k === "error" ? (
+            <p className="edw-write-error" role="alert" data-testid="edcfg-life-error-line">
+              {state.text}
+              {state.requestId ? <span className="edw-write-rid">请求编号 {state.requestId}</span> : null}
+            </p>
+          ) : null}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -860,33 +1337,309 @@ function PermissionSection({ empId }: { empId: string }) {
                   ]}
                 />
                 <div className="console-divider" />
-                {grants.length === 0 ? (
-                  <p className="px-4 py-3 text-xs text-white/50" data-testid="edcfg-perm-grants-empty">
-                    有效配置里没有授予行（grants 空集）——这是服务端的真实回答，不是加载失败。
-                  </p>
-                ) : (
-                  <ul className="divide-y divide-white/5" data-testid="edcfg-perm-grants">
-                    {grants.map((g, i) => {
-                      const actions = Array.isArray(g.actions) ? (g.actions as unknown[]).filter((x): x is string => typeof x === "string") : [];
-                      const expires = pickString(g.expiresAt);
-                      return (
-                        <li key={`${pickString(g.id) ?? i}`} className="grid grid-cols-1 gap-1 px-4 py-3 sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1.4fr)_minmax(0,0.8fr)] sm:items-center sm:gap-2" data-testid={`edcfg-perm-grant-${i}`}>
-                          <span className="text-sm">{pickString(g.scopeType) ?? "—"}</span>
-                          <span className="min-w-0 truncate text-xs text-white/60" title={actions.join(", ")}>{actions.join("/") || "—"}</span>
-                          <span className="text-xs text-white/55">
-                            {pickString(g.source) ?? "—"} · {expires ? `至 ${beijing(expires)}` : "长期"}
-                          </span>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
+                <GrantPanel empId={empId} grants={grants} />
               </CardContent>
             </Card>
           </>
         );
       }}
     />
+  );
+}
+
+/**
+ * 授权面板：列出 effective-config.grants[]（唯一读口），每条可撤销；
+ * 下方「新增授权」写 POST /api/employee-grants。
+ *
+ * 可见性必须如实说：域侧没有 grant 列表读口，新建的 grant 不会立刻出现在
+ * grants[] 里 —— 它要随下一次发版（grantIds）才可见。页面不把「已创建」演成
+ * 「已生效」，也不在本地把新行塞进有效授权列表充数。
+ */
+function GrantPanel({ empId, grants }: { empId: string; grants: Rec[] }) {
+  const [revoked, setRevoked] = useState<Record<string, string | null>>({});
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [revokeState, setRevokeState] = useState<SaveState>({ k: "idle" });
+  const [created, setCreated] = useState<Array<{ id: string | null }>>([]);
+  const [readOnly, setReadOnly] = useState(false);
+  const [formState, setFormState] = useState<SaveState>({ k: "idle" });
+  const [attempted, setAttempted] = useState(false);
+  const [draft, setDraft] = useState<GrantDraft>(() => ({
+    scopeType: "tool",
+    source: "role",
+    actions: "",
+    expiresAt: defaultExpiryLocal(Date.now()),
+    approvalRef: "",
+    selectorText: '{"types":["tool"]}',
+  }));
+
+  const issues = validateGrantDraft(draft);
+  // 只在用户点过「创建授权」后才把校验红字摆出来；空白表单不该一开始全红。
+  const issueOf = (field: GrantIssue["field"]) =>
+    attempted ? issues.find((i) => i.field === field)?.message ?? null : null;
+  const saving = formState.k === "saving";
+  const rows = grants.filter((g) => {
+    const id = pickString(g.id);
+    return !id || revoked[id] === undefined;
+  });
+
+  const fill = <K extends keyof GrantDraft>(field: K) => (value: GrantDraft[K]) => {
+    setDraft((prev) => ({ ...prev, [field]: value }));
+    if (formState.k === "error") setFormState({ k: "idle" });
+  };
+
+  async function create() {
+    if (saving || readOnly) return;
+    setAttempted(true);
+    if (issues.length > 0) {
+      setFormState({ k: "error", text: issues[0]!.message, requestId: null });
+      return;
+    }
+    // 先本地构体（buildGrantBody 会再做一次选择器/时间校验）。
+    let valid = true;
+    try {
+      buildGrantBody(empId, draft);
+    } catch (err: unknown) {
+      valid = false;
+      setFormState({ k: "error", text: err instanceof Error ? err.message : String(err), requestId: null });
+    }
+    if (!valid) return;
+    setFormState({ k: "saving" });
+    try {
+      const grant = await createGrant(empId, draft);
+      setCreated((prev) => [...prev, { id: grant.id }]);
+      // 成功一次就回到干净表单（保留范围/有效期），校验红字随之收起。
+      setDraft((prev) => ({ ...prev, source: "role", actions: "", approvalRef: "" }));
+      setAttempted(false);
+      setFormState({
+        k: "ok",
+        text: grant.id
+          ? `已创建（${grant.id}），需随下一版发布才会出现在有效授权中。`
+          : "后台确认已创建，但回包没有 grant 编号；需随下一版发布后在有效授权中核对。",
+      });
+    } catch (err: unknown) {
+      const e = writeErrorText(err, "新增授权没有成功：");
+      if (e.readOnly) setReadOnly(true);
+      setFormState({ k: "error", text: e.text, requestId: e.requestId });
+    }
+  }
+
+  async function revoke(grantId: string) {
+    if (busyId || readOnly) return;
+    setBusyId(grantId);
+    setRevokeState({ k: "idle" });
+    try {
+      const res = await revokeGrant(empId, grantId);
+      setRevoked((prev) => ({ ...prev, [grantId]: res.revokedAt }));
+      setRevokeState({
+        k: "ok",
+        text: `已撤销（${grantId}）${res.revokedAt ? ` · ${beijing(res.revokedAt)}` : ""}`,
+      });
+    } catch (err: unknown) {
+      const e = writeErrorText(err, "撤销没有成功：");
+      if (e.readOnly) setReadOnly(true);
+      setRevokeState({ k: "error", text: e.text, requestId: e.requestId });
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  return (
+    <>
+      {rows.length === 0 ? (
+        <p className="px-4 py-3 text-xs text-white/50" data-testid="edcfg-perm-grants-empty">
+          {grants.length === 0
+            ? "有效配置里没有授予行（grants 空集）——这是服务端的真实回答，不是加载失败。"
+            : "本次已撤销全部授予行；有效配置要等下一次解析才会反映（撤销结果见下方提示）。"}
+        </p>
+      ) : (
+        <ul className="divide-y divide-white/5" data-testid="edcfg-perm-grants">
+          {rows.map((g, i) => {
+            const id = pickString(g.id);
+            const scope = pickString(g.scopeType);
+            const source = pickString(g.source);
+            const actions = Array.isArray(g.actions) ? (g.actions as unknown[]).filter((x): x is string => typeof x === "string") : [];
+            const expires = pickString(g.expiresAt);
+            const scopeLabel = scope && scope in SCOPE_LABEL ? SCOPE_LABEL[scope as ScopeType] : scope;
+            const sourceLabel = source && source in SOURCE_LABEL ? SOURCE_LABEL[source as GrantSource] : source;
+            return (
+              <li
+                key={`${id ?? i}`}
+                className="grid grid-cols-1 gap-2 px-4 py-3 sm:grid-cols-[minmax(0,0.7fr)_minmax(0,1.2fr)_minmax(0,0.9fr)_minmax(0,0.9fr)_auto] sm:items-center"
+                data-testid={`edcfg-perm-grant-${i}`}
+              >
+                <span className="text-sm" title={scope ?? undefined}>{scopeLabel ?? "—"}</span>
+                <span className="min-w-0 truncate text-xs text-white/60" title={actions.join(", ")}>{actions.join("/") || "—"}</span>
+                <span className="text-xs text-white/55" title={source ?? undefined}>{sourceLabel ?? "—"}</span>
+                <span className="text-xs text-white/55" title={expires ?? undefined}>
+                  {expires ? `至 ${beijing(expires)}` : "长期"}
+                </span>
+                <button
+                  type="button"
+                  className="edw-inline-btn"
+                  disabled={!id || busyId === id || readOnly}
+                  aria-disabled={!id || busyId === id || readOnly ? "true" : undefined}
+                  title={id ? `撤销 ${id}` : "有效授权行没有回传 grant 编号，无法撤销。"}
+                  data-testid={`edcfg-perm-revoke-${i}`}
+                  onClick={() => {
+                    if (id) void revoke(id);
+                  }}
+                >
+                  {busyId === id ? "撤销中…" : "撤销"}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {created.filter((c) => !c.id || revoked[c.id] === undefined).length > 0 ? (
+        <div className="px-4 py-2 text-[11px] text-white/55" data-testid="edcfg-perm-grant-created-list">
+          <span>本次新建（尚未进入有效授权）：</span>
+          {created
+            .filter((c) => !c.id || revoked[c.id] === undefined)
+            .map((c, i) => (
+              <span key={`${c.id ?? i}`} className="ml-1 inline-flex items-center gap-1">
+                <span className="font-mono">{c.id ?? "编号未回传"}</span>
+                {c.id ? (
+                  <button
+                    type="button"
+                    className="edw-inline-btn"
+                    disabled={busyId === c.id || readOnly}
+                    aria-disabled={busyId === c.id || readOnly ? "true" : undefined}
+                    data-testid={`edcfg-perm-created-revoke-${i}`}
+                    onClick={() => void revoke(c.id!)}
+                  >
+                    {busyId === c.id ? "撤销中…" : "撤销"}
+                  </button>
+                ) : null}
+              </span>
+            ))}
+        </div>
+      ) : null}
+      {revokeState.k === "ok" ? (
+        <p className="edw-write-ok" role="status" data-testid="edcfg-perm-revoke-status">{revokeState.text}</p>
+      ) : null}
+      {revokeState.k === "error" ? (
+        <p className="edw-write-error" role="alert" data-testid="edcfg-perm-revoke-error">
+          {revokeState.text}
+          {revokeState.requestId ? <span className="edw-write-rid">请求编号 {revokeState.requestId}</span> : null}
+        </p>
+      ) : null}
+
+      <div className="console-divider" />
+      <div className="edw-form" data-testid="edcfg-perm-grant-form">
+        <h4 className="edw-form-title">新增授权</h4>
+        <div className="edw-form-grid edw-form-grid--three">
+          <div className="edw-form-field">
+            <span className="edw-form-label">授权范围</span>
+            <ConsoleSelect
+              aria-label="授权范围"
+              data-testid="edcfg-perm-grant-scope"
+              value={draft.scopeType}
+              onChange={fill("scopeType")}
+              options={SCOPE_TYPES.map((s) => ({ value: s, label: `${SCOPE_LABEL[s]}（${s}）` }))}
+            />
+          </div>
+          <div className="edw-form-field">
+            <span className="edw-form-label">来源</span>
+            <ConsoleSelect
+              aria-label="授权来源"
+              data-testid="edcfg-perm-grant-source"
+              value={draft.source}
+              onChange={fill("source")}
+              options={GRANT_SOURCES.map((s) => ({ value: s, label: `${SOURCE_LABEL[s]}（${s}）` }))}
+            />
+          </div>
+          <label className="edw-form-field">
+            <span className="edw-form-label">有效期</span>
+            <input
+              type="datetime-local"
+              className="edw-input"
+              data-testid="edcfg-perm-grant-expiry"
+              value={draft.expiresAt}
+              onChange={(e) => fill("expiresAt")(e.target.value)}
+              disabled={saving}
+              aria-invalid={issueOf("expiresAt") ? "true" : undefined}
+            />
+            {issueOf("expiresAt") ? (
+              <span className="edw-field-error" data-testid="edcfg-perm-grant-issue-expires">{issueOf("expiresAt")}</span>
+            ) : null}
+          </label>
+          <label className="edw-form-field edw-form-field--wide">
+            <span className="edw-form-label">动作（逗号或空格分隔）</span>
+            <input
+              className="edw-input"
+              data-testid="edcfg-perm-grant-actions"
+              value={draft.actions}
+              onChange={(e) => fill("actions")(e.target.value)}
+              placeholder="例如 send, read"
+              disabled={saving}
+              aria-invalid={issueOf("actions") ? "true" : undefined}
+            />
+            {issueOf("actions") ? (
+              <span className="edw-field-error" data-testid="edcfg-perm-grant-issue-actions">{issueOf("actions")}</span>
+            ) : null}
+          </label>
+          <label className="edw-form-field edw-form-field--wide">
+            <span className="edw-form-label">资源选择器（JSON 对象，禁通配 *）</span>
+            <textarea
+              className="edw-input edw-textarea"
+              data-testid="edcfg-perm-grant-selector"
+              value={draft.selectorText}
+              onChange={(e) => fill("selectorText")(e.target.value)}
+              rows={2}
+              disabled={saving}
+              aria-invalid={issueOf("selectorText") ? "true" : undefined}
+            />
+            {issueOf("selectorText") ? (
+              <span className="edw-field-error" data-testid="edcfg-perm-grant-issue-selector">{issueOf("selectorText")}</span>
+            ) : null}
+          </label>
+          <label className="edw-form-field edw-form-field--wide">
+            <span className="edw-form-label">审批引用（来源≠角色时必填）</span>
+            <input
+              className="edw-input"
+              data-testid="edcfg-perm-grant-approval"
+              value={draft.approvalRef}
+              onChange={(e) => fill("approvalRef")(e.target.value)}
+              disabled={saving}
+              aria-invalid={issueOf("approvalRef") ? "true" : undefined}
+            />
+            {issueOf("approvalRef") ? (
+              <span className="edw-field-error" data-testid="edcfg-perm-grant-issue-approval">{issueOf("approvalRef")}</span>
+            ) : null}
+          </label>
+        </div>
+        <div className="edw-form-actions">
+          <Button
+            size="sm"
+            onClick={() => void create()}
+            disabled={saving || readOnly}
+            aria-disabled={saving || readOnly ? "true" : undefined}
+            data-testid="edcfg-perm-grant-submit"
+          >
+            {saving ? "创建中…" : "创建授权"}
+          </Button>
+          <span className="text-[11px] text-white/45">有效期没有默认值，表单预填 7 天后，请按实际需要调整。</span>
+        </div>
+        {formState.k === "ok" ? (
+          <p className="edw-write-ok" role="status" data-testid="edcfg-perm-grant-status">{formState.text}</p>
+        ) : null}
+        {formState.k === "error" ? (
+          <p className="edw-write-error" role="alert" data-testid="edcfg-perm-grant-error">
+            {formState.text}
+            {formState.requestId ? <span className="edw-write-rid">请求编号 {formState.requestId}</span> : null}
+          </p>
+        ) : null}
+        {readOnly ? (
+          <p className="edw-write-note" data-testid="edcfg-perm-readonly">
+            写口未接：本环境的后端没有接授权创建/撤销接口，本节已降级为只读。
+          </p>
+        ) : null}
+        <p className="edw-write-note" data-testid="edcfg-perm-grant-visibility">
+          说明：新建或撤销的授权不会立刻改上面这份「有效授权」——它只在下一次发版（grantIds）解析后才会出现或消失。
+        </p>
+      </div>
+    </>
   );
 }
 
@@ -1285,6 +2038,7 @@ function ConfigZone({ empId, initial }: { empId: string; initial: ConfigSub }) {
   return (
     <RailGrid navLabel="配置分类" testid="edcfg-rail" items={CONFIG_SUBS} active={sub} onSelect={setSub}>
       {sub === "identity" ? <IdentitySection empId={empId} /> : null}
+      {sub === "lifecycle" ? <LifecycleSection empId={empId} /> : null}
       {sub === "permission" ? <PermissionSection empId={empId} /> : null}
       {sub === "capability" ? <CapabilitySection empId={empId} /> : null}
       {sub === "tools" ? <ToolsSection /> : null}
