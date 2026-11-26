@@ -171,7 +171,7 @@ describe("能力与接入 · 技能", () => {
 describe("能力与接入 · 工具与 MCP", () => {
   it("四块、副行对齐骨架；上游不可达时不摆空表，只写缺读口", async () => {
     stub({
-      "/api/tools": { status: 502, body: { code: "console.upstream_unavailable" } },
+      "/api/tools/toolsets": { status: 502, body: { code: "console.upstream_unavailable" } },
       "/api/mcp/servers": { status: 404, body: { code: "mcp.read_not_wired" } },
     });
     await mount(<CapToolsPane />);
@@ -186,7 +186,7 @@ describe("能力与接入 · 工具与 MCP", () => {
 
   it("工具登记回数时按读口裁列：沙箱与 7 天调用没有源就不画", async () => {
     stub({
-      "/api/tools": {
+      "/api/tools/toolsets": {
         status: 200,
         body: {
           items: [

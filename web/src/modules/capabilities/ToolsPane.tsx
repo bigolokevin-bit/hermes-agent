@@ -89,7 +89,9 @@ function parseServers(body: unknown): ServerRow[] | null {
 }
 
 export function CapToolsPane() {
-  const tools = usePort("/api/tools", parseTools, (rows) => rows.length === 0);
+  // `/api/tools` 在 Hermes 上是 404（真读口是 toolsets）；直连工具组清单，
+  // 不再经 BFF 的探测腿 —— 那条腿的上游地址一失效就会把「有数据」显示成「空集」。
+  const tools = usePort("/api/tools/toolsets", parseTools, (rows) => rows.length === 0);
   const servers = usePort("/api/mcp/servers", parseServers, (rows) => rows.length === 0);
 
   const toolRows = tools.read.k === "ready" ? tools.read.data : [];
