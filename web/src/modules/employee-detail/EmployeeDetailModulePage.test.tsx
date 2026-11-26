@@ -1710,3 +1710,272 @@ describe("EmployeeDetailModulePage — 配置写口（身份 / 生命周期 / �
     expect(qid("edcfg-perm-grant-status")).toBeNull();
   });
 });
+
+describe("EmployeeDetailModulePage — 版本发布（版本与变更节）", () => {
+  const qid = (id: string) => container.querySelector(`[data-testid="${id}"]`);
+  const V5 = {
+    id: "empv_5",
+    employeeId: EMP,
+    versionNo: 5,
+    effectiveFrom: "2026-11-21T18:39:20.008Z",
+    jobDescription: "负责产品助理工作：整理需求与会议要点。",
+    knowledgeScopes: ["product_assistant", "nist-ai-rmf-100-1"],
+    skillRefs: [] as string[],
+    grantIds: ["gr_A", "gr_B"],
+    responsePolicy: { triggers: ["mention", "dm"], mode: "realtime" },
+    memoryScope: { employeeScope: true, retentionDays: 30 },
+    budget: { dailyTokens: 2000000 },
+    changeNote: "v5 收尾",
+  };
+  const V4 = {
+    ...V5,
+    id: "empv_4",
+    versionNo: 4,
+    effectiveFrom: "2026-11-20T10:00:00.000Z",
+    knowledgeScopes: ["product_assistant"],
+    changeNote: "v4 旧版",
+  };
+
+  type Call = { url: string; init?: RequestInit };
+
+  function serve(handler: (url: string, init?: RequestInit) => Promise<unknown>) {
+    vi.mocked(fetchJSON).mockImplementation(((url: string, init?: RequestInit) => handler(url, init)) as never);
+  }
+
+  async function typeInto(testid: string, value: string) {
+    const el = container.querySelector(`[data-testid="${testid}"]`) as HTMLInputElement | HTMLTextAreaElement | null;
+    expect(el, testid).toBeTruthy();
+    const proto = el instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+    const setter = Object.getOwnPropertyDescriptor(proto, "value")!.set!;
+    await act(async () => {
+      setter.call(el!, value);
+      el!.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+  }
+
+  async function press(testid: string) {
+    const el = container.querySelector(`[data-testid="${testid}"]`) as HTMLElement | null;
+    expect(el, testid).toBeTruthy();
+    await act(async () => {
+      el!.click();
+    });
+    for (let i = 0; i < 4; i += 1) await act(async () => {});
+  }
+
+  async function openVersions() {
+    await renderAt(page, at("config"));
+    await press("edcfg-rail-item-versions");
+  }
+
+  afterEach(() => {
+    document.cookie = "console_csrf=; path=/; max-age=0";
+  });
+
+  it("折叠态只读版本链，点「发布新版本」展开表单；初值全部来自最新一版真回包", async () => {
+    document.cookie = "console_csrf=csrf-test; path=/";
+    // 故意把 v4 排在前面：最新一版按 effectiveFrom 取，不靠返回顺序。
+    serve((url) => {
+      if (url.includes("/api/employee-versions")) return Promise.resolve({ items: [V4, V5] });
+      return Promise.resolve({});
+    });
+    await openVersions();
+
+    expect(qid("edcfg-vers-publish")).toBeNull();
+    expect(qid("edcfg-vers-publish-hint")?.textContent).toContain("发布新版本");
+    expect(qid("edcfg-vers-row-0")?.textContent).toContain("v4");
+
+    await press("edcfg-vers-publish-toggle");
+    expect(qid("edcfg-vers-publish-toggle")?.getAttribute("aria-expanded")).toBe("true");
+    expect(qid("edcfg-vers-publish-src")?.textContent).toContain("初值来自 v5");
+
+    expect((qid("edcfg-vers-f-job") as HTMLTextAreaElement).value).toBe(V5.jobDescription);
+    expect((qid("edcfg-vers-f-scopes") as HTMLTextAreaElement).value).toBe("product_assistant\nnist-ai-rmf-100-1");
+    expect((qid("edcfg-vers-f-skills") as HTMLTextAreaElement).value).toBe("");
+    expect((qid("edcfg-vers-f-grants") as HTMLTextAreaElement).value).toBe("gr_A\ngr_B");
+    expect(JSON.parse((qid("edcfg-vers-f-policy") as HTMLTextAreaElement).value)).toEqual(V5.responsePolicy);
+    expect(JSON.parse((qid("edcfg-vers-f-memory") as HTMLTextAreaElement).value)).toEqual(V5.memoryScope);
+    expect(JSON.parse((qid("edcfg-vers-f-budget") as HTMLTextAreaElement).value)).toEqual(V5.budget);
+    // 默认生效时间 = 最新版 + 1 秒（本机时区），避开 409。
+    expect((qid("edcfg-vers-f-effective") as HTMLInputElement).value).not.toBe("");
+    expect(qid("edcfg-vers-added")?.textContent).toContain("没有新增授权");
+
+    // 再点一次收起，表单卸载。
+    await press("edcfg-vers-publish-toggle");
+    expect(qid("edcfg-vers-publish")).toBeNull();
+  });
+
+  it("最近一版缺字段时留空并标「上一版无此字段」，不编造值", async () => {
+    document.cookie = "console_csrf=csrf-test; path=/";
+    const sparse = { ...V5, jobDescription: undefined, memoryScope: undefined };
+    serve((url) => {
+      if (url.includes("/api/employee-versions")) return Promise.resolve({ items: [sparse] });
+      return Promise.resolve({});
+    });
+    await openVersions();
+    await press("edcfg-vers-publish-toggle");
+
+    expect((qid("edcfg-vers-f-job") as HTMLTextAreaElement).value).toBe("");
+    expect(qid("edcfg-vers-publish")?.textContent).toContain("（上一版无此字段）");
+    expect((qid("edcfg-vers-f-memory") as HTMLTextAreaElement).value).toBe("");
+  });
+
+  it("生效时间早于上一版：本地拦住，不发请求，错误句点名上一版时间", async () => {
+    document.cookie = "console_csrf=csrf-test; path=/";
+    const posts: Call[] = [];
+    serve((url, init) => {
+      if (init?.method === "POST") {
+        posts.push({ url, init });
+        return Promise.resolve({ id: "empv_SHOULD_NOT_EXIST" });
+      }
+      if (url.includes("/api/employee-versions")) return Promise.resolve({ items: [V5] });
+      return Promise.resolve({});
+    });
+    await openVersions();
+    await press("edcfg-vers-publish-toggle");
+
+    await typeInto("edcfg-vers-f-effective", "2020-01-01T00:00");
+    await press("edcfg-vers-submit");
+
+    expect(posts).toHaveLength(0);
+    expect(qid("edcfg-vers-issue-effective")?.textContent).toContain("必须晚于上一版");
+    expect(qid("edcfg-vers-error")?.textContent).toContain("必须晚于上一版");
+    expect(qid("edcfg-vers-status")).toBeNull();
+  });
+
+  it("新增授权 = 提权：请求体带上新 grantIds，409 requires_approval 如实提示需要审批引用", async () => {
+    document.cookie = "console_csrf=csrf-test; path=/";
+    const posts: Call[] = [];
+    serve((url, init) => {
+      if (init?.method === "POST") {
+        posts.push({ url, init });
+        return Promise.reject(
+          new ApiError("privilege escalation requires approvalRef", {
+            status: 409,
+            body: JSON.stringify({ code: "employee.version_requires_approval", message: "privilege escalation requires approvalRef" }),
+            url,
+            requestId: "req-approve",
+          }),
+        );
+      }
+      if (url.includes("/api/employee-versions")) return Promise.resolve({ items: [V5] });
+      return Promise.resolve({});
+    });
+    await openVersions();
+    await press("edcfg-vers-publish-toggle");
+
+    // 有效授权里的 gr_C 可一键补入（多行输入 + 显式填写新建的 gr_…）。
+    await typeInto("edcfg-vers-f-grants", "gr_A\ngr_B\ngr_NEW");
+    expect(qid("edcfg-vers-added")?.textContent).toContain("新增 1 条授权");
+    expect(qid("edcfg-vers-added")?.textContent).toContain("gr_NEW");
+
+    await press("edcfg-vers-submit");
+
+    expect(posts).toHaveLength(1);
+    expect(posts[0]!.url).toBe("/agent-api/api/employee-versions");
+    const headers = posts[0]!.init!.headers as Record<string, string>;
+    expect(headers["X-Console-CSRF"]).toBe("csrf-test");
+    expect(headers["Idempotency-Key"]).toBeTruthy();
+    const body = JSON.parse(String(posts[0]!.init!.body));
+    expect(body.employeeId).toBe(EMP);
+    expect(body.grantIds).toEqual(["gr_A", "gr_B", "gr_NEW"]);
+    expect(body.jobDescription).toBe(V5.jobDescription);
+    expect(body.responsePolicy).toEqual(V5.responsePolicy);
+    expect(body.memoryScope).toEqual(V5.memoryScope);
+    expect(body.changeNote).toBeUndefined();
+
+    expect(qid("edcfg-vers-error")?.textContent).toContain("审批引用");
+    expect(qid("edcfg-vers-status")).toBeNull();
+  });
+
+  it("发布成功：回执带版本 id / 生效时间 / 新增 N 条，并刷新版本链与有效配置", async () => {
+    document.cookie = "console_csrf=csrf-test; path=/";
+    const reads: string[] = [];
+    const posts: Call[] = [];
+    let versHits = 0;
+    let cfgHits = 0;
+    serve((url, init) => {
+      if (init?.method === "POST") {
+        posts.push({ url, init });
+        return Promise.resolve({
+          id: "empv_6",
+          employeeId: EMP,
+          versionNo: 6,
+          effectiveFrom: "2026-11-26T04:30:00.000Z",
+          jobDescription: V5.jobDescription,
+          grantIds: ["gr_A", "gr_B", "gr_NEW"],
+        });
+      }
+      reads.push(url);
+      if (url.includes("/api/employee-versions")) {
+        versHits += 1;
+        return Promise.resolve({ items: versHits === 1 ? [V5] : [{ ...V5, id: "empv_6", versionNo: 6, effectiveFrom: "2026-11-26T04:30:00.000Z" }, V5] });
+      }
+      if (url.includes("/api/effective-config")) {
+        cfgHits += 1;
+        return Promise.resolve({
+          employee: { id: EMP },
+          version: { versionNo: 5 },
+          grants: [
+            { id: "gr_A", scopeType: "channel", actions: ["send"], source: "role" },
+            { id: "gr_C", scopeType: "tool", actions: ["invoke"], source: "role" },
+          ],
+        });
+      }
+      return Promise.resolve({});
+    });
+    await openVersions();
+    await press("edcfg-vers-publish-toggle");
+
+    // 有效授权里 gr_C 不在本表 → 给一键补入；点它写进 grantIds。
+    expect(qid("edcfg-vers-add-grant-gr_C")).toBeTruthy();
+    await press("edcfg-vers-add-grant-gr_C");
+    expect((qid("edcfg-vers-f-grants") as HTMLTextAreaElement).value).toBe("gr_A\ngr_B\ngr_C");
+    expect(qid("edcfg-vers-added")?.textContent).toContain("新增 1 条授权");
+
+    await typeInto("edcfg-vers-f-note", "v4-console 发版表单验证");
+    await press("edcfg-vers-submit");
+
+    expect(posts).toHaveLength(1);
+    const body = JSON.parse(String(posts[0]!.init!.body));
+    expect(body.grantIds).toEqual(["gr_A", "gr_B", "gr_C"]);
+    expect(body.changeNote).toBe("v4-console 发版表单验证");
+    expect(Number.isFinite(Date.parse(body.effectiveFrom))).toBe(true);
+    // 生效时间必须是 draft 里那个值（晚于 v5），不是硬编码。
+    expect(Date.parse(body.effectiveFrom)).toBeGreaterThan(Date.parse(V5.effectiveFrom));
+
+    const ok = qid("edcfg-vers-status")?.textContent ?? "";
+    expect(ok).toContain("已发布 v6");
+    expect(ok).toContain("empv_6");
+    expect(ok).toContain("本次新增 1 条授权");
+    expect(ok).toContain("生效 2026-11-26 12:30");
+
+    // 发布后：版本链重读（5→6 条），有效配置也重读。
+    expect(versHits).toBe(2);
+    expect(cfgHits).toBe(2);
+    expect(qid("edcfg-vers-row-0")?.textContent).toContain("v6");
+  });
+
+  it("写口 405：表单降级只读，不给假成功", async () => {
+    document.cookie = "console_csrf=csrf-test; path=/";
+    serve((url, init) => {
+      if (init?.method === "POST") {
+        return Promise.reject(
+          new ApiError("该操作当前只读", {
+            status: 405,
+            body: JSON.stringify({ code: "console.read_only", message: "read only" }),
+            url,
+          }),
+        );
+      }
+      if (url.includes("/api/employee-versions")) return Promise.resolve({ items: [V5] });
+      return Promise.resolve({});
+    });
+    await openVersions();
+    await press("edcfg-vers-publish-toggle");
+    await press("edcfg-vers-submit");
+
+    expect(qid("edcfg-vers-readonly")?.textContent).toContain("写口未接");
+    expect(qid("edcfg-vers-status")).toBeNull();
+    expect((qid("edcfg-vers-submit") as HTMLButtonElement).disabled).toBe(true);
+  });
+});

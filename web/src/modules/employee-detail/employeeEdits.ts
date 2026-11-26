@@ -101,12 +101,12 @@ export class NoWriteSessionError extends Error {
   }
 }
 
-function writeHeaders(extra: Record<string, string>): Record<string, string> {
+function writeHeaders(extra: Record<string, string>, idempotencyKey?: string): Record<string, string> {
   const csrf = csrfWriteHeaders();
   if (!csrf) throw new NoWriteSessionError();
   return {
     "content-type": "application/json",
-    "Idempotency-Key": newIdempotencyKey(),
+    "Idempotency-Key": idempotencyKey?.trim() ? idempotencyKey.trim() : newIdempotencyKey(),
     ...csrf,
     ...extra,
   };
@@ -461,6 +461,304 @@ export async function revokeGrant(empId: string, grantId: string): Promise<Revok
       ? ((res as Rec).revokedAt as string)
       : null;
   return { grantId, revokedAt };
+}
+
+/* ------------------------------------------------------------------ *
+ * 版本发布：POST /api/employee-versions（体里用 employeeId 定位）
+ *
+ * 契约（BFF 2026-11-26 实测）：
+ *  - 必填键，只校验「键在场且非 null」：jobDescription、knowledgeScopes、
+ *    skillRefs、grantIds、responsePolicy、memoryScope。
+ *  - 选填：budget（缺省取默认预算）、effectiveFrom（缺省 now，且必须严格
+ *    晚于最新版，否则 409 employee.version_effective_conflict）、changeNote。
+ *  - grantIds 相对上一版新增 = 提权，没有 approvalRef 就 409
+ *    employee.version_requires_approval；没有基础版本也 409。
+ *  - 需 Idempotency-Key；写口双提交 CSRF 与其它写口同款。
+ *  - 成功 200 回 version_public。
+ * 纪律：预填只取最近一版真实回包；缺字段就留空并标「上一版无此字段」。
+ * ------------------------------------------------------------------ */
+
+const VERSIONS_URL = "/agent-api/api/employee-versions";
+
+/** 发布表单的全部输入（列表类字段用一行一个的文本承载）。 */
+export type VersionDraft = {
+  jobDescription: string;
+  knowledgeScopesText: string;
+  skillRefsText: string;
+  grantIdsText: string;
+  responsePolicyText: string;
+  memoryScopeText: string;
+  budgetText: string;
+  /** datetime-local；空=交给后端取 now。 */
+  effectiveFrom: string;
+  changeNote: string;
+};
+
+export type VersionFieldIssue = { field: keyof VersionDraft; message: string };
+
+export const VERSION_FIELD_LABEL: Record<string, string> = {
+  jobDescription: "岗位职责",
+  knowledgeScopes: "知识范围",
+  skillRefs: "技能引用",
+  grantIds: "授权 ID",
+  responsePolicy: "回复策略",
+  memoryScope: "记忆范围",
+  budget: "预算",
+};
+
+/** 列表文本 → 去重非空数组（换行/逗号/空格都算分隔）。 */
+export function parseListText(text: string): string[] {
+  return Array.from(
+    new Set(
+      text
+        .split(/[\n,，\s]+/)
+        .map((s) => s.trim())
+        .filter(Boolean),
+    ),
+  );
+}
+
+/** ISO → datetime-local（本机时区，分钟精度）；空/非法回 ""。 */
+export function isoToLocalInput(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const ms = Date.parse(iso);
+  if (!Number.isFinite(ms)) return "";
+  const d = new Date(ms);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function jsonText(value: unknown): string {
+  if (value && typeof value === "object") return JSON.stringify(value, null, 2);
+  return "";
+}
+
+function strList(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((x): x is string => typeof x === "string") : [];
+}
+
+export type VersionPrefill = {
+  draft: VersionDraft;
+  /** 最近一版回包里缺的必填键（界面标「上一版无此字段」，不编造值）。 */
+  missing: string[];
+  /** 预填来源版本（null = 一条版本都没有）。 */
+  sourceVersionNo: number | null;
+  sourceVersionId: string | null;
+  sourceEffectiveFrom: string | null;
+};
+
+/**
+ * 最近一版 → 发布表单初值。只读真实回包：缺哪个键就把哪个字段留空并记进
+ * missing，绝不拿常量或默认值凑一个「看起来像上一版」的表单。
+ */
+export function readVersionDraft(latest: Rec | null): VersionPrefill {
+  const missing: string[] = [];
+  if (!latest) {
+    return {
+      draft: {
+        jobDescription: "",
+        knowledgeScopesText: "",
+        skillRefsText: "",
+        grantIdsText: "",
+        responsePolicyText: "",
+        memoryScopeText: "",
+        budgetText: "",
+        effectiveFrom: "",
+        changeNote: "",
+      },
+      missing: [],
+      sourceVersionNo: null,
+      sourceVersionId: null,
+      sourceEffectiveFrom: null,
+    };
+  }
+  const jobDescription = typeof latest.jobDescription === "string" ? latest.jobDescription : "";
+  if (typeof latest.jobDescription !== "string") missing.push("jobDescription");
+  if (!Array.isArray(latest.knowledgeScopes)) missing.push("knowledgeScopes");
+  if (!Array.isArray(latest.skillRefs)) missing.push("skillRefs");
+  if (!Array.isArray(latest.grantIds)) missing.push("grantIds");
+  if (!latest.responsePolicy || typeof latest.responsePolicy !== "object") missing.push("responsePolicy");
+  if (!latest.memoryScope || typeof latest.memoryScope !== "object") missing.push("memoryScope");
+  if (!latest.budget || typeof latest.budget !== "object") missing.push("budget");
+
+  const effectiveFrom = typeof latest.effectiveFrom === "string" ? latest.effectiveFrom : "";
+  // 默认值：严格晚于最新版的「下一个整分钟」。输入框只有分钟精度，直接 +1 秒
+  // 会被秒截断成同一分钟（= 不晚于上一版，必然 409），所以向上取整到整分钟。
+  const plusOne = Number.isFinite(Date.parse(effectiveFrom))
+    ? isoToLocalInput(new Date(Math.ceil((Date.parse(effectiveFrom) + 1000) / 60000) * 60000).toISOString())
+    : "";
+
+  return {
+    draft: {
+      jobDescription,
+      knowledgeScopesText: strList(latest.knowledgeScopes).join("\n"),
+      skillRefsText: strList(latest.skillRefs).join("\n"),
+      grantIdsText: strList(latest.grantIds).join("\n"),
+      responsePolicyText: jsonText(latest.responsePolicy),
+      memoryScopeText: jsonText(latest.memoryScope),
+      budgetText: jsonText(latest.budget),
+      effectiveFrom: plusOne,
+      changeNote: "",
+    },
+    missing,
+    sourceVersionNo: typeof latest.versionNo === "number" ? latest.versionNo : null,
+    sourceVersionId: typeof latest.id === "string" ? latest.id : null,
+    sourceEffectiveFrom: effectiveFrom || null,
+  };
+}
+
+function parseJsonObject(text: string, label: string): { value: Rec | null; error: string | null } {
+  const trimmed = text.trim();
+  if (!trimmed) return { value: null, error: `${label}不能为空（要一个 JSON 对象）。` };
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(trimmed);
+  } catch {
+    return { value: null, error: `${label}不是合法 JSON，请检查括号与引号。` };
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return { value: null, error: `${label}必须是 JSON 对象。` };
+  }
+  return { value: parsed as Rec, error: null };
+}
+
+/**
+ * 本地校验。effectiveFrom 早于/等于最新版一律在本地拦下（后端会 409
+ * employee.version_effective_conflict），错误句给出上一版的真时间。
+ */
+export function validateVersionDraft(draft: VersionDraft, latestEffectiveFrom: string | null): VersionFieldIssue[] {
+  const issues: VersionFieldIssue[] = [];
+  if (!draft.jobDescription.trim()) {
+    issues.push({ field: "jobDescription", message: "岗位职责不能为空。" });
+  }
+  const policy = parseJsonObject(draft.responsePolicyText, "回复策略");
+  if (policy.error) issues.push({ field: "responsePolicyText", message: policy.error });
+  const memory = parseJsonObject(draft.memoryScopeText, "记忆范围");
+  if (memory.error) issues.push({ field: "memoryScopeText", message: memory.error });
+  if (draft.budgetText.trim()) {
+    const budget = parseJsonObject(draft.budgetText, "预算");
+    if (budget.error) issues.push({ field: "budgetText", message: budget.error });
+  }
+  if (draft.effectiveFrom.trim()) {
+    const ms = Date.parse(draft.effectiveFrom);
+    if (!Number.isFinite(ms)) {
+      issues.push({ field: "effectiveFrom", message: "生效时间格式无法识别，请重新选择。" });
+    } else if (latestEffectiveFrom && Number.isFinite(Date.parse(latestEffectiveFrom))) {
+      const prev = Date.parse(latestEffectiveFrom);
+      if (ms <= prev) {
+        issues.push({
+          field: "effectiveFrom",
+          message: `生效时间必须晚于上一版（${isoToLocalInput(latestEffectiveFrom).replace("T", " ")} 之后）。`,
+        });
+      }
+    }
+  }
+  return issues;
+}
+
+/** 相对上一版新增的授权 ID（提权判定与「本次新增 N 条」同一口径）。 */
+export function newGrantIds(selected: string[], previous: string[]): string[] {
+  const prev = new Set(previous);
+  return selected.filter((id) => !prev.has(id));
+}
+
+/** 校验过的草稿 → 请求体（选填项空着就整个不发，让后端取缺省值）。 */
+export function buildVersionBody(empId: string, draft: VersionDraft): Rec {
+  const policy = parseJsonObject(draft.responsePolicyText, "回复策略");
+  if (policy.error || !policy.value) throw new Error(policy.error ?? "回复策略无效。");
+  const memory = parseJsonObject(draft.memoryScopeText, "记忆范围");
+  if (memory.error || !memory.value) throw new Error(memory.error ?? "记忆范围无效。");
+  const body: Rec = {
+    employeeId: empId,
+    jobDescription: draft.jobDescription.trim(),
+    knowledgeScopes: parseListText(draft.knowledgeScopesText),
+    skillRefs: parseListText(draft.skillRefsText),
+    grantIds: parseListText(draft.grantIdsText),
+    responsePolicy: policy.value,
+    memoryScope: memory.value,
+  };
+  if (draft.budgetText.trim()) {
+    const budget = parseJsonObject(draft.budgetText, "预算");
+    if (budget.error || !budget.value) throw new Error(budget.error ?? "预算无效。");
+    body.budget = budget.value;
+  }
+  const effectiveFrom = toIsoOrNull(draft.effectiveFrom);
+  if (effectiveFrom) body.effectiveFrom = effectiveFrom;
+  if (draft.changeNote.trim()) body.changeNote = draft.changeNote.trim();
+  return body;
+}
+
+export type PublishedVersion = {
+  id: string | null;
+  versionNo: number | null;
+  effectiveFrom: string | null;
+  raw: Rec;
+};
+
+/** 200 回包 → version_public（也兼容 `{version:{…}}` 的包法）；取不到 id 不编造。 */
+export function readPublishedVersion(body: unknown): PublishedVersion {
+  const raw = body && typeof body === "object" && !Array.isArray(body) ? (body as Rec) : {};
+  const nested = raw.version && typeof raw.version === "object" && !Array.isArray(raw.version) ? (raw.version as Rec) : raw;
+  return {
+    id: typeof nested.id === "string" && nested.id.trim() ? nested.id.trim() : null,
+    versionNo: typeof nested.versionNo === "number" && Number.isFinite(nested.versionNo) ? nested.versionNo : null,
+    effectiveFrom: typeof nested.effectiveFrom === "string" && nested.effectiveFrom.trim() ? nested.effectiveFrom.trim() : null,
+    raw,
+  };
+}
+
+export async function publishVersion(
+  empId: string,
+  draft: VersionDraft,
+  idempotencyKey?: string,
+): Promise<PublishedVersion> {
+  const body = buildVersionBody(empId, draft);
+  const res = await fetchJSON<unknown>(VERSIONS_URL, {
+    method: "POST",
+    headers: writeHeaders({}, idempotencyKey),
+    body: JSON.stringify(body),
+  });
+  if (!res || typeof res !== "object" || Array.isArray(res)) {
+    throw new Error("后台说发布成功，但回包不是版本对象；请刷新版本列表核对。");
+  }
+  return readPublishedVersion(res);
+}
+
+export type VersionFailure = {
+  text: string;
+  requestId: string | null;
+  readOnly: boolean;
+  code: string | null;
+  /** 409 employee.version_requires_approval：新增授权需审批引用。 */
+  needsApproval: boolean;
+  /** 409 employee.version_effective_conflict：时间不晚于上一版。 */
+  conflict: boolean;
+};
+
+/**
+ * 发布失败的界面投影：两条已知 409 给人话，404/405 老实降级只读，
+ * 其余原样带上游 code 与 message。绝不给发布造「成功」。
+ */
+export function versionFailure(err: unknown, latestLabel: string | null): VersionFailure {
+  if (err instanceof NoWriteSessionError) {
+    return { text: err.message, requestId: null, readOnly: false, code: null, needsApproval: false, conflict: false };
+  }
+  const f = writeFailure(err);
+  const code = f.code;
+  const needsApproval = f.status === 409 && code === "employee.version_requires_approval";
+  const conflict = f.status === 409 && code === "employee.version_effective_conflict";
+  const readOnly = f.status === 404 || f.status === 405 || f.readOnly;
+  let text: string;
+  if (needsApproval) {
+    text = "本次新增了授权，属于提权：需要审批引用才能发布。请先走审批流程，再带上审批引用重发。";
+  } else if (conflict) {
+    text = `生效时间必须晚于上一版${latestLabel ? `（${latestLabel}）` : ""}。`;
+  } else if (readOnly) {
+    text = `写口未接，已降级为只读。${failureLine(f)}`;
+  } else {
+    text = `发布没有成功：${failureLine(f)}`;
+  }
+  return { text, requestId: f.requestId, readOnly, code, needsApproval, conflict };
 }
 
 /* ------------------------------------------------------------------ *

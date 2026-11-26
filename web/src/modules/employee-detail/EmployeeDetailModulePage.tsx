@@ -89,8 +89,15 @@ import {
   createGrant,
   defaultExpiryLocal,
   failureLine,
+  newGrantIds,
+  newIdempotencyKey,
+  parseListText,
   patchIsEmpty,
   postTransition,
+  publishVersion,
+  readVersionDraft,
+  validateVersionDraft,
+  versionFailure,
   readHandoverCandidates,
   readIdentityDraft,
   readRevision,
@@ -108,6 +115,8 @@ import {
   type IdentityDraft,
   type ScopeType,
   type TransitionOption,
+  type VersionDraft,
+  type VersionFieldIssue,
 } from "./employeeEdits";
 import "./employee-detail.css";
 
@@ -295,11 +304,24 @@ function toResourceError(err: unknown): Extract<Resource<never>, { phase: "denie
   return { phase: "error", message, requestId: api?.requestId ?? null, code };
 }
 
-/** 列表腿：空回包是真实空集（empty），不是失败。 */
-function useList<T>(url: string, read: (body: unknown) => T[]): [Resource<T[]>, () => void] {
+/** 列表腿：空回包是真实空集（empty），不是失败。
+ *  第三个返回值：后台静默重读（不进 loading，不卸载已渲染的面板）；
+ *  用于写口成功后刷新列表，同时保住表单里的回执与用户输入。 */
+function useList<T>(url: string, read: (body: unknown) => T[]): [Resource<T[]>, () => void, () => void] {
   const [resource, setResource] = useState<Resource<T[]>>({ phase: "loading" });
   const [nonce, setNonce] = useState(0);
   const retry = useCallback(() => setNonce((n) => n + 1), []);
+  const refresh = useCallback(() => {
+    fetchJSON<unknown>(url)
+      .then((body) => {
+        const rows = read(body);
+        setResource(rows.length ? { phase: "ready", data: rows } : { phase: "empty" });
+      })
+      .catch(() => {
+        /* 静默重读失败不覆盖现有内容；用户仍看得到旧列表与写口回执 */
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reader is a module-level pure function
+  }, [url]);
 
   useEffect(() => {
     if (!url) return;
@@ -320,7 +342,7 @@ function useList<T>(url: string, read: (body: unknown) => T[]): [Resource<T[]>, 
     // eslint-disable-next-line react-hooks/exhaustive-deps -- readers are module-level pure functions
   }, [url, nonce]);
 
-  return [resource, retry];
+  return [resource, retry, refresh];
 }
 
 /** 单对象腿：整包（含信封键）交给分节自己投影；空对象不算 empty。
@@ -1899,25 +1921,64 @@ function fmtIntLocal(v: number | null): string {
   return v === null ? "—" : v.toLocaleString("en-US");
 }
 
+/** 最新一版：按 effectiveFrom 取最大，不依赖读口返回顺序。 */
+function latestVersionRow(rows: Rec[]): Rec | null {
+  let best: Rec | null = null;
+  let bestMs = -Infinity;
+  for (const row of rows) {
+    const ms = Date.parse(pickString(row.effectiveFrom) ?? "");
+    if (!Number.isFinite(ms)) {
+      if (best === null) best = row;
+      continue;
+    }
+    if (ms > bestMs) {
+      bestMs = ms;
+      best = row;
+    }
+  }
+  return best;
+}
+
 function VersionsSection({ empId }: { empId: string }) {
   const enc = encodeURIComponent(empId);
-  const [versions, retry] = useList(`/agent-api/api/employee-versions?id=${enc}`, (b) => itemsOf(b));
+  const [versions, retry, refreshVersions] = useList(`/agent-api/api/employee-versions?id=${enc}`, (b) => itemsOf(b));
+  const [publishing, setPublishing] = useState(false);
   if (versions.phase === "loading") return <ZoneLoading testid="edcfg-vers-loading" />;
   if (versions.phase === "denied") return <ZoneDenied title="版本与变更" message={versions.message} requestId={versions.requestId} onRetry={retry} testid="edcfg-vers-denied" />;
   if (versions.phase === "error") return <ZoneError title="版本与变更" message={versions.message} requestId={versions.requestId} onRetry={retry} testid="edcfg-vers-error" />;
   if (versions.phase === "empty") {
-    return <ZoneEmpty testid="edcfg-vers-empty" title="该员工暂无版本记录" hint="版本读口按员工 id 查询，空集是服务端的真实回答。" />;
+    return <ZoneEmpty testid="edcfg-vers-empty" title="该员工暂无版本记录" hint="版本读口按员工 id 查询，空集是服务端的真实回答；没有基础版本时域侧会拒绝首版发布，需先由管理员建档。" />;
   }
+  const latest = latestVersionRow(versions.data);
   return (
     <Card data-testid="edcfg-vers">
       <CardContent className="p-0">
         <div className="ui-c-head">
           <h3 className="ui-c-head-title">版本与变更</h3>
+          <div className="ui-c-head-actions">
+            <Button
+              size="sm"
+              outlined
+              aria-expanded={publishing ? "true" : "false"}
+              onClick={() => setPublishing((v) => !v)}
+              data-testid="edcfg-vers-publish-toggle"
+            >
+              {publishing ? "收起发布表单" : "发布新版本"}
+            </Button>
+          </div>
         </div>
+        {publishing ? (
+          <PublishVersionPanel empId={empId} latest={latest} onPublished={refreshVersions} />
+        ) : (
+          <p className="px-4 py-2 text-[11px] text-white/45" data-testid="edcfg-vers-publish-hint">
+            新建的授权要随一次发版写进 grantIds 才会进入有效授权；点右上「发布新版本」，表单按最近一版的真字段起草。
+          </p>
+        )}
+        <div className="console-divider" />
         <ul className="divide-y divide-white/5" data-testid="edcfg-vers-list">
           {versions.data.map((v, i) => (
             <li key={`${pickString(v.id) ?? i}`} className="grid grid-cols-1 gap-1 px-4 py-3 sm:grid-cols-[minmax(0,0.5fr)_minmax(0,1.2fr)_minmax(0,1fr)] sm:items-center sm:gap-2" data-testid={`edcfg-vers-row-${i}`}>
-              <span className="text-sm">v{dash(pickString(v.versionNo))}</span>
+              <span className="text-sm">v{dash(pickString(v.versionNo) ?? pickNumber(v.versionNo))}</span>
               <span className="min-w-0 truncate text-xs text-white/60" title={pickString(v.changeNote) ?? undefined}>
                 {pickString(v.changeNote) ?? "（无变更说明）"}
               </span>
@@ -1927,9 +1988,301 @@ function VersionsSection({ empId }: { empId: string }) {
             </li>
           ))}
         </ul>
-        <p className="px-4 py-2 text-[11px] text-white/45">只读版本链；发布与回滚不在本页进行。</p>
+        <p className="px-4 py-2 text-[11px] text-white/45">只读版本链；发布在上方「发布新版本」，回滚不在本页进行。</p>
       </CardContent>
     </Card>
+  );
+}
+
+/**
+ * 发布新版本表单。
+ *
+ * 预填纪律：全部初值来自最近一版真回包（readVersionDraft），缺哪个键就留空
+ * 并标「上一版无此字段」。授权 ID 可多行填写：从 effective-config.grants[]
+ * 里点选补入是「已生效」的候选，管理员自己新建的 gr_… 直接粘进来；提交前
+ * 实时显示「本次新增 N 条」——提权分支会让域侧 409 要审批引用，界面在原
+ * 地提示，不假装成功。
+ */
+function PublishVersionPanel({
+  empId,
+  latest,
+  onPublished,
+}: {
+  empId: string;
+  latest: Rec | null;
+  onPublished: () => void;
+}) {
+  const enc = encodeURIComponent(empId);
+  const prefill = readVersionDraft(latest);
+  const [draft, setDraft] = useState<VersionDraft>(prefill.draft);
+  const [state, setState] = useState<SaveState>({ k: "idle" });
+  const [readOnly, setReadOnly] = useState(false);
+  const [attempted, setAttempted] = useState(false);
+  // 一次发布一个幂等键：失败重试复用同一条，避免重复发版。
+  const [idemKey] = useState(() => newIdempotencyKey());
+  const [cfg, , , cfgRefresh] = useOne(`/agent-api/api/effective-config?id=${enc}`, (b) => (isRecord(b) ? b : {}));
+
+  const previousGrantIds = Array.isArray(latest?.grantIds)
+    ? (latest!.grantIds as unknown[]).filter((x): x is string => typeof x === "string")
+    : [];
+  const selectedGrants = parseListText(draft.grantIdsText);
+  const addedGrants = newGrantIds(selectedGrants, previousGrantIds);
+  const effectiveGrants =
+    cfg.phase === "ready"
+      ? itemsOf({ items: cfg.data.grants })
+          .map((g) => pickString(g.id))
+          .filter((id): id is string => Boolean(id))
+      : [];
+  const grantCandidates = effectiveGrants.filter((id) => !selectedGrants.includes(id));
+
+  const issues = validateVersionDraft(draft, prefill.sourceEffectiveFrom);
+  const issueOf = (field: VersionFieldIssue["field"]) =>
+    attempted ? issues.find((i) => i.field === field)?.message ?? null : null;
+  const saving = state.k === "saving";
+  const latestLabel =
+    prefill.sourceEffectiveFrom === null
+      ? null
+      : prefill.sourceVersionNo !== null
+        ? `v${prefill.sourceVersionNo} · ${beijing(prefill.sourceEffectiveFrom)}`
+        : beijing(prefill.sourceEffectiveFrom);
+
+  const fill = <K extends keyof VersionDraft>(field: K) => (value: VersionDraft[K]) => {
+    setDraft((prev) => ({ ...prev, [field]: value }));
+    if (state.k === "error") setState({ k: "idle" });
+  };
+
+  function addGrantId(id: string) {
+    setDraft((prev) => ({ ...prev, grantIdsText: [...parseListText(prev.grantIdsText), id].join("\n") }));
+    if (state.k === "error") setState({ k: "idle" });
+  }
+
+  async function submit() {
+    if (saving || readOnly) return;
+    setAttempted(true);
+    if (issues.length > 0) {
+      setState({ k: "error", text: issues[0]!.message, requestId: null });
+      return;
+    }
+    if (!latest) {
+      setState({
+        k: "error",
+        text: "还没有基础版本，域侧会拒绝第一版发布；请先让管理员建一版基础版本。",
+        requestId: null,
+      });
+      return;
+    }
+    setState({ k: "saving" });
+    try {
+      const pub = await publishVersion(empId, draft, idemKey);
+      // 成功后刷新版本链与有效配置：刚纳入的 grant 才会出现在有效授权里。
+      onPublished();
+      cfgRefresh();
+      const head = pub.id
+        ? `已发布${pub.versionNo === null ? "" : ` v${pub.versionNo}`}（${pub.id}）`
+        : "后台确认已发布，但回包没有版本编号；请在下方版本列表核对。";
+      setState({
+        k: "ok",
+        text: `${head}${pub.effectiveFrom ? ` · 生效 ${beijing(pub.effectiveFrom)}` : ""} · 本次新增 ${addedGrants.length} 条授权`,
+      });
+      setAttempted(false);
+    } catch (err: unknown) {
+      const e = versionFailure(err, latestLabel);
+      if (e.readOnly) setReadOnly(true);
+      setState({ k: "error", text: e.text, requestId: e.requestId });
+    }
+  }
+
+  const missing = (key: string) => (prefill.missing.includes(key) ? "（上一版无此字段）" : "");
+  const src = prefill.sourceVersionNo === null ? "无基础版本" : `v${prefill.sourceVersionNo}`;
+
+  return (
+    <div className="edw-form" data-testid="edcfg-vers-publish">
+      <h4 className="edw-form-title" data-testid="edcfg-vers-publish-src">
+        发布新版本 · 初值来自 {src}
+        {prefill.sourceEffectiveFrom ? `（生效 ${beijing(prefill.sourceEffectiveFrom)}）` : ""}
+      </h4>
+      <div className="edw-form-grid">
+        <label className="edw-form-field edw-form-field--wide">
+          <span className="edw-form-label">岗位职责{missing("jobDescription")}</span>
+          <textarea
+            className="edw-input edw-textarea"
+            data-testid="edcfg-vers-f-job"
+            value={draft.jobDescription}
+            onChange={(e) => fill("jobDescription")(e.target.value)}
+            rows={3}
+            disabled={saving || readOnly}
+            aria-invalid={issueOf("jobDescription") ? "true" : undefined}
+          />
+          {issueOf("jobDescription") ? (
+            <span className="edw-field-error" data-testid="edcfg-vers-issue-job">{issueOf("jobDescription")}</span>
+          ) : null}
+        </label>
+        <label className="edw-form-field">
+          <span className="edw-form-label">知识范围（一行一个）{missing("knowledgeScopes")}</span>
+          <textarea
+            className="edw-input edw-textarea"
+            data-testid="edcfg-vers-f-scopes"
+            value={draft.knowledgeScopesText}
+            onChange={(e) => fill("knowledgeScopesText")(e.target.value)}
+            rows={3}
+            placeholder="例如 product_assistant"
+            disabled={saving || readOnly}
+          />
+        </label>
+        <label className="edw-form-field">
+          <span className="edw-form-label">技能引用（一行一个）{missing("skillRefs")}</span>
+          <textarea
+            className="edw-input edw-textarea"
+            data-testid="edcfg-vers-f-skills"
+            value={draft.skillRefsText}
+            onChange={(e) => fill("skillRefsText")(e.target.value)}
+            rows={3}
+            placeholder="没有就留空"
+            disabled={saving || readOnly}
+          />
+        </label>
+        <label className="edw-form-field edw-form-field--wide">
+          <span className="edw-form-label">
+            授权 ID（一行一个）{missing("grantIds")} · 本次新增 {addedGrants.length} 条
+          </span>
+          <textarea
+            className="edw-input edw-textarea"
+            data-testid="edcfg-vers-f-grants"
+            value={draft.grantIdsText}
+            onChange={(e) => fill("grantIdsText")(e.target.value)}
+            rows={4}
+            placeholder="gr_…（新建的授权在「权限与授权」节创建后把编号粘到这里）"
+            disabled={saving || readOnly}
+          />
+          <span className="text-[11px] text-white/45" data-testid="edcfg-vers-added">
+            {addedGrants.length === 0
+              ? `相对 ${src} 没有新增授权（不构成提权）。`
+              : `相对 ${src} 新增 ${addedGrants.length} 条授权：${addedGrants.join("、")}——提权发布需要审批引用。`}
+          </span>
+          {grantCandidates.length > 0 ? (
+            <span className="edw-form-actions" data-testid="edcfg-vers-grant-candidates">
+              <span className="text-[11px] text-white/45">有效授权里还没写进本表的：</span>
+              {grantCandidates.map((id) => (
+                <button
+                  key={id}
+                  type="button"
+                  className="edw-inline-btn"
+                  disabled={saving || readOnly}
+                  aria-disabled={saving || readOnly ? "true" : undefined}
+                  data-testid={`edcfg-vers-add-grant-${id}`}
+                  onClick={() => addGrantId(id)}
+                >
+                  ＋{shortCode(id)}
+                </button>
+              ))}
+            </span>
+          ) : null}
+        </label>
+        <label className="edw-form-field">
+          <span className="edw-form-label">回复策略（JSON 对象）{missing("responsePolicy")}</span>
+          <textarea
+            className="edw-input edw-textarea"
+            data-testid="edcfg-vers-f-policy"
+            value={draft.responsePolicyText}
+            onChange={(e) => fill("responsePolicyText")(e.target.value)}
+            rows={6}
+            disabled={saving || readOnly}
+            aria-invalid={issueOf("responsePolicyText") ? "true" : undefined}
+          />
+          {issueOf("responsePolicyText") ? (
+            <span className="edw-field-error" data-testid="edcfg-vers-issue-policy">{issueOf("responsePolicyText")}</span>
+          ) : null}
+        </label>
+        <label className="edw-form-field">
+          <span className="edw-form-label">记忆范围（JSON 对象）{missing("memoryScope")}</span>
+          <textarea
+            className="edw-input edw-textarea"
+            data-testid="edcfg-vers-f-memory"
+            value={draft.memoryScopeText}
+            onChange={(e) => fill("memoryScopeText")(e.target.value)}
+            rows={6}
+            disabled={saving || readOnly}
+            aria-invalid={issueOf("memoryScopeText") ? "true" : undefined}
+          />
+          {issueOf("memoryScopeText") ? (
+            <span className="edw-field-error" data-testid="edcfg-vers-issue-memory">{issueOf("memoryScopeText")}</span>
+          ) : null}
+        </label>
+        <label className="edw-form-field">
+          <span className="edw-form-label">预算（JSON 对象，留空取默认预算）{missing("budget")}</span>
+          <textarea
+            className="edw-input edw-textarea"
+            data-testid="edcfg-vers-f-budget"
+            value={draft.budgetText}
+            onChange={(e) => fill("budgetText")(e.target.value)}
+            rows={3}
+            placeholder="留空 = 后端默认预算"
+            disabled={saving || readOnly}
+            aria-invalid={issueOf("budgetText") ? "true" : undefined}
+          />
+          {issueOf("budgetText") ? (
+            <span className="edw-field-error" data-testid="edcfg-vers-issue-budget">{issueOf("budgetText")}</span>
+          ) : null}
+        </label>
+        <label className="edw-form-field">
+          <span className="edw-form-label">生效时间（必须晚于上一版，留空取现在）</span>
+          <input
+            type="datetime-local"
+            className="edw-input"
+            data-testid="edcfg-vers-f-effective"
+            value={draft.effectiveFrom}
+            onChange={(e) => fill("effectiveFrom")(e.target.value)}
+            disabled={saving || readOnly}
+            aria-invalid={issueOf("effectiveFrom") ? "true" : undefined}
+          />
+          {issueOf("effectiveFrom") ? (
+            <span className="edw-field-error" data-testid="edcfg-vers-issue-effective">{issueOf("effectiveFrom")}</span>
+          ) : null}
+        </label>
+        <label className="edw-form-field edw-form-field--wide">
+          <span className="edw-form-label">变更说明</span>
+          <input
+            className="edw-input"
+            data-testid="edcfg-vers-f-note"
+            value={draft.changeNote}
+            onChange={(e) => fill("changeNote")(e.target.value)}
+            placeholder="一句话说明这一版改了什么"
+            disabled={saving || readOnly}
+          />
+        </label>
+      </div>
+      <div className="edw-form-actions">
+        <Button
+          size="sm"
+          onClick={() => void submit()}
+          disabled={saving || readOnly}
+          aria-disabled={saving || readOnly ? "true" : undefined}
+          data-testid="edcfg-vers-submit"
+        >
+          {saving ? "发布中…" : "发布新版本"}
+        </Button>
+        <span className="text-[11px] text-white/45">
+          发布后版本链会多一条；新增的授权随这一版进入有效授权。
+        </span>
+      </div>
+      {state.k === "ok" ? (
+        <p className="edw-write-ok" role="status" data-testid="edcfg-vers-status">{state.text}</p>
+      ) : null}
+      {state.k === "error" ? (
+        <p className="edw-write-error" role="alert" data-testid="edcfg-vers-error">
+          {state.text}
+          {state.requestId ? <span className="edw-write-rid">请求编号 {state.requestId}</span> : null}
+        </p>
+      ) : null}
+      {readOnly ? (
+        <p className="edw-write-note" data-testid="edcfg-vers-readonly">
+          写口未接：本环境的后端没有接版本发布接口，本节已降级为只读；下方版本链仍按真实读口显示。
+        </p>
+      ) : null}
+      <p className="edw-write-note">
+        说明：新增授权写进 grantIds 属于提权，域侧要求审批引用才放行；没有审批引用时发布会 409，界面会如实提示。
+      </p>
+    </div>
   );
 }
 
