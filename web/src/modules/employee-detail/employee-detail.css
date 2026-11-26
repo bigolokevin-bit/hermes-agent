@@ -210,6 +210,10 @@
 }
 
 .edw-nav-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
   min-width: 0;
   padding: 6px 8px;
   border: 0;
@@ -231,6 +235,23 @@
 }
 
 .edw-nav-item--active {
+  background: var(--panel-2);
+  color: var(--fg);
+}
+
+/* 分类标签：可改 / 只读。它是「当前代次有没有写口」的实况，不是建议。 */
+.edw-nav-tag {
+  flex: none;
+  padding: 1px 4px;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.14));
+  border-radius: 4px;
+  color: var(--fg-3);
+  font-size: 10px;
+  line-height: 14px;
+}
+
+.edw-nav-tag--yes {
+  border-color: transparent;
   background: var(--panel-2);
   color: var(--fg);
 }

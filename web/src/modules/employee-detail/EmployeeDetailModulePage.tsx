@@ -573,16 +573,18 @@ type ConfigSub = "identity" | "lifecycle" | "permission" | "capability" | "tools
 type EvidenceSub = "approvals" | "audit" | "sessions";
 
 /** 配置左竖栏八节（飞书设置式：一列文字分类 + 右侧对应内容）。 */
-const CONFIG_SUBS: ReadonlyArray<{ id: ConfigSub; label: string }> = [
-  { id: "identity", label: "身份与组织" },
-  { id: "lifecycle", label: "生命周期" },
-  { id: "permission", label: "权限与授权" },
-  { id: "capability", label: "能力与技能" },
-  { id: "tools", label: "工具与 MCP" },
-  { id: "budget", label: "预算与成本" },
-  { id: "versions", label: "版本与变更" },
-  { id: "knowledge", label: "知识与范围" },
-  { id: "model", label: "模型与提示词" },
+// writable 是这个分类在当前代次**有没有写口**（不是「该不该能改」）：
+// 左栏直接标出来，管理员一眼知道点进去是能改还是只能看，不用逐节试。
+const CONFIG_SUBS: ReadonlyArray<{ id: ConfigSub; label: string; writable: boolean }> = [
+  { id: "identity", label: "身份与组织", writable: true },
+  { id: "lifecycle", label: "生命周期", writable: true },
+  { id: "permission", label: "权限与授权", writable: true },
+  { id: "capability", label: "能力与技能", writable: false },
+  { id: "tools", label: "工具与 MCP", writable: false },
+  { id: "budget", label: "预算与成本", writable: false },
+  { id: "versions", label: "版本与变更", writable: true },
+  { id: "knowledge", label: "知识与范围", writable: false },
+  { id: "model", label: "模型与提示词", writable: false },
 ];
 
 const EVIDENCE_SUBS: ReadonlyArray<{ id: EvidenceSub; label: string }> = [
@@ -750,7 +752,7 @@ function RailGrid<A extends string>({
 }: {
   navLabel: string;
   testid: string;
-  items: ReadonlyArray<{ id: A; label: string }>;
+  items: ReadonlyArray<{ id: A; label: string; writable?: boolean }>;
   active: A;
   onSelect: (id: A) => void;
   children: ReactNode;
@@ -768,7 +770,16 @@ function RailGrid<A extends string>({
             data-testid={`${testid}-item-${it.id}`}
             className={`edw-nav-item${it.id === active ? " edw-nav-item--active" : ""}`}
           >
-            {it.label}
+            <span className="min-w-0 truncate">{it.label}</span>
+            {it.writable === undefined ? null : (
+              <span
+                className={it.writable ? "edw-nav-tag edw-nav-tag--yes" : "edw-nav-tag"}
+                data-testid={`${testid}-tag-${it.id}`}
+                title={it.writable ? "本节有写口，改动立即生效" : "本节当前只有读口，改动需先接写口"}
+              >
+                {it.writable ? "可改" : "只读"}
+              </span>
+            )}
           </button>
         ))}
       </nav>
