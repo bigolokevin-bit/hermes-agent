@@ -14,9 +14,15 @@ export const SIDECAR_DISCONNECTED_MESSAGE =
  * ticket exchange with an unknown-route / read-only error, or the socket is
  * refused before it ever opens). That is an environment fact, not a fault the
  * user caused, so the sidebar shows one calm line instead of a red banner.
+ *
+ * 2026-11-26: the PTY clause is gone. 9122 now reverse-proxies `/api/pty`
+ * (WebSocket relay + token injection), verified live: the terminal connects
+ * and accepts input. Claiming「PTY 未开放，消息发不出去」would be false here,
+ * so the line says only what is true — the activity stream is missing, the
+ * conversation itself works.
  */
 export const ACTIVITY_UNAVAILABLE_MESSAGE =
-  '活动流未接入本环境（模型与工具活动暂不显示）；对话通道也未接入（PTY 未开放，消息暂时发不出去）'
+  '活动流未接入本环境（模型与工具活动暂不显示）；对话本身可用，消息可以发送。'
 
 /** One-shot re-attempt offered beside ACTIVITY_UNAVAILABLE_MESSAGE. */
 export const ACTIVITY_UNAVAILABLE_RETRY_LABEL = '重试接入'
