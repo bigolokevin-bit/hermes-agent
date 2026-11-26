@@ -74,7 +74,6 @@ import { useBelowBreakpoint } from "@nous-research/ui/hooks/use-below-breakpoint
 import { useSidebarStatus } from "@/hooks/useSidebarStatus";
 import { PageHeaderProvider } from "@/contexts/PageHeaderProvider";
 import { useProfileScope } from "@/contexts/useProfileScope";
-import { ProfileSwitcher } from "@/components/ProfileSwitcher";
 import { ProfileScopeBanner } from "@/components/ProfileScopeBanner";
 import { MemoryPressureBanner } from "@/components/MemoryPressureBanner";
 import { MultiplexStandaloneBanner } from "@/components/MultiplexStandaloneBanner";
@@ -83,6 +82,10 @@ import { useSystemActions } from "@/contexts/useSystemActions";
 import type { SystemAction } from "@/contexts/system-actions-context";
 // Route pages are lazy-loaded so the initial dashboard shell does not pay for
 // every admin surface (and heavy deps like xterm) up front.
+/** 2026-11-26：本控制台不渲染 Hermes 第三方插件导航（骨架侧栏只有四分组）。
+ *  置 true 可恢复；插件页本身仍可经 /plugins 直达。 */
+const SHOW_PLUGIN_NAV = false;
+
 const ConfigPage = lazy(() => import("@/pages/ConfigPage"));
 const DocsPage = lazy(() => import("@/pages/DocsPage"));
 const EmployeesPage = lazy(() => import("@/pages/EmployeesPage"));
@@ -1035,7 +1038,9 @@ export default function App() {
                   collapsed && "lg:hidden",
                 )}
               >
-                <PluginSlot name="header-left" />
+                {/* 2026-11-26：上游的 header-left 插件插槽已移除——它会在品牌
+                  * 左侧渲染第三方插件的「(default)」之类字样，属噪声；本控制台
+                  * 的品牌区只放鱼形标 + SEAKOI / Agent OS。 */}
 
                 {/* SEAKOI 鱼形标（用户提供的 鱼-01.svg，2026-11-25 换掉骨架像素标）。 */}
                 <SeakoiFishMark size={20} className="sidebar-brand-mark" />
@@ -1072,7 +1077,10 @@ export default function App() {
             </div>
 
             <div className="shrink-0">
-              <ProfileSwitcher collapsed={isDesktopCollapsed} />
+              {/* 2026-11-26：上游的 ProfileSwitcher 在 /api/profiles 打通后
+                * 会渲染「this dashboard (default)」这类工程文案，且骨架侧栏
+                * 无此控件；本控制台单租户单档，故不渲染它（组件与路由不动，
+                * 员工对话的 profile 由 ChatModulePage 自行下发）。 */}
             </div>
 
             <nav
@@ -1097,7 +1105,11 @@ export default function App() {
                 * The plugin nav below stays: plugin tab mechanism must not
                 * move. */}
 
-              {sidebarNav.pluginItems.length > 0 && (
+              {/* 2026-11-26：/api/dashboard/ 打通到 54458 之后，Hermes 的第三方
+                * 插件导航（KANBAN / ACHIEVEMENTS 等）漏进了本控制台侧栏，用户
+                * 判定为噪声。骨架侧栏只有四分组（运营/治理/平台/系统），故本
+                * 构建不渲染插件导航；插件页仍可经 /plugins 直达。 */}
+              {SHOW_PLUGIN_NAV && sidebarNav.pluginItems.length > 0 && (
                 <div
                   aria-labelledby="hermes-sidebar-plugin-nav-heading"
                   className="flex flex-col border-t border-current/10 pb-2"
