@@ -30,7 +30,22 @@
   `skill_proposal` 表 0 行=真 0，非读取失败）；受管 BFF 已 kickstart，
   启动 banner 自报 `proposals=http://127.0.0.1:8104`，匿名请求仍 401
   （鉴权门未被改动）。
-- [ ] 3.2 提案服务当前是临时进程，需转 launchd 常驻（重启不丢）
+- [x] 3.2 提案服务当前是临时进程，需转 launchd 常驻（重启不丢）
+  （l2-dataplane 提交 `5f52d6075a` 已推到自有分支 `lane/skill-proposals-8104`，
+  远端回读 `5f52d6075a`；原 `lane/L2-dataplane` 未被推送，远端仍在 `413c37ed65`）：
+  常驻入口 `services/runtime/skill_proposals_serve.py`（`SEAKOI_SKILL_PROPOSALS_PORT`
+  默认 8104、`SEAKOI_SKILL_PROPOSALS_DB` 默认 `<repo>/.data/skill_proposals.sqlite3`），
+  替掉原先跑在 `/tmp/skill-proposals-serve.py`、解释器是 uv 临时 build venv 的
+  PID 74068。plist `~/Library/LaunchAgents/cn.seakoi.skill-proposals.plist`
+  （`uv run --offline --python 3.14 --with uvicorn==0.54.0 --with fastapi==0.165.0`，
+  RunAtLoad + KeepAlive + ThrottleInterval 10，日志
+  `~/.local/state/seakoi-ops/skill-proposals-launchd.log`）。装后三项读数原文：
+  ①`launchctl print` → `state = running`、`pid = 24714`、`program = /opt/homebrew/bin/uv`；
+  ②带 `X-Tenant-Id: t_seakoi_pilot` GET → `{"items":[],"nextCursor":null}` `http=200`；
+  ③`kill -9 24714` 后 5 秒再 GET → `{"items":[],"nextCursor":null}` `http=200`，
+  `pid = 24837`（KeepAlive 生效），日志两代 `skill-proposals: db=… http://127.0.0.1:8104`
+  即代次自证。回滚 = `launchctl bootout gui/$(id -u)/cn.seakoi.skill-proposals &&
+  rm ~/Library/LaunchAgents/cn.seakoi.skill-proposals.plist`。
 - [x] 3.3 提案页接线：提案队列接台账真读数、计数核对；「提案差异」「准入线」
   两块随详情读口接通后上屏
   （提交 `1480fe10be`）：`web/src/modules/capabilities/SkillsPane.tsx` 的提案列按 8104
