@@ -16,8 +16,8 @@
 
 - [x] 2.1 `web/src/modules/capabilities/panes.test.tsx` 随各提交更新：
   端点改名同步、providers 摊平行断言、价目同源解析、502/404 不画空表（随上列提交）
-- [ ] 2.2 补行为用例：模型口 503 restart required 时断言页面呈现故障且
-  目录计数不落 0（钉住「故障不伪装成空集」条款）
+- [x] 2.2 补行为用例：模型口 503 restart required 时断言页面呈现故障且
+  目录计数不落 0（钉住「故障不伪装成空集」条款）——`panes.test.tsx` 新增用例，175 passed
 
 ## 3. 提案链路接通（未完成，本 change 收口条件）
 

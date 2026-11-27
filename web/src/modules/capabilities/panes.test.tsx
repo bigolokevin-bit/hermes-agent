@@ -249,6 +249,24 @@ describe("能力与接入 · 工具与 MCP", () => {
     shapeGuards();
   });
 
+  it("模型口 503 restart-required 时呈现故障，不把「读不到」写成 0 个模型", async () => {
+    stub({
+      "/api/model/options": {
+        status: 503,
+        body: { detail: "Restart required: This process is running code from 2f012ea06c but the checkout has moved on" },
+      },
+    });
+    await mount(<CapModelsPane />);
+
+    // 卡组仍在（不整页抹掉），但计数位必须是「—」而不是 0。
+    expect(cards()).toBe(8);
+    const sub = q(".cap-sub")!.textContent ?? "";
+    expect(sub).toContain("—");
+    expect(sub).not.toContain("0 个可用模型");
+    // 故障要如实上屏，且不能伪装成「未接线 / 空集」。
+    expect(text()).toContain("缺读口");
+  });
+
   it("工具登记回数时按读口裁列：沙箱与 7 天调用没有源就不画", async () => {
     stub({
       "/api/tools/toolsets": {
