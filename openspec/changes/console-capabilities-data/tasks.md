@@ -33,7 +33,7 @@
 - [ ] 3.2 提案服务当前是临时进程，需转 launchd 常驻（重启不丢）
 - [x] 3.3 提案页接线：提案队列接台账真读数、计数核对；「提案差异」「准入线」
   两块随详情读口接通后上屏
-  （本笔代码提交）：`web/src/modules/capabilities/SkillsPane.tsx` 的提案列按 8104
+  （提交 `1480fe10be`）：`web/src/modules/capabilities/SkillsPane.tsx` 的提案列按 8104
   真实回包投影——`proposalId`→行键、`name`→提案、`submittedBy.id`→提出人、
   `status` 码译中文（pending_review/approved/rejected/withdrawn → 待审/已批准/
   已驳回/已撤回，未知码原样上屏）；`kind`/`impact` 上游未回传 → 类型、影响两列
