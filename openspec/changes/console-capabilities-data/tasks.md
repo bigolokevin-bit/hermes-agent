@@ -31,8 +31,19 @@
   启动 banner 自报 `proposals=http://127.0.0.1:8104`，匿名请求仍 401
   （鉴权门未被改动）。
 - [ ] 3.2 提案服务当前是临时进程，需转 launchd 常驻（重启不丢）
-- [ ] 3.3 提案页接线：提案队列接台账真读数、计数核对；「提案差异」「准入线」
+- [x] 3.3 提案页接线：提案队列接台账真读数、计数核对；「提案差异」「准入线」
   两块随详情读口接通后上屏
+  （本笔代码提交）：`web/src/modules/capabilities/SkillsPane.tsx` 的提案列按 8104
+  真实回包投影——`proposalId`→行键、`name`→提案、`submittedBy.id`→提出人、
+  `status` 码译中文（pending_review/approved/rejected/withdrawn → 待审/已批准/
+  已驳回/已撤回，未知码原样上屏）；`kind`/`impact` 上游未回传 → 类型、影响两列
+  整列不画，卡头「按影响面排序」改「按提交时间倒序」并按 `submittedAt` 倒序排
+  （上游无影响面字段，不能假称按影响面）。计数核对：页头副行与卡底「N 条」同源
+  取列表长度，空集计 0 并写「真零，不是加载失败」。用例：`panes.test.tsx` 新增
+  「接通后按真值列行」「台账真零」两条，读 `vitest run` 14 passed；
+  `npm run build` 成功。详情读口仍缺：8104 只挂 `POST/GET /v1/skill-proposals`
+  与 `{id}/approve|reject`，无详情端点，「提案差异」「准入线」继续按缺读口
+  如实声明（不画示例行）。9122 实机往返证据见 4.2。
 
 ## 4. 实机证据
 

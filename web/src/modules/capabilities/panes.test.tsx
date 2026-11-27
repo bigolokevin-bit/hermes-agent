@@ -166,6 +166,71 @@ describe("能力与接入 · 技能", () => {
     expect(text()).toContain("技能台账里还没有已发布的技能");
     expect(cards()).toBe(7);
   });
+
+  it("提案台账接通后按真值列行：计数一致、按提交时间倒序、无源列不出现", async () => {
+    stub({
+      "/api/skills": {
+        status: 200,
+        body: {
+          items: [{ skillId: "skl_1", name: "检索增强", version: "2.1.0" }],
+          asOf: "2026-11-24T06:30:00Z",
+        },
+      },
+      // 8104 /v1/skill-proposals 的真实回包形状（list：items + nextCursor）
+      "/api/skill-proposals": {
+        status: 200,
+        body: {
+          items: [
+            {
+              proposalId: "sp_2",
+              skillId: "skl_1",
+              name: "检索增强",
+              summary: "提高召回",
+              status: "approved",
+              submittedBy: { kind: "employee", id: "emp_02" },
+              submittedAt: "2026-11-24T02:00:00Z",
+            },
+            {
+              proposalId: "sp_1",
+              skillId: "skl_1",
+              name: "检索增强",
+              summary: "收紧阈值",
+              status: "pending_review",
+              submittedBy: { kind: "employee", id: "emp_01" },
+              submittedAt: "2026-11-25T03:00:00Z",
+            },
+          ],
+          nextCursor: null,
+        },
+      },
+    });
+    await mount(<CapSkillsPane />);
+
+    // 计数核对：页头副行与卡底行数都按台账真值（2 条），不是 0 也不是「—」
+    expect(q(".cap-sub")!.textContent).toBe("1 个已发布 · 2 个提案 · — 个可发现");
+    expect(text()).toContain("2 条");
+    // 类型、影响面上游没有 → 两列整列不画
+    expect(headers(1)).toEqual(["提案", "提出人", "状态"]);
+
+    const rows = all('[data-testid="cap-proposal-row"]');
+    expect(rows).toHaveLength(2);
+    const cells = Array.from(rows[0]!.querySelectorAll("td")).map((td) => td.textContent?.trim());
+    // 提交时间倒序：11-25 的 pending_review 在 11-24 的 approved 之前；状态码译成中文
+    expect(cells).toEqual(["检索增强", "emp_01", "待审"]);
+    shapeGuards();
+  });
+
+  it("提案台账真零时写「真零」并把计数记 0", async () => {
+    stub({
+      "/api/skills": { status: 200, body: { items: [], asOf: "2026-11-24T06:30:00Z" } },
+      "/api/skill-proposals": { status: 200, body: { items: [], nextCursor: null } },
+    });
+    await mount(<CapSkillsPane />);
+    expect(q(".cap-sub")!.textContent).toBe("0 个已发布 · 0 个提案 · — 个可发现");
+    expect(text()).toContain("提案队列是空的（真零，不是加载失败）");
+    expect(all('[data-testid="cap-proposal-row"]')).toHaveLength(0);
+    expect(cards()).toBe(7);
+  });
 });
 
 describe("能力与接入 · 工具与 MCP", () => {

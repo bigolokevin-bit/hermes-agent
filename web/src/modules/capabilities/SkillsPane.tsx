@@ -27,6 +27,16 @@ type SkillRow = {
 type ProposalRow = {
   id: string;
   cells: Record<string, string | null>;
+  /** 提交时刻，用于排序（台账按 submittedAt 倒序，影响面字段上游没有）。 */
+  sortKey: string | null;
+};
+
+/** 提案台账的状态码 → 屏上中文；未知码原样上屏，不猜。 */
+const PROPOSAL_STATUS: Record<string, string> = {
+  pending_review: "待审",
+  approved: "已批准",
+  rejected: "已驳回",
+  withdrawn: "已撤回",
 };
 
 const SCOPE_LABEL: Record<string, string> = {
@@ -67,19 +77,24 @@ function parseSkills(body: unknown): SkillRow[] | null {
   });
 }
 
+// 提案台账（/api/skill-proposals → 8104）回传 proposalId / name / summary /
+// status / submittedBy / submittedAt；类型、影响面两项上游没有，对应列整列不画。
 function parseProposals(body: unknown): ProposalRow[] | null {
   const items = listOf(body);
   if (items === null) return null;
   return items.map((item, index) => {
     const row = recordOf(item);
+    const submittedBy = recordOf(row.submittedBy);
+    const rawStatus = textOf(row.status);
     return {
       id: textOf(row.id) ?? textOf(row.proposalId) ?? `proposal-${index}`,
+      sortKey: textOf(row.submittedAt),
       cells: {
-        title: textOf(row.title) ?? textOf(row.summary),
+        title: textOf(row.title) ?? textOf(row.name) ?? textOf(row.summary),
         kind: textOf(row.kind) ?? textOf(row.type),
-        author: textOf(row.author) ?? textOf(row.proposedBy),
+        author: textOf(row.author) ?? textOf(row.proposedBy) ?? textOf(submittedBy?.id),
         impact: textOf(row.impact) ?? textOf(row.impactLabel),
-        status: textOf(row.status),
+        status: rawStatus ? PROPOSAL_STATUS[rawStatus] ?? rawStatus : null,
       },
     };
   });
@@ -108,7 +123,11 @@ export function CapSkillsPane() {
   const [scope, setScope] = useState("all");
 
   const rows = skills.read.k === "ready" ? skills.read.data : [];
-  const proposalRows = proposals.read.k === "ready" ? proposals.read.data : [];
+  // 台账没有影响面字段：排序只认提交时刻倒序，「按影响面排序」的说法不成立。
+  const proposalRows = useMemo(() => {
+    const base = proposals.read.k === "ready" ? proposals.read.data : [];
+    return [...base].sort((a, b) => (b.sortKey ?? "").localeCompare(a.sortKey ?? ""));
+  }, [proposals.read]);
   const proposed =
     proposals.read.k === "ready"
       ? proposalRows.length
@@ -255,7 +274,7 @@ export function CapSkillsPane() {
       <div className="cap-split">
         <div className="cap-stack">
           <div className="console-card">
-            <CardHead title="提案队列" action="按影响面排序" />
+            <CardHead title="提案队列" action="按提交时间倒序" />
             {proposalCols.length > 0 ? (
               <div className="cap-tw">
                 <table className="cap-t">
@@ -313,7 +332,7 @@ export function CapSkillsPane() {
               </div>
             )}
             <CardFoot
-              note="提案只能来自提案台账；本页只读，审核动作在治理面完成"
+              note="提案只能来自提案台账（类型与影响面上游未回传，两列不出现）；本页只读，审核动作在治理面完成"
               right={
                 proposals.read.k === "ready" || proposals.read.k === "empty"
                   ? `${count(proposed)} 条`
