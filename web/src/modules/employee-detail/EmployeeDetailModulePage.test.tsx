@@ -1804,6 +1804,39 @@ describe("EmployeeDetailModulePage — 版本发布（版本与变更节）", ()
     expect(qid("edcfg-vers-publish")).toBeNull();
   });
 
+  it("「以此为底稿」按选中版起草：发的是新版本，历史行逐字不变", async () => {
+    document.cookie = "console_csrf=csrf-test; path=/";
+    const calls: Call[] = [];
+    serve((url, init) => {
+      if (init?.method) calls.push({ url, init });
+      if (init?.method === "POST" && url.includes("/api/employee-versions")) {
+        return Promise.resolve({ id: "empv_NEW" });
+      }
+      if (url.includes("/api/employee-versions")) return Promise.resolve({ items: [V4, V5] });
+      return Promise.resolve({});
+    });
+    await openVersions();
+
+    // 以 v4（较旧那版）为底稿。
+    await press("edcfg-vers-seed-0");
+    expect(qid("edcfg-vers-seed-note")?.textContent).toContain("v4");
+    expect(qid("edcfg-vers-seed-note")?.textContent).toContain("历史版本不被改写");
+    expect((qid("edcfg-vers-f-job") as HTMLTextAreaElement).value).toBe(V4.jobDescription);
+
+    await press("edcfg-vers-submit");
+
+    // 只发一条 POST（追加新版本）；没有 PATCH/PUT/DELETE 去改历史。
+    const writes = calls.filter((c) => (c.init?.method ?? "GET").toUpperCase() !== "GET");
+    expect(writes).toHaveLength(1);
+    expect((writes[0].init!.method ?? "").toUpperCase()).toBe("POST");
+    const body = JSON.parse(String(writes[0].init!.body));
+    expect(body.jobDescription).toBe(V4.jobDescription);
+
+    // 列表仍是原来两行（v4/v5），没有就地改写。
+    expect(qid("edcfg-vers-row-0")?.textContent).toContain("v4");
+    expect(qid("edcfg-vers-row-1")?.textContent).toContain("v5");
+  });
+
   it("最近一版缺字段时留空并标「上一版无此字段」，不编造值", async () => {
     document.cookie = "console_csrf=csrf-test; path=/";
     const sparse = { ...V5, jobDescription: undefined, memoryScope: undefined };
