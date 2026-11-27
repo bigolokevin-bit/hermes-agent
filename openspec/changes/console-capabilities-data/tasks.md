@@ -21,8 +21,15 @@
 
 ## 3. 提案链路接通（未完成，本 change 收口条件）
 
-- [ ] 3.1 BFF 的 `/api/skill-proposals` 仍未指到提案服务 8104 的
-  `/v1/skill-proposals`（bff-v4-serve 仓待办）
+- [x] 3.1 BFF 的 `/api/skill-proposals` 已改指提案服务 8104 的
+  `/v1/skill-proposals`（bff-v4-serve 提交 `f337ceae`，分支
+  `lane/L7-r32-models-pricing`）：新增 `CONSOLE_SKILL_PROPOSALS_BASE`
+  （默认 `http://127.0.0.1:8104`），列表/详情/approve|reject/建单四条路径统一
+  经 `_route_base(spec)`；测前 8101 同路径回 404 `{"detail":"Not Found"}`，
+  改后经 BFF 转发实测 200 `{"items":[],"nextCursor":null}`（8104 台账 sqlite
+  `skill_proposal` 表 0 行=真 0，非读取失败）；受管 BFF 已 kickstart，
+  启动 banner 自报 `proposals=http://127.0.0.1:8104`，匿名请求仍 401
+  （鉴权门未被改动）。
 - [ ] 3.2 提案服务当前是临时进程，需转 launchd 常驻（重启不丢）
 - [ ] 3.3 提案页接线：提案队列接台账真读数、计数核对；「提案差异」「准入线」
   两块随详情读口接通后上屏
