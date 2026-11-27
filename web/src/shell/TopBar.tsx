@@ -78,12 +78,23 @@ type Crumb = { label: string; to?: string };
  *
  * 详情页的层级是真实路径，不是猜的：`findRoute` 已经解出 `zone` 与
  * `params.employeeId`，这里只把它们拼成「分组 › 模块 › 员工详情」。  */
-function consoleSurface(
+export function consoleSurface(
   pathname: string,
   search: string,
 ): { trail: Crumb[]; title: string } | null {
   const hit = findRoute(pathname + search);
-  if (hit === null) return null;
+  // 非法/未知的 `?zone=` 会让 findRoute 整体查不到（它不是路由表里的值），若直接
+  // 返回 null，顶栏就掉到 off-shell 的标题解析器，详情页会突然显示「概览」这类
+  // 无主标题。员工详情只要路径形制成立，就按工作台层级兜住（行为用例钉住）。
+  if (hit === null) {
+    const loose = /^\/employees\/([^/?#]+)/.exec(pathname);
+    const employeesMeta = CONSOLE_MODULES.find((m) => m.module === "employees");
+    if (loose === null || employeesMeta === undefined) return null;
+    return {
+      trail: [{ label: employeesMeta.group }, { label: employeesMeta.label, to: "/employees" }],
+      title: "员工详情",
+    };
+  }
   const meta = CONSOLE_MODULES.find((m) => m.module === hit.entry.module);
   if (meta === undefined) return null;
 
