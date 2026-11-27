@@ -137,11 +137,20 @@ export default function LoginPage(): ReactNode {
         setNonce((n) => n + 1);
         setPhase((p) => (p === "loading" ? "ready" : p));
       } else {
-        setFailure({ sentence: GENERIC_FAILURE, requestId: body?.request_id ?? null });
+        // 只说「登录暂时不可用」会让排障无从下手：把读码失败的那一次请求状态
+        // 一并写出来（路径只写 /auth/captcha，不带主机与查询串）。
+        const upstream = typeof res.status === "number" ? res.status : "无响应";
+        setFailure({
+          sentence: `${GENERIC_FAILURE}（/auth/captcha 返回 ${upstream}）`,
+          requestId: body?.request_id ?? null,
+        });
         setPhase("failed");
       }
     } catch {
-      setFailure({ sentence: GENERIC_FAILURE, requestId: null });
+      setFailure({
+        sentence: `${GENERIC_FAILURE}（/auth/captcha 请求没有到达服务端）`,
+        requestId: null,
+      });
       setPhase("failed");
     }
   }, []);
